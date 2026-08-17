@@ -1,0 +1,29 @@
+# 编译产物
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+dist/
+
+# 测试与覆盖率
+*.test
+*.out
+coverage.*
+
+# 依赖目录（使用 go modules 时通常不需要提交）
+vendor/
+
+# 环境变量与本地配置
+.env
+*.local
+
+# IDE / 编辑器
+.idea/
+.vscode/
+*.swp
+
+# 系统文件
+.DS_Store
+Thumbs.db
