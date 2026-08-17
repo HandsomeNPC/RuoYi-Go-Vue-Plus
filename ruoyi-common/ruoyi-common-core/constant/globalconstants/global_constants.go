@@ -1,8 +1,8 @@
-package constant
-
-// 全局通用键常量，主要用于业务无关的 Redis Key 前缀定义。
+// Package globalconstants 全局通用键常量，主要用于业务无关的 Redis Key 前缀定义。
 //
 // @author Lion Li
+package globalconstants
+
 const (
 	// GlobalRedisKey 全局 redis key (业务无关的key)
 	GlobalRedisKey = "global:"

@@ -1,8 +1,8 @@
-package constant
-
-// 系统常量信息
+// Package systemconstants 系统常量信息
 //
 // @author Lion Li
+package systemconstants
+
 const (
 	// Normal 正常状态
 	Normal = "0"

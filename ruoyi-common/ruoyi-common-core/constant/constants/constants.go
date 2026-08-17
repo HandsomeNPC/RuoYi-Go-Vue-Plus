@@ -1,8 +1,8 @@
-package constant
-
-// 通用基础常量定义。
+// Package constants 通用基础常量定义。
 //
 // @author ruoyi
+package constants
+
 const (
 	// UTF8 UTF-8 字符集
 	UTF8 = "UTF-8"

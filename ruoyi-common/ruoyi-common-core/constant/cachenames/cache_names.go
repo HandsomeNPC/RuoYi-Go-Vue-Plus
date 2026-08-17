@@ -1,7 +1,4 @@
-// Package constant 定义了项目通用的常量。
-package constant
-
-// 缓存组名称常量，统一约定缓存名和缓存策略配置格式。
+// Package cachenames 缓存组名称常量，统一约定缓存名和缓存策略配置格式。
 //
 // key 格式为 cacheNames#ttl#maxIdleTime#maxSize#local
 //
@@ -13,6 +10,8 @@ package constant
 // 例子: test#60s、test#0#60s、test#0#1m#1000、test#1h#0#500、test#1h#0#500#0
 //
 // @author Lion Li
+package cachenames
+
 const (
 	// DemoCache 演示案例
 	DemoCache = "demo:cache#60s#10m#20"
