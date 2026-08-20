@@ -6,10 +6,13 @@ datasource:
   username: root
   password: root
   dbname: ry-vue
-  params: charset=utf8mb4&parseTime=True&loc=Local
+  params: charset=utf8mb4&parseTime=True&loc=Local&timeout=5s
   maxIdleConns: 10
   maxOpenConns: 100
-  connMaxLifetime: 3600
+  connMaxLifetime: 3600   # 连接最大存活(秒)
+  connMaxIdleTime: 600    # 空闲连接最大存活(秒)
+  logLevel: warn          # SQL 日志级别 silent/error/warn/info
+  slowThresholdMs: 200    # 慢 SQL 阈值(毫秒)
 
 redis:
   host: 127.0.0.1

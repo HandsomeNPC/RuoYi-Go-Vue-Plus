@@ -54,7 +54,7 @@ func TestLoadAuthDiffersOnlyByServer(t *testing.T) {
 		t.Errorf("Server.Name = %q, want %q", got, want)
 	}
 	if got, want := cfg.Datasource.DSN(),
-		"root:root@tcp(127.0.0.1:3306)/ry-vue?charset=utf8mb4&parseTime=True&loc=Local"; got != want {
+		"root:root@tcp(127.0.0.1:3306)/ry-vue?charset=utf8mb4&parseTime=True&loc=Local&timeout=5s"; got != want {
 		t.Errorf("DSN() = %q, want %q", got, want)
 	}
 }
@@ -172,6 +172,8 @@ func TestDatasourceValidate(t *testing.T) {
 		"缺 dbname":     func(d *Datasource) { d.DBName = "" },
 		"port 为 0":     func(d *Datasource) { d.Port = 0 },
 		"idle 大于 open": func(d *Datasource) { d.MaxIdleConns = 200 },
+		"不支持的 driver":  func(d *Datasource) { d.Driver = "postgres" },
+		"非法 logLevel":  func(d *Datasource) { d.LogLevel = "verbose" },
 	}
 	for name, breakIt := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -182,6 +184,15 @@ func TestDatasourceValidate(t *testing.T) {
 			}
 		})
 	}
+
+	// driver 与 logLevel 留空表示用默认值，应当放行。
+	t.Run("driver/logLevel 留空", func(t *testing.T) {
+		d := valid
+		d.Driver, d.LogLevel = "", ""
+		if err := d.validate(); err != nil {
+			t.Errorf("留空应放行: %v", err)
+		}
+	})
 }
 
 func TestRedisValidate(t *testing.T) {

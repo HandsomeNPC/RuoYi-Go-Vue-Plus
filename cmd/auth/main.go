@@ -10,15 +10,34 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"ruoyi-go-vue-plus/pkg/config"
+	"ruoyi-go-vue-plus/pkg/database"
 )
 
 func main() {
+	// 走 run 而非在 main 里 log.Fatal，否则 defer 的资源清理会被跳过。
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	cfg, err := config.Load("configs/application.yaml", "configs/auth.yaml")
 	if err != nil {
-		log.Fatalf("加载配置失败: %v", err)
+		return err
 	}
 
-	// TODO: database.New(cfg.Datasource) -> redis.New(cfg.Redis)
+	if err := database.Init(cfg.Datasource); err != nil {
+		return err
+	}
+	defer func() {
+		if err := database.CloseDefault(); err != nil {
+			log.Printf("关闭数据库连接失败: %v", err)
+		}
+	}()
+	log.Printf("[%s] 数据库已连接 %s:%d/%s",
+		cfg.Server.Name, cfg.Datasource.Host, cfg.Datasource.Port, cfg.Datasource.DBName)
+
+	// TODO: redis.New(cfg.Redis)
 	// TODO: middleware 注入 -> auth.RegisterRoutes(r, deps)
 
 	r := gin.Default()
@@ -27,7 +46,5 @@ func main() {
 	})
 
 	log.Printf("[%s] 监听 %s", cfg.Server.Name, cfg.Server.Addr)
-	if err := r.Run(cfg.Server.Addr); err != nil {
-		log.Fatalf("启动失败: %v", err)
-	}
+	return r.Run(cfg.Server.Addr)
 }
