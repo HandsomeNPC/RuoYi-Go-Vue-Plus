@@ -1,0 +1,23 @@
+# 公共配置：所有进程共享。各进程独有配置(端口)在 <模块>.yaml 覆盖。
+datasource:
+  driver: mysql
+  host: 127.0.0.1
+  port: 3306
+  username: root
+  password: root
+  dbname: ry-vue
+  params: charset=utf8mb4&parseTime=True&loc=Local
+  maxIdleConns: 10
+  maxOpenConns: 100
+  connMaxLifetime: 3600
+
+redis:
+  host: 127.0.0.1
+  port: 6379
+  password: ""
+  db: 0
+
+jwt:
+  secret: change-me-in-production
+  expireMinutes: 720
+  header: Authorization
