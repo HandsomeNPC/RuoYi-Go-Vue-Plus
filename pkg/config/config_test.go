@@ -27,7 +27,7 @@ func TestLoadMergesInOrder(t *testing.T) {
 		t.Errorf("Server.Name = %q, want %q", got, want)
 	}
 	// 来自 application.yaml
-	if got, want := cfg.Datasource.DBName, "ry-vue"; got != want {
+	if got, want := cfg.Datasource.DBName, "ry-cloud"; got != want {
 		t.Errorf("Datasource.DBName = %q, want %q", got, want)
 	}
 	if got, want := cfg.Datasource.MaxOpenConns, 100; got != want {
@@ -54,7 +54,7 @@ func TestLoadAuthDiffersOnlyByServer(t *testing.T) {
 		t.Errorf("Server.Name = %q, want %q", got, want)
 	}
 	if got, want := cfg.Datasource.DSN(),
-		"root:root@tcp(127.0.0.1:3306)/ry-vue?charset=utf8mb4&parseTime=True&loc=Local&timeout=5s"; got != want {
+		"root:ruoyi123@tcp(127.0.0.1:3306)/ry-cloud?charset=utf8mb4&parseTime=True&loc=Local&timeout=5s"; got != want {
 		t.Errorf("DSN() = %q, want %q", got, want)
 	}
 }
@@ -202,9 +202,10 @@ func TestRedisValidate(t *testing.T) {
 	}
 
 	tests := map[string]func(*Redis){
-		"缺 host":   func(r *Redis) { r.Host = "" },
-		"port 为 0": func(r *Redis) { r.Port = 0 },
-		"db 为负":    func(r *Redis) { r.DB = -1 },
+		"缺 host":           func(r *Redis) { r.Host = "" },
+		"port 为 0":         func(r *Redis) { r.Port = 0 },
+		"db 为负":            func(r *Redis) { r.DB = -1 },
+		"idle 大于 poolSize": func(r *Redis) { r.PoolSize, r.MinIdleConns = 8, 32 },
 	}
 	for name, breakIt := range tests {
 		t.Run(name, func(t *testing.T) {

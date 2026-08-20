@@ -9,6 +9,7 @@ import (
 
 	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/database"
+	"ruoyi-go-vue-plus/pkg/redis"
 )
 
 func main() {
@@ -35,7 +36,17 @@ func run() error {
 	log.Printf("[%s] 数据库已连接 %s:%d/%s",
 		cfg.Server.Name, cfg.Datasource.Host, cfg.Datasource.Port, cfg.Datasource.DBName)
 
-	// TODO: redis.New(cfg.Redis)
+	if err := redis.Init(cfg.Redis); err != nil {
+		return err
+	}
+	defer func() {
+		if err := redis.CloseDefault(); err != nil {
+			log.Printf("关闭 Redis 连接失败: %v", err)
+		}
+	}()
+	log.Printf("[%s] Redis 已连接 %s db=%d",
+		cfg.Server.Name, cfg.Redis.Addr(), cfg.Redis.DB)
+
 	// TODO: middleware 注入 -> system.RegisterRoutes(r, deps)
 
 	r := gin.Default()

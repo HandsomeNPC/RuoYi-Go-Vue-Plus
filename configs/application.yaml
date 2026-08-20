@@ -4,8 +4,8 @@ datasource:
   host: 127.0.0.1
   port: 3306
   username: root
-  password: root
-  dbname: ry-vue
+  password: ruoyi123
+  dbname: ry-cloud
   params: charset=utf8mb4&parseTime=True&loc=Local&timeout=5s
   maxIdleConns: 10
   maxOpenConns: 100
@@ -17,8 +17,15 @@ datasource:
 redis:
   host: 127.0.0.1
   port: 6379
-  password: ""
+  password: ruoyi123
   db: 0
+  clientName: ruoyi-go        # 连接标识，便于 CLIENT LIST 排查
+  poolSize: 32                # 连接池大小
+  minIdleConns: 8             # 最小空闲连接
+  dialTimeoutMs: 5000         # 建连超时(毫秒)
+  readTimeoutMs: 3000         # 读超时(毫秒)
+  writeTimeoutMs: 3000        # 写超时(毫秒)
+  connMaxIdleTime: 600        # 空闲连接最大存活(秒)
 
 jwt:
   secret: change-me-in-production
