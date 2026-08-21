@@ -30,9 +30,9 @@ type CORSConfig struct {
 
 	// ExposedHeaders 允许前端 JS 读取的响应头。
 	//
-	// 默认空 —— Java 侧没设置这项，跨域下前端只能读到 CORS 安全清单里的
-	// 那几个头。等 trace.go 落地后，X-Request-Id 需要加进来，
-	// 否则前端拿不到 traceId，报错时无法和服务端日志对账。
+	// Java 侧没设置这项，跨域下前端只能读到 CORS 安全清单里的那几个头。
+	// 默认值有意加了 TraceIDHeader —— 这是相对原项目的**新增行为**，
+	// 不加前端就拿不到 traceId，报错时无法和服务端日志对账。
 	ExposedHeaders []string
 
 	// MaxAge 预检结果缓存时长，对应 maxAge=1800(秒)。
@@ -40,12 +40,16 @@ type CORSConfig struct {
 }
 
 // DefaultCORSConfig 返回原项目的代码默认值（CorsProperties 的字段初始值）。
+//
+// 唯一偏差是 ExposedHeaders：Java 侧为空，这里放了 TraceIDHeader，
+// 否则 TraceID 中间件写的响应头跨域时被浏览器挡住，前端读不到。
 func DefaultCORSConfig() CORSConfig {
 	return CORSConfig{
 		AllowCredentials:      true,
 		AllowedOriginPatterns: []string{"*"},
 		AllowedMethods:        []string{"*"},
 		AllowedHeaders:        []string{"*"},
+		ExposedHeaders:        []string{TraceIDHeader},
 		MaxAge:                1800 * time.Second,
 	}
 }

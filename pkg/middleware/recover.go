@@ -73,15 +73,16 @@ func handlePanic(c *gin.Context, r any) {
 	// 但判断依据不同：Java 靠 URI 前缀匹配 message.path 配置，
 	// Go 直接判错误类型，比配路径准，也不必等 SSE 模块迁移过来。
 	if isBrokenPipe(r) {
-		log.Printf("[recover] 请求地址'%s',连接中断: %v", c.Request.URL.Path, r)
+		log.Printf("[recover]%s 请求地址'%s',连接中断: %v",
+			logTracePrefix(c), c.Request.URL.Path, r)
 		// 连接已断，写不进任何东西，只能终止。
 		c.Abort()
 		return
 	}
 
 	// 栈必须在这里取：出了 defer 作用域栈就展开了，事后拿不到现场。
-	log.Printf("[recover] 请求地址'%s',发生未知异常, 错误编号: %s\npanic: %v\n%s",
-		c.Request.URL.Path, newErrorID(), r, debug.Stack())
+	log.Printf("[recover]%s 请求地址'%s',发生未知异常, 错误编号: %s\npanic: %v\n%s",
+		logTracePrefix(c), c.Request.URL.Path, newErrorID(), r, debug.Stack())
 
 	// panic 一律当系统异常，不解析成业务错误：
 	// 业务错误应当走 return err，panic 到这里说明是 bug。
@@ -102,10 +103,11 @@ func render(c *gin.Context, err error) {
 	if errors.As(err, &se) {
 		// Detail 只进日志不回前端，对齐 detailMessage 的用途。
 		if se.Detail != "" {
-			log.Printf("[error] 请求地址'%s',业务异常: %s | 明细: %s",
-				c.Request.URL.Path, se.Msg, se.Detail)
+			log.Printf("[error]%s 请求地址'%s',业务异常: %s | 明细: %s",
+				logTracePrefix(c), c.Request.URL.Path, se.Msg, se.Detail)
 		} else {
-			log.Printf("[error] 请求地址'%s',业务异常: %s", c.Request.URL.Path, se.Msg)
+			log.Printf("[error]%s 请求地址'%s',业务异常: %s",
+				logTracePrefix(c), c.Request.URL.Path, se.Msg)
 		}
 
 		// Code 为 0 表示未指定业务码，回落 500，
@@ -121,17 +123,21 @@ func render(c *gin.Context, err error) {
 	// 非业务错误一律兜底，不把原始 err 回给前端 —— 里面可能有
 	// SQL 片段、内网地址、文件路径。前端只拿错误编号，细节查日志。
 	errorID := newErrorID()
-	log.Printf("[error] 请求地址'%s',发生系统异常, 错误编号: %s: %v",
-		c.Request.URL.Path, errorID, err)
+	log.Printf("[error]%s 请求地址'%s',发生系统异常, 错误编号: %s: %v",
+		logTracePrefix(c), c.Request.URL.Path, errorID, err)
 	c.AbortWithStatusJSON(http.StatusOK,
 		response.Fail(fmt.Sprintf("%s [错误编号: %s]", msgUnknownError, errorID)))
 }
 
 // newErrorID 生成 8 位错误编号，对应 Java 的 RandomUtil.randomNumbers(8)。
 //
-// 用途是把前端看到的提示和服务端日志对应起来。这是原项目唯一的请求关联手段
+// 用途是把前端看到的提示和服务端日志对应起来。原项目靠它做请求关联
 // （全项目无 traceId，见 README「TraceID」一节）。
-// TraceID 中间件落地后，这里应改用 traceId 以贯穿一次请求的全部日志。
+//
+// TraceID 中间件落地后它仍然保留：错误编号进响应体、traceId 进日志前缀，
+// 两者都指向同一条日志。不直接把 traceId 拼进 message 是因为那属于
+// 行为变更 —— 前端已经能从 X-Request-Id 响应头拿到 traceId（见
+// DefaultCORSConfig 的 ExposedHeaders），无须改动返回文案。
 func newErrorID() string {
 	return fmt.Sprintf("%08d", rand.IntN(100000000))
 }

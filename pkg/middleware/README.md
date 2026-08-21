@@ -26,7 +26,7 @@ Go 侧全部收拢到本包，由各模块 `router.go` 显式 `r.Use(...)` 注�
 |---|-----------------|-----------------------------------------------------------------------------------------|---------------------|
 | 1 | 全局异常        | `ruoyi-common-web/…/web/handler/GlobalExceptionHandler.java` + 另 5 个 advice（见下）   | ✅ `recover.go`     |
 | 2 | CORS            | `ruoyi-common-web/…/web/config/ResourcesConfig.java:73-86`（`CorsFilter` bean）         | ✅ `cors.go`        |
-| 3 | TraceID         | **原项目不存在，净新增**                                                                | `trace.go`          |
+| 3 | TraceID         | **原项目不存在，净新增**                                                                | ✅ `trace.go`       |
 | 4 | 可重复读 Body   | `ruoyi-common-web/…/web/filter/RepeatableFilter.java` + `RepeatedlyRequestWrapper.java` | `body.go`           |
 | 5 | 请求日志 + 耗时 | `ruoyi-common-web/…/web/interceptor/PlusWebInvokeTimeInterceptor.java`                  | `logger.go`         |
 | 6 | XSS 过滤        | `ruoyi-common-web/…/web/filter/XssFilter.java` + `XssHttpServletRequestWrapper.java`    | `xss.go`            |
@@ -70,7 +70,8 @@ Java 有 6 个 `@RestControllerAdvice`，Spring 合并成一条 advice 链。Go 
 主 handler 里值得对齐的行为：
 
 - `RuntimeException` / `Exception` 兜底时会生成 **随机 8 位 `errorId`** 拼进返回 message，日志里同时打这个 id ——
-  这是原项目唯一的请求关联手段（因为没有 traceId）。Go 有 TraceID 后可以直接用 traceId 替代，但要意识到这是 **行为变更**。
+  这是原项目唯一的请求关联手段（因为没有 traceId）。Go 侧 **两者并存**：errorId 仍进响应体，traceId 进日志前缀，
+  指向同一条日志；不替换是为了不改返回文案（前端已能从 `X-Request-Id` 响应头拿到 traceId）。
 - `handleIoException` 会读 yaml 的 `message.path`（`/resource/message`），对 SSE 断连的 IO 异常 **静默不打日志**。
 - `AsyncRequestTimeoutException` 是 no-op，不返回任何东西。
 
@@ -119,7 +120,7 @@ maxAge               = 1800
 |------------------|-------------------------------------------------|-----------------------------------------------------------------------------------------------|
 | 校验失败         | 回真实 **403**，不是恒 200                      | 跨域校验失败在浏览器 CORS 协议层，响应体被浏览器吞掉，前端读不到 `body.code`，回 200 反而误导 |
 | 配置来源         | `DefaultCORSConfig()` 硬编码，未进 `pkg/config` | 原项目 yaml 里就没有 `web.cors`，先对齐「代码默认值」这一既有事实，要配再加                   |
-| `ExposedHeaders` | 新增字段，默认空                                | Java 侧没设这项。TraceID 落地后 `X-Request-Id` 必须加进来，否则前端拿不到 traceId 无法对账    |
+| `ExposedHeaders` | 新增字段，默认含 `X-Request-Id`                 | Java 侧没设这项。不加前端拿不到 traceId，无法和服务端日志对账 —— 与 `trace.go` 配套           |
 | 通配匹配         | 自己扫 `*` 分段，未用正则                       | pattern 来自配置文件非用户输入，逐段扫描够用，且省掉 `*`→`.*` 转义的边界问题                  |
 
 一条容易写错的地方：`allowedOriginPatterns` 命中后要回显 **请求带来的 Origin**，不是配置里的 pattern。 同理
@@ -139,8 +140,26 @@ method 会把普通 OPTIONS 探测误判成预检。预检命中后 `AbortWithSt
 `ruoyi-admin/src/main/resources/logback-plus.xml:104,114` 有 `%tid` 但 **被注释掉了**（残留的 SkyWalking/TLog 配置）。 生效的
 pattern 只有 `%d{...} [%thread] %-5level %logger{36} - %msg%n`。
 
-所以这块 **没有对照物**，是 Go 侧自主设计。建议：请求头有 `X-Request-Id` 就沿用，否则生成；存 `context`，回写响应头，并让日志中间件和
-Recover 都带上它。
+所以这块 **没有对照物**，是 Go 侧自主设计。落地方案（`trace.go`）：
+
+- 头名取 `X-Request-Id` —— nginx `$request_id`、各家网关和前端 axios 拦截器的既有约定，接入成本最低。
+- id 为 **32 位十六进制**（16 字节），对齐 W3C Trace Context 的 trace-id 与 nginx `$request_id`，将来接 OpenTelemetry /
+  SkyWalking 不用换格式。用 `math/rand/v2` 而非 `crypto/rand`：链路 id 只要「不重复」，不要「不可预测」（它不是凭证）。
+- 同时存 `gin.Context`（键 `traceId`，给 handler）和 `request.Context()`（私有 key，给 service/repository 层用
+  `TraceIDFrom(ctx)` 取， **不必 import gin**）。
+- **响应头必须在 `c.Next()` 之前写**：body 一开始输出，header 就已经发出去了，事后 `Set` 会无声失效。
+
+#### 两个容易漏掉的配套点
+
+1. **入站 id 是不可信输入**，必须过 `sanitizeTraceID` 白名单（`[0-9A-Za-z_-]`，≤64 字符）后才能沿用，不合规就丢弃重新生成。 带
+   CR/LF 的 id 原样写进响应头就是 **头注入**，写进日志就是 **伪造日志行**；超长的能零成本撑爆日志。
+   采取白名单而非过滤坏字符 —— 过滤会把两个不同的入站 id 折叠成同一个，反而制造出对不上的链路。 需要完全不信上游时（进程直接暴露公网）把
+   `TrustInbound` 设 false。
+2. **`X-Request-Id` 必须在 CORS 的 `ExposedHeaders` 里**，否则跨域下浏览器挡住这个头，前端拿不到 traceId 就无法和服务端日志对账。
+   `DefaultCORSConfig()` 已加，这是相对 Java 侧（该项为空）的 **有意新增**，改一处要想到另一处。
+
+`Recover` 的日志已带 `[traceId]` 前缀（`logTracePrefix`）。8 位错误编号 **保留不动**：编号进响应体、traceId
+进日志前缀，两者指向同一条日志。没把 traceId 拼进 message 是因为那属于行为变更，而前端本来就能从响应头拿到它。
 
 ### 4. 请求日志：脱敏和截断都要照做
 

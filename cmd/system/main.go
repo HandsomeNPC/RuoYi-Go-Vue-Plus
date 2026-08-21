@@ -56,7 +56,10 @@ func run() error {
 	// CORS 必须在鉴权之前：预检是 OPTIONS 且不带 token，
 	// 先过鉴权会被 401，浏览器就拿不到跨域头了。
 	r.Use(middleware.CORS())
-	// TODO: TraceID / RepeatableBody / AccessLog / XSS / I18n
+	// TraceID 紧跟 CORS：越靠前，越多日志能带上链路 id。
+	// 放在 CORS 之后是因为跨域预检会被 CORS 就地终止，不进业务也不需要 id。
+	r.Use(middleware.TraceID())
+	// TODO: RepeatableBody / AccessLog / XSS / I18n
 	// 暂用 gin 自带日志，待 middleware.AccessLog 落地后替换。
 	r.Use(gin.Logger())
 
