@@ -25,7 +25,7 @@ Go 侧全部收拢到本包，由各模块 `router.go` 显式 `r.Use(...)` 注�
 | # | 关注点          | 原 Java 位置                                                                            | 本包文件            |
 |---|-----------------|-----------------------------------------------------------------------------------------|---------------------|
 | 1 | 全局异常        | `ruoyi-common-web/…/web/handler/GlobalExceptionHandler.java` + 另 5 个 advice（见下）   | ✅ `recover.go`     |
-| 2 | CORS            | `ruoyi-common-web/…/web/config/ResourcesConfig.java:73-86`（`CorsFilter` bean）         | `cors.go`           |
+| 2 | CORS            | `ruoyi-common-web/…/web/config/ResourcesConfig.java:73-86`（`CorsFilter` bean）         | ✅ `cors.go`        |
 | 3 | TraceID         | **原项目不存在，净新增**                                                                | `trace.go`          |
 | 4 | 可重复读 Body   | `ruoyi-common-web/…/web/filter/RepeatableFilter.java` + `RepeatedlyRequestWrapper.java` | `body.go`           |
 | 5 | 请求日志 + 耗时 | `ruoyi-common-web/…/web/interceptor/PlusWebInvokeTimeInterceptor.java`                  | `logger.go`         |
@@ -112,6 +112,26 @@ maxAge               = 1800
 > 时必须 **回显请求的 Origin**，不能直接吐 `*`，否则带 cookie/凭证的请求全挂。
 
 另有一个 WebSocket 专用开关 `message.allowedOrigins: '*'`（`application.yml:225`），与 HTTP CORS 无关。
+
+#### Go 实现的有意偏差（`cors.go`）
+
+| 位置             | 偏差                                            | 原因                                                                                          |
+|------------------|-------------------------------------------------|-----------------------------------------------------------------------------------------------|
+| 校验失败         | 回真实 **403**，不是恒 200                      | 跨域校验失败在浏览器 CORS 协议层，响应体被浏览器吞掉，前端读不到 `body.code`，回 200 反而误导 |
+| 配置来源         | `DefaultCORSConfig()` 硬编码，未进 `pkg/config` | 原项目 yaml 里就没有 `web.cors`，先对齐「代码默认值」这一既有事实，要配再加                   |
+| `ExposedHeaders` | 新增字段，默认空                                | Java 侧没设这项。TraceID 落地后 `X-Request-Id` 必须加进来，否则前端拿不到 traceId 无法对账    |
+| 通配匹配         | 自己扫 `*` 分段，未用正则                       | pattern 来自配置文件非用户输入，逐段扫描够用，且省掉 `*`→`.*` 转义的边界问题                  |
+
+一条容易写错的地方：`allowedOriginPatterns` 命中后要回显 **请求带来的 Origin**，不是配置里的 pattern。 同理
+`allowedMethods` 配 `*` 时回显请求的方法（对齐 `checkHttpMethod` 在 ALL 时返回 `singletonList(requestMethod)`），
+`allowedHeaders` 配 `*` 时逐个回显请求头。
+
+`Vary: Origin / Access-Control-Request-Method / Access-Control-Request-Headers` 三个头 **无条件加**（同源请求也加）， 对齐
+`DefaultCorsProcessor.processRequest` —— 它在判断是否跨域 **之前**就加。不加会让 CDN/代理把 A 站点的跨域头缓存给 B 站点。
+
+预检判定必须是 `OPTIONS` **且**带 `Access-Control-Request-Method` 两个条件（对齐 `CorsUtils.isPreFlightRequest`）， 只看
+method 会把普通 OPTIONS 探测误判成预检。预检命中后 `AbortWithStatus(200)` 就地结束，不透给业务路由 —— 对齐 `CorsFilter` 里
+`isPreFlightRequest` 就 return、不调 `filterChain.doFilter`。
 
 ### 3. TraceID：原项目没有，别去找
 

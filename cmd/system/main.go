@@ -53,7 +53,10 @@ func run() error {
 	// Recover 放最外层，才能兜住后续中间件自身的 panic。
 	r := gin.New()
 	r.Use(middleware.Recover())
-	// TODO: CORS / TraceID / RepeatableBody / AccessLog / XSS / I18n
+	// CORS 必须在鉴权之前：预检是 OPTIONS 且不带 token，
+	// 先过鉴权会被 401，浏览器就拿不到跨域头了。
+	r.Use(middleware.CORS())
+	// TODO: TraceID / RepeatableBody / AccessLog / XSS / I18n
 	// 暂用 gin 自带日志，待 middleware.AccessLog 落地后替换。
 	r.Use(gin.Logger())
 
