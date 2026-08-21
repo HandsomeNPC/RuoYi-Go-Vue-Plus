@@ -9,6 +9,7 @@ import (
 
 	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/database"
+	"ruoyi-go-vue-plus/pkg/middleware"
 	"ruoyi-go-vue-plus/pkg/redis"
 )
 
@@ -47,9 +48,17 @@ func run() error {
 	log.Printf("[%s] Redis 已连接 %s db=%d",
 		cfg.Server.Name, cfg.Redis.Addr(), cfg.Redis.DB)
 
-	// TODO: middleware 注入 -> system.RegisterRoutes(r, deps)
+	// 不用 gin.Default()：它自带的 gin.Recovery() 只写 500 空响应，
+	// 与 middleware.Recover() 的职责重叠且语义不符（详见 pkg/middleware/README.md）。
+	// Recover 放最外层，才能兜住后续中间件自身的 panic。
+	r := gin.New()
+	r.Use(middleware.Recover())
+	// TODO: CORS / TraceID / RepeatableBody / AccessLog / XSS / I18n
+	// 暂用 gin 自带日志，待 middleware.AccessLog 落地后替换。
+	r.Use(gin.Logger())
 
-	r := gin.Default()
+	// TODO: system.RegisterRoutes(r, deps)
+
 	r.GET("/system/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"module": cfg.Server.Name, "message": "pong"})
 	})
