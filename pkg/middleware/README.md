@@ -28,7 +28,7 @@ Go 侧全部收拢到本包，由各模块 `router.go` 显式 `r.Use(...)` 注�
 | 2 | CORS            | `ruoyi-common-web/…/web/config/ResourcesConfig.java:73-86`（`CorsFilter` bean）         | ✅ `cors.go`        |
 | 3 | TraceID         | **原项目不存在，净新增**                                                                | ✅ `trace.go`       |
 | 4 | 可重复读 Body   | `ruoyi-common-web/…/web/filter/RepeatableFilter.java` + `RepeatedlyRequestWrapper.java` | ✅ `body.go`        |
-| 5 | 请求日志 + 耗时 | `ruoyi-common-web/…/web/interceptor/PlusWebInvokeTimeInterceptor.java`                  | `logger.go`         |
+| 5 | 请求日志 + 耗时 | `ruoyi-common-web/…/web/interceptor/PlusWebInvokeTimeInterceptor.java`                  | ✅ `logger.go`      |
 | 6 | XSS 过滤        | `ruoyi-common-web/…/web/filter/XssFilter.java` + `XssHttpServletRequestWrapper.java`    | `xss.go`            |
 | 7 | i18n            | `ruoyi-common-web/…/web/config/I18nConfig.java` + `web/core/I18nLocaleResolver.java`    | `i18n.go`           |
 | 8 | 鉴权            | `ruoyi-common-security/…/security/config/SecurityConfig.java:80-119`                    | `auth.go`（阶段 1） |
@@ -46,6 +46,37 @@ Recover → CORS → TraceID → RepeatableBody → AccessLog → XSS → I18n �
 - **RepeatableBody 必须在 AccessLog 之前**，Java 侧 `PlusWebInvokeTimeInterceptor` 只在请求是
   `RepeatedlyRequestWrapper` 时才读 body（源码里显式判类型），Go 里同理：body 是一次性 `io.ReadCloser`，日志读完 handler
   就绑不到参数了。
+
+还有一条 **将来**才会用上、但现在就得记下的： **`ApiEncrypt` 解密中间件必须在 `RepeatableBody` 之前**， 即最终顺序为
+`Recover → CORS → TraceID → ApiEncrypt → RepeatableBody → AccessLog → ...`。 依据是 Java 侧的 Filter
+`order`（数值越小越先执行）：
+
+| Filter                         | order                                | 实际次序        |
+|--------------------------------|--------------------------------------|-----------------|
+| `CryptoFilter`                 | `HIGHEST_PRECEDENCE`                 | 最先            |
+| `XssFilter`                    | `HIGHEST_PRECEDENCE + 1`             | 其次            |
+| `RepeatableFilter`             | 未指定 = `LOWEST_PRECEDENCE`         | 最后            |
+| `PlusWebInvokeTimeInterceptor` | Interceptor，在 DispatcherServlet 内 | 晚于所有 Filter |
+
+关键在 `DecryptRequestBodyWrapper.java:93` —— 它的 `getContentType()` **恒返回 `application/json`**， 于是
+`RepeatableFilter` 的 `startsWith(application/json)` 判定通过、会在解密包装外面再包一层：
+
+```
+RepeatedlyRequestWrapper( DecryptRequestBodyWrapper( 原始 request ) )
+```
+
+也就是说 **Java 侧拦截器读到的是解密后的明文**，那边的脱敏是真的作用在明文上。顺序搞反的后果：
+
+- 放在 `AccessLog` 之后 → 日志里永远只有密文，脱敏形同虚设，且 handler 绑不到参数（body 已被吃掉）。
+- 放在 `RepeatableBody` 之前 → 日志是明文、脱敏正常生效，但这也意味着 **明文密码会流进 `jsonParamLog`**，
+  `removeSensitiveFields` 那条路径必须靠得住。
+
+`api-decrypt.enabled` 在 `application.yml:150` 是 **`true`**，前端现在就在加密部分请求，这不是假设问题。 当前未落地
+`ApiEncrypt` 中间件，所以加密请求体会以 base64 密文原样进日志 —— 不构成泄漏（密文对读日志的人无用）， 但是纯噪音（最长 4000
+字符的乱码，零诊断价值）。等 `ApiEncrypt` 落地、顺序摆对，这条自然消失。
+
+> 未核实项：`SecureUtil.aes(byte[])` 用的是 `SymmetricAlgorithm.AES`，即 JCE 默认的 **AES/ECB/PKCS5Padding**（无 IV）。
+> ECB 的确定性会不会让密文成为可比对的指纹，取决于前端是否每次请求都换 AES key —— 仓库内无前端代码，未能验证。
 
 Go 实现即 `io.ReadAll` 后 `c.Request.Body = io.NopCloser(bytes.NewReader(b))`。除了日志，阶段 3 的 `@Log` 操作日志也依赖它。
 各进程入口用 `gin.New()` **而非 `gin.Default()`**：后者自带 `gin.Recovery()`，只写 500 空响应，与 `Recover()`
@@ -198,6 +229,30 @@ pattern 只有 `%d{...} [%thread] %-5level %logger{36} - %msg%n`。
   `constant.ExcludeProperties`（`pkg/constant/system.go:21`），直接用，别另写一份。
 - **截断**：参数日志最长 4000 字符。
 
+分两行打是刻意的，别为了省日志量合成一行：只打结束行的话，请求卡死或把进程搞挂时日志里什么都不会留下。 结束行走 `defer`
+而非 `c.Next()` 之后直接打 —— 后续中间件或 handler panic 时栈会一路展开到最外层的 `Recover`，中途不经过这里， 只有 `defer`
+能保证「开始」必有「结束」（对齐 `afterCompletion` 在 `ex != null` 时同样被调用）。
+
+#### Go 实现的有意偏差（`logger.go`）
+
+| 位置         | 偏差                                          | 原因                                                                                                                                 |
+|--------------|-----------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| 非法 JSON    | 含敏感字段名则整段丢弃，不回原文              | Java 的 `sanitizeJsonParam` 解析失败直接返回原文，一个少引号的 body 就能把明文密码带进日志 —— 日志留存远长于会话，是实打实的泄漏口子 |
+| 数字解析     | `Decoder.UseNumber()`                         | 默认解成 `float64` 只有 53 位有效位，19 位雪花 id 会被抹掉尾数，打出来的假 id 查库查不到，比不打更误导人                             |
+| 截断         | 按 rune 截并加 `...(已截断)` 标记             | 按字节截会把中文劈成乱码；不留标记的话，被砍断的 JSON 看起来就是非法 JSON，排查的人会去追一个不存在的解析问题                        |
+| 脱敏体积上限 | **新增** `maxSanitizeSize`(256KB)，超限走原文 | 解析结果只为打日志，而日志最多留 4000 字符，为 10MB body 建满树再序列化，成果绝大部分立刻丢掉                                        |
+| `SkipPaths`  | **新增**，默认为空                            | Java 注册在 `/**` 无开关。探针每几秒一次、零信息量，不排除会把有用日志冲走。默认空即与原项目一致                                     |
+| 结束行状态码 | **新增** `状态[%d]`                           | 业务码恒回 200 时这字段没信息量，但正好暴露那几条不走业务码的路径：CORS 拒绝的 403、未命中路由的 404/405                             |
+| 日志前缀     | 带 traceId                                    | Java 侧「开始」「结束」两行在并发下根本没法配对（全项目无 traceId）                                                                  |
+| multipart    | 不解析表单，只打查询串                        | 解析要把上传文件整个读进内存，代价远超一行日志的价值；相比 Java 的 `getParameterMap()` 会少掉表单字段                                |
+
+两个和 `body.go` 配套、改一处要想到另一处的点：
+
+1. **JSON 入参只从 `BodyBytes(c)` 取，取不到就打空参数**，绝不回头读 `c.Request.Body`。`isJSONRequest` 的判定与 `body.go`
+   的缓存判定同源，那边不缓存的这边也取不到 —— 这正是 Java 侧 `if (request instanceof RepeatedlyRequestWrapper)` 的用意。
+2. **query 脱敏必须复制一份 `Request.Form` 再删**，直接 `delete` 会让业务真的收不到这个参数。 同理日志里打的是
+   `URL.Path` 而非 `RequestURI` —— 后者带原始查询串，直接输出等于把 `?password=xxx` 原样写进日志，脱敏全白做。
+
 ### 6. XSS：开关 + 两级跳过
 
 注册在 `ruoyi-common-web/…/web/config/FilterConfig.java:29-39`，`@ConditionalOnProperty` 挂 `xss.enabled`。
@@ -256,6 +311,11 @@ token 解析规则在 `ruoyi-common-satoken/src/main/resources/common-satoken.ym
 
 `CryptoFilter` 有点特殊：它 **注册成全局 filter**，但内部自己通过 `RequestMappingHandlerMapping` 查
 `@ApiEncrypt` 注解，只对标注的方法真正生效。Go 里没必要照搬这个结构，按路由挂即可。
+
+但 **解密这一步是全局的、且必须在 `RepeatableBody` 之前**（`CryptoFilter` 的 order 是 `HIGHEST_PRECEDENCE`）， 否则
+`AccessLog` 只能看到密文、脱敏失效、handler 还绑不到参数。详见上方「注册顺序」一节 —— 那里有完整的 Filter order 对照表和
+`DecryptRequestBodyWrapper` 恒返回 `application/json` 的依据。 这也是「按路由挂」的例外： **响应加密**可以按路由，
+**请求解密**不行。
 
 数据权限见 `MIGRATION.md` 阶段 4.1 —— Java 是 MyBatis 拦截器改写 SQL，Go 要在 repository 层用 GORM Scopes 手写。 本包只负责
 **把当前用户的数据范围写进 context**，SQL 条件由 repository 层拼。

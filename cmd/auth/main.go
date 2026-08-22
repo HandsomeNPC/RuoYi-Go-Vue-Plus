@@ -64,9 +64,8 @@ func run() error {
 	// RepeatableBody 必须在 AccessLog 之前：body 是一次性的 io.ReadCloser，
 	// 日志中间件读完 handler 就绑不到参数了。
 	r.Use(middleware.RepeatableBody())
-	// TODO: AccessLog / XSS / I18n
-	// 暂用 gin 自带日志，待 middleware.AccessLog 落地后替换。
-	r.Use(gin.Logger())
+	r.Use(middleware.AccessLog())
+	// TODO: XSS / I18n
 
 	// TODO: auth.RegisterRoutes(r, deps)
 
