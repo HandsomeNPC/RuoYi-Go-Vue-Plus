@@ -27,7 +27,7 @@ Go 侧全部收拢到本包，由各模块 `router.go` 显式 `r.Use(...)` 注�
 | 1 | 全局异常        | `ruoyi-common-web/…/web/handler/GlobalExceptionHandler.java` + 另 5 个 advice（见下）   | ✅ `recover.go`     |
 | 2 | CORS            | `ruoyi-common-web/…/web/config/ResourcesConfig.java:73-86`（`CorsFilter` bean）         | ✅ `cors.go`        |
 | 3 | TraceID         | **原项目不存在，净新增**                                                                | ✅ `trace.go`       |
-| 4 | 可重复读 Body   | `ruoyi-common-web/…/web/filter/RepeatableFilter.java` + `RepeatedlyRequestWrapper.java` | `body.go`           |
+| 4 | 可重复读 Body   | `ruoyi-common-web/…/web/filter/RepeatableFilter.java` + `RepeatedlyRequestWrapper.java` | ✅ `body.go`        |
 | 5 | 请求日志 + 耗时 | `ruoyi-common-web/…/web/interceptor/PlusWebInvokeTimeInterceptor.java`                  | `logger.go`         |
 | 6 | XSS 过滤        | `ruoyi-common-web/…/web/filter/XssFilter.java` + `XssHttpServletRequestWrapper.java`    | `xss.go`            |
 | 7 | i18n            | `ruoyi-common-web/…/web/config/I18nConfig.java` + `web/core/I18nLocaleResolver.java`    | `i18n.go`           |
@@ -48,7 +48,6 @@ Recover → CORS → TraceID → RepeatableBody → AccessLog → XSS → I18n �
   就绑不到参数了。
 
 Go 实现即 `io.ReadAll` 后 `c.Request.Body = io.NopCloser(bytes.NewReader(b))`。除了日志，阶段 3 的 `@Log` 操作日志也依赖它。
-
 各进程入口用 `gin.New()` **而非 `gin.Default()`**：后者自带 `gin.Recovery()`，只写 500 空响应，与 `Recover()`
 职责重叠且不输出 `response.R`。`Recover()` 挂在最外层，才能兜住后续中间件自身的 panic。
 
@@ -161,7 +160,35 @@ pattern 只有 `%d{...} [%thread] %-5level %logger{36} - %msg%n`。
 `Recover` 的日志已带 `[traceId]` 前缀（`logTracePrefix`）。8 位错误编号 **保留不动**：编号进响应体、traceId
 进日志前缀，两者指向同一条日志。没把 traceId 拼进 message 是因为那属于行为变更，而前端本来就能从响应头拿到它。
 
-### 4. 请求日志：脱敏和截断都要照做
+### 4. 可重复读 Body：只包 JSON，且必须自己设上限
+
+`RepeatableFilter.doFilter` 的判断只有一条：`contentType` 以 `application/json` 开头就换成
+`RepeatedlyRequestWrapper`，后者在构造时 `IoUtil.readBytes` 一次读完存 `byte[]`，`getInputStream()`
+每次基于它新建 `ByteArrayInputStream`。Go 里等价实现是「读出来，再塞个新 Reader 回去」。
+
+三个容易搞错的边界：
+
+- **不按请求方法过滤**。跳过 GET/DELETE 是 `XssFilter` 的行为，两个 filter 别搞混 —— 带 JSON body 的 `DELETE`
+  是合法的，按方法排除会让它读不到参数。
+- **不要把 `multipart/form-data` 加进 `ContentTypes`**。那会把上传文件整个读进内存，原项目允许 10MB 单文件 / 20MB
+  单请求，并发几个就够压垮进程。
+- **表单请求不需要缓存**。`net/http` 的 `ParseForm` 会把结果缓存进 `r.PostForm`，后续读的是解析结果而非 body，天然可重复 ——
+  这与 Java 侧 `AccessLog` 走 `getParameterMap()` 而非读 body 是同一个道理。
+
+#### Go 实现的有意偏差（`body.go`）
+
+| 位置               | 偏差                              | 原因                                                                                                                                                            |
+|--------------------|-----------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 大小上限           | **新增** `MaxBodySize`，默认 10MB | Java 侧无上限（`max-http-form-post-size` 只管表单不管 JSON），靠前置 nginx `client_max_body_size` 兜；Go 侧无上限的 `io.ReadAll` 等于让调用方决定进程吃多少内存 |
+| 超限处理           | 拒绝整个请求，不截断              | 截断会让 handler 拿到半截 JSON，报出一个跟真实原因毫无关系的解析错误                                                                                            |
+| `gin.BodyBytesKey` | 额外写一份                        | 让 handler 能用 `c.ShouldBindBodyWith` 复用缓存、多次绑不同结构体；与 `BodyBytes` 共用底层数组，无额外拷贝                                                      |
+| 空 body / nil      | 不设缓存键                        | 缺键与空 body 对 gin 等价（都让 `ShouldBindBodyWith` 报 EOF），少存个键省得让人误以为缓存过                                                                     |
+
+读 body 的中间件一律走 `BodyBytes(c)`， **取不到就跳过，不要退回去读 `c.Request.Body`** —— 那会把 body 吃掉，handler
+再绑参数就是空的。这正是 Java 侧 `PlusWebInvokeTimeInterceptor` 里 `if (request instanceof RepeatedlyRequestWrapper)`
+的用意：宁可少打日志，也不能把 body 吃掉。返回的是缓存本身而非副本，调用方 **不要修改**。
+
+### 5. 请求日志：脱敏和截断都要照做
 
 `PlusWebInvokeTimeInterceptor` 的三个细节：
 
@@ -171,7 +198,7 @@ pattern 只有 `%d{...} [%thread] %-5level %logger{36} - %msg%n`。
   `constant.ExcludeProperties`（`pkg/constant/system.go:21`），直接用，别另写一份。
 - **截断**：参数日志最长 4000 字符。
 
-### 5. XSS：开关 + 两级跳过
+### 6. XSS：开关 + 两级跳过
 
 注册在 `ruoyi-common-web/…/web/config/FilterConfig.java:29-39`，`@ConditionalOnProperty` 挂 `xss.enabled`。
 
@@ -179,12 +206,12 @@ pattern 只有 `%d{...} [%thread] %-5level %logger{36} - %msg%n`。
 - **跳过 `xss.excludeUrls`**：现为 `/system/notice`、`/warm-flow/save-json`（富文本/JSON 存原文，过滤会破坏内容）
 - 配置类 `web/config/properties/XssProperties.java`，yaml 在 `application.yml:190-196`
 
-### 6. i18n：从 `content-language` 取，不是 `Accept-Language`
+### 7. i18n：从 `content-language` 取，不是 `Accept-Language`
 
 `web/core/I18nLocaleResolver.java` 读的是 **`content-language` 请求头**（非标准用法，但要对齐前端）， 下划线归一成横线，取不到回落
 `Locale.getDefault()`。`setLocale` 是刻意的空实现。 词条目录由 `spring.messages.basename: i18n/messages` 指定。
 
-### 7. 鉴权（阶段 1）：四步校验 + 一个易踩的坑
+### 8. 鉴权（阶段 1）：四步校验 + 一个易踩的坑
 
 `SecurityConfig.java:80-119` 注册 sa-token `SaInterceptor` 到 `/**`，排除 `securityProperties.getExcludes()`。每请求做四件事：
 
