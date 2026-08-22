@@ -29,7 +29,7 @@ Go 侧全部收拢到本包，由各模块 `router.go` 显式 `r.Use(...)` 注�
 | 3 | TraceID         | **原项目不存在，净新增**                                                                | ✅ `trace.go`       |
 | 4 | 可重复读 Body   | `ruoyi-common-web/…/web/filter/RepeatableFilter.java` + `RepeatedlyRequestWrapper.java` | ✅ `body.go`        |
 | 5 | 请求日志 + 耗时 | `ruoyi-common-web/…/web/interceptor/PlusWebInvokeTimeInterceptor.java`                  | ✅ `logger.go`      |
-| 6 | XSS 过滤        | `ruoyi-common-web/…/web/filter/XssFilter.java` + `XssHttpServletRequestWrapper.java`    | `xss.go`            |
+| 6 | XSS 过滤        | `ruoyi-common-web/…/web/filter/XssFilter.java` + `XssHttpServletRequestWrapper.java`    | ✅ `xss.go`         |
 | 7 | i18n            | `ruoyi-common-web/…/web/config/I18nConfig.java` + `web/core/I18nLocaleResolver.java`    | `i18n.go`           |
 | 8 | 鉴权            | `ruoyi-common-security/…/security/config/SecurityConfig.java:80-119`                    | `auth.go`（阶段 1） |
 | 9 | 响应增强        | `ruoyi-common-web/…/web/advice/ResponseEnhancementAdvice.java`                          | 阶段 3 再建         |
@@ -40,12 +40,17 @@ Go 侧全部收拢到本包，由各模块 `router.go` 显式 `r.Use(...)` 注�
 Recover → CORS → TraceID → RepeatableBody → AccessLog → XSS → I18n → Auth
 ```
 
-两个顺序约束不能动：
+三个顺序约束不能动：
 
 - **CORS 必须在 Auth 之前**，否则浏览器 preflight（`OPTIONS`，不带 token）会被 401，前端拿不到跨域头。
 - **RepeatableBody 必须在 AccessLog 之前**，Java 侧 `PlusWebInvokeTimeInterceptor` 只在请求是
   `RepeatedlyRequestWrapper` 时才读 body（源码里显式判类型），Go 里同理：body 是一次性 `io.ReadCloser`，日志读完 handler
   就绑不到参数了。
+- **XSS 必须在所有「读 gin 参数」的中间件之前**（同时也必须在 `RepeatableBody` 之后）。gin 的 `c.Query` 会把
+  `URL.Query()` 的结果缓存进内部 `queryCache`，缓存一旦建立， XSS 再改 `URL.RawQuery` 就 **静默失效**。当前链路里 XSS
+  之前没有任何一环读 gin 参数（`AccessLog` 走 `c.Request.ParseForm`，不碰 gin 的缓存）， 阶段 1 的 `Auth` 读 `clientid`
+  排在 XSS 之后 —— 拿到的是清洗后的值。 这条约束由 `TestXSSIneffectiveIfQueryReadEarlier` 锁住：它 **故意**把读参数的中间件
+  前置并断言清洗失效，将来谁把鉴权挪到 XSS 前面，那条用例就会以「清洗突然生效了」的形式报错。
 
 还有一条 **将来**才会用上、但现在就得记下的： **`ApiEncrypt` 解密中间件必须在 `RepeatableBody` 之前**， 即最终顺序为
 `Recover → CORS → TraceID → ApiEncrypt → RepeatableBody → AccessLog → ...`。 依据是 Java 侧的 Filter
@@ -253,13 +258,83 @@ pattern 只有 `%d{...} [%thread] %-5level %logger{36} - %msg%n`。
 2. **query 脱敏必须复制一份 `Request.Form` 再删**，直接 `delete` 会让业务真的收不到这个参数。 同理日志里打的是
    `URL.Path` 而非 `RequestURI` —— 后者带原始查询串，直接输出等于把 `?password=xxx` 原样写进日志，脱敏全白做。
 
-### 6. XSS：开关 + 两级跳过
+### 6. XSS：开关 + 两级跳过，以及原项目一个会破坏 JSON 的 bug
 
 注册在 `ruoyi-common-web/…/web/config/FilterConfig.java:29-39`，`@ConditionalOnProperty` 挂 `xss.enabled`。
 
 - **跳过 GET / DELETE**（filter 内部判 method 直接放行）
 - **跳过 `xss.excludeUrls`**：现为 `/system/notice`、`/warm-flow/save-json`（富文本/JSON 存原文，过滤会破坏内容）
 - 配置类 `web/config/properties/XssProperties.java`，yaml 在 `application.yml:190-196`
+
+清洗逻辑本身是 hutool 的 `HtmlUtil.cleanHtmlTag`，即拿 `RE_HTML_MARK` 把标签替换成空串（ **保留**标签内的文字）。 该正则原值是三段或
+`(<[^<]*?>)|(<[\s]*?/[^<]*?>)|(<[^<]*?/[\s]*?>)`，但后两段 **完全被第一段吞掉**（第一段的 `[^<]*?` 已能匹配
+`/p`、`br/`、` /p`）。Go 侧只留 `<[^<]*?>`，并由 `TestCleanHTMLTagMatchesHutoolRegex` 用固定用例 + 3000 条随机串与原正则交叉验证，
+确认行为无差异。惰性量词 `*?` 不能改成贪心 —— 那会把 `<b>x</b>` 连中间的 `x` 一起吃掉。
+
+#### 首先要说清楚它不是什么
+
+剔标签是 **纵深防御的一层，不是主要防线**。它拦不住 `javascript:` 协议、事件属性拼接、HTML 实体编码的载荷， 也管不了从 DB
+读出来再渲染的老数据。真正的防线在输出侧（前端渲染转义 / 后端返回 JSON 而非 HTML 片段）。
+
+**GET / DELETE 整体跳过**这条本身就是个真实缺口：带 XSS 载荷的 GET 查询参数不经任何清洗。原项目如此，本包对齐 （
+`TestXSSSkipsGetAndDelete` 把它锁成显式的既有行为，而不是让它看起来像漏了）。
+真靠这个中间件兜底的话，这个缺口早该是个事故了 —— 它的存在恰好证明了防线在别处。
+
+#### Go 实现的有意偏差（`xss.go`）
+
+| 位置            | 偏差                                        | 原因                                                                                                                                                 |
+|-----------------|---------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **JSON 体清洗** | **逐值清洗**，不对整串做正则替换            | Java 对整个 JSON 串调 `cleanHtmlTag`，**会破坏 JSON 结构**，详见下方。这是 bug，不是可对齐的行为                                                     |
+| JSON 键         | 不清洗，只清洗字符串值                      | 键名带标签的合法请求不存在；清洗键会让两个不同键撞成同一个，静默丢字段                                                                               |
+| JSON 值         | 不做 `trim`                                 | Java 只对整串 trim 了一次（只动首尾空白，对 JSON 语义无影响），并未逐值 trim                                                                         |
+| 非法 JSON       | 原样放行，不退回字符串替换                  | 这种 body 必然过不了 `ShouldBindJSON`，请求会被拒、载荷到不了落库；而对非法 JSON 做正则替换只会制造结构损坏                                          |
+| 体积上限        | **有意不设**                                | `logger.go` 的 `maxSanitizeSize` 超限走原文，代价只是日志难看；这里跳过清洗 = 跳过一层防御，攻击者填满阈值即绕过。总量由 `RepeatableBody` 的 10MB 兜 |
+| 数字            | `Decoder.UseNumber()`                       | 与 `logger.go` 同因但更严重：那边打错日志是误导人，这边是**改请求** —— 19 位雪花 id 被 float64 抹掉尾数就是把主键改成不存在的值                      |
+| 查询串          | 改写 `URL.RawQuery`                         | Java 覆写 `getParameter` 一次拦下查询串与表单；Go 里两者分处 `URL.RawQuery` / `PostForm`，且 `c.Query` 只认现场解析的 `URL.Query()`                  |
+| 查询串解析失败  | 保持原样，不用部分结果重新编码              | `url.ParseQuery` 出错时返回的是**部分**结果，拿它重编码会静默丢掉解析失败的参数，比不清洗更难排查                                                    |
+| `multipart`     | 不处理表单文本字段                          | `ParseMultipartForm` 要把上传文件整个读进内存（单文件 10MB），代价远超清洗几个字段；与 `body.go` 同一取舍。相比 Java 会少清洗这些字段                |
+| 日志顺序        | XSS 在 `AccessLog` **之后**，日志记原始报文 | Java 的 `XssFilter`（order `HIGHEST+1`）跑在 `RepeatableFilter` 前，拦截器读到的是清洗后的 body。日志是排查与取证用的，需要看到攻击者到底发了什么    |
+| `xss.enabled`   | 无此配置项                                  | Go 侧「注册」就是 `router.go` 里那行 `r.Use(XSS())`，不写即关闭。再加布尔开关只会造出「注册了但不生效」这种要翻两处才能确诊的状态                    |
+
+#### 那个会破坏 JSON 的 bug
+
+`XssHttpServletRequestWrapper.getInputStream()` 是 `HtmlUtil.cleanHtmlTag(整个 JSON 字符串)`。实测：
+
+```
+{"a":"1<2","b":"3>4"}   ->   {"a":"14"}
+```
+
+正则把 `<2","b":"3>` 整段当成一个标签吃掉了，`b` 字段 **凭空消失**。触发条件很宽：只要某个字符串值里有 `<`、 后面任意位置还有
+`>`，两者之间的所有内容（字段名、逗号、引号）就会被抹掉，handler 绑到的是一个结构被改过的对象。
+数值比较、不等式这类正常业务文本 （`"库存 < 10"`、`"a>b"`）就足够踩中。
+
+Go 侧改为「解析成树 → 只清洗字符串值 → 序列化回去」，结构不可能被破坏。 `TestXSSDoesNotCorruptJSONStructure` 同时断言 Go
+侧保留两个字段、 **且** hutool 正则确实会产出上述损坏形态 —— 后半条是为了在假设变化时（比如将来换清洗实现）让用例前提失效得明显。
+
+无改动时跳过重新序列化：大多数含 `<` 的请求（`1 < 2`）并没有真标签，重新编码只会打乱字段顺序、改写数字格式。
+
+#### 三处必须同时更新
+
+清洗完 JSON 后要一起改 `Request.Body`、`gin.BodyBytesKey`、`Request.ContentLength`： 分别对应 `ShouldBindJSON`、
+`ShouldBindBodyWith`、以及按长度读 body 的一方。 漏掉任一处就会让某条读取路径拿到未清洗的数据或读到错误长度 （
+`TestXSSUpdatesContentLengthAndBodyCache` 覆盖）。 表单同理要同时清洗 `Request.Form` 与 `Request.PostForm`
+两个 map —— gin 的 `c.PostForm` 与 `binding.Form` 分别读其中之一。
+
+与 `logger.go` 正好相反的一点：那边脱敏 **必须复制一份再删**（日志绝不能动请求），这边 **就地改**（目的就是让 handler
+收到清洗后的值）。
+
+#### Ant 路径匹配抽成了 `path.go`
+
+`excludeUrls` 用的是 Spring `AntPathMatcher` 语义（`?` 单字符 / `*` 单层 / `**` 任意层），由 `MatchAnyPath` 实现。 **单独放
+`path.go` 而非塞进 `xss.go`**：阶段 1 的 `security.excludes`（`application.yml:100-113`，含 `/**/*.html` 这类跨层
+pattern）是同一套语义，`auth.go` 会直接复用。 两处各写一份的话，免过滤名单与免鉴权名单迟早在边界行为上分叉 ——
+那是安全配置，不能靠巧合对齐。
+
+两个实现要点：空规则集必须返回 `false`（「没配排除规则」不能变成「全部排除」，取反就是敞开的口子）；
+`**` 的匹配用 DP 备忘录而非朴素递归 —— 后者在 pattern 含多个 `**` 时是指数级的，而 path 段数由请求方决定， 那就成了一条用
+URL 长度换 CPU 的放大路径（`TestAntPathMatchNoExponentialBlowup` 兜住）。 匹配用 `URL.Path` 而非 `RequestURI`，对齐 Java 的
+`getServletPath()`：后者带查询串，会让
+`/system/notice?x=1` 匹配不上 `/system/notice` 这条排除规则。
 
 ### 7. i18n：从 `content-language` 取，不是 `Accept-Language`
 
