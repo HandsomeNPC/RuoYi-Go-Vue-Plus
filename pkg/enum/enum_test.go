@@ -1,6 +1,11 @@
 package enum
 
-import "testing"
+import (
+	"context"
+	"testing"
+
+	"ruoyi-go-vue-plus/pkg/i18n"
+)
 
 // 锚定全部枚举取值。这些值直接落库、也被前端依赖，改动即为破坏性变更。
 //
@@ -87,27 +92,96 @@ func TestParseUserTypeFromLoginID(t *testing.T) {
 }
 
 // 提示文案按登录方式渲染；social / xcx 不做重试计数，返回空串。
+//
+// 文案现在走 pkg/i18n（枚举里存的是词条键，对齐 Java 的 getRetryLimitExceed），
+// 所以这里顺带断言**同一个键在两种语言下都渲染正确** —— 这是之前存中文模板时
+// 根本无法覆盖的：那时英文界面下的登录失败提示只会是中文。
 func TestLoginTypeMessages(t *testing.T) {
-	if got, want := LoginTypePassword.RetryCountMsg(3), "密码输入错误3次"; got != want {
-		t.Errorf("RetryCountMsg = %q, want %q", got, want)
+	zh := i18n.NewContext(context.Background(), i18n.LocaleZhCN)
+	en := i18n.NewContext(context.Background(), i18n.LocaleEnUS)
+
+	countCases := []struct {
+		name string
+		lt   LoginType
+		ctx  context.Context
+		n    int
+		want string
+	}{
+		{"密码-中文", LoginTypePassword, zh, 3, "密码输入错误3次"},
+		{"密码-英文", LoginTypePassword, en, 3, "Password input error 3 times"},
+		{"短信-中文", LoginTypeSms, zh, 2, "短信验证码输入错误2次"},
+		{"短信-英文", LoginTypeSms, en, 2, "Sms code input error 2 times"},
+		{"邮箱-中文", LoginTypeEmail, zh, 1, "邮箱验证码输入错误1次"},
 	}
-	if got, want := LoginTypePassword.RetryExceedMsg(5, 10), "密码输入错误5次，账户锁定10分钟"; got != want {
-		t.Errorf("RetryExceedMsg = %q, want %q", got, want)
+	for _, c := range countCases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := c.lt.RetryCountMsg(c.ctx, c.n); got != c.want {
+				t.Errorf("RetryCountMsg = %q, want %q", got, c.want)
+			}
+		})
 	}
-	if got, want := LoginTypeSms.RetryCountMsg(2), "短信验证码输入错误2次"; got != want {
-		t.Errorf("RetryCountMsg = %q, want %q", got, want)
+
+	exceedCases := []struct {
+		name              string
+		lt                LoginType
+		ctx               context.Context
+		maxRetry, lockMin int
+		want              string
+	}{
+		{"密码-中文", LoginTypePassword, zh, 5, 10, "密码输入错误5次，账户锁定10分钟"},
+		{"密码-英文", LoginTypePassword, en, 5, 10, "Password input error 5 times, account locked for 10 minutes"},
+		{"邮箱-中文", LoginTypeEmail, zh, 5, 10, "邮箱验证码输入错误5次，账户锁定10分钟"},
+		{"邮箱-英文", LoginTypeEmail, en, 5, 10, "Email code input error 5 times, account locked for 10 minutes"},
 	}
-	if got, want := LoginTypeEmail.RetryExceedMsg(5, 10), "邮箱验证码输入错误5次，账户锁定10分钟"; got != want {
-		t.Errorf("RetryExceedMsg = %q, want %q", got, want)
+	for _, c := range exceedCases {
+		t.Run("exceed/"+c.name, func(t *testing.T) {
+			if got := c.lt.RetryExceedMsg(c.ctx, c.maxRetry, c.lockMin); got != c.want {
+				t.Errorf("RetryExceedMsg = %q, want %q", got, c.want)
+			}
+		})
 	}
+
 	// 原项目 SocialAuthStrategy / XcxAuthStrategy 都不调 checkLogin，
-	// 无重试文案，渲染须返回空串而不是 "%!d(MISSING)" 之类的脏字符串。
+	// 无重试文案（Java 侧 XCX("", "")），渲染须返回空串。
+	//
+	// 空键必须**在查词条之前**短路：否则空 code 会走到 i18n.Msg 的
+	// 「词条缺失返回 code 本身」分支，返回空串纯属巧合；而一旦哪天
+	// 那个兜底改成返回别的标记，这里就会渗出脏字符串。
 	for _, lt := range []LoginType{LoginTypeSocial, LoginTypeXcx} {
-		if got := lt.RetryCountMsg(1); got != "" {
+		if got := lt.RetryCountMsg(zh, 1); got != "" {
 			t.Errorf("%s.RetryCountMsg = %q, want 空串", lt.Code, got)
 		}
-		if got := lt.RetryExceedMsg(5, 10); got != "" {
+		if got := lt.RetryExceedMsg(zh, 5, 10); got != "" {
 			t.Errorf("%s.RetryExceedMsg = %q, want 空串", lt.Code, got)
+		}
+	}
+
+	// 没带语言的 context 回落默认语言（中文），不能返回空串或词条键。
+	// 阶段 1 若有脱离请求的调用路径（比如定时解锁任务），走的就是这条。
+	if got := LoginTypePassword.RetryCountMsg(context.Background(), 3); got != "密码输入错误3次" {
+		t.Errorf("无语言 context 时 RetryCountMsg = %q, 应回落中文", got)
+	}
+}
+
+// 枚举里的词条键必须真实存在于词条表。
+//
+// 键是手写字符串，拼错不会有编译错误，而 i18n.Msg 对缺失键返回 code 本身 ——
+// 于是登录失败时前端会收到 "user.password.retry.limit.exceedd" 这种字符串。
+// 这条用例把键与词条表钉在一起，等价于给裸字符串加了一道编译期检查。
+func TestLoginTypeKeysExistInCatalog(t *testing.T) {
+	ctx := i18n.NewContext(context.Background(), i18n.LocaleZhCN)
+	for _, lt := range LoginTypes() {
+		for name, key := range map[string]string{
+			"RetryCountKey":  lt.RetryCountKey,
+			"RetryExceedKey": lt.RetryExceedKey,
+		} {
+			if key == "" {
+				continue // social / xcx 有意为空
+			}
+			// 词条存在时 Msg 会渲染出与键不同的文案；返回键本身即表示查不到。
+			if got := i18n.Msg(ctx, key); got == key {
+				t.Errorf("%s.%s = %q 在词条表里不存在（Msg 原样返回了键）", lt.Code, name, key)
+			}
 		}
 	}
 }

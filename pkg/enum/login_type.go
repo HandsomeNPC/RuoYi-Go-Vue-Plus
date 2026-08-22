@@ -1,6 +1,10 @@
 package enum
 
-import "fmt"
+import (
+	"context"
+
+	"ruoyi-go-vue-plus/pkg/i18n"
+)
 
 // LoginType 登录方式，对应原项目 enums.LoginType。
 //
@@ -9,43 +13,35 @@ import "fmt"
 // **不承担登录方式分派**——原项目分派靠 grantType 拼 Spring bean 名
 // （IAuthStrategy.login: beanName = grantType + "AuthStrategy"），与本枚举无关。
 //
-// 与原项目的两点差异：
+// 与原项目的唯一差异是**多了 Code 字段**。Java 枚举只有下面两个词条键字段，
+// 靠 enum 实例本身传递（checkLogin(LoginType.PASSWORD, ...)）。Go 没有 enum
+// 单例语义，需要一个标识用于按 grantType 查表，故补上 Code。
 //
-//  1. **多了 Code 字段**。Java 枚举只有下面两个文案字段，靠 enum 实例本身传递
-//     （checkLogin(LoginType.PASSWORD, ...)）。Go 没有 enum 单例语义，需要一个
-//     标识用于按 grantType 查表，故补上 Code。
-//
-//  2. **文案不走 i18n**。原枚举存的是 message key（如
-//     "user.password.retry.limit.exceed"），由 MessageUtils.message(key, args...)
-//     按当前语言渲染。这里直接存中文模板（取自原项目
-//     i18n/messages_zh_CN.properties），占位符由 Java MessageFormat 的 {0}/{1}
-//     改写为 Go 的 %d。
-//
-//     `pkg/i18n` 已经落地（词条键就是上面那些），但**没有顺手改过来**：
-//     i18n.Msg 需要一个 context.Context 才能知道用哪种语言，而下面两个方法
-//     没有这个参数，加上它就要改所有调用方 —— 那属于阶段 1 接登录流程时的事
-//     （届时 service 手里本来就有 ctx）。改法是把这两个字段换成词条键、
-//     方法签名加 ctx 后转调 i18n.Msg；调用方用的是方法而非裸字段，改动不会外溢。
+// 两个文案字段存的是**词条键**而非文案本身，与 Java 一致
+// （LoginType.PASSWORD 的 retryLimitExceed 就是 "user.password.retry.limit.exceed"），
+// 渲染统一走 pkg/i18n。曾经这里存的是中文模板，那样会让同一批文案在
+// 仓库里存两份副本 —— pkg/i18n 那份有与原项目 .properties 的交叉验证兜着，
+// 这份没有，两者能对上只能靠巧合。
 //
 // 注意字段顺序与 Java 构造器相反：Java 是 (retryLimitExceed, retryLimitCount)，
-// exceed 在前。对照原项目新增登录方式时别把两个模板填反。
+// exceed 在前。对照原项目新增登录方式时别把两个键填反。
 type LoginType struct {
 	Code string // 登录方式标识，对应 grantType
 
-	// RetryCountTmpl 未达上限时的提示模板，一个占位符：已错误次数。
+	// RetryCountKey 未达上限时的提示词条键，该词条有一个占位符：已错误次数。
 	// 对应 Java retryLimitCount。
-	RetryCountTmpl string
-	// RetryExceedTmpl 达到上限时的提示模板，两个占位符：最大次数、锁定分钟数。
+	RetryCountKey string
+	// RetryExceedKey 达到上限时的提示词条键，该词条有两个占位符：最大次数、锁定分钟数。
 	// 对应 Java retryLimitExceed。
-	RetryExceedTmpl string
+	RetryExceedKey string
 }
 
 // 登录方式枚举实例。
 //
-// Social / Xcx 的模板为空，对齐原项目 —— 这两种登录的身份校验在第三方
-// （OAuth 平台 / 微信）侧完成，不存在「凭证输错」，原项目的
-// SocialAuthStrategy 与 XcxAuthStrategy 都不调用 checkLogin。
-// RetryCountMsg / RetryExceedMsg 对空模板返回空串，调用方须判空后再决定是否提示。
+// Social / Xcx 的词条键为空，对齐原项目（Java 侧 XCX("", "")）—— 这两种登录的
+// 身份校验在第三方（OAuth 平台 / 微信）侧完成，不存在「凭证输错」，
+// 原项目的 SocialAuthStrategy 与 XcxAuthStrategy 都不调用 checkLogin。
+// RetryCountMsg / RetryExceedMsg 对空键返回空串，调用方须判空后再决定是否提示。
 //
 // LoginTypeSocial 是本项目新增：Java 的 LoginType 只有 4 个值，而 grantType
 // 实际有 5 种（password/sms/email/social/xcx，见 sys_client.grant_type 与各
@@ -54,19 +50,19 @@ type LoginType struct {
 // 故补齐以保持 Code 与 grantType 的取值域一致。
 var (
 	LoginTypePassword = LoginType{
-		Code:            "password",
-		RetryCountTmpl:  "密码输入错误%d次",
-		RetryExceedTmpl: "密码输入错误%d次，账户锁定%d分钟",
+		Code:           "password",
+		RetryCountKey:  "user.password.retry.limit.count",
+		RetryExceedKey: "user.password.retry.limit.exceed",
 	}
 	LoginTypeSms = LoginType{
-		Code:            "sms",
-		RetryCountTmpl:  "短信验证码输入错误%d次",
-		RetryExceedTmpl: "短信验证码输入错误%d次，账户锁定%d分钟",
+		Code:           "sms",
+		RetryCountKey:  "sms.code.retry.limit.count",
+		RetryExceedKey: "sms.code.retry.limit.exceed",
 	}
 	LoginTypeEmail = LoginType{
-		Code:            "email",
-		RetryCountTmpl:  "邮箱验证码输入错误%d次",
-		RetryExceedTmpl: "邮箱验证码输入错误%d次，账户锁定%d分钟",
+		Code:           "email",
+		RetryCountKey:  "email.code.retry.limit.count",
+		RetryExceedKey: "email.code.retry.limit.exceed",
 	}
 	LoginTypeSocial = LoginType{
 		Code: "social",
@@ -106,19 +102,22 @@ func ParseLoginType(code string) (LoginType, bool) {
 // RetryCountMsg 渲染「已错误 errCount 次」提示，对应原项目
 // MessageUtils.message(loginType.getRetryLimitCount(), errorNumber)。
 // 该登录方式不做重试计数时返回空串。
-func (t LoginType) RetryCountMsg(errCount int) string {
-	if t.RetryCountTmpl == "" {
+//
+// ctx 决定用哪种语言（i18n 中间件已把请求语言写进去），取不到语言时
+// i18n.Msg 会回落默认语言，不会失败。
+func (t LoginType) RetryCountMsg(ctx context.Context, errCount int) string {
+	if t.RetryCountKey == "" {
 		return ""
 	}
-	return fmt.Sprintf(t.RetryCountTmpl, errCount)
+	return i18n.Msg(ctx, t.RetryCountKey, errCount)
 }
 
 // RetryExceedMsg 渲染「错误次数超限，账户锁定」提示，对应原项目
 // MessageUtils.message(loginType.getRetryLimitExceed(), maxRetryCount, lockTime)。
 // 该登录方式不做重试计数时返回空串。
-func (t LoginType) RetryExceedMsg(maxRetry int, lockMinutes int) string {
-	if t.RetryExceedTmpl == "" {
+func (t LoginType) RetryExceedMsg(ctx context.Context, maxRetry int, lockMinutes int) string {
+	if t.RetryExceedKey == "" {
 		return ""
 	}
-	return fmt.Sprintf(t.RetryExceedTmpl, maxRetry, lockMinutes)
+	return i18n.Msg(ctx, t.RetryExceedKey, maxRetry, lockMinutes)
 }
