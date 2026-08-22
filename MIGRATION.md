@@ -26,6 +26,10 @@
 | 统一响应     | `pkg/response`   | ✅ 已完成（R / PageResult）                              |
 | 全局中间件   | `pkg/middleware` | Recover(全局异常→response.Fail)、CORS、请求日志、TraceID |
 | 常量         | `pkg/constant`   | 从原 common-core/constant 移植需要的常量                 |
+| 国际化       | `pkg/i18n`       | ✅ 词条表 + Msg(ctx,...)，对应 MessageUtils              |
+
+全局中间件进度（详见 `pkg/middleware/README.md`）：`Recover` / `CORS` / `TraceID` / `RepeatableBody` / `AccessLog` /
+`XSS` / `I18n` 均已落地并在两个入口注册，仅 `Auth` 待阶段 1。
 
 **依赖引入**：
 `go get gorm.io/gorm gorm.io/driver/mysql github.com/redis/go-redis/v9 github.com/spf13/viper github.com/golang-jwt/jwt/v5`

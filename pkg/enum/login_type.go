@@ -14,12 +14,18 @@ import "fmt"
 //  1. **多了 Code 字段**。Java 枚举只有下面两个文案字段，靠 enum 实例本身传递
 //     （checkLogin(LoginType.PASSWORD, ...)）。Go 没有 enum 单例语义，需要一个
 //     标识用于按 grantType 查表，故补上 Code。
+//
 //  2. **文案不走 i18n**。原枚举存的是 message key（如
 //     "user.password.retry.limit.exceed"），由 MessageUtils.message(key, args...)
-//     按当前语言渲染。Go 侧未引入 i18n，这里直接存中文模板（取自原项目
+//     按当前语言渲染。这里直接存中文模板（取自原项目
 //     i18n/messages_zh_CN.properties），占位符由 Java MessageFormat 的 {0}/{1}
-//     改写为 Go 的 %d。将来若要接 i18n，把这两个字段换回 key、渲染交给 i18n 层即可，
-//     调用方用的是下面两个方法而非裸字段，改动不会外溢。
+//     改写为 Go 的 %d。
+//
+//     `pkg/i18n` 已经落地（词条键就是上面那些），但**没有顺手改过来**：
+//     i18n.Msg 需要一个 context.Context 才能知道用哪种语言，而下面两个方法
+//     没有这个参数，加上它就要改所有调用方 —— 那属于阶段 1 接登录流程时的事
+//     （届时 service 手里本来就有 ctx）。改法是把这两个字段换成词条键、
+//     方法签名加 ctx 后转调 i18n.Msg；调用方用的是方法而非裸字段，改动不会外溢。
 //
 // 注意字段顺序与 Java 构造器相反：Java 是 (retryLimitExceed, retryLimitCount)，
 // exceed 在前。对照原项目新增登录方式时别把两个模板填反。

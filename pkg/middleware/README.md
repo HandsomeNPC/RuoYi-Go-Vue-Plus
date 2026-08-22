@@ -30,7 +30,7 @@ Go 侧全部收拢到本包，由各模块 `router.go` 显式 `r.Use(...)` 注�
 | 4 | 可重复读 Body   | `ruoyi-common-web/…/web/filter/RepeatableFilter.java` + `RepeatedlyRequestWrapper.java` | ✅ `body.go`        |
 | 5 | 请求日志 + 耗时 | `ruoyi-common-web/…/web/interceptor/PlusWebInvokeTimeInterceptor.java`                  | ✅ `logger.go`      |
 | 6 | XSS 过滤        | `ruoyi-common-web/…/web/filter/XssFilter.java` + `XssHttpServletRequestWrapper.java`    | ✅ `xss.go`         |
-| 7 | i18n            | `ruoyi-common-web/…/web/config/I18nConfig.java` + `web/core/I18nLocaleResolver.java`    | `i18n.go`           |
+| 7 | i18n            | `ruoyi-common-web/…/web/config/I18nConfig.java` + `web/core/I18nLocaleResolver.java`    | ✅ `i18n.go`        |
 | 8 | 鉴权            | `ruoyi-common-security/…/security/config/SecurityConfig.java:80-119`                    | `auth.go`（阶段 1） |
 | 9 | 响应增强        | `ruoyi-common-web/…/web/advice/ResponseEnhancementAdvice.java`                          | 阶段 3 再建         |
 
@@ -48,9 +48,18 @@ Recover → CORS → TraceID → RepeatableBody → AccessLog → XSS → I18n �
   就绑不到参数了。
 - **XSS 必须在所有「读 gin 参数」的中间件之前**（同时也必须在 `RepeatableBody` 之后）。gin 的 `c.Query` 会把
   `URL.Query()` 的结果缓存进内部 `queryCache`，缓存一旦建立， XSS 再改 `URL.RawQuery` 就 **静默失效**。当前链路里 XSS
-  之前没有任何一环读 gin 参数（`AccessLog` 走 `c.Request.ParseForm`，不碰 gin 的缓存）， 阶段 1 的 `Auth` 读 `clientid`
-  排在 XSS 之后 —— 拿到的是清洗后的值。 这条约束由 `TestXSSIneffectiveIfQueryReadEarlier` 锁住：它 **故意**把读参数的中间件
+  之前没有任何一环读 gin 参数（`AccessLog` 走 `c.Request.ParseForm`，不碰 gin 的缓存；`I18n` 排在 XSS 之后且只读请求头）， 阶段
+  1 的 `Auth` 读 `clientid` 排在 XSS 之后 —— 拿到的是清洗后的值。 这条约束由 `TestXSSIneffectiveIfQueryReadEarlier` 锁住：它
+  **故意**把读参数的中间件
   前置并断言清洗失效，将来谁把鉴权挪到 XSS 前面，那条用例就会以「清洗突然生效了」的形式报错。
+
+第四条约束来自 i18n，宽松得多： **I18n 必须在 Auth 之前**（鉴权的提示文案要走词条）。它不读 body、不改请求， 与前三条没有交集，详见下方
+i18n 一节。
+
+> 截至当前，`Recover → CORS → TraceID → RepeatableBody → AccessLog → XSS → I18n` 已全部在
+> `cmd/system/main.go` 与 `cmd/auth/main.go` 注册；只剩 `Auth` 待阶段 1 落地。
+> **两个入口的中间件链必须保持一致** —— 拆进程后同一个请求经 nginx 落到哪个进程是不定的，
+> 两边链路不同会让同一次调用表现出不同的清洗/脱敏行为，而那种差异极难从现象反推。
 
 还有一条 **将来**才会用上、但现在就得记下的： **`ApiEncrypt` 解密中间件必须在 `RepeatableBody` 之前**， 即最终顺序为
 `Recover → CORS → TraceID → ApiEncrypt → RepeatableBody → AccessLog → ...`。 依据是 Java 侧的 Filter
@@ -340,6 +349,56 @@ URL 长度换 CPU 的放大路径（`TestAntPathMatchNoExponentialBlowup` 兜住
 
 `web/core/I18nLocaleResolver.java` 读的是 **`content-language` 请求头**（非标准用法，但要对齐前端）， 下划线归一成横线，取不到回落
 `Locale.getDefault()`。`setLocale` 是刻意的空实现。 词条目录由 `spring.messages.basename: i18n/messages` 指定。
+
+按 RFC 9110，`content-language` 描述的是 **报文自身内容** 的语言（「我这个请求体是中文写的」），表达「请把响应翻成中文」的标准头是
+`Accept-Language`。原项目用错了头，但前端发的就是它，头名对不上等于整个 i18n 不生效，故对齐。
+
+**有意不兼容 `Accept-Language` 回落**：浏览器会 **自动** 带上它（通常是操作系统语言）。一旦回落过去，用户在前端切成英文后，只要某个请求漏发
+`content-language`，就会拿到跟界面语言不一致的文案 —— 这种「偶尔一句中文」极难定位。宁可只认一个显式来源。
+`TestI18nReadsContentLanguageNotAcceptLanguage` 把这条锁住。
+
+#### 词条落在 `pkg/i18n` 而非本包
+
+中间件只负责 **解析语言并写进 context**（十几行）；词条表与渲染在 `pkg/i18n`，对应 Java 的 `MessageUtils` +
+`messages*.properties`。 分开是因为 service / repository 层要取文案，但那些层不该 import gin。
+
+Java 的当前语言由 `LocaleContextHolder` 这个 ThreadLocal 隐式提供，所以 `MessageUtils.message(code, args)` 不必传语言。 Go
+侧 **显式随 `context.Context` 传**：`i18n.Msg(ctx, code, args...)`，与 `trace.go` 的 `TraceIDFrom` 同一套做法 ——
+少一个隐式全局状态，goroutine 里也不会莫名丢语言。
+
+**54×2 条文案是手工搬过来的**，抄错一个字、漏一条、把 zh 的值贴到 en 里，都不会有编译错误，表现出来只是「某个提示的文案不对」——
+那是没人会去核对的东西。故 `pkg/i18n/i18n_test.go` 的 `TestCatalogsMatchJavaProperties` **直接读原项目的 `.properties`
+逐条交叉验证**（占位符折算回去后要求完全一致）。原项目路径不存在时该用例 Skip 而非 Fail，好让没有原项目的机器也能跑通构建。
+
+#### Go 实现的有意偏差
+
+| 位置                   | 偏差                                            | 原因                                                                                                                                                                  |
+|------------------------|-------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 词条存储               | 嵌进 Go 源码的 `map`，不读 `.properties`        | 每模块编译成独立 binary，词条编进去则拷一个文件就能跑；漏拷 `resources` 目录这种故障要等某条错误路径被触发才暴露，而那通常是线上                                      |
+| 占位符                 | `{0}`/`{1}` → `%v`，渲染走 `fmt.Sprintf`        | 与 `errs.Newf`、`enum.LoginType` 已有的模板一致；再引入一套 `{}` 解析会让同一仓库里有两种占位符风格                                                                   |
+| `{min}`/`{max}`        | **保持原样不转换**                              | 那不是 MessageFormat 位置参数，是 Hibernate Validator 的**属性占位符**，由注解的 min/max 回填，Java 侧也不经 MessageFormat                                            |
+| 默认语言               | 固定 `zh-CN`，不读操作系统区域                  | Java 回落的 `Locale.getDefault()` 跟着 **JVM 所在机器** 走；多副本部署下节点由 nginx 随机挑，同一请求会因落到哪台而返回不同语言                                       |
+| `content-language: en` | 回落 **英文**（`en-US`）                        | 原项目缺 `messages_en.properties`，ResourceBundle 的查找链会退到系统默认区域，中文机器上 `en` 实际**返回中文** —— 那是文件缺失导致的意外，不是设计意图                |
+| 非法语言标记           | 走白名单校验后回落默认，**不拒绝请求**          | Java 的 `forLanguageTag` 对非法输入静默返回 `und`。Go 加校验是因为这个值会进日志，带 CR/LF 能伪造日志行；但语言只影响文案呈现，为一个畸形的头打回整个业务请求不成比例 |
+| 列表形态               | 按逗号 **取第一段**（`en-US, zh-CN` → `en-us`） | `content-language` 按 RFC 9110 可以是列表，Java 的 `forLanguageTag` 遇到它解析成 `und` 从而回落默认语言，这里比原项目多支持一步                                       |
+| 裁空白                 | 只裁空格与 TAB，**不用 `TrimSpace`**            | `TrimSpace` 会裁掉 `\r\n`，于是 `"zh-CN\r"` 被悄悄修好成合法值，而白名单本来就是要挡住它的 —— 带 CR 的头意味着上游有问题，值得暴露                                    |
+| 响应头                 | **新增** 回显 `Content-Language`                | 原项目不回。归一化（`zh-Hans-CN` → `zh-cn`）只看响应体看不出来；出现「明明发了 en 却收到中文」时，这个头能一眼区分是语言协商的结果还是词条缺失                        |
+| `setLocale`            | 不提供                                          | Java 的 `LocaleResolver` 接口强制实现，原项目给了空实现（服务端不主动切语言）。Go 没有这个接口约束，少一个「存在但什么都不做」的方法                                  |
+| 注册词条的入口         | **有意不提供**                                  | 那需要一个可变全局 `map`，而中间件每请求都读它 —— 启动后再写就是数据竞争。新增语言直接加一个 `messages_xx.go` 文件                                                    |
+| 词条缺失               | 返回 `code` 本身                                | 对齐 Java `catch NoSuchMessageException` 后 `return code`。返回空串会让前端显示一片空白，无从判断是「没有提示」还是「词条漏了」                                       |
+| 无参调用               | 返回原始模板，不过 `Sprintf`                    | 过 `Sprintf` 会渲染成 `%!v(MISSING)`。「该带参数却没带」是调用方的 bug，不该在这里加工成一句更难看的文案；对齐 MessageFormat 无参时保留 `{0}`                         |
+
+#### 顺序：只有一条约束
+
+**必须在 `Auth` 之前** —— 阶段 1 鉴权会返回「客户端ID与Token不匹配」这类文案，那些要走词条，就得先有语言。 它不读
+body、不改请求，与前面几环没有耦合。
+
+位置靠后不影响前面的中间件：`Recover` 与 `AccessLog` 的输出是 **日志**，面向运维、恒为中文，本来就不该跟着请求语言变 ——
+否则同一个错误在日志里有两种文案，检索时得搜两遍。
+
+和 `trace.go` 共有的两条纪律： **响应头必须在 `c.Next()` 之前写**（body 一开始输出 header 就发出去了，事后 `Set` 静默失效，由
+`TestI18nHeaderSetBeforeHandlerWritesBody` 兜住）； **用 `WithContext` 替换 `c.Request` 时必须基于前一环的 context**， 否则会把
+`TraceID` 写进去的值覆盖掉（`TestI18nCoexistsWithTraceID` 覆盖）。
 
 ### 8. 鉴权（阶段 1）：四步校验 + 一个易踩的坑
 

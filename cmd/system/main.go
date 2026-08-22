@@ -63,7 +63,12 @@ func run() error {
 	// 日志中间件读完 handler 就绑不到参数了。
 	r.Use(middleware.RepeatableBody())
 	r.Use(middleware.AccessLog())
-	// TODO: XSS / I18n
+	// XSS 必须在 AccessLog 之后、且在任何读 gin 参数的一环之前：
+	// 日志要记原始报文（排查取证看的是攻击者到底发了什么），而 gin 的
+	// c.Query 一旦缓存过 URL.Query()，XSS 再改 RawQuery 就静默失效了。
+	r.Use(middleware.XSS())
+	// I18n 必须在鉴权之前：鉴权失败的提示文案要走词条，得先有语言。
+	r.Use(middleware.I18n())
 
 	// TODO: system.RegisterRoutes(r, deps)
 

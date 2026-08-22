@@ -1,0 +1,72 @@
+package i18n
+
+// messagesZhCN 中文词条，逐条对应原项目
+// ruoyi-admin/src/main/resources/i18n/messages_zh_CN.properties。
+//
+// 该文件与无后缀的 messages.properties 内容完全一致（已 diff 确认），
+// 故本包用这一份同时承担「中文」与「默认兜底」两个角色，见 DefaultLocale。
+//
+// 键名与分组注释保持原文件的顺序，方便与原项目对照 diff。
+// 占位符 {0}/{1} 已改写为 %v（见包注释），但 {min}/{max} 有意保留原样 ——
+// 那是 Hibernate Validator 的属性占位符，不是位置参数。
+var messagesZhCN = map[string]string{
+	// 错误消息
+	"not.null":                           "* 必须填写",
+	"user.jcaptcha.error":                "验证码错误",
+	"user.jcaptcha.expire":               "验证码已失效",
+	"user.not.exists":                    "对不起, 您的账号：%v 不存在.",
+	"user.password.not.match":            "用户不存在/密码错误",
+	"user.password.retry.limit.count":    "密码输入错误%v次",
+	"user.password.retry.limit.exceed":   "密码输入错误%v次，账户锁定%v分钟",
+	"user.password.delete":               "对不起，您的账号：%v 已被删除",
+	"user.blocked":                       "对不起，您的账号：%v 已禁用，请联系管理员",
+	"role.blocked":                       "角色已封禁，请联系管理员",
+	"user.logout.success":                "退出成功",
+	"length.not.valid":                   "长度必须在{min}到{max}个字符之间",
+	"user.username.not.blank":            "用户名不能为空",
+	"user.username.not.valid":            "* 2到20个汉字、字母、数字或下划线组成，且必须以非数字开头",
+	"user.username.length.valid":         "账户长度必须在{min}到{max}个字符之间",
+	"user.password.not.blank":            "用户密码不能为空",
+	"user.password.length.valid":         "用户密码长度必须在{min}到{max}个字符之间",
+	"user.password.not.valid":            "* 5-50个字符",
+	"user.password.format.valid":         "密码必须包含大写字母、小写字母、数字和特殊字符",
+	"user.email.not.valid":               "邮箱格式错误",
+	"user.email.not.blank":               "邮箱不能为空",
+	"user.phonenumber.not.blank":         "用户手机号不能为空",
+	"user.mobile.phone.number.not.valid": "手机号格式错误",
+	"user.login.success":                 "登录成功",
+	"user.register.success":              "注册成功",
+	"user.register.save.error":           "保存用户 %v 失败，注册账号已存在",
+	"user.register.error":                "注册失败，请联系系统管理人员",
+	"user.notfound":                      "请重新登录",
+	"user.forcelogout":                   "管理员强制退出，请重新登录",
+	"user.unknown.error":                 "未知错误，请重新登录",
+	"auth.grant.type.error":              "认证权限类型错误",
+	"auth.grant.type.blocked":            "认证权限类型已禁用",
+	"auth.grant.type.not.blank":          "认证权限类型不能为空",
+	"auth.clientid.not.blank":            "认证客户端id不能为空",
+
+	// 文件上传消息
+	"upload.exceed.maxSize":         "上传的文件大小超出限制的文件大小！<br/>允许的文件最大大小是：%vMB！",
+	"upload.filename.exceed.length": "上传的文件名最长%v个字符",
+
+	// 权限
+	"no.permission":                 "您没有数据的权限，请联系管理员添加权限 [%v]",
+	"no.create.permission":          "您没有创建数据的权限，请联系管理员添加权限 [%v]",
+	"no.update.permission":          "您没有修改数据的权限，请联系管理员添加权限 [%v]",
+	"no.delete.permission":          "您没有删除数据的权限，请联系管理员添加权限 [%v]",
+	"no.export.permission":          "您没有导出数据的权限，请联系管理员添加权限 [%v]",
+	"no.view.permission":            "您没有查看数据的权限，请联系管理员添加权限 [%v]",
+	"repeat.submit.message":         "不允许重复提交，请稍候再试",
+	"rate.limiter.message":          "访问过于频繁，请稍候再试",
+	"sms.code.not.blank":            "短信验证码不能为空",
+	"sms.code.retry.limit.count":    "短信验证码输入错误%v次",
+	"sms.code.retry.limit.exceed":   "短信验证码输入错误%v次，账户锁定%v分钟",
+	"email.code.not.blank":          "邮箱验证码不能为空",
+	"email.code.retry.limit.count":  "邮箱验证码输入错误%v次",
+	"email.code.retry.limit.exceed": "邮箱验证码输入错误%v次，账户锁定%v分钟",
+	"xcx.code.not.blank":            "小程序[code]不能为空",
+	"social.source.not.blank":       "第三方登录平台[source]不能为空",
+	"social.code.not.blank":         "第三方登录平台[code]不能为空",
+	"social.state.not.blank":        "第三方登录平台[state]不能为空",
+}
