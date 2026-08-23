@@ -8,6 +8,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"ruoyi-go-vue-plus/pkg/config"
+
 	"ruoyi-go-vue-plus/pkg/i18n"
 )
 
@@ -16,7 +18,7 @@ import (
 // 三处都取是刻意的：gin.Context 给 handler、request 的 context.Context
 // 给 service / repository 层、i18n.Msg 是最终的消费方。三者必须一致，
 // 否则会出现「日志里语言对、返回的文案却不对」这种极难定位的错位。
-func newI18nEngine(cfg I18nConfig) *gin.Engine {
+func newI18nEngine(cfg config.I18n) *gin.Engine {
 	r := gin.New()
 	r.Use(I18nWithConfig(cfg))
 	r.GET("/test", func(c *gin.Context) {
@@ -57,7 +59,7 @@ func TestI18nPropagatesToAllContexts(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			w := i18nGet(newI18nEngine(DefaultI18nConfig()), LocaleHeader, tc.lang)
+			w := i18nGet(newI18nEngine(config.DefaultMiddleware().I18n), LocaleHeader, tc.lang)
 			body := w.Body.String()
 
 			for _, field := range []string{
@@ -76,7 +78,7 @@ func TestI18nPropagatesToAllContexts(t *testing.T) {
 
 // 不带语言头时回落默认语言（中文），对应 I18nLocaleResolver 回落 Locale.getDefault()。
 func TestI18nFallsBackToDefault(t *testing.T) {
-	w := i18nGet(newI18nEngine(DefaultI18nConfig()), LocaleHeader, "")
+	w := i18nGet(newI18nEngine(config.DefaultMiddleware().I18n), LocaleHeader, "")
 	if !strings.Contains(w.Body.String(), `"msg":"退出成功"`) {
 		t.Errorf("body = %s, 无语言头时应回落中文", w.Body.String())
 	}
@@ -89,7 +91,7 @@ func TestI18nFallsBackToDefault(t *testing.T) {
 // 一旦回落过去，前端切成英文后只要某个请求漏发 content-language，
 // 就会拿到跟界面不一致的文案。
 func TestI18nReadsContentLanguageNotAcceptLanguage(t *testing.T) {
-	r := newI18nEngine(DefaultI18nConfig())
+	r := newI18nEngine(config.DefaultMiddleware().I18n)
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.Header.Set("Accept-Language", "en-US")
@@ -105,7 +107,7 @@ func TestI18nReadsContentLanguageNotAcceptLanguage(t *testing.T) {
 // 头名大小写不敏感：net/http 的 Header 会规范化，前端发 Content-Language 也认。
 func TestI18nHeaderNameCaseInsensitive(t *testing.T) {
 	for _, name := range []string{"content-language", "Content-Language", "CONTENT-LANGUAGE"} {
-		w := i18nGet(newI18nEngine(DefaultI18nConfig()), name, "en-US")
+		w := i18nGet(newI18nEngine(config.DefaultMiddleware().I18n), name, "en-US")
 		if !strings.Contains(w.Body.String(), `"msg":"Exit successful"`) {
 			t.Errorf("头名 %q 未被识别: %s", name, w.Body.String())
 		}
@@ -123,7 +125,7 @@ func TestI18nMalformedHeaderDoesNotFailRequest(t *testing.T) {
 		"zh CN",
 		strings.Repeat("a", 200),
 	} {
-		w := i18nGet(newI18nEngine(DefaultI18nConfig()), LocaleHeader, bad)
+		w := i18nGet(newI18nEngine(config.DefaultMiddleware().I18n), LocaleHeader, bad)
 		if w.Code != http.StatusOK {
 			t.Errorf("语言头 %q 导致状态码 %d, 应仍为 200", bad, w.Code)
 		}
@@ -139,7 +141,7 @@ func TestI18nMalformedHeaderDoesNotFailRequest(t *testing.T) {
 // 这里直接断言响应头里不含控制字符 —— net/http 自身也会拦，
 // 但这条防线属于本中间件（i18n.Parse 的白名单），不该依赖下游。
 func TestI18nRejectsHeaderInjection(t *testing.T) {
-	w := i18nGet(newI18nEngine(DefaultI18nConfig()), LocaleHeader, "zh-CN\r\nX-Injected: 1")
+	w := i18nGet(newI18nEngine(config.DefaultMiddleware().I18n), LocaleHeader, "zh-CN\r\nX-Injected: 1")
 
 	if got := w.Header().Get("X-Injected"); got != "" {
 		t.Errorf("注入的头被写出: X-Injected = %q", got)
@@ -162,7 +164,7 @@ func TestI18nEchoesContentLanguageHeader(t *testing.T) {
 		"zh-Hans-CN": "zh-hans-cn",
 	}
 	for in, want := range cases {
-		w := i18nGet(newI18nEngine(DefaultI18nConfig()), LocaleHeader, in)
+		w := i18nGet(newI18nEngine(config.DefaultMiddleware().I18n), LocaleHeader, in)
 		if got := w.Header().Get("Content-Language"); got != want {
 			t.Errorf("语言头 %q → 响应 Content-Language = %q, 期望 %q", in, got, want)
 		}
@@ -193,7 +195,7 @@ func TestI18nHeaderSetBeforeHandlerWritesBody(t *testing.T) {
 
 // 自定义配置：换头名、换默认语言。
 func TestI18nWithCustomConfig(t *testing.T) {
-	cfg := I18nConfig{Header: "Accept-Language", Default: i18n.LocaleEnUS}
+	cfg := config.I18n{Header: "Accept-Language", Default: i18n.LocaleEnUS}
 	r := newI18nEngine(cfg)
 
 	// 配了 Accept-Language 就该读它。
@@ -211,10 +213,10 @@ func TestI18nWithCustomConfig(t *testing.T) {
 
 // 零值配置必须能用，回落到包级默认。
 //
-// 直接 I18nWithConfig(I18nConfig{}) 是很自然的写法，
+// 直接 I18nWithConfig(config.I18n{}) 是很自然的写法，
 // 不能让它变成「头名为空所以永远读不到语言」。
 func TestI18nZeroConfigUsesDefaults(t *testing.T) {
-	w := i18nGet(newI18nEngine(I18nConfig{}), LocaleHeader, "en-US")
+	w := i18nGet(newI18nEngine(config.I18n{}), LocaleHeader, "en-US")
 	if !strings.Contains(w.Body.String(), `"msg":"Exit successful"`) {
 		t.Errorf("零值配置应回落默认头名与默认语言: %s", w.Body.String())
 	}

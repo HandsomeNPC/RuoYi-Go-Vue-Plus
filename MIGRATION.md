@@ -20,7 +20,7 @@
 
 | 任务         | 落地位置         | 说明                                                     |
 |--------------|------------------|----------------------------------------------------------|
-| 配置加载     | `pkg/config`     | viper 读 application.yaml + <module>.yaml，结构体绑定    |
+| 配置加载     | `pkg/config`     | ✅ viper 读 application.yaml + <module>.yaml，结构体绑定 |
 | DB 初始化    | `pkg/database`   | GORM + MySQL 驱动，连接池，全局 *gorm.DB                 |
 | Redis 初始化 | `pkg/redis`      | go-redis 客户端                                          |
 | 统一响应     | `pkg/response`   | ✅ 已完成（R / PageResult）                              |
@@ -29,7 +29,9 @@
 | 国际化       | `pkg/i18n`       | ✅ 词条表 + Msg(ctx,...)，对应 MessageUtils              |
 
 全局中间件进度（详见 `pkg/middleware/README.md`）：`Recover` / `CORS` / `TraceID` / `RepeatableBody` / `AccessLog` /
-`XSS` / `I18n` 均已落地并在两个入口注册，仅 `Auth` 待阶段 1。
+`XSS` / `I18n` 均已落地，由 `middleware.Register(r)` 统一按序注册（两个入口各一行调用），仅 `Auth` 待阶段 1。 各中间件的配置在
+`configs/application.yaml` 的 `middleware` 段，结构体定义在 `pkg/config/middleware.go`， 运行期从 `config.Get()` 读 —— 因此
+**`config.Load` 必须早于 `middleware.Register`**。
 
 **依赖引入**：
 `go get gorm.io/gorm gorm.io/driver/mysql github.com/redis/go-redis/v9 github.com/spf13/viper github.com/golang-jwt/jwt/v5`

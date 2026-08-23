@@ -1,17 +1,22 @@
 // Package config 应用配置加载。
 //
 // 读取 yaml 配置文件并绑定到结构体。各子配置分文件定义：
-// server.go / datasource.go / redis.go / jwt.go，各自实现 validate()。
+// server.go / datasource.go / redis.go / jwt.go / middleware.go，各自实现 validate()。
 //
 // Load 接收多个文件路径，按传入顺序依次合并，后者覆盖前者：
 //
 //	config.Load("configs/application.yaml", "configs/system.yaml")
 //
 // 公共配置放 application.yaml，进程独有配置(端口等)放 <module>.yaml。
+//
+// Load 成功后配置同时写入包级实例，用 Get() 取回。pkg/middleware 走这个入口 ——
+// 中间件在 r.Use(...) 时读一次配置，不必由 main 逐层传参。因此
+// **必须先 Load 再注册中间件**，否则 Get() 会 panic。
 package config
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/spf13/viper"
 )
@@ -22,12 +27,16 @@ type Config struct {
 	Datasource Datasource `mapstructure:"datasource"`
 	Redis      Redis      `mapstructure:"redis"`
 	JWT        JWT        `mapstructure:"jwt"`
+	Middleware Middleware `mapstructure:"middleware"`
 }
 
 // Load 按顺序读取并合并多个 yaml 配置文件，后者覆盖前者。
 //
 // 至少需要一个路径。任一文件不存在或格式错误都会返回错误，
 // 合并完成后逐个子配置执行 validate。
+//
+// 加载成功后同时写入包级实例，可用 Get() 取回 —— 中间件等
+// 拿不到 *Config 的调用方走那个入口。
 func Load(paths ...string) (*Config, error) {
 	if len(paths) == 0 {
 		return nil, fmt.Errorf("config: 至少需要一个配置文件路径")
@@ -35,6 +44,10 @@ func Load(paths ...string) (*Config, error) {
 
 	v := viper.New()
 	v.SetConfigType("yaml")
+
+	// 必须在读文件之前铺默认值：viper 对缺失的键给零值，
+	// 而中间件多数字段的零值是「有意义但错误」的配置（详见 setMiddlewareDefaults）。
+	setMiddlewareDefaults(v)
 
 	for i, path := range paths {
 		v.SetConfigFile(path)
@@ -57,7 +70,33 @@ func Load(paths ...string) (*Config, error) {
 	if err := cfg.validate(); err != nil {
 		return nil, err
 	}
+
+	mu.Lock()
+	current = &cfg
+	mu.Unlock()
 	return &cfg, nil
+}
+
+// 包级默认实例。写于 Load 成功之后，读写加锁以免竞态。
+var (
+	mu      sync.RWMutex
+	current *Config
+)
+
+// Get 返回包级默认实例。未成功 Load 过会 panic——
+// 这是启动期编排错误，不该留到运行时才发现。
+//
+// 供中间件等「拿不到 *Config 但需要配置」的调用方使用。因为它会 panic，
+// 只应在启动期调用（中间件在 r.Use(...) 那一刻读一次并捕获进闭包），
+// 不要放进每请求的路径。
+func Get() *Config {
+	mu.RLock()
+	cfg := current
+	mu.RUnlock()
+	if cfg == nil {
+		panic("config: 尚未初始化，请先调用 config.Load")
+	}
+	return cfg
 }
 
 // validate 依次校验各子配置。
@@ -67,6 +106,7 @@ func (c *Config) validate() error {
 		c.Datasource.validate,
 		c.Redis.validate,
 		c.JWT.validate,
+		c.Middleware.validate,
 	}
 	for _, fn := range validators {
 		if err := fn(); err != nil {

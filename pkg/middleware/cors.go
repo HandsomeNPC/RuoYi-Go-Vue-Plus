@@ -4,59 +4,15 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"ruoyi-go-vue-plus/pkg/config"
 )
 
-// CORSConfig 跨域配置，对应 web/config/properties/CorsProperties.java（前缀 web.cors）。
-//
-// 字段与默认值逐项对齐 Java 侧。注意 application.yml 及 dev/prod profile 里
-// 都没有 web.cors 这个 key，所以原项目实际生效的就是这里的默认值 ——
-// 配置项保留是为了对齐 Java 的可配置性，真要走 yaml 再往 pkg/config 里加。
-type CORSConfig struct {
-	// AllowCredentials 是否允许携带凭证(cookie / Authorization)。
-	AllowCredentials bool
-
-	// AllowedOriginPatterns 允许的来源，支持 * 通配，如 https://*.example.com。
-	// 对应 Java 的 allowedOriginPatterns 而非 allowedOrigins，见 matchOrigin 注释。
-	AllowedOriginPatterns []string
-
-	// AllowedMethods 允许的请求方法，["*"] 表示回显预检请求的方法。
-	AllowedMethods []string
-
-	// AllowedHeaders 允许的请求头，["*"] 表示回显预检请求的头。
-	AllowedHeaders []string
-
-	// ExposedHeaders 允许前端 JS 读取的响应头。
-	//
-	// Java 侧没设置这项，跨域下前端只能读到 CORS 安全清单里的那几个头。
-	// 默认值有意加了 TraceIDHeader —— 这是相对原项目的**新增行为**，
-	// 不加前端就拿不到 traceId，报错时无法和服务端日志对账。
-	ExposedHeaders []string
-
-	// MaxAge 预检结果缓存时长，对应 maxAge=1800(秒)。
-	MaxAge time.Duration
-}
-
-// DefaultCORSConfig 返回原项目的代码默认值（CorsProperties 的字段初始值）。
-//
-// 唯一偏差是 ExposedHeaders：Java 侧为空，这里放了 TraceIDHeader，
-// 否则 TraceID 中间件写的响应头跨域时被浏览器挡住，前端读不到。
-func DefaultCORSConfig() CORSConfig {
-	return CORSConfig{
-		AllowCredentials:      true,
-		AllowedOriginPatterns: []string{"*"},
-		AllowedMethods:        []string{"*"},
-		AllowedHeaders:        []string{"*"},
-		ExposedHeaders:        []string{TraceIDHeader},
-		MaxAge:                1800 * time.Second,
-	}
-}
-
-// CORS 跨域中间件，用默认配置，对应 ResourcesConfig.corsFilter（:73-86）。
+// CORS 跨域中间件，配置取自 config.Get()，对应 ResourcesConfig.corsFilter（:73-86）。
 func CORS() gin.HandlerFunc {
-	return CORSWithConfig(DefaultCORSConfig())
+	return CORSWithConfig(config.Get().Middleware.CORS)
 }
 
 // CORSWithConfig 跨域中间件，行为对齐 Spring 的 CorsFilter + DefaultCorsProcessor。
@@ -73,8 +29,8 @@ func CORS() gin.HandlerFunc {
 //     isPreFlightRequest 就 return、不调 filterChain.doFilter 的写法。
 //  3. Vary 三个头无条件加。因为响应随 Origin 变化，不加会让 CDN／代理
 //     把 A 站点的跨域头缓存给 B 站点用。
-func CORSWithConfig(cfg CORSConfig) gin.HandlerFunc {
-	maxAge := strconv.FormatInt(int64(cfg.MaxAge.Seconds()), 10)
+func CORSWithConfig(cfg config.CORS) gin.HandlerFunc {
+	maxAge := strconv.FormatInt(int64(cfg.MaxAge().Seconds()), 10)
 	exposed := strings.Join(cfg.ExposedHeaders, ", ")
 
 	return func(c *gin.Context) {
@@ -141,7 +97,7 @@ func CORSWithConfig(cfg CORSConfig) gin.HandlerFunc {
 		if allowHeaders != "" {
 			h.Set("Access-Control-Allow-Headers", allowHeaders)
 		}
-		if cfg.MaxAge > 0 {
+		if cfg.MaxAgeSeconds > 0 {
 			h.Set("Access-Control-Max-Age", maxAge)
 		}
 

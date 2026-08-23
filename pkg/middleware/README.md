@@ -16,7 +16,7 @@ Java 的横切逻辑 **没有集中在一个包**，而是分散在各 `ruoyi-co
 | `ruoyi-common-encrypt`  | `ApiDecryptAutoConfiguration`                                       |
 | `ruoyi-common-log`      | `LogAspect`                                                         |
 
-Go 侧全部收拢到本包，由各模块 `router.go` 显式 `r.Use(...)` 注册 —— 顺序看得见，比 Spring 的 `@Order` 数值好读。
+Go 侧全部收拢到本包，由 `Register(r)` 按固定顺序显式 `r.Use(...)` —— 顺序看得见，比 Spring 的 `@Order` 数值好读。
 
 ## 全局逐请求关卡（阶段 0 范围）
 
@@ -33,6 +33,10 @@ Go 侧全部收拢到本包，由各模块 `router.go` 显式 `r.Use(...)` 注�
 | 7 | i18n            | `ruoyi-common-web/…/web/config/I18nConfig.java` + `web/core/I18nLocaleResolver.java`    | ✅ `i18n.go`        |
 | 8 | 鉴权            | `ruoyi-common-security/…/security/config/SecurityConfig.java:80-119`                    | `auth.go`（阶段 1） |
 | 9 | 响应增强        | `ruoyi-common-web/…/web/advice/ResponseEnhancementAdvice.java`                          | 阶段 3 再建         |
+
+另有两个没有 Java 对照物的文件：`register.go`（按序注册全部中间件，对应 Spring 的四个 `AutoConfiguration.imports`
+清单）与 `path.go`（Ant 路径匹配，对应 `AntPathMatcher`，被 `xss.go` 与阶段 1 的 `auth.go` 共用）。 配置结构体不在本包，在
+`pkg/config/middleware.go`（见下方「配置怎么读到的」）。
 
 ### 注册顺序
 
@@ -57,9 +61,10 @@ Recover → CORS → TraceID → RepeatableBody → AccessLog → XSS → I18n �
 i18n 一节。
 
 > 截至当前，`Recover → CORS → TraceID → RepeatableBody → AccessLog → XSS → I18n` 已全部在
-> `cmd/system/main.go` 与 `cmd/auth/main.go` 注册；只剩 `Auth` 待阶段 1 落地。
+> `register.go` 的 `Register(r)` 里注册，两个入口各一行调用；只剩 `Auth` 待阶段 1 落地。
 > **两个入口的中间件链必须保持一致** —— 拆进程后同一个请求经 nginx 落到哪个进程是不定的，
 > 两边链路不同会让同一次调用表现出不同的清洗/脱敏行为，而那种差异极难从现象反推。
+> 收进 `Register` 就是为了让这件事 **物理上无法**做错：加 `Auth` 时只改一个文件，两个进程自动同步。
 
 还有一条 **将来**才会用上、但现在就得记下的： **`ApiEncrypt` 解密中间件必须在 `RepeatableBody` 之前**， 即最终顺序为
 `Recover → CORS → TraceID → ApiEncrypt → RepeatableBody → AccessLog → ...`。 依据是 Java 侧的 Filter
@@ -160,12 +165,12 @@ maxAge               = 1800
 
 #### Go 实现的有意偏差（`cors.go`）
 
-| 位置             | 偏差                                            | 原因                                                                                          |
-|------------------|-------------------------------------------------|-----------------------------------------------------------------------------------------------|
-| 校验失败         | 回真实 **403**，不是恒 200                      | 跨域校验失败在浏览器 CORS 协议层，响应体被浏览器吞掉，前端读不到 `body.code`，回 200 反而误导 |
-| 配置来源         | `DefaultCORSConfig()` 硬编码，未进 `pkg/config` | 原项目 yaml 里就没有 `web.cors`，先对齐「代码默认值」这一既有事实，要配再加                   |
-| `ExposedHeaders` | 新增字段，默认含 `X-Request-Id`                 | Java 侧没设这项。不加前端拿不到 traceId，无法和服务端日志对账 —— 与 `trace.go` 配套           |
-| 通配匹配         | 自己扫 `*` 分段，未用正则                       | pattern 来自配置文件非用户输入，逐段扫描够用，且省掉 `*`→`.*` 转义的边界问题                  |
+| 位置             | 偏差                                   | 原因                                                                                            |
+|------------------|----------------------------------------|-------------------------------------------------------------------------------------------------|
+| 校验失败         | 回真实 **403**，不是恒 200             | 跨域校验失败在浏览器 CORS 协议层，响应体被浏览器吞掉，前端读不到 `body.code`，回 200 反而误导   |
+| 配置来源         | 走 `pkg/config` 的 `middleware.cors.*` | 原项目 yaml 里没有 `web.cors`，实际生效的是代码默认值；Go 侧把这些值提到了 yaml，默认值与之一致 |
+| `ExposedHeaders` | 新增字段，默认含 `X-Request-Id`        | Java 侧没设这项。不加前端拿不到 traceId，无法和服务端日志对账 —— 与 `trace.go` 配套             |
+| 通配匹配         | 自己扫 `*` 分段，未用正则              | pattern 来自配置文件非用户输入，逐段扫描够用，且省掉 `*`→`.*` 转义的边界问题                    |
 
 一条容易写错的地方：`allowedOriginPatterns` 命中后要回显 **请求带来的 Origin**，不是配置里的 pattern。 同理
 `allowedMethods` 配 `*` 时回显请求的方法（对齐 `checkHttpMethod` 在 ALL 时返回 `singletonList(requestMethod)`），
@@ -303,7 +308,12 @@ pattern 只有 `%d{...} [%thread] %-5level %logger{36} - %msg%n`。
 | 查询串解析失败  | 保持原样，不用部分结果重新编码              | `url.ParseQuery` 出错时返回的是**部分**结果，拿它重编码会静默丢掉解析失败的参数，比不清洗更难排查                                                    |
 | `multipart`     | 不处理表单文本字段                          | `ParseMultipartForm` 要把上传文件整个读进内存（单文件 10MB），代价远超清洗几个字段；与 `body.go` 同一取舍。相比 Java 会少清洗这些字段                |
 | 日志顺序        | XSS 在 `AccessLog` **之后**，日志记原始报文 | Java 的 `XssFilter`（order `HIGHEST+1`）跑在 `RepeatableFilter` 前，拦截器读到的是清洗后的 body。日志是排查与取证用的，需要看到攻击者到底发了什么    |
-| `xss.enabled`   | 无此配置项                                  | Go 侧「注册」就是 `router.go` 里那行 `r.Use(XSS())`，不写即关闭。再加布尔开关只会造出「注册了但不生效」这种要翻两处才能确诊的状态                    |
+| `xss.enabled`   | 无此配置项                                  | Go 侧「注册」就是 `middleware.Register` 里那行 `r.Use(XSS())`，不写即关闭。再加布尔开关只会造出「注册了但不生效」这种要翻两处才能确诊的状态          |
+
+`middleware.xss.*` 现在 **已经在 yaml 里**（`excludeUrls` / `skipMethods` 可配），但 **仍然没有 `enabled`** —— 这不是漏了。
+上表那条理由不因「配置进了 yaml」而失效：开关与注册是两套机关，同时存在就会出现「yaml 里 `enabled: true` 但
+`Register` 没挂它」这种要翻两处才能确诊的状态。要关掉某一环，改 `register.go` 删那一行。 这条对 6 个中间件一律适用，不是 XSS
+的特例。
 
 #### 那个会破坏 JSON 的 bug
 
@@ -459,15 +469,39 @@ token 解析规则在 `ruoyi-common-satoken/src/main/resources/common-satoken.ym
 除 sa-token 那份外，均在 `ruoyi-admin/src/main/resources/application.yml`。已确认 dev/prod 两个 profile **没有覆盖任何中间件相关
 key**，看主文件就够。
 
-| key                        | 行号                                                         | 作用                                        |
-|----------------------------|--------------------------------------------------------------|---------------------------------------------|
-| `security.excludes`        | 100-113                                                      | 鉴权免登名单                                |
-| `xss.enabled`              | 190-192                                                      | XSS 过滤开关                                |
-| `xss.excludeUrls`          | 193-196                                                      | XSS 跳过路径                                |
-| `web.cors.*`               | **缺失**                                                     | CORS，走代码默认值                          |
-| `spring.messages.basename` | 61-63                                                        | i18n 词条目录                               |
-| `message.path`             | 223                                                          | 被 `handleIoException` 读来静默 SSE 断连    |
-| `api-decrypt.*`            | 148-158                                                      | `CryptoFilter` 开关与 RSA 密钥              |
-| `sa-token.token-name`      | 91                                                           | token 的 header/param 名（`Authorization`） |
-| `sa-token.jwt-secret-key`  | 97                                                           | JWT 签名密钥                                |
-| `is-read-cookie: false`    | `ruoyi-common-satoken/src/main/resources/common-satoken.yml` | 关掉 cookie 认证                            |
+| key                        | 行号                                                         | 作用                                        | 本项目对应 key                                 |
+|----------------------------|--------------------------------------------------------------|---------------------------------------------|------------------------------------------------|
+| `security.excludes`        | 100-113                                                      | 鉴权免登名单                                | 阶段 1 落地                                    |
+| `xss.enabled`              | 190-192                                                      | XSS 过滤开关                                | **有意无对应项**（见上方 XSS 一节）            |
+| `xss.excludeUrls`          | 193-196                                                      | XSS 跳过路径                                | `middleware.xss.excludeUrls`                   |
+| `web.cors.*`               | **缺失**                                                     | CORS，走代码默认值                          | `middleware.cors.*`（Go 侧提到了 yaml）        |
+| `spring.messages.basename` | 61-63                                                        | i18n 词条目录                               | 无 —— 词条编进 Go 源码，见 `pkg/i18n`          |
+| `message.path`             | 223                                                          | 被 `handleIoException` 读来静默 SSE 断连    | 无 —— Go 直接判 `*net.OpError`                 |
+| `api-decrypt.*`            | 148-158                                                      | `CryptoFilter` 开关与 RSA 密钥              | 按需                                           |
+| `sa-token.token-name`      | 91                                                           | token 的 header/param 名（`Authorization`） | `jwt.header`                                   |
+| `sa-token.jwt-secret-key`  | 97                                                           | JWT 签名密钥                                | `jwt.secret`                                   |
+| `is-read-cookie: false`    | `ruoyi-common-satoken/src/main/resources/common-satoken.yml` | 关掉 cookie 认证                            | 阶段 1 —— 同样只从 header 取，不加 cookie 回落 |
+
+Go 侧还有几项 **原项目没有**的配置（都是本包相对 Java 的新增行为，前面各节已逐条说明原因）：
+`middleware.cors.exposedHeaders`、`middleware.traceId.*`、`middleware.accessLog.skipPaths`、
+`middleware.repeatableBody.maxBodySize`、`middleware.i18n.header`。
+
+## 配置怎么读到的
+
+结构体定义在 `pkg/config/middleware.go`（不在本包），import 方向是 `middleware → config`，
+`pkg/config` 保持叶子包、不依赖 gin。两个常量 `TraceIDHeader` / `LocaleHeader` 的 **定义**也在那边 （CORS 的默认
+`ExposedHeaders` 要用前者），本包只留别名。
+
+每个中间件两个构造函数，职责分开：
+
+| 形式                 | 配置来源                      | 用途                     |
+|----------------------|-------------------------------|--------------------------|
+| `XSS()`              | `config.Get().Middleware.XSS` | 正常注册，走 yaml        |
+| `XSSWithConfig(cfg)` | 调用方显式传入                | 测试、或要绕开全局配置时 |
+
+因此 **`config.Load` 必须早于 `middleware.Register`**，否则 `config.Get()` 会 panic （刻意为之：启动期编排错误不该留到运行时才发现）。配置在
+`r.Use(...)` 那一刻读一次并捕获进闭包，
+`Get()` 不进每请求的路径。
+
+`middleware` 段只放在 `configs/application.yaml`， **不要**放进 `system.yaml` / `auth.yaml` ——
+理由与「两个入口的中间件链必须保持一致」同源：拆进程后请求落到哪个进程不定， 在那里开分叉口子等于把那条约束变成可选项。

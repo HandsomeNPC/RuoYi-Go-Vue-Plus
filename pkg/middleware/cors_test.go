@@ -8,12 +8,14 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"ruoyi-go-vue-plus/pkg/config"
 )
 
 // newCORSEngine 构造只挂 CORS 的引擎，业务 handler 记录自己是否被执行到。
 //
 // reached 用来验证「预检不透给业务路由」这条约束 —— 光看响应码看不出来。
-func newCORSEngine(cfg CORSConfig) (*gin.Engine, *bool) {
+func newCORSEngine(cfg config.CORS) (*gin.Engine, *bool) {
 	reached := false
 	r := gin.New()
 	r.Use(CORSWithConfig(cfg))
@@ -53,13 +55,13 @@ func actual(r *gin.Engine, method, origin string) *httptest.ResponseRecorder {
 // 默认配置必须与 Java 侧 CorsProperties 的字段初始值一致 ——
 // 原项目 yaml 里没有 web.cors，生效的就是这些默认值。
 func TestDefaultCORSConfigMatchesJava(t *testing.T) {
-	cfg := DefaultCORSConfig()
+	cfg := config.DefaultMiddleware().CORS
 
 	if !cfg.AllowCredentials {
 		t.Error("AllowCredentials 应为 true")
 	}
-	if got, want := cfg.MaxAge, 1800*time.Second; got != want {
-		t.Errorf("MaxAge = %v, want %v", got, want)
+	if got, want := cfg.MaxAge(), 1800*time.Second; got != want {
+		t.Errorf("MaxAge() = %v, want %v", got, want)
 	}
 	for name, list := range map[string][]string{
 		"AllowedOriginPatterns": cfg.AllowedOriginPatterns,
@@ -75,7 +77,7 @@ func TestDefaultCORSConfigMatchesJava(t *testing.T) {
 // 这是本文件最重要的一条：配 "*" 也必须回显具体 Origin。
 // allowCredentials=true 配 Origin: * 是浏览器非法组合，带凭证的请求会全挂。
 func TestCORSEchoesOriginNotWildcard(t *testing.T) {
-	r, _ := newCORSEngine(DefaultCORSConfig())
+	r, _ := newCORSEngine(config.DefaultMiddleware().CORS)
 
 	w := actual(r, http.MethodGet, "https://admin.example.com")
 
@@ -89,7 +91,7 @@ func TestCORSEchoesOriginNotWildcard(t *testing.T) {
 
 // 预检请求必须在中间件里就结束，不能进业务 handler。
 func TestCORSPreflightDoesNotReachHandler(t *testing.T) {
-	r, reached := newCORSEngine(DefaultCORSConfig())
+	r, reached := newCORSEngine(config.DefaultMiddleware().CORS)
 
 	w := preflight(r, "https://admin.example.com", http.MethodPost, "content-type, authorization")
 
@@ -107,7 +109,7 @@ func TestCORSPreflightDoesNotReachHandler(t *testing.T) {
 // 配 "*" 时 Allow-Methods 回显请求的方法，对齐 checkHttpMethod
 // 在 ALL 时返回 singletonList(requestMethod) 的行为。
 func TestCORSPreflightEchoesRequestedMethodAndHeaders(t *testing.T) {
-	r, _ := newCORSEngine(DefaultCORSConfig())
+	r, _ := newCORSEngine(config.DefaultMiddleware().CORS)
 
 	w := preflight(r, "https://admin.example.com", http.MethodDelete, "content-type, authorization")
 
@@ -121,7 +123,7 @@ func TestCORSPreflightEchoesRequestedMethodAndHeaders(t *testing.T) {
 
 // 实际请求不该带预检专用的三个头。
 func TestCORSActualRequestOmitsPreflightHeaders(t *testing.T) {
-	r, reached := newCORSEngine(DefaultCORSConfig())
+	r, reached := newCORSEngine(config.DefaultMiddleware().CORS)
 
 	w := actual(r, http.MethodGet, "https://admin.example.com")
 
@@ -141,7 +143,7 @@ func TestCORSActualRequestOmitsPreflightHeaders(t *testing.T) {
 
 // 同源请求（无 Origin 头）不加任何 CORS 头，但仍要放行。
 func TestCORSSameOriginNoHeaders(t *testing.T) {
-	r, reached := newCORSEngine(DefaultCORSConfig())
+	r, reached := newCORSEngine(config.DefaultMiddleware().CORS)
 
 	w := actual(r, http.MethodGet, "")
 
@@ -155,7 +157,7 @@ func TestCORSSameOriginNoHeaders(t *testing.T) {
 
 // Vary 三个头无条件加（含同源请求），否则 CDN 会把 A 站的跨域头缓存给 B 站。
 func TestCORSAlwaysSetsVary(t *testing.T) {
-	r, _ := newCORSEngine(DefaultCORSConfig())
+	r, _ := newCORSEngine(config.DefaultMiddleware().CORS)
 
 	for _, origin := range []string{"", "https://admin.example.com"} {
 		w := actual(r, http.MethodGet, origin)
@@ -176,7 +178,7 @@ func TestCORSAlwaysSetsVary(t *testing.T) {
 // 应正常走后续链路 —— 对齐 CorsUtils.isPreFlightRequest 的双条件判断。
 func TestCORSPlainOptionsIsNotPreflight(t *testing.T) {
 	r := gin.New()
-	r.Use(CORSWithConfig(DefaultCORSConfig()))
+	r.Use(CORSWithConfig(config.DefaultMiddleware().CORS))
 	reached := false
 	r.OPTIONS("/test", func(c *gin.Context) {
 		reached = true
@@ -198,7 +200,7 @@ func TestCORSPlainOptionsIsNotPreflight(t *testing.T) {
 
 // 白名单外的来源要 403，且不能带 Allow-Origin 头。
 func TestCORSRejectsDisallowedOrigin(t *testing.T) {
-	cfg := DefaultCORSConfig()
+	cfg := config.DefaultMiddleware().CORS
 	cfg.AllowedOriginPatterns = []string{"https://admin.example.com"}
 	r, reached := newCORSEngine(cfg)
 
@@ -217,7 +219,7 @@ func TestCORSRejectsDisallowedOrigin(t *testing.T) {
 
 // 显式方法白名单：命中放行，未命中 403。
 func TestCORSMethodWhitelist(t *testing.T) {
-	cfg := DefaultCORSConfig()
+	cfg := config.DefaultMiddleware().CORS
 	cfg.AllowedMethods = []string{"GET", "POST"}
 	r, _ := newCORSEngine(cfg)
 
@@ -231,7 +233,7 @@ func TestCORSMethodWhitelist(t *testing.T) {
 
 // 显式头白名单：任一头不合规即整体拒绝，不是过滤掉那几个。
 func TestCORSHeaderWhitelistRejectsAny(t *testing.T) {
-	cfg := DefaultCORSConfig()
+	cfg := config.DefaultMiddleware().CORS
 	cfg.AllowedHeaders = []string{"Content-Type", "Authorization"}
 	r, _ := newCORSEngine(cfg)
 
@@ -248,7 +250,7 @@ func TestCORSHeaderWhitelistRejectsAny(t *testing.T) {
 
 // ExposedHeaders 配了才输出 —— TraceID 落地后要靠它把 X-Request-Id 透给前端。
 func TestCORSExposedHeaders(t *testing.T) {
-	cfg := DefaultCORSConfig()
+	cfg := config.DefaultMiddleware().CORS
 	cfg.ExposedHeaders = []string{"X-Request-Id", "Content-Disposition"}
 	r, _ := newCORSEngine(cfg)
 
@@ -263,7 +265,7 @@ func TestCORSExposedHeaders(t *testing.T) {
 // AllowCredentials=false 时不能输出该头（输出 "false" 也不行，
 // 浏览器只认这个头存在与否）。
 func TestCORSCredentialsDisabled(t *testing.T) {
-	cfg := DefaultCORSConfig()
+	cfg := config.DefaultMiddleware().CORS
 	cfg.AllowCredentials = false
 	r, _ := newCORSEngine(cfg)
 
@@ -277,16 +279,16 @@ func TestCORSCredentialsDisabled(t *testing.T) {
 	}
 }
 
-// MaxAge 为 0 时不输出该头，让浏览器用自己的默认值。
+// MaxAgeSeconds 为 0 时不输出该头，让浏览器用自己的默认值。
 func TestCORSZeroMaxAge(t *testing.T) {
-	cfg := DefaultCORSConfig()
-	cfg.MaxAge = 0
+	cfg := config.DefaultMiddleware().CORS
+	cfg.MaxAgeSeconds = 0
 	r, _ := newCORSEngine(cfg)
 
 	w := preflight(r, "https://a.com", http.MethodPost, "")
 
 	if got := w.Header().Get("Access-Control-Max-Age"); got != "" {
-		t.Errorf("Access-Control-Max-Age = %q, MaxAge=0 时应不输出", got)
+		t.Errorf("Access-Control-Max-Age = %q, MaxAgeSeconds=0 时应不输出", got)
 	}
 }
 
@@ -368,7 +370,7 @@ func TestSplitHeaderList(t *testing.T) {
 func TestCORSHeadersSurvivePanic(t *testing.T) {
 	r := gin.New()
 	r.Use(Recover())
-	r.Use(CORSWithConfig(DefaultCORSConfig()))
+	r.Use(CORSWithConfig(config.DefaultMiddleware().CORS))
 	r.GET("/test", func(c *gin.Context) {
 		panic("boom")
 	})

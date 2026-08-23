@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"io"
 	"log"
-	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+
+	"ruoyi-go-vue-plus/pkg/config"
 )
 
 // reHTMLTag 匹配一个 HTML 标签，对应 hutool 的 HtmlUtil.RE_HTML_MARK
@@ -29,45 +30,9 @@ import (
 // 而 hutool 的语义是「清除标签但保留标签内的内容」。
 var reHTMLTag = regexp.MustCompile(`<[^<]*?>`)
 
-// defaultXSSSkipMethods 跳过 XSS 清洗的请求方法，对齐 XssFilter.handleExcludeURL
-// 里 `HttpMethod.GET.matches(method) || HttpMethod.DELETE.matches(method)` 的判断。
-//
-// 这两个方法按 REST 语义不携带需要落库的内容，跳过是为了不动查询串 ——
-// 搜索关键词里出现 `<` 是正常输入，清洗会把它连同后面的字符一起吃掉。
-//
-// **但这留下了一个真实的缺口**：带 XSS 载荷的 GET 查询参数不经任何清洗。
-// 原项目就是这样，本包对齐；缺口本身由输出侧兜住（见下方 XSSWithConfig 的说明）。
-// 提取成配置项而非硬编码，是为了让需要收紧的进程能改配置而不必改这个文件。
-var defaultXSSSkipMethods = []string{http.MethodGet, http.MethodDelete}
-
-// XSSConfig XSS 清洗配置，对应 web/config/properties/XssProperties.java（前缀 xss）。
-//
-// 没有对应 xss.enabled 的字段：Java 用 @ConditionalOnProperty 决定要不要注册这个
-// filter，Go 侧「注册」就是 router.go 里那一行 r.Use(XSS())，不写即关闭。
-// 再加一个布尔开关只会造出「注册了但不生效」这种要翻两处配置才能确诊的状态。
-type XSSConfig struct {
-	// ExcludeURLs 跳过清洗的路径，Ant 风格（见 path.go）。
-	//
-	// 对应 xss.excludeUrls（application.yml:193-196），现为
-	// /system/notice 与 /warm-flow/save-json —— 富文本公告和流程定义 JSON
-	// 需要原样存标签，清洗会直接破坏内容。
-	ExcludeURLs []string
-
-	// SkipMethods 跳过清洗的请求方法，为空表示用 defaultXSSSkipMethods。
-	SkipMethods []string
-}
-
-// DefaultXSSConfig 返回对齐原项目 yaml 的默认配置。
-func DefaultXSSConfig() XSSConfig {
-	return XSSConfig{
-		ExcludeURLs: []string{"/system/notice", "/warm-flow/save-json"},
-		SkipMethods: defaultXSSSkipMethods,
-	}
-}
-
-// XSS 请求清洗中间件，用默认配置。
+// XSS 请求清洗中间件，配置取自 config.Get()。
 func XSS() gin.HandlerFunc {
-	return XSSWithConfig(DefaultXSSConfig())
+	return XSSWithConfig(config.Get().Middleware.XSS)
 }
 
 // XSSWithConfig 请求清洗中间件，对应原项目
@@ -107,11 +72,11 @@ func XSS() gin.HandlerFunc {
 // RepeatableFilter 之前，拦截器读到的是**清洗后**的 body；Go 侧日志在 XSS
 // 之前，记的是**原始**报文。这是有意的 —— 日志的用途是排查和取证，
 // 需要看到攻击者到底发了什么，清洗后的版本反而把证据擦掉了。
-func XSSWithConfig(cfg XSSConfig) gin.HandlerFunc {
+func XSSWithConfig(cfg config.XSS) gin.HandlerFunc {
 	skip := make(map[string]struct{}, len(cfg.SkipMethods))
 	methods := cfg.SkipMethods
 	if len(methods) == 0 {
-		methods = defaultXSSSkipMethods
+		methods = config.DefaultMiddleware().XSS.SkipMethods
 	}
 	for _, m := range methods {
 		skip[strings.ToUpper(strings.TrimSpace(m))] = struct{}{}

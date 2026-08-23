@@ -13,6 +13,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/response"
 )
@@ -22,6 +23,20 @@ func TestMain(m *testing.M) {
 	// 中间件靠 log 打日志，测试里会刻意触发 panic/异常分支，
 	// 不静音会把真实失败信息淹掉。
 	log.SetOutput(io.Discard)
+
+	// 无参构造函数（XSS() / I18n() 等）读 config.Get()，未 Load 过会 panic ——
+	// 那是刻意的（启动期编排错误不该留到运行时），但测试得先把配置备好。
+	//
+	// 有意加载**真实**的 configs/*.yaml 而不是就地拼一份最小配置：
+	// 这样一旦 yaml 里的中间件参数被改坏（exposedHeaders 漏了 X-Request-Id、
+	// excludeUrls 拼错路径之类），本包断言默认行为的用例会直接失败，
+	// 而不是等到线上才发现。application.yaml 缺 server 段过不了校验，
+	// 所以带上 system.yaml。
+	if _, err := config.Load(
+		"../../configs/application.yaml", "../../configs/system.yaml"); err != nil {
+		panic("middleware 测试无法加载配置: " + err.Error())
+	}
+
 	m.Run()
 }
 

@@ -10,6 +10,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"ruoyi-go-vue-plus/pkg/config"
+
 	"ruoyi-go-vue-plus/pkg/response"
 )
 
@@ -18,7 +20,7 @@ import (
 // handler 用 ShouldBindJSON 绑参，是为了验证「中间件读过 body 之后
 // handler 仍能正常绑定」—— 这正是本中间件存在的全部意义。
 // 同时回写中间件缓存里看到的 body，确认两条读取路径拿到的是同一份数据。
-func newBodyEngine(cfg RepeatableBodyConfig) *gin.Engine {
+func newBodyEngine(cfg config.RepeatableBody) *gin.Engine {
 	r := gin.New()
 	r.Use(Recover())
 	r.Use(RepeatableBodyWithConfig(cfg))
@@ -61,7 +63,7 @@ func bodyPost(r *gin.Engine, contentType, body string) *httptest.ResponseRecorde
 // 这条挂了说明整个中间件是负作用 —— 它把 body 吃掉了。
 func TestRepeatableBodyAllowsRebind(t *testing.T) {
 	body := `{"name":"张三"}`
-	w := bodyPost(newBodyEngine(DefaultRepeatableBodyConfig()), "application/json", body)
+	w := bodyPost(newBodyEngine(config.DefaultMiddleware().RepeatableBody), "application/json", body)
 
 	var got struct {
 		Name         string `json:"name"`
@@ -226,7 +228,7 @@ func TestRepeatableBodyBuffersDelete(t *testing.T) {
 // 报出一个跟真实原因毫无关系的解析错误。
 func TestRepeatableBodyRejectsOversized(t *testing.T) {
 	const maxSize = 16
-	cfg := RepeatableBodyConfig{
+	cfg := config.RepeatableBody{
 		ContentTypes: []string{ContentTypeJSON},
 		MaxBodySize:  maxSize,
 	}
@@ -271,7 +273,7 @@ func TestRepeatableBodyRejectsOversized(t *testing.T) {
 
 // 提前拒绝：ContentLength 已经报超限就不该白读一遍。
 func TestRepeatableBodyRejectsByContentLength(t *testing.T) {
-	cfg := RepeatableBodyConfig{
+	cfg := config.RepeatableBody{
 		ContentTypes: []string{ContentTypeJSON},
 		MaxBodySize:  8,
 	}
@@ -295,7 +297,7 @@ func TestRepeatableBodyRejectsByContentLength(t *testing.T) {
 // 刚好等于上限必须放行 —— 边界不能差一。
 func TestRepeatableBodyAllowsExactLimit(t *testing.T) {
 	body := `{"name":"ab"}`
-	cfg := RepeatableBodyConfig{
+	cfg := config.RepeatableBody{
 		ContentTypes: []string{ContentTypeJSON},
 		MaxBodySize:  int64(len(body)),
 	}
@@ -324,7 +326,7 @@ func TestRepeatableBodyAllowsExactLimit(t *testing.T) {
 func TestRepeatableBodyZeroMaxSizeFallsBack(t *testing.T) {
 	var buffered bool
 	r := gin.New()
-	r.Use(RepeatableBodyWithConfig(RepeatableBodyConfig{
+	r.Use(RepeatableBodyWithConfig(config.RepeatableBody{
 		ContentTypes: []string{ContentTypeJSON},
 	}))
 	r.POST("/test", func(c *gin.Context) {

@@ -8,54 +8,19 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/errs"
 )
 
-// ContentTypeJSON JSON 请求的 content-type 前缀。
+// ContentTypeJSON JSON 请求的 content-type 前缀，定义在 pkg/config。
 //
-// 用前缀匹配而非全等，因为实际请求多半带参数（application/json;charset=UTF-8），
-// 对齐 RepeatableFilter 里的 startsWithIgnoreCase(contentType, APPLICATION_JSON_VALUE)。
-const ContentTypeJSON = "application/json"
+// 别名保留是因为本包内部与调用方都在用它；定义搬到 config 是为了让
+// RepeatableBody.ContentTypes 的默认值能引用到（import 方向 middleware → config）。
+const ContentTypeJSON = config.ContentTypeJSON
 
-// defaultMaxBodySize 默认缓存上限 10MB，与 Java 侧 spring.servlet.multipart.max-file-size
-// 取同一个数量级（application.yml:70）。
-//
-// 原项目这里**没有上限**：RepeatedlyRequestWrapper 用 IoUtil.readBytes 一次读完，
-// 而 Tomcat 的 max-http-form-post-size 只管表单、不管 JSON。Java 侧能这么写是因为
-// 它前面有 nginx 的 client_max_body_size 兜着；Go 侧仍然要自己设限 ——
-// 无上限的 io.ReadAll 等于让调用方决定进程吃多少内存，一个几 GB 的 chunked
-// 请求就能把进程 OOM 掉，这是纯粹的放大攻击（代价在服务端，成本在客户端）。
-const defaultMaxBodySize = 10 << 20
-
-// RepeatableBodyConfig 可重复读 body 的配置。
-type RepeatableBodyConfig struct {
-	// ContentTypes 需要缓存的 content-type 前缀（小写），大小写不敏感匹配。
-	//
-	// 默认只含 application/json，与 RepeatableFilter 一致。**不要**为了让日志
-	// 打得更全而把 multipart/form-data 加进来：那会把上传的文件整个读进内存，
-	// 原项目允许 10MB 单文件 / 20MB 单请求，并发几个就够把进程压垮。
-	//
-	// 表单请求（application/x-www-form-urlencoded）也不需要加：
-	// net/http 的 ParseForm 会把解析结果缓存进 r.PostForm，
-	// 后续中间件与 handler 读的是解析结果而不是 body，天然可重复。
-	// 这与 Java 侧 AccessLog 走 getParameterMap() 而非读 body 是同一个道理。
-	ContentTypes []string
-
-	// MaxBodySize 允许缓存的最大字节数，超出则拒绝请求。<=0 表示用默认值。
-	MaxBodySize int64
-}
-
-// DefaultRepeatableBodyConfig 返回默认配置。
-func DefaultRepeatableBodyConfig() RepeatableBodyConfig {
-	return RepeatableBodyConfig{
-		ContentTypes: []string{ContentTypeJSON},
-		MaxBodySize:  defaultMaxBodySize,
-	}
-}
-
-// RepeatableBody 可重复读请求体中间件，用默认配置。
+// RepeatableBody 可重复读请求体中间件，配置取自 config.Get()。
 func RepeatableBody() gin.HandlerFunc {
-	return RepeatableBodyWithConfig(DefaultRepeatableBodyConfig())
+	return RepeatableBodyWithConfig(config.Get().Middleware.RepeatableBody)
 }
 
 // RepeatableBodyWithConfig 可重复读请求体中间件，对应原项目
@@ -76,10 +41,10 @@ func RepeatableBody() gin.HandlerFunc {
 // 相比 Java 多做一件事：同时把 body 存进 gin.BodyBytesKey，
 // 这样 handler 用 c.ShouldBindBodyWith 能直接复用缓存、多次绑定不同结构体，
 // 不必自己去 BodyBytes 里捞。两个键存的是同一个底层数组，没有额外拷贝。
-func RepeatableBodyWithConfig(cfg RepeatableBodyConfig) gin.HandlerFunc {
+func RepeatableBodyWithConfig(cfg config.RepeatableBody) gin.HandlerFunc {
 	maxSize := cfg.MaxBodySize
 	if maxSize <= 0 {
-		maxSize = defaultMaxBodySize
+		maxSize = config.DefaultMiddleware().RepeatableBody.MaxBodySize
 	}
 	// 预先转小写，省掉每请求一次的 ToLower —— 配置在启动后不变。
 	types := make([]string, 0, len(cfg.ContentTypes))

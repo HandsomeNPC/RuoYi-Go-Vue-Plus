@@ -3,24 +3,16 @@ package middleware
 import (
 	"github.com/gin-gonic/gin"
 
+	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/i18n"
 )
 
-// LocaleHeader 解析语言的请求头名。
+// LocaleHeader 解析语言的请求头名，定义在 pkg/config。
 //
 // **是 content-language，不是 Accept-Language** —— 对齐原项目
 // web/core/I18nLocaleResolver.java:24 的 getHeader("content-language")。
-//
-// 这是个非标准用法：按 RFC 9110，content-language 描述的是**报文自身
-// 内容**的语言（「我这个请求体是中文写的」），表达「请把响应给我翻成
-// 中文」的标准头是 Accept-Language。但前端发的就是这个头，头名对不上
-// 就等于整个 i18n 不生效，所以这里跟着原项目走。
-//
-// 没有同时兼容 Accept-Language：浏览器会**自动**带上 Accept-Language
-// （通常是操作系统语言），一旦回落到它，用户在前端切成英文后，
-// 只要某个请求漏发 content-language，就会拿到跟界面语言不一致的文案 ——
-// 而这种「偶尔一句中文」的现象极难定位。宁可只认一个显式来源。
-const LocaleHeader = "content-language"
+// 完整理由（为何非标准、为何不兼容 Accept-Language）见 config.LocaleHeader。
+const LocaleHeader = config.LocaleHeader
 
 // LocaleKey 语言存进 gin.Context 的键名。
 //
@@ -29,34 +21,9 @@ const LocaleHeader = "content-language"
 // 层从 context.Context 取，走 i18n.FromContext。
 const LocaleKey = "locale"
 
-// I18nConfig 国际化中间件配置。
-type I18nConfig struct {
-	// Header 解析语言的请求头名，为空表示用 LocaleHeader。
-	//
-	// 做成可配是为了将来前端若改用标准的 Accept-Language，
-	// 换配置即可，不必改这个文件。
-	Header string
-
-	// Default 请求未指定语言、或语言标记不合规时使用的语言。
-	//
-	// 为空表示用 i18n.DefaultLocale。对应 I18nLocaleResolver 回落
-	// Locale.getDefault()，但取的是固定值而非机器区域 —— 详见
-	// i18n.DefaultLocale 的说明（多副本部署下机器区域会让同一请求
-	// 在不同节点得到不同语言）。
-	Default i18n.Locale
-}
-
-// DefaultI18nConfig 返回对齐原项目行为的默认配置。
-func DefaultI18nConfig() I18nConfig {
-	return I18nConfig{
-		Header:  LocaleHeader,
-		Default: i18n.DefaultLocale,
-	}
-}
-
-// I18n 国际化中间件，用默认配置。
+// I18n 国际化中间件，配置取自 config.Get()。
 func I18n() gin.HandlerFunc {
-	return I18nWithConfig(DefaultI18nConfig())
+	return I18nWithConfig(config.Get().Middleware.I18n)
 }
 
 // I18nWithConfig 国际化中间件，对应原项目
@@ -94,7 +61,7 @@ func I18n() gin.HandlerFunc {
 //     （未定语言）从而回落默认值，不算漏洞；Go 侧显式走 i18n.Parse 的
 //     白名单，因为这个值会进日志，带 CR/LF 的输入能伪造日志行。
 //   - **回显 Content-Language 响应头**。见下方说明。
-func I18nWithConfig(cfg I18nConfig) gin.HandlerFunc {
+func I18nWithConfig(cfg config.I18n) gin.HandlerFunc {
 	header := cfg.Header
 	if header == "" {
 		header = LocaleHeader

@@ -12,6 +12,9 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+
+	"ruoyi-go-vue-plus/pkg/config"
+
 	"github.com/gin-gonic/gin/binding"
 )
 
@@ -24,7 +27,7 @@ var hutoolRegex = regexp.MustCompile(`(<[^<]*?>)|(<[\s]*?/[^<]*?>)|(<[^<]*?/[\s]
 //
 // handler 回显它**实际收到**的参数 —— 这个中间件的全部意义就是让 handler
 // 拿到清洗后的值，所以断言必须落在 handler 侧，而不是中间件内部状态。
-func newXSSEngine(cfg XSSConfig) *gin.Engine {
+func newXSSEngine(cfg config.XSS) *gin.Engine {
 	r := gin.New()
 	r.Use(Recover())
 	r.Use(RepeatableBody())
@@ -77,7 +80,7 @@ func doXSS(t *testing.T, r *gin.Engine, method, target, contentType, body string
 // 核心用例：JSON 体里的标签被剔掉，且 handler 仍能正常绑定。
 func TestXSSCleansJSONBody(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	r := newXSSEngine(DefaultXSSConfig())
+	r := newXSSEngine(config.DefaultMiddleware().XSS)
 
 	out := doXSS(t, r, http.MethodPost, "/test", "application/json",
 		`{"name":"<script>alert(1)</script>hello"}`)
@@ -97,7 +100,7 @@ func TestXSSCleansJSONBody(t *testing.T) {
 // 这条用例锁住「结构完整」这个相对原项目的有意偏差，别为了对齐 Java 改回去。
 func TestXSSDoesNotCorruptJSONStructure(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	r := newXSSEngine(DefaultXSSConfig())
+	r := newXSSEngine(config.DefaultMiddleware().XSS)
 
 	out := doXSS(t, r, http.MethodPost, "/test", "application/json",
 		`{"a":"1<2","b":"3>4"}`)
@@ -177,7 +180,7 @@ func TestXSSCleansTopLevelJSONString(t *testing.T) {
 // 查询串要被清洗，含 percent 编码的载荷同样要拦下。
 func TestXSSCleansQuery(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	r := newXSSEngine(DefaultXSSConfig())
+	r := newXSSEngine(config.DefaultMiddleware().XSS)
 
 	cases := []struct{ name, target, want string }{
 		{"裸标签", "/test?q=<script>x</script>", "x"},
@@ -198,7 +201,7 @@ func TestXSSCleansQuery(t *testing.T) {
 // 表单字段要被清洗。
 func TestXSSCleansForm(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	r := newXSSEngine(DefaultXSSConfig())
+	r := newXSSEngine(config.DefaultMiddleware().XSS)
 
 	out := doXSS(t, r, http.MethodPost, "/test",
 		"application/x-www-form-urlencoded", "f=%3Cb%3Ebold%3C%2Fb%3E")
@@ -214,7 +217,7 @@ func TestXSSCleansForm(t *testing.T) {
 // 有意对齐原项目，而不是漏了 —— 真正的防线在输出侧。
 func TestXSSSkipsGetAndDelete(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	r := newXSSEngine(DefaultXSSConfig())
+	r := newXSSEngine(config.DefaultMiddleware().XSS)
 
 	for _, m := range []string{http.MethodGet, http.MethodDelete} {
 		t.Run(m, func(t *testing.T) {
@@ -229,7 +232,7 @@ func TestXSSSkipsGetAndDelete(t *testing.T) {
 // excludeUrls 命中的路径整体跳过，富文本原样送达。
 func TestXSSSkipsExcludedURLs(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	r := newXSSEngine(DefaultXSSConfig())
+	r := newXSSEngine(config.DefaultMiddleware().XSS)
 
 	raw := `{"content":"<p>公告正文</p>"}`
 	out := doXSS(t, r, http.MethodPost, "/system/notice", "application/json", raw)

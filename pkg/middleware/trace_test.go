@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+
+	"ruoyi-go-vue-plus/pkg/config"
 )
 
 // newTraceEngine 构造只挂 TraceID 的引擎，业务 handler 把它在两处
@@ -17,7 +19,7 @@ import (
 //
 // 分别取 gin.Context 和 request 的 context.Context 是刻意的：
 // 两条取值路径都得能拿到同一个 id，前者给 handler，后者给 service 层。
-func newTraceEngine(cfg TraceIDConfig) *gin.Engine {
+func newTraceEngine(cfg config.TraceID) *gin.Engine {
 	r := gin.New()
 	r.Use(TraceIDWithConfig(cfg))
 	r.GET("/test", func(c *gin.Context) {
@@ -43,7 +45,7 @@ func traceGet(r *gin.Engine, inbound string) *httptest.ResponseRecorder {
 // 没有入站 id 时应生成一个，且响应头与两处上下文里的值三者一致 ——
 // 不一致意味着日志里的 id 和前端看到的对不上，整个机制就失去意义。
 func TestTraceIDGeneratesAndPropagates(t *testing.T) {
-	w := traceGet(newTraceEngine(DefaultTraceIDConfig()), "")
+	w := traceGet(newTraceEngine(config.DefaultMiddleware().TraceID), "")
 
 	id := w.Header().Get(TraceIDHeader)
 	if id == "" {
@@ -59,7 +61,7 @@ func TestTraceIDGeneratesAndPropagates(t *testing.T) {
 
 // 每个请求必须拿到不同的 id，否则无法区分并发请求的日志。
 func TestTraceIDUniquePerRequest(t *testing.T) {
-	r := newTraceEngine(DefaultTraceIDConfig())
+	r := newTraceEngine(config.DefaultMiddleware().TraceID)
 
 	seen := make(map[string]bool, 100)
 	for range 100 {
@@ -89,7 +91,7 @@ func TestNewTraceIDFormat(t *testing.T) {
 func TestTraceIDReusesInbound(t *testing.T) {
 	inbound := "0af7651916cd43dd8448eb211c80319c"
 
-	w := traceGet(newTraceEngine(DefaultTraceIDConfig()), inbound)
+	w := traceGet(newTraceEngine(config.DefaultMiddleware().TraceID), inbound)
 
 	if got := w.Header().Get(TraceIDHeader); got != inbound {
 		t.Errorf("响应头 id = %q, want %q（应沿用入站 id）", got, inbound)
@@ -102,7 +104,7 @@ func TestTraceIDReusesInbound(t *testing.T) {
 // TrustInbound=false 时必须忽略入站 id 自己生成 ——
 // 进程直接暴露在公网时靠这个开关防止调用方给一万个请求发同一个 id。
 func TestTraceIDDistrustInbound(t *testing.T) {
-	cfg := DefaultTraceIDConfig()
+	cfg := config.DefaultMiddleware().TraceID
 	cfg.TrustInbound = false
 	inbound := "attacker-supplied-id"
 
@@ -132,7 +134,7 @@ func TestTraceIDRejectsMaliciousInbound(t *testing.T) {
 		"CORS 头闭合字符": "abc\"def",
 	}
 
-	r := newTraceEngine(DefaultTraceIDConfig())
+	r := newTraceEngine(config.DefaultMiddleware().TraceID)
 	for name, inbound := range cases {
 		t.Run(name, func(t *testing.T) {
 			w := traceGet(r, inbound)
@@ -198,7 +200,7 @@ func TestTraceIDHeaderSetBeforeHandlerWrites(t *testing.T) {
 
 // 自定义头名要生效，且不能再读写默认头名。
 func TestTraceIDCustomHeader(t *testing.T) {
-	cfg := DefaultTraceIDConfig()
+	cfg := config.DefaultMiddleware().TraceID
 	cfg.Header = "X-Trace-Id"
 	r := newTraceEngine(cfg)
 
@@ -217,7 +219,7 @@ func TestTraceIDCustomHeader(t *testing.T) {
 
 // Header 留空要回落到默认头名，而不是写出一个空名字的头。
 func TestTraceIDEmptyHeaderFallsBack(t *testing.T) {
-	w := traceGet(newTraceEngine(TraceIDConfig{TrustInbound: true}), "")
+	w := traceGet(newTraceEngine(config.TraceID{TrustInbound: true}), "")
 
 	if w.Header().Get(TraceIDHeader) == "" {
 		t.Errorf("Header 为空时应回落到 %s", TraceIDHeader)
@@ -227,14 +229,14 @@ func TestTraceIDEmptyHeaderFallsBack(t *testing.T) {
 // TraceID 必须在 CORS 的 ExposedHeaders 里，否则跨域下浏览器挡住这个头，
 // 前端拿不到 traceId 就无法和服务端日志对账。两处是配套的。
 func TestTraceIDExposedByDefaultCORS(t *testing.T) {
-	exposed := DefaultCORSConfig().ExposedHeaders
+	exposed := config.DefaultMiddleware().CORS.ExposedHeaders
 
 	for _, h := range exposed {
 		if h == TraceIDHeader {
 			return
 		}
 	}
-	t.Errorf("DefaultCORSConfig().ExposedHeaders = %v, 应含 %s", exposed, TraceIDHeader)
+	t.Errorf("config.DefaultMiddleware().CORS.ExposedHeaders = %v, 应含 %s", exposed, TraceIDHeader)
 }
 
 // Recover 的日志要带上 traceId，否则排查时拿到 traceId 也搜不到异常那行 ——

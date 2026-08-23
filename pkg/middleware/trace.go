@@ -7,13 +7,16 @@ import (
 	"math/rand/v2"
 
 	"github.com/gin-gonic/gin"
+
+	"ruoyi-go-vue-plus/pkg/config"
 )
 
-// TraceIDHeader 链路 id 的请求/响应头名。
+// TraceIDHeader 链路 id 的请求/响应头名，定义在 pkg/config。
 //
-// 用 X-Request-Id 而非 W3C 的 traceparent：前者是 nginx（$request_id）、
-// 各家网关和前端 axios 拦截器的既有约定，接入成本最低。
-const TraceIDHeader = "X-Request-Id"
+// 别名放在这里是因为本包的调用方（和测试）习惯从 middleware 取它；
+// 定义之所以在 config，是 CORS 的默认 ExposedHeaders 要用它，
+// 而 import 方向是 middleware → config，反过来会成环。
+const TraceIDHeader = config.TraceIDHeader
 
 // TraceIDKey 存进 gin.Context 的键名。
 //
@@ -34,37 +37,9 @@ type traceIDCtxKey struct{}
 // 这个值会进每一条日志和响应头，不能让调用方决定它有多大。
 const traceIDMaxLength = 64
 
-// TraceIDConfig 链路 id 中间件配置。
-//
-// 原项目没有对照物（全项目零 MDC.put、零 Sleuth，logback-plus.xml 里的
-// %tid 是被注释掉的 SkyWalking 残留），这里是 Go 侧自主设计。
-type TraceIDConfig struct {
-	// Header 读写链路 id 的头名，默认 TraceIDHeader。
-	Header string
-
-	// TrustInbound 是否沿用入站请求头里已有的 id。
-	//
-	// 默认 true —— 上游 nginx / 网关 / 调用方已经生成过 id 时必须沿用，
-	// 否则同一次调用在各进程里拿到不同 id，链路就断了。本项目是
-	// 「多模块拆进程 + nginx 负载均衡」，auth 与 system 之间将来若有
-	// HTTP 调用，也靠这个头串起来。
-	//
-	// 反过来，进程直接暴露在公网时应关掉：id 由调用方决定意味着
-	// 它可以给一万个请求发同一个 id，把日志检索搅乱。
-	TrustInbound bool
-}
-
-// DefaultTraceIDConfig 返回默认配置。
-func DefaultTraceIDConfig() TraceIDConfig {
-	return TraceIDConfig{
-		Header:       TraceIDHeader,
-		TrustInbound: true,
-	}
-}
-
-// TraceID 链路 id 中间件，用默认配置。
+// TraceID 链路 id 中间件，配置取自 config.Get()。
 func TraceID() gin.HandlerFunc {
-	return TraceIDWithConfig(DefaultTraceIDConfig())
+	return TraceIDWithConfig(config.Get().Middleware.TraceID)
 }
 
 // TraceIDWithConfig 链路 id 中间件：取或生成 id，写进上下文与响应头。
@@ -83,9 +58,9 @@ func TraceID() gin.HandlerFunc {
 //  3. 入站 id 必须校验后才使用，见 sanitizeTraceID。
 //
 // 前端要读到这个头，还需要它出现在 Access-Control-Expose-Headers 里 ——
-// 跨域下 JS 默认只能读 CORS 安全清单里的几个头。DefaultCORSConfig
-// 已经把它加进 ExposedHeaders，两处是配套的，改一处要想到另一处。
-func TraceIDWithConfig(cfg TraceIDConfig) gin.HandlerFunc {
+// 跨域下 JS 默认只能读 CORS 安全清单里的几个头。config.DefaultMiddleware()
+// 已经把它加进 CORS.ExposedHeaders，两处是配套的，改一处要想到另一处。
+func TraceIDWithConfig(cfg config.TraceID) gin.HandlerFunc {
 	header := cfg.Header
 	if header == "" {
 		header = TraceIDHeader

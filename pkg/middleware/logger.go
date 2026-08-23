@@ -11,12 +11,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/constant"
 )
-
-// defaultMaxParamLength 参数日志的最大长度（字符数），对应
-// PlusWebInvokeTimeInterceptor.MAX_PARAM_LOG_LENGTH = 4000。
-const defaultMaxParamLength = 4000
 
 // truncatedSuffix 截断标记。
 //
@@ -36,34 +33,9 @@ const maxSanitizeSize = 256 << 10
 // msgSensitiveParamOmitted 参数无法结构化脱敏且疑似含敏感字段时的占位文案。
 const msgSensitiveParamOmitted = "<参数无法解析且疑似含敏感字段，已省略>"
 
-// AccessLogConfig 请求日志配置。
-type AccessLogConfig struct {
-	// MaxParamLength 参数日志最大字符数，<=0 表示用默认值 4000。
-	//
-	// 单位是字符（rune）不是字节，对齐 Java 的 substring 语义；
-	// 按字节截会把一个中文字符劈成两半，日志里出现乱码。
-	MaxParamLength int
-
-	// SkipPaths 不打日志的路径（精确匹配 URL.Path）。
-	//
-	// Java 侧没有这个开关（拦截器注册在 /**）。Go 侧加它是给
-	// 健康检查、探针这类高频且零信息量的路径用的 —— nginx / k8s
-	// 每几秒探一次，不排除掉会把真正有用的日志冲走。
-	// 默认为空，即行为与原项目一致。
-	SkipPaths []string
-}
-
-// DefaultAccessLogConfig 返回默认配置，对齐原项目行为。
-func DefaultAccessLogConfig() AccessLogConfig {
-	return AccessLogConfig{
-		MaxParamLength: defaultMaxParamLength,
-		SkipPaths:      nil,
-	}
-}
-
-// AccessLog 请求日志中间件，用默认配置。
+// AccessLog 请求日志中间件，配置取自 config.Get()。
 func AccessLog() gin.HandlerFunc {
-	return AccessLogWithConfig(DefaultAccessLogConfig())
+	return AccessLogWithConfig(config.Get().Middleware.AccessLog)
 }
 
 // AccessLogWithConfig 请求日志中间件，对应原项目
@@ -88,10 +60,10 @@ func AccessLog() gin.HandlerFunc {
 //   - 结束行多打一个 HTTP 状态码。本项目业务码恒回 200，这个字段
 //     平时确实没信息量，但它正好能暴露那几条不走业务码的路径：
 //     CORS 拒绝的 403、未命中路由的 404/405。
-func AccessLogWithConfig(cfg AccessLogConfig) gin.HandlerFunc {
+func AccessLogWithConfig(cfg config.AccessLog) gin.HandlerFunc {
 	maxLen := cfg.MaxParamLength
 	if maxLen <= 0 {
-		maxLen = defaultMaxParamLength
+		maxLen = config.DefaultMaxParamLength
 	}
 	skip := make(map[string]struct{}, len(cfg.SkipPaths))
 	for _, p := range cfg.SkipPaths {

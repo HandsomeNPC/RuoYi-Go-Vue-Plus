@@ -31,3 +31,45 @@ jwt:
   secret: change-me-in-production
   expireMinutes: 720
   header: Authorization
+
+# 全局中间件。此处写的都是代码默认值(pkg/config.DefaultMiddleware)的显式重述，
+# 由 config 包的测试锁住一致性 —— 改这里的值会真的改行为，改错也会被测试发现。
+#
+# 有意没有 enabled 开关：Go 侧「注册」就是 middleware.Register 里那行 r.Use(XSS())，
+# 不写即关闭。再加布尔开关只会造出「注册了但不生效」这种要翻两处才能确诊的状态。
+#
+# **不要**放进 system.yaml / auth.yaml：拆进程后请求经 nginx 落到哪个进程不定，
+# 两个入口的中间件行为必须一致，在那里开分叉口子等于把这条约束变成可选项。
+middleware:
+  cors:
+    allowCredentials: true          # 允许携带 cookie / Authorization
+    allowedOriginPatterns: [ "*" ]    # 支持 * 通配，如 https://*.example.com；命中后回显请求的 Origin
+    allowedMethods: [ "*" ]           # * 表示回显预检请求的方法
+    allowedHeaders: [ "*" ]           # * 表示回显预检请求的头
+    exposedHeaders: # 允许前端 JS 读取的响应头
+      - X-Request-Id                # 不给前端就拿不到 traceId，无法与服务端日志对账
+    maxAgeSeconds: 1800           # 预检结果缓存时长(秒)
+
+  xss:
+    excludeUrls: # 跳过清洗的路径，Ant 风格(? 单字符 / * 单层 / ** 任意层)
+      - /system/notice              # 富文本公告，清洗会破坏内容
+      - /warm-flow/save-json        # 流程定义 JSON，需原样存标签
+    skipMethods: [ GET, DELETE ]      # 按 REST 语义不携带落库内容；留空则用这两个默认值
+
+  accessLog:
+    maxParamLength: 4000            # 参数日志最大字符数(rune 非字节)，<=0 用默认 4000
+    # skipPaths:                    # 不打日志的路径(精确匹配)，给探针这类高频零信息量请求用
+    #   - /system/ping              # 默认不排除任何路径，与原项目一致
+
+  traceId:
+    header: X-Request-Id            # 读写链路 id 的头名，与 cors.exposedHeaders 配套
+    trustInbound: true              # 沿用上游 nginx/网关已生成的 id；进程直接暴露公网时应关掉
+
+  repeatableBody:
+    contentTypes: # 需要缓存的 content-type 前缀，大小写不敏感
+      - application/json            # 不要加 multipart/form-data —— 会把上传文件整个读进内存
+    maxBodySize: 10485760           # 10MB，超出直接拒绝请求(不截断)
+
+  i18n:
+    header: content-language        # 对齐原项目，不是 Accept-Language(理由见 pkg/config/middleware.go)
+    default: zh-cn                  # 请求未指定或语言标记不合规时使用

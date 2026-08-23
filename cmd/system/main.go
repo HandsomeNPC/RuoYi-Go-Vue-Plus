@@ -50,25 +50,10 @@ func run() error {
 
 	// 不用 gin.Default()：它自带的 gin.Recovery() 只写 500 空响应，
 	// 与 middleware.Recover() 的职责重叠且语义不符（详见 pkg/middleware/README.md）。
-	// Recover 放最外层，才能兜住后续中间件自身的 panic。
 	r := gin.New()
-	r.Use(middleware.Recover())
-	// CORS 必须在鉴权之前：预检是 OPTIONS 且不带 token，
-	// 先过鉴权会被 401，浏览器就拿不到跨域头了。
-	r.Use(middleware.CORS())
-	// TraceID 紧跟 CORS：越靠前，越多日志能带上链路 id。
-	// 放在 CORS 之后是因为跨域预检会被 CORS 就地终止，不进业务也不需要 id。
-	r.Use(middleware.TraceID())
-	// RepeatableBody 必须在 AccessLog 之前：body 是一次性的 io.ReadCloser，
-	// 日志中间件读完 handler 就绑不到参数了。
-	r.Use(middleware.RepeatableBody())
-	r.Use(middleware.AccessLog())
-	// XSS 必须在 AccessLog 之后、且在任何读 gin 参数的一环之前：
-	// 日志要记原始报文（排查取证看的是攻击者到底发了什么），而 gin 的
-	// c.Query 一旦缓存过 URL.Query()，XSS 再改 RawQuery 就静默失效了。
-	r.Use(middleware.XSS())
-	// I18n 必须在鉴权之前：鉴权失败的提示文案要走词条，得先有语言。
-	r.Use(middleware.I18n())
+	// 注册顺序与两个进程的一致性由 middleware.Register 保证。
+	// 它读 config.Get()，所以必须在 config.Load 之后调用。
+	middleware.Register(r)
 
 	// TODO: system.RegisterRoutes(r, deps)
 
