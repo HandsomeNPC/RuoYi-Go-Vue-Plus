@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"testing"
 
+	"ruoyi-go-vue-plus/pkg/encrypt"
 	"ruoyi-go-vue-plus/pkg/i18n"
 )
 
@@ -36,15 +37,74 @@ func TestMiddlewareDefaultsMatchSetDefault(t *testing.T) {
 // 注意 DeepEqual 区分 nil 与空切片：yaml 里写 `skipPaths: []` 会得到非 nil 的
 // 空切片，与默认值 nil 不相等（虽然行为一致）。所以那种「默认为空」的项在
 // yaml 里应注释掉而非写成空列表 —— 本用例会替你发现这件事。
+//
+// **APIEncrypt 被排除在外**，它是唯一一处 yaml 与代码默认值有意不同的配置：
+// yaml 里 enabled=true（对齐原项目）而默认值是 false（否则未配置的进程会因
+// 缺私钥而启动失败）。那段的内容由 TestRealYAMLEnablesAPIEncrypt 单独锁。
 func TestRealYAMLMatchesDefaults(t *testing.T) {
 	cfg, err := Load(commonYAML, systemYAML)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
 
-	if got, want := cfg.Middleware, DefaultMiddleware(); !reflect.DeepEqual(got, want) {
+	got, want := cfg.Middleware, DefaultMiddleware()
+	// 置成同一个值再比：这样将来新增的中间件配置仍会被本用例覆盖，
+	// 不必逐字段罗列（漏写一个字段就等于漏掉一项保护）。
+	got.APIEncrypt, want.APIEncrypt = APIEncrypt{}, APIEncrypt{}
+	if !reflect.DeepEqual(got, want) {
 		t.Errorf("application.yaml 的 middleware 段与 DefaultMiddleware() 不一致\ngot  = %+v\nwant = %+v",
 			got, want)
+	}
+}
+
+// application.yaml 的 apiEncrypt 段：启用、且密钥能真的解析出来。
+//
+// 单独一条是因为它是全段唯一与代码默认值有意不同的地方（见上一条的说明），
+// 而这个差异必须是「有意的」而非「抄漏的」—— 本用例就是那份意图的记录。
+//
+// 密钥解析也一并验：那对密钥是从原项目 yaml 手抄过来的 base64 长串，
+// 中间断一个字符不会有任何编译期症状，只会让所有加密接口在运行期解密失败。
+func TestRealYAMLEnablesAPIEncrypt(t *testing.T) {
+	cfg, err := Load(commonYAML, systemYAML)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	a := cfg.Middleware.APIEncrypt
+
+	// 对齐原项目 application.yml:150 的 api-decrypt.enabled: true。
+	if !a.Enabled {
+		t.Error("apiEncrypt.enabled 应为 true（对齐原项目）")
+	}
+	if got, want := a.HeaderFlag, DefaultAPIEncryptHeader; got != want {
+		t.Errorf("apiEncrypt.headerFlag = %q, want %q", got, want)
+	}
+
+	// 四条强制加密路径对应原项目 4 处 @ApiEncrypt，少一条就意味着
+	// 那个接口能收明文密码而不被拒。
+	want := []string{
+		"/auth/login",
+		"/auth/register",
+		"/system/user/resetPwd",
+		"/system/user/profile/updatePwd",
+	}
+	if !reflect.DeepEqual(a.RequestURLs, want) {
+		t.Errorf("apiEncrypt.requestUrls = %v, want %v", a.RequestURLs, want)
+	}
+
+	// 原项目 4 处 @ApiEncrypt 全是默认的 response=false，响应加密从未启用。
+	if len(a.ResponseURLs) != 0 {
+		t.Errorf("apiEncrypt.responseUrls = %v, 原项目从未启用响应加密，应为空", a.ResponseURLs)
+	}
+
+	// 私钥必须真能解析 —— validate 已经查过一遍，这里是把「配置文件里那串
+	// base64 是完整的」这件事本身记录成用例。
+	if _, err := encrypt.ParseRSAPrivateKey(a.PrivateKey); err != nil {
+		t.Errorf("apiEncrypt.privateKey 解析失败: %v", err)
+	}
+	// 公钥当前用不到（没配 responseUrls），但配了就得是对的，
+	// 否则将来开启响应加密时才发现抄错。
+	if _, err := encrypt.ParseRSAPublicKey(a.PublicKey); err != nil {
+		t.Errorf("apiEncrypt.publicKey 解析失败: %v", err)
 	}
 }
 
@@ -104,6 +164,26 @@ func TestMiddlewareValidate(t *testing.T) {
 		"maxBodySize 为负":    func(m *Middleware) { m.RepeatableBody.MaxBodySize = -1 },
 		"maxParamLength 为负": func(m *Middleware) { m.AccessLog.MaxParamLength = -1 },
 		"i18n.default 非法":   func(m *Middleware) { m.I18n.Default = "不是语言标记" },
+		// 启用加解密但没有私钥 —— 每个加密请求都会失败，必须在启动期拦住。
+		"apiEncrypt 启用但缺私钥": func(m *Middleware) {
+			m.APIEncrypt.Enabled = true
+		},
+		"apiEncrypt 私钥非法": func(m *Middleware) {
+			m.APIEncrypt.Enabled = true
+			m.APIEncrypt.PrivateKey = "not-base64!!"
+		},
+		// 私钥能 base64 解开但不是合法的 PKCS#8 DER。
+		"apiEncrypt 私钥非 PKCS8": func(m *Middleware) {
+			m.APIEncrypt.Enabled = true
+			m.APIEncrypt.PrivateKey = "aGVsbG8gd29ybGQ="
+		},
+		// 配了 responseUrls 却没有公钥，响应加密无从进行。
+		"apiEncrypt 响应加密缺公钥": func(m *Middleware) {
+			m.APIEncrypt.Enabled = true
+			m.APIEncrypt.PrivateKey = testRSAPrivateKey
+			m.APIEncrypt.ResponseURLs = []string{"/auth/login"}
+		},
+		"apiEncrypt.maxBodySize 为负": func(m *Middleware) { m.APIEncrypt.MaxBodySize = -1 },
 	}
 	for name, breakIt := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -123,7 +203,36 @@ func TestMiddlewareValidate(t *testing.T) {
 			t.Errorf("留空应放行: %v", err)
 		}
 	})
+
+	// 关闭时密钥留空是正常形态，不该逼着不用这个功能的部署去填一对无用密钥。
+	t.Run("apiEncrypt 关闭时不校验密钥", func(t *testing.T) {
+		m := valid
+		m.APIEncrypt.Enabled = false
+		m.APIEncrypt.PrivateKey = ""
+		m.APIEncrypt.PublicKey = ""
+		if err := m.validate(); err != nil {
+			t.Errorf("关闭时应放行: %v", err)
+		}
+	})
+
+	// 启用 + 有效私钥 + 不做响应加密：这是本项目的常态（原项目从未启用响应
+	// 加密），此时不该强求公钥。
+	t.Run("apiEncrypt 启用但不做响应加密时不强求公钥", func(t *testing.T) {
+		m := valid
+		m.APIEncrypt.Enabled = true
+		m.APIEncrypt.PrivateKey = testRSAPrivateKey
+		m.APIEncrypt.PublicKey = ""
+		if err := m.validate(); err != nil {
+			t.Errorf("未配 responseUrls 时不应要求公钥: %v", err)
+		}
+	})
 }
+
+// testRSAPrivateKey 原项目 application.yml 里那把 1024 位开发私钥。
+//
+// 直接引用仓库配置文件里的同一个值本可以避免重复，但那会让本用例依赖
+// application.yaml 的内容 —— 校验逻辑的测试不该在有人改配置时跟着红。
+const testRSAPrivateKey = "MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBAO8QO5Eg4zehk9aP1SShzmlCSVHg8Ufr9yWeN4WqMMsiAPJC+PGGCoBlAD4T14Pqq7oWxc+Yrx2Nwv6eHdwUfPilfjveMO87dK977zIvdVFDSfalGBDZrTUwmzL5bBNkIFhZ/RWctEi8A1ShZCDL2/P3irtVrjh2DsDX/cgJ/7EDAgMBAAECgYEAhNZAQyRDHWZq/45soS5Hw7VRiG21pIE5k22W7G7lLfp3DCaqrYoNy8pTmCruVh7PzVdaE0CEDaf38gNqFCBOT8iTFQiYV3am4W3hsEQM5wmVBeTvCM5P2jsaaBQbqmneRjiZVbs6ha205JSho1Oc85NbaZa8gFVjwZgZWJrbzgECQQD/iZWhkRPtbdeai/Xk7D/eIXKh1Gxid0rWKQq8ikxbaiergn47XzNKrpROVyka3Gn85o7jJphgxp99R3r8sH71AkEA738Dn7xs+I4Y+MLa2EcT78JG3f/VhlWS/ks3qGJ2dfqwS7ntnmf5Q+2Xw+9UcuiK/TxD8K/0inSCkIMeWBOFFwJBAIoTebq3faEJfTqQ7ekojsokIKC4+2epNdLKknaV8/RhQ9Y0yKikJD7yXkiGaDuPZeW1Xvf2XtfL+1niSd5IMBECQDCOOMbe5dzyuj9dCg+FQZZ/dey2XK0Slm22BD/ATrIWtD12IaXXAKNz/Sv9TsrJOLykxkV69wJHIt13p+RFeNsCQGn5XGRn4ZCRVCesJYXyx29MTqkl8sD/gzYcURTZYjHqX2EvtvAyC6gBm9H0EbxmHIi4Oq0tITzklCXj5SpvBEw="
 
 // Load 成功后 Get() 应返回同一份配置。
 func TestGetReturnsLoadedConfig(t *testing.T) {

@@ -25,13 +25,21 @@
 | Redis 初始化 | `pkg/redis`      | go-redis 客户端                                          |
 | 统一响应     | `pkg/response`   | ✅ 已完成（R / PageResult）                              |
 | 全局中间件   | `pkg/middleware` | Recover(全局异常→response.Fail)、CORS、请求日志、TraceID |
+| 加解密原语   | `pkg/encrypt`    | ✅ AES-ECB / RSA / base64，对应 EncryptUtils             |
 | 常量         | `pkg/constant`   | 从原 common-core/constant 移植需要的常量                 |
 | 国际化       | `pkg/i18n`       | ✅ 词条表 + Msg(ctx,...)，对应 MessageUtils              |
 
-全局中间件进度（详见 `pkg/middleware/README.md`）：`Recover` / `CORS` / `TraceID` / `RepeatableBody` / `AccessLog` /
-`XSS` / `I18n` 均已落地，由 `middleware.Register(r)` 统一按序注册（两个入口各一行调用），仅 `Auth` 待阶段 1。 各中间件的配置在
+全局中间件进度（详见 `pkg/middleware/README.md`）：`Recover` / `CORS` / `TraceID` / `ApiEncrypt` /
+`RepeatableBody` / `AccessLog` / `XSS` / `I18n` 均已落地，由 `middleware.Register(r)` 统一按序注册 （两个入口各一行调用），仅
+`Auth` 待阶段 1。 各中间件的配置在
 `configs/application.yaml` 的 `middleware` 段，结构体定义在 `pkg/config/middleware.go`， 运行期从 `config.Get()` 读 —— 因此
 **`config.Load` 必须早于 `middleware.Register`**。
+
+> `ApiEncrypt`（接口加解密，对应 Java 的 `CryptoFilter`） **必须排在 `RepeatableBody` 之前**，
+> 否则日志只能看到密文、脱敏失效、handler 还绑不到参数。它是唯一带 `enabled` 开关的中间件。
+> 请求解密已按原项目协议对齐并有 FIPS-197 向量交叉验证； **PKCS#7 填充与 base64 那两层仍未跨语言核实**，
+> 首次前后端联调时应重点验。响应加密照 `EncryptResponseBodyWrapper` 复刻但默认关闭 ——
+> 原项目 4 处 `@ApiEncrypt` 全是 `response=false`，那条链路从未被启用过。
 
 **依赖引入**：
 `go get gorm.io/gorm gorm.io/driver/mysql github.com/redis/go-redis/v9 github.com/spf13/viper github.com/golang-jwt/jwt/v5`

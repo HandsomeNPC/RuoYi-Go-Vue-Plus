@@ -22,31 +22,36 @@ Go 侧全部收拢到本包，由 `Register(r)` 按固定顺序显式 `r.Use(...
 
 路径以 `ruoyi-common/` 为根，省略 `src/main/java/org/dromara/common/`。
 
-| # | 关注点          | 原 Java 位置                                                                            | 本包文件            |
-|---|-----------------|-----------------------------------------------------------------------------------------|---------------------|
-| 1 | 全局异常        | `ruoyi-common-web/…/web/handler/GlobalExceptionHandler.java` + 另 5 个 advice（见下）   | ✅ `recover.go`     |
-| 2 | CORS            | `ruoyi-common-web/…/web/config/ResourcesConfig.java:73-86`（`CorsFilter` bean）         | ✅ `cors.go`        |
-| 3 | TraceID         | **原项目不存在，净新增**                                                                | ✅ `trace.go`       |
-| 4 | 可重复读 Body   | `ruoyi-common-web/…/web/filter/RepeatableFilter.java` + `RepeatedlyRequestWrapper.java` | ✅ `body.go`        |
-| 5 | 请求日志 + 耗时 | `ruoyi-common-web/…/web/interceptor/PlusWebInvokeTimeInterceptor.java`                  | ✅ `logger.go`      |
-| 6 | XSS 过滤        | `ruoyi-common-web/…/web/filter/XssFilter.java` + `XssHttpServletRequestWrapper.java`    | ✅ `xss.go`         |
-| 7 | i18n            | `ruoyi-common-web/…/web/config/I18nConfig.java` + `web/core/I18nLocaleResolver.java`    | ✅ `i18n.go`        |
-| 8 | 鉴权            | `ruoyi-common-security/…/security/config/SecurityConfig.java:80-119`                    | `auth.go`（阶段 1） |
-| 9 | 响应增强        | `ruoyi-common-web/…/web/advice/ResponseEnhancementAdvice.java`                          | 阶段 3 再建         |
+| #  | 关注点          | 原 Java 位置                                                                            | 本包文件            |
+|----|-----------------|-----------------------------------------------------------------------------------------|---------------------|
+| 1  | 全局异常        | `ruoyi-common-web/…/web/handler/GlobalExceptionHandler.java` + 另 5 个 advice（见下）   | ✅ `recover.go`     |
+| 2  | CORS            | `ruoyi-common-web/…/web/config/ResourcesConfig.java:73-86`（`CorsFilter` bean）         | ✅ `cors.go`        |
+| 3  | TraceID         | **原项目不存在，净新增**                                                                | ✅ `trace.go`       |
+| 4  | 接口加解密      | `ruoyi-common-encrypt/…/encrypt/filter/CryptoFilter.java` + 另 2 个 wrapper             | ✅ `crypto.go`      |
+| 5  | 可重复读 Body   | `ruoyi-common-web/…/web/filter/RepeatableFilter.java` + `RepeatedlyRequestWrapper.java` | ✅ `body.go`        |
+| 6  | 请求日志 + 耗时 | `ruoyi-common-web/…/web/interceptor/PlusWebInvokeTimeInterceptor.java`                  | ✅ `logger.go`      |
+| 7  | XSS 过滤        | `ruoyi-common-web/…/web/filter/XssFilter.java` + `XssHttpServletRequestWrapper.java`    | ✅ `xss.go`         |
+| 8  | i18n            | `ruoyi-common-web/…/web/config/I18nConfig.java` + `web/core/I18nLocaleResolver.java`    | ✅ `i18n.go`        |
+| 9  | 鉴权            | `ruoyi-common-security/…/security/config/SecurityConfig.java:80-119`                    | `auth.go`（阶段 1） |
+| 10 | 响应增强        | `ruoyi-common-web/…/web/advice/ResponseEnhancementAdvice.java`                          | 阶段 3 再建         |
 
 另有两个没有 Java 对照物的文件：`register.go`（按序注册全部中间件，对应 Spring 的四个 `AutoConfiguration.imports`
-清单）与 `path.go`（Ant 路径匹配，对应 `AntPathMatcher`，被 `xss.go` 与阶段 1 的 `auth.go` 共用）。 配置结构体不在本包，在
+清单）与 `path.go`（Ant 路径匹配，对应 `AntPathMatcher`，被 `xss.go`、`crypto.go` 与阶段 1 的 `auth.go` 共用）。 加解密原语不在本包，在
+`pkg/encrypt`（对应 `encrypt/utils/EncryptUtils.java`）—— 阶段 4+ 的
+`@EncryptField` 字段级加密会复用它，那条路径与 HTTP 无关、不该 import gin。 配置结构体不在本包，在
 `pkg/config/middleware.go`（见下方「配置怎么读到的」）。
 
 ### 注册顺序
 
 ```
-Recover → CORS → TraceID → RepeatableBody → AccessLog → XSS → I18n → Auth
+Recover → CORS → TraceID → ApiEncrypt → RepeatableBody → AccessLog → XSS → I18n → Auth
 ```
 
-三个顺序约束不能动：
+四个顺序约束不能动：
 
 - **CORS 必须在 Auth 之前**，否则浏览器 preflight（`OPTIONS`，不带 token）会被 401，前端拿不到跨域头。
+- **ApiEncrypt 必须在 RepeatableBody 之前**，否则 `AccessLog` 只能看到 base64 密文、脱敏形同虚设，且 body 已被读走、handler
+  绑不到参数。完整依据见下方「加解密的顺序依据」。
 - **RepeatableBody 必须在 AccessLog 之前**，Java 侧 `PlusWebInvokeTimeInterceptor` 只在请求是
   `RepeatedlyRequestWrapper` 时才读 body（源码里显式判类型），Go 里同理：body 是一次性 `io.ReadCloser`，日志读完 handler
   就绑不到参数了。
@@ -57,18 +62,18 @@ Recover → CORS → TraceID → RepeatableBody → AccessLog → XSS → I18n �
   **故意**把读参数的中间件
   前置并断言清洗失效，将来谁把鉴权挪到 XSS 前面，那条用例就会以「清洗突然生效了」的形式报错。
 
-第四条约束来自 i18n，宽松得多： **I18n 必须在 Auth 之前**（鉴权的提示文案要走词条）。它不读 body、不改请求， 与前三条没有交集，详见下方
+第五条约束来自 i18n，宽松得多： **I18n 必须在 Auth 之前**（鉴权的提示文案要走词条）。它不读 body、不改请求， 与前四条没有交集，详见下方
 i18n 一节。
 
-> 截至当前，`Recover → CORS → TraceID → RepeatableBody → AccessLog → XSS → I18n` 已全部在
+> 截至当前，`Recover → CORS → TraceID → ApiEncrypt → RepeatableBody → AccessLog → XSS → I18n` 已全部在
 > `register.go` 的 `Register(r)` 里注册，两个入口各一行调用；只剩 `Auth` 待阶段 1 落地。
 > **两个入口的中间件链必须保持一致** —— 拆进程后同一个请求经 nginx 落到哪个进程是不定的，
 > 两边链路不同会让同一次调用表现出不同的清洗/脱敏行为，而那种差异极难从现象反推。
 > 收进 `Register` 就是为了让这件事 **物理上无法**做错：加 `Auth` 时只改一个文件，两个进程自动同步。
 
-还有一条 **将来**才会用上、但现在就得记下的： **`ApiEncrypt` 解密中间件必须在 `RepeatableBody` 之前**， 即最终顺序为
-`Recover → CORS → TraceID → ApiEncrypt → RepeatableBody → AccessLog → ...`。 依据是 Java 侧的 Filter
-`order`（数值越小越先执行）：
+#### 加解密的顺序依据
+
+`ApiEncrypt` 之所以必须排在 `RepeatableBody` 前面，依据是 Java 侧的 Filter `order`（数值越小越先执行）：
 
 | Filter                         | order                                | 实际次序        |
 |--------------------------------|--------------------------------------|-----------------|
@@ -87,15 +92,10 @@ RepeatedlyRequestWrapper( DecryptRequestBodyWrapper( 原始 request ) )
 也就是说 **Java 侧拦截器读到的是解密后的明文**，那边的脱敏是真的作用在明文上。顺序搞反的后果：
 
 - 放在 `AccessLog` 之后 → 日志里永远只有密文，脱敏形同虚设，且 handler 绑不到参数（body 已被吃掉）。
-- 放在 `RepeatableBody` 之前 → 日志是明文、脱敏正常生效，但这也意味着 **明文密码会流进 `jsonParamLog`**，
-  `removeSensitiveFields` 那条路径必须靠得住。
-
-`api-decrypt.enabled` 在 `application.yml:150` 是 **`true`**，前端现在就在加密部分请求，这不是假设问题。 当前未落地
-`ApiEncrypt` 中间件，所以加密请求体会以 base64 密文原样进日志 —— 不构成泄漏（密文对读日志的人无用）， 但是纯噪音（最长 4000
-字符的乱码，零诊断价值）。等 `ApiEncrypt` 落地、顺序摆对，这条自然消失。
-
-> 未核实项：`SecureUtil.aes(byte[])` 用的是 `SymmetricAlgorithm.AES`，即 JCE 默认的 **AES/ECB/PKCS5Padding**（无 IV）。
-> ECB 的确定性会不会让密文成为可比对的指纹，取决于前端是否每次请求都换 AES key —— 仓库内无前端代码，未能验证。
+- 放在 `RepeatableBody` 之前（本实现）→ 日志是明文、脱敏正常生效，但这也意味着 **明文密码会流进 `jsonParamLog`**，
+  `removeSensitiveFields` 那条路径必须靠得住 —— 这正是 `logger.go` 的 `rawParamLog` 有意偏离 Java、对非法 JSON
+  也要做敏感字段探测的原因（四个强制加密接口全都在传密码）。 由
+  `TestAPIEncryptDecryptedBodyGetsSanitizedInLog` 锁住。
 
 Go 实现即 `io.ReadAll` 后 `c.Request.Body = io.NopCloser(bytes.NewReader(b))`。除了日志，阶段 3 的 `@Log` 操作日志也依赖它。
 各进程入口用 `gin.New()` **而非 `gin.Default()`**：后者自带 `gin.Recovery()`，只写 500 空响应，与 `Recover()`
@@ -312,8 +312,12 @@ pattern 只有 `%d{...} [%thread] %-5level %logger{36} - %msg%n`。
 
 `middleware.xss.*` 现在 **已经在 yaml 里**（`excludeUrls` / `skipMethods` 可配），但 **仍然没有 `enabled`** —— 这不是漏了。
 上表那条理由不因「配置进了 yaml」而失效：开关与注册是两套机关，同时存在就会出现「yaml 里 `enabled: true` 但
-`Register` 没挂它」这种要翻两处才能确诊的状态。要关掉某一环，改 `register.go` 删那一行。 这条对 6 个中间件一律适用，不是 XSS
+`Register` 没挂它」这种要翻两处才能确诊的状态。要关掉某一环，改 `register.go` 删那一行。 这条对本节这 6 个中间件一律适用，不是
+XSS
 的特例。
+
+唯一的例外是 `apiEncrypt`（第 8 节），它 **有** `enabled` —— 因为它不生效时请求会被当明文交给 handler、
+报出一个与真实原因无关的参数错误，必须能区分「没开」与「开了但密钥错」。理由详见那一节。
 
 #### 那个会破坏 JSON 的 bug
 
@@ -410,7 +414,120 @@ body、不改请求，与前面几环没有耦合。
 `TestI18nHeaderSetBeforeHandlerWritesBody` 兜住）； **用 `WithContext` 替换 `c.Request` 时必须基于前一环的 context**， 否则会把
 `TraceID` 写进去的值覆盖掉（`TestI18nCoexistsWithTraceID` 覆盖）。
 
-### 8. 鉴权（阶段 1）：四步校验 + 一个易踩的坑
+### 8. 接口加解密：唯一带 `enabled` 开关的中间件
+
+注册在 `ruoyi-common-encrypt/…/encrypt/config/ApiDecryptAutoConfiguration.java`，`@ConditionalOnProperty` 挂
+`api-decrypt.enabled`，yaml 在 `application.yml:148-158` —— **该值是 `true`**，前端现在就在加密这几个接口，不是假设问题。
+
+#### 协议
+
+请求方向（前端 → 服务端），注意 AES 密钥被 base64 **套了两层**：
+
+```
+encrypt-key 头 = base64(RSA公钥加密( base64( AES明文密钥 ) ))
+请求体         = base64(AES-ECB加密( JSON 明文 ))
+```
+
+里层那层 base64 是 `EncryptUtils.encryptByBase64`/`decryptByBase64`，看着多余但它是协议的一部分（前端照此实现），少一层就对不上。
+响应方向与之对称，AES 密钥换成服务端每次请求新生成的一次性密钥、用 **前端的公钥**加密后放 **同名头**（请求与响应共用
+`encrypt-key` 这一个头名，只是载荷方向不同）。
+
+#### 命中方式：注解 → 配置清单
+
+Java 的 `CryptoFilter` 注册成全局 filter，但内部通过 `RequestMappingHandlerMapping` 反查 `@ApiEncrypt` 注解，只对标注的方法生效。
+Go 没有注解，改成配置里的 Ant 路径清单。原项目 **4 处** `@ApiEncrypt` 全部对应到 `apiEncrypt.requestUrls`：
+
+| 接口                             | Java 位置                      | 方法 |
+|----------------------------------|--------------------------------|------|
+| `/auth/login`                    | `AuthController.java:75`       | POST |
+| `/auth/register`                 | `AuthController.java:180`      | POST |
+| `/system/user/resetPwd`          | `SysUserController.java:249`   | PUT  |
+| `/system/user/profile/updatePwd` | `SysProfileController.java:86` | PUT  |
+
+四个全在传密码，所以 **`PUT` 必须和 `POST` 一样解密**（对齐 `CryptoFilter` 的 `PUT || POST` 判断）—— 漏掉 PUT
+会让两个改密码接口完全不可用。
+
+清单的语义是 **强制**：命中却没带 `encrypt-key` 头就拒绝（对齐 Java 里「有注解却无加密标头就报 403」的分支），
+拦的是「本该加密的接口收到了明文密码」。反之 **带了头就解密，与清单无关** —— 对齐 Java，那边解密只看头、不看注解。
+
+> `@ApiEncrypt` 的 `response()` 默认 `false`，而原项目 4 处 **全部用的默认值** ——
+> 也就是说 **响应加密在原项目里从未被启用过**。本包照 `EncryptResponseBodyWrapper` 复刻了它，
+> 但 `responseUrls` 默认为空、且没有可对照验证的线上行为。开启前先确认前端确实实现了响应解密。
+
+#### 为什么这一个有 `enabled`
+
+其余 6 个中间件 **有意没有** `enabled`（「注册即启用」，见上方 XSS 一节）。这一项是例外，因为它的失败方向相反：
+
+- XSS / AccessLog 不注册 = 少一层清洗或少几行日志，请求照常处理。
+- 本中间件不生效 = 带 `encrypt-key` 头的请求被 **当作明文**交给 handler，JSON 解析必然失败， 前端收到一句莫名的参数错误 ——
+  而真正的原因（服务端没开解密）在报文里没有任何痕迹。
+
+即必须能区分「没开」与「开了但密钥配错」，`enabled` 就是那个区分。这也是 `configs/application.yaml`
+里 **唯一与代码默认值不同**的一节（yaml 是 `true`，代码默认 `false`）：默认值要在「没有配置文件」时也讲得通， 而启用状态下缺私钥必须报错，默认
+`true` + 默认空私钥会让任何未配置的进程启动失败。 这个差异由
+`pkg/config` 的 `TestRealYAMLEnablesAPIEncrypt` 显式锁住，`TestRealYAMLMatchesDefaults` 把这一段排除在外。
+
+#### 失败一律折叠成同一句文案
+
+**所有解密失败回同一句「请求解密失败」**，不区分是 RSA 阶段、base64 阶段、AES 密钥长度还是 PKCS#7 填充校验失败。 这不是偷懒 ——
+区分失败原因就等于提供一个 **padding oracle**：攻击者能拿同一段密文反复试探， 靠「填充错」与「解密错」两种不同回复逐字节还原明文（Vaudenay
+攻击）。真实原因只进日志。 由 `TestAPIEncryptFailuresAreIndistinguishable` 锁住（9 种畸形输入断言回同一句）。
+
+#### Go 实现的有意偏差（`crypto.go`）
+
+| 位置         | 偏差                              | 原因                                                                                              |
+|--------------|-----------------------------------|---------------------------------------------------------------------------------------------------|
+| 命中方式     | 配置路径清单，非注解反查          | Go 无注解；Java 靠 `RequestMappingHandlerMapping` 查 `@ApiEncrypt`                                |
+| 失败文案     | 全部折叠成一句                    | 区分失败原因 = 提供 padding oracle（见上）                                                        |
+| 失败状态码   | 恒 200 + 业务码                   | 走 `c.Error` 由 `Recover` 统一渲染，与其余接口一致；Java 那边 `resolveException` 回真 403         |
+| 密钥解析     | **启动期一次**，捕获进闭包        | Java 每请求重新 `KeyFactory.generatePublic` 解析 ASN.1；顺带把「密钥格式错」从运行期挪到启动期    |
+| 体积上限     | **新增** `maxBodySize`，默认 10MB | Java 侧无上限（`IoUtil.readBytes` 读到底），与 `body.go` 同一个放大问题                           |
+| 密文编码     | 只认 base64，**不猜 Hex**         | hutool 的 `SecureUtil.decode` 用 `isHexNumber` 猜编码，一段恰好只含 `[0-9a-f]` 的 base64 会被误判 |
+| 空响应       | 不加密，原样放行                  | 加密空串会产出一个「解开是空」的密文，比空响应更让人困惑                                          |
+| 错误响应     | **不加密**，且撤掉密钥头          | 见下方「一处顺序上无法两全的地方」                                                                |
+| 响应加密失败 | 丢弃响应体，回错误 JSON           | 绝不能退回去写明文 —— 那正是要防的                                                                |
+| `Flush`      | **有意不覆写**                    | 流式接口（SSE/下载）与整体加密语义不兼容，不该配进 `responseUrls`；加保护反而会掩盖这个配置错误   |
+
+#### 一处顺序上无法两全的地方
+
+handler 走 `c.Error(err)` 而不自己写响应体时（本项目 handler 的标准错误路径），那份响应由最外层的
+`Recover` 渲染 —— 而那发生在 `ApiEncrypt` **返回之后**，所以 **无法加密**。此时本中间件会撤掉密钥头，
+让前端知道这是明文（留着头会让它拿去解一段明文 JSON，得到一句「解密失败」而非服务端真正想传达的错误）。
+
+Java 侧没有这个问题：`CryptoFilter` 在 filter 链内部，异常经 `handlerExceptionResolver` 渲染后仍会被 wrapper 缓冲并加密。Go
+侧 `Recover` 必须在最外层（要兜住所有中间件自身的 panic），两者顺序上无法兼得。 取舍是
+**「错误能送达但不加密」而非「加密但送不到」**。
+
+> 这里曾经有一个真实的 bug：替换了 `c.Writer` 却没有还原，于是 `Recover` 那份错误响应写进了已经用完的
+> 缓冲区，客户端收到 **200 空响应**、服务端日志里只有一行业务异常 —— 两边都看不出发生了什么。
+> 现由 `TestAPIEncryptDeliversHandlerErrors` 锁住。包装 `c.Writer` 的中间件都要注意这一点：
+> **用完必须还原**，因为链外还有中间件会往里写。
+
+#### ECB 是照抄，不是选择
+
+`SecureUtil.aes(byte[])` 走 JCE 默认变换 **AES/ECB/PKCS5Padding**（无 IV）。ECB 无 IV、相同明文块恒产出相同密文块，
+密文因此暴露明文的重复结构，且可被逐块重排而不被察觉（无完整性保护）。
+
+Go 的 `crypto/cipher` **有意不提供 ECB**，所以 `pkg/encrypt` 里手写了它，并在注释里写明了理由。 不改成 CBC/GCM 是因为这是
+**通信协议**而非内部实现：前端的加密实现与这里必须逐字节对齐， 单方面换模式等于把接口打死。要收紧就得前后端一起换。
+
+`TestAESIsDeterministicECB` 把这个性质 **显式记录**下来：将来谁把模式换了，那条用例会失败 —— 那正是提醒「这是协议变更」的地方。
+
+> 前面「未核实项」里那个问题（ECB 的确定性会不会让密文成为可比对的指纹，取决于前端是否每次换 AES key）
+> **仍未核实** —— 仓库内无前端代码。但响应侧已确认是每次请求新生成
+> （`EncryptResponseBodyWrapper.generateAesPassword`），请求侧按对称推测亦然。
+> 本包的响应加密照此实现，并由 `TestAPIEncryptResponseKeyIsPerRequest` 锁住。
+
+#### 跨语言验证到哪一步了
+
+`pkg/encrypt` 的 `TestAESMatchesFIPSVector` 拿 **FIPS-197 附录 C.1** 的官方向量比对，锁住了「分组密码 + ECB 模式」这一层。
+往返测试（自己加密自己解密）做不到这件事 —— 模式选错、字节序搞反都能自洽地往返成功，却与前端完全对不上。
+
+**仍未跨语言核实的是 PKCS#7 填充与 base64 编码那两层**：它们由 `EncryptUtils` 的代码阅读推得 （`SecureUtil.aes` 走 JCE 默认的
+`AES/ECB/PKCS5Padding`，`encryptBase64` 走 base64）。 理想的验证是拿一段 hutool 真实产出的密文来解，但那需要跑 Java。
+**首次前后端联调时应重点验这两层。**
+
+### 9. 鉴权（阶段 1）：四步校验 + 一个易踩的坑
 
 `SecurityConfig.java:80-119` 注册 sa-token `SaInterceptor` 到 `/**`，排除 `securityProperties.getExcludes()`。每请求做四件事：
 
@@ -434,7 +551,7 @@ token 解析规则在 `ruoyi-common-satoken/src/main/resources/common-satoken.ym
 `@PropertySource` 加载），注意 `is-read-cookie: false` —— **刻意关掉 cookie 认证来消除 CSRF**，Go 侧同样只从 header 取，
 不要为了方便加 cookie 回落。
 
-### 9. 响应增强：阶段 3 再说
+### 10. 响应增强：阶段 3 再说
 
 `web/advice/ResponseEnhancementAdvice.java` 是 `ResponseBodyAdvice<Object>`，每个 JSON 响应过一遍
 `JsonValueEnhancer.enhance(body)`，是字典翻译 / `@Translation` 字段填充的钩子。 阶段 0 **不建空壳**，等阶段 3 字典管理落地时按需引入。
@@ -450,16 +567,12 @@ token 解析规则在 `ruoyi-common-satoken/src/main/resources/common-satoken.ym
 | `@RateLimiter`    | `ruoyi-common-redis/…/redis/aspectj/RateLimiterAspect.java`                                | 阶段 4+  |
 | `@RepeatSubmit`   | `ruoyi-common-redis/…/redis/aspectj/RepeatSubmitAspect.java`                               | 阶段 4+  |
 | `@Lock4j`         | `ruoyi-common-redis/…/redis/config/Lock4jConfig.java`                                      | 阶段 4+  |
-| `@ApiEncrypt`     | `ruoyi-common-encrypt/…/encrypt/filter/CryptoFilter.java`                                  | 按需     |
 | `@DataPermission` | `ruoyi-common-mybatis/…/mybatis/interceptor/PlusDataPermissionInterceptor.java`            | 阶段 4.1 |
 
-`CryptoFilter` 有点特殊：它 **注册成全局 filter**，但内部自己通过 `RequestMappingHandlerMapping` 查
-`@ApiEncrypt` 注解，只对标注的方法真正生效。Go 里没必要照搬这个结构，按路由挂即可。
-
-但 **解密这一步是全局的、且必须在 `RepeatableBody` 之前**（`CryptoFilter` 的 order 是 `HIGHEST_PRECEDENCE`）， 否则
-`AccessLog` 只能看到密文、脱敏失效、handler 还绑不到参数。详见上方「注册顺序」一节 —— 那里有完整的 Filter order 对照表和
-`DecryptRequestBodyWrapper` 恒返回 `application/json` 的依据。 这也是「按路由挂」的例外： **响应加密**可以按路由，
-**请求解密**不行。
+`@ApiEncrypt` 曾经列在这张表里，现已落地为本包的 `crypto.go`（见上方第 8 节）—— 它 **不适合**「按路由挂」：
+`CryptoFilter` 虽然靠注解决定对谁生效，但 **请求解密这一步是全局的、且必须在 `RepeatableBody` 之前**
+（order 是 `HIGHEST_PRECEDENCE`），否则 `AccessLog` 只能看到密文、脱敏失效、handler 还绑不到参数。 Go 侧因此挂进全局链，靠配置里的路径清单代替注解。
+**响应加密**可以按路由， **请求解密**不行。
 
 数据权限见 `MIGRATION.md` 阶段 4.1 —— Java 是 MyBatis 拦截器改写 SQL，Go 要在 repository 层用 GORM Scopes 手写。 本包只负责
 **把当前用户的数据范围写进 context**，SQL 条件由 repository 层拼。
@@ -477,20 +590,26 @@ key**，看主文件就够。
 | `web.cors.*`               | **缺失**                                                     | CORS，走代码默认值                          | `middleware.cors.*`（Go 侧提到了 yaml）        |
 | `spring.messages.basename` | 61-63                                                        | i18n 词条目录                               | 无 —— 词条编进 Go 源码，见 `pkg/i18n`          |
 | `message.path`             | 223                                                          | 被 `handleIoException` 读来静默 SSE 断连    | 无 —— Go 直接判 `*net.OpError`                 |
-| `api-decrypt.*`            | 148-158                                                      | `CryptoFilter` 开关与 RSA 密钥              | 按需                                           |
+| `api-decrypt.*`            | 148-158                                                      | `CryptoFilter` 开关与 RSA 密钥              | `middleware.apiEncrypt.*`                      |
 | `sa-token.token-name`      | 91                                                           | token 的 header/param 名（`Authorization`） | `jwt.header`                                   |
 | `sa-token.jwt-secret-key`  | 97                                                           | JWT 签名密钥                                | `jwt.secret`                                   |
 | `is-read-cookie: false`    | `ruoyi-common-satoken/src/main/resources/common-satoken.yml` | 关掉 cookie 认证                            | 阶段 1 —— 同样只从 header 取，不加 cookie 回落 |
 
 Go 侧还有几项 **原项目没有**的配置（都是本包相对 Java 的新增行为，前面各节已逐条说明原因）：
 `middleware.cors.exposedHeaders`、`middleware.traceId.*`、`middleware.accessLog.skipPaths`、
-`middleware.repeatableBody.maxBodySize`、`middleware.i18n.header`。
+`middleware.repeatableBody.maxBodySize`、`middleware.i18n.header`、
+`middleware.apiEncrypt.requestUrls` / `responseUrls` / `maxBodySize`
+（前两项是注解的替代物 —— Java 靠 `@ApiEncrypt` 反查，Go 无注解只能显式列路径）。
 
 ## 配置怎么读到的
 
 结构体定义在 `pkg/config/middleware.go`（不在本包），import 方向是 `middleware → config`，
 `pkg/config` 保持叶子包、不依赖 gin。两个常量 `TraceIDHeader` / `LocaleHeader` 的 **定义**也在那边 （CORS 的默认
-`ExposedHeaders` 要用前者），本包只留别名。
+`ExposedHeaders` 要用前者），本包只留别名。`DefaultAPIEncryptHeader` 同理。
+
+加解密的 **原语**在 `pkg/encrypt`（对应 `EncryptUtils.java`），本包只做策略（谁该加密、失败回什么）。 分开是因为阶段 4+ 的
+`@EncryptField` 字段级加密（Java 侧走 `MybatisEncryptInterceptor`）要复用同一套原语， 而那条路径与 HTTP 无关、不该 import
+gin。
 
 每个中间件两个构造函数，职责分开：
 
@@ -499,9 +618,17 @@ Go 侧还有几项 **原项目没有**的配置（都是本包相对 Java 的新
 | `XSS()`              | `config.Get().Middleware.XSS` | 正常注册，走 yaml        |
 | `XSSWithConfig(cfg)` | 调用方显式传入                | 测试、或要绕开全局配置时 |
 
+`WithConfig` 版本 **只用传入的那份配置**，不回头调 `config.Get()` —— 否则测试和不走 `Load` 的调用方会直接 panic。
+`APIEncryptWithConfig` 因此有自己的 `maxBodySize` 而不是借 `repeatableBody` 那个（两者读的东西也不同： 一个是密文、一个是明文，base64
+后差约 4/3）。
+
 因此 **`config.Load` 必须早于 `middleware.Register`**，否则 `config.Get()` 会 panic （刻意为之：启动期编排错误不该留到运行时才发现）。配置在
 `r.Use(...)` 那一刻读一次并捕获进闭包，
-`Get()` 不进每请求的路径。
+`Get()` 不进每请求的路径。 `APIEncrypt` 还在这一刻把 RSA 私钥解析好捕获进闭包 —— 密钥格式错误会 panic
+在启动期，而不是留到运行期表现为「所有加密接口都失败而其余正常」那种半死状态。
+
+关于 `enabled` 开关：6 个中间件 **有意都没有**（注册即启用），`apiEncrypt` 是 **唯一的例外**， 理由见上方第 8 节「为什么这一个有
+`enabled`」。要关掉其余任何一环，改 `register.go` 删那一行。
 
 `middleware` 段只放在 `configs/application.yaml`， **不要**放进 `system.yaml` / `auth.yaml` ——
 理由与「两个入口的中间件链必须保持一致」同源：拆进程后请求落到哪个进程不定， 在那里开分叉口子等于把那条约束变成可选项。

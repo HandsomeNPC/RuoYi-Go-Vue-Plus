@@ -13,7 +13,7 @@ import "github.com/gin-gonic/gin"
 // 调用方仍要用 gin.New() 而非 gin.Default()：后者自带的 gin.Recovery()
 // 只写 500 空响应，与 Recover() 职责重叠且不输出 response.R。
 //
-// 顺序见 README「注册顺序」一节，四条硬约束在下面逐条标注，改动前先读那里。
+// 顺序见 README「注册顺序」一节，五条硬约束在下面逐条标注，改动前先读那里。
 func Register(r gin.IRoutes) {
 	// Recover 放最外层，才能兜住后续中间件自身的 panic。
 	r.Use(Recover())
@@ -23,6 +23,13 @@ func Register(r gin.IRoutes) {
 	// TraceID 紧跟 CORS：越靠前，越多日志能带上链路 id。
 	// 放在 CORS 之后是因为跨域预检会被 CORS 就地终止，不进业务也不需要 id。
 	r.Use(TraceID())
+	// APIEncrypt 必须在 RepeatableBody 之前：解密后才把 body 换成明文，
+	// 顺序反了 AccessLog 只能看到 base64 密文（脱敏形同虚设），
+	// 且 body 已被读走、handler 绑不到参数。
+	// 依据是 Java 侧 CryptoFilter 的 order = HIGHEST_PRECEDENCE，
+	// 完整推导（含 DecryptRequestBodyWrapper 恒返回 application/json 那条证据）
+	// 见 README「注册顺序」一节与 crypto.go 的函数注释。
+	r.Use(APIEncrypt())
 	// RepeatableBody 必须在 AccessLog 之前：body 是一次性的 io.ReadCloser，
 	// 日志中间件读完 handler 就绑不到参数了。
 	r.Use(RepeatableBody())
@@ -36,6 +43,4 @@ func Register(r gin.IRoutes) {
 	r.Use(I18n())
 
 	// TODO(阶段 1): r.Use(Auth()) —— 加在这里，两个进程自动同步。
-	// 将来的 ApiEncrypt 解密中间件要插在 TraceID 与 RepeatableBody 之间
-	// （否则 AccessLog 只能看到密文、handler 还绑不到参数），详见 README。
 }

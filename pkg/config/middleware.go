@@ -2,7 +2,8 @@
 //
 // 每个中间件的结构体、默认值、SetDefault 键、校验各自成文件：
 // middleware_cors.go / middleware_xss.go / middleware_accesslog.go /
-// middleware_trace.go / middleware_body.go / middleware_i18n.go，
+// middleware_trace.go / middleware_body.go / middleware_i18n.go /
+// middleware_encrypt.go，
 // 与 server.go / jwt.go / redis.go / datasource.go「一个子配置一个文件」的约定一致。
 //
 // 新增一个中间件配置要动四处，都在同一个文件里加一行：
@@ -20,6 +21,10 @@ import "github.com/spf13/viper"
 // 有意**没有** enabled 开关：Go 侧「注册」就是 middleware.Register 里那行
 // r.Use(XSS())，不写即关闭。再加一个布尔开关只会造出「注册了但不生效」这种
 // 要翻两处配置才能确诊的状态。
+//
+// 唯一例外是 APIEncrypt —— 它不生效时请求会被当明文交给 handler、报出一个
+// 与真实原因无关的参数错误，必须能区分「没开」和「开了但密钥错」。
+// 详见 APIEncrypt 的说明。
 type Middleware struct {
 	CORS           CORS           `mapstructure:"cors"`
 	XSS            XSS            `mapstructure:"xss"`
@@ -27,6 +32,7 @@ type Middleware struct {
 	TraceID        TraceID        `mapstructure:"traceId"`
 	RepeatableBody RepeatableBody `mapstructure:"repeatableBody"`
 	I18n           I18n           `mapstructure:"i18n"`
+	APIEncrypt     APIEncrypt     `mapstructure:"apiEncrypt"`
 }
 
 // DefaultMiddleware 返回全部中间件的默认配置。
@@ -42,6 +48,7 @@ func DefaultMiddleware() Middleware {
 		TraceID:        defaultTraceID(),
 		RepeatableBody: defaultRepeatableBody(),
 		I18n:           defaultI18n(),
+		APIEncrypt:     defaultAPIEncrypt(),
 	}
 }
 
@@ -63,6 +70,7 @@ func setMiddlewareDefaults(v *viper.Viper) {
 	d.TraceID.setDefaults(v)
 	d.RepeatableBody.setDefaults(v)
 	d.I18n.setDefaults(v)
+	d.APIEncrypt.setDefaults(v)
 }
 
 // validate 依次校验各中间件配置。
@@ -77,6 +85,7 @@ func (m Middleware) validate() error {
 		m.TraceID.validate,
 		m.RepeatableBody.validate,
 		m.I18n.validate,
+		m.APIEncrypt.validate,
 	}
 	for _, fn := range validators {
 		if err := fn(); err != nil {
