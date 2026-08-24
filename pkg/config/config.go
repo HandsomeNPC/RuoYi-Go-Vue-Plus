@@ -9,8 +9,11 @@
 //
 // 公共配置放 application.yaml，进程独有配置(端口等)放 <module>.yaml。
 //
-// Load 只返回 error，配置本身写入包级实例，一律用 Get() 取回 ——
+// Load 加载失败直接 panic，配置本身写入包级实例，一律用 Get() 取回 ——
 // 包括 main 自己。**必须先 Load 再读 Get()**，否则 Get() 会 panic。
+//
+// 两者都 panic 是同一个判断：配置错误是启动期编排问题，进程本就无法工作，
+// 把 error 逐层往上传只是把「立刻崩」延后成「崩在别处」。
 package config
 
 import (
@@ -30,16 +33,16 @@ type Config struct {
 	User       User       `mapstructure:"user"`
 }
 
-// Load 按顺序读取并合并多个 yaml 配置文件，后者覆盖前者。
+// Load 按顺序读取并合并多个 yaml 配置文件，后者覆盖前者，随后写入包级实例。
 //
-// 至少需要一个路径。任一文件不存在或格式错误都会返回错误，
-// 合并完成后逐个子配置执行 validate。
+// 至少需要一个路径。任一文件不存在、格式错误或未通过 validate 都会 **panic** ——
+// 与 Get() 同源：配置错误是启动期编排问题，进程本就无法工作，不值得让每个
+// main 写一遍 if err != nil { return err }。失败时不改动包级实例。
 //
-// 只返回 error：配置写入包级实例，调用方随后用 Get() 取。
-// 失败时不改动包级实例（半成品配置比没有配置更难查）。
-func Load(paths ...string) error {
+// 配置不由本函数返回，加载完用 Get() 取。
+func Load(paths ...string) {
 	if len(paths) == 0 {
-		return fmt.Errorf("config: 至少需要一个配置文件路径")
+		panic(fmt.Errorf("config: 至少需要一个配置文件路径"))
 	}
 
 	v := viper.New()
@@ -61,23 +64,22 @@ func Load(paths ...string) error {
 			read = v.ReadInConfig
 		}
 		if err := read(); err != nil {
-			return fmt.Errorf("config: 读取 %s 失败: %w", path, err)
+			panic(fmt.Errorf("config: 读取 %s 失败: %w", path, err))
 		}
 	}
 
 	var cfg Config
 	if err := v.Unmarshal(&cfg); err != nil {
-		return fmt.Errorf("config: 解析配置失败: %w", err)
+		panic(fmt.Errorf("config: 解析配置失败: %w", err))
 	}
 
 	if err := cfg.validate(); err != nil {
-		return err
+		panic(err)
 	}
 
 	mu.Lock()
 	current = &cfg
 	mu.Unlock()
-	return nil
 }
 
 // 包级默认实例。写于 Load 成功之后，读写加锁以免竞态。

@@ -37,9 +37,7 @@ func main() {
 }
 
 func run() error {
-	if err := config.Load("configs/application.yaml", "configs/auth.yaml"); err != nil {
-		return err
-	}
+	config.Load("configs/application.yaml", "configs/auth.yaml")
 	cfg := config.Get()
 
 	rdb := goredis.NewClient(&goredis.Options{

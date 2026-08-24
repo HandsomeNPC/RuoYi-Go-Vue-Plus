@@ -72,7 +72,7 @@ func TestUserValidateRejectsNonPositive(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			path := writeYAML(t, fullYAML+tt.yaml)
-			err := Load(path)
+			err := loadErr(t, path)
 			if err == nil {
 				t.Fatal("应校验失败")
 			}
@@ -146,7 +146,7 @@ func TestAuthExcludesMatchJavaSecurityExcludes(t *testing.T) {
 // 是一条 `- ""` 或笔误留下的空行 —— 写的人多半以为自己排除了什么。
 func TestAuthValidateRejectsEmptyExclude(t *testing.T) {
 	path := writeYAML(t, fullYAML+"\nmiddleware:\n  auth:\n    excludes:\n      - \"\"\n")
-	err := Load(path)
+	err := loadErr(t, path)
 	if err == nil {
 		t.Fatal("含空路径的 excludes 应校验失败")
 	}

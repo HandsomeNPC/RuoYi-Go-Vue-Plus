@@ -227,17 +227,13 @@ const testRSAPrivateKey = "MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBAO8QO
 // Load 不返回配置，所以这里只能比内容：换一份 addr 明显不同的配置再 Load，
 // Get() 必须跟着变 —— 锁住的是「Get() 反映最后一次成功 Load」。
 func TestGetReturnsLoadedConfig(t *testing.T) {
-	if err := Load(commonYAML, systemYAML); err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	mustLoad(t, commonYAML, systemYAML)
 	if got, want := Get().Server.Addr, ":8081"; got != want {
 		t.Errorf("Get().Server.Addr = %q, want %q", got, want)
 	}
 
 	// 再 Load 一份不同的，Get() 应指向新的那份。
-	if err := Load(writeYAML(t, fullYAML)); err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	mustLoad(t, writeYAML(t, fullYAML))
 	if got, want := Get().Server.Addr, ":9000"; got != want {
 		t.Errorf("重新 Load 后 Get().Server.Addr = %q, want %q", got, want)
 	}
@@ -245,14 +241,12 @@ func TestGetReturnsLoadedConfig(t *testing.T) {
 
 // Load 失败不应污染包级实例 —— 半成品配置比没有配置更难查。
 func TestFailedLoadDoesNotOverwriteCurrent(t *testing.T) {
-	if err := Load(commonYAML, systemYAML); err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	mustLoad(t, commonYAML, systemYAML)
 	good := Get()
 
 	// 只有 server 段，过不了 datasource/redis/jwt 的校验。
 	bad := writeYAML(t, "server:\n  name: x\n  addr: \":1\"\n")
-	if err := Load(bad); err == nil {
+	if err := loadErr(t, bad); err == nil {
 		t.Fatal("残缺配置应加载失败")
 	}
 

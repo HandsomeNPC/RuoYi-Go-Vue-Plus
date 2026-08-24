@@ -21,9 +21,8 @@ func main() {
 }
 
 func run() error {
-	if err := config.Load("configs/application.yaml", "configs/system.yaml"); err != nil {
-		return err
-	}
+	// 加载失败直接 panic 在 config.Load 里，不回传 error。
+	config.Load("configs/application.yaml", "configs/system.yaml")
 	cfg := config.Get()
 
 	if err := database.Init(cfg.Datasource); err != nil {

@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -100,30 +101,31 @@ func TestThreeFilesLastWins(t *testing.T) {
 	}
 }
 
+// 错误分支经 loadErr 接住 panic 后断言错误信息。
 func TestLoadErrors(t *testing.T) {
 	t.Run("未传路径", func(t *testing.T) {
-		if err := Load(); err == nil {
+		if err := loadErr(t); err == nil {
 			t.Fatal("want error, got nil")
 		}
 	})
 
 	t.Run("文件不存在", func(t *testing.T) {
 		missing := filepath.Join(t.TempDir(), "nope.yaml")
-		if err := Load(missing); err == nil {
+		if err := loadErr(t, missing); err == nil {
 			t.Fatal("want error, got nil")
 		}
 	})
 
 	t.Run("第二个文件不存在", func(t *testing.T) {
 		missing := filepath.Join(t.TempDir(), "nope.yaml")
-		if err := Load(commonYAML, missing); err == nil {
+		if err := loadErr(t, commonYAML, missing); err == nil {
 			t.Fatal("want error, got nil")
 		}
 	})
 
 	t.Run("yaml 格式非法", func(t *testing.T) {
 		path := writeYAML(t, "server:\n\taddr: bad-tab\n")
-		if err := Load(path); err == nil {
+		if err := loadErr(t, path); err == nil {
 			t.Fatal("want error, got nil")
 		}
 	})
@@ -131,10 +133,42 @@ func TestLoadErrors(t *testing.T) {
 	t.Run("配置不完整未通过校验", func(t *testing.T) {
 		// 只有 server 段，缺 datasource/redis/jwt
 		path := writeYAML(t, "server:\n  name: x\n  addr: \":1\"\n")
-		if err := Load(path); err == nil {
+		if err := loadErr(t, path); err == nil {
 			t.Fatal("want error, got nil")
 		}
 	})
+}
+
+// 导出的 Load 遇错必须 panic，且带上原始错误。
+//
+// main 依赖这个行为：那里不再 if err != nil，配置错误全靠这一下崩掉进程。
+// 若哪天 Load 改回静默返回，进程会带着半份配置继续跑起来 —— 本用例守的是这个。
+func TestLoadPanicsOnError(t *testing.T) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("残缺配置应 panic")
+		}
+		err, ok := r.(error)
+		if !ok {
+			t.Fatalf("panic 值应是 error，got %T: %v", r, r)
+		}
+		// 错误信息要指明缺哪一项，否则运维看到栈也不知道改什么。
+		if !strings.Contains(err.Error(), "config:") {
+			t.Errorf("panic 的错误信息应带 config: 前缀: %v", err)
+		}
+	}()
+
+	// 只有 server 段，过不了 datasource/redis/jwt 的校验。
+	Load(writeYAML(t, "server:\n  name: x\n  addr: \":1\"\n"))
+}
+
+// 路径正确时 Load 不该 panic，且 Get() 能取到。
+func TestLoadSucceedsWithoutPanic(t *testing.T) {
+	Load(commonYAML, systemYAML)
+	if got, want := Get().Server.Addr, ":8081"; got != want {
+		t.Errorf("Get().Server.Addr = %q, want %q", got, want)
+	}
 }
 
 func TestServerValidate(t *testing.T) {
@@ -278,13 +312,30 @@ func writeYAML(t *testing.T, content string) string {
 }
 
 // mustLoad 加载配置并返回包级实例，失败即终止用例。
-//
-// Load 只返回 error，配置一律经 Get() 取 —— 本 helper 把这两步收拢，
-// 免得每个用例都重复一遍 if err != nil。
 func mustLoad(t *testing.T, paths ...string) *Config {
 	t.Helper()
-	if err := Load(paths...); err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	Load(paths...)
 	return Get()
+}
+
+// loadErr 调 Load 并接住 panic，返回其中的 error。
+//
+// Load 失败时 panic（对齐 Get() 的语义），错误分支的用例经这里拿到 error
+// 断言信息，不必每处都手写 defer recover。Load 没崩则返回 nil；
+// panic 值不是 error 时原样重抛 —— 那是代码缺陷而非用例要断言的事。
+func loadErr(t *testing.T, paths ...string) (err error) {
+	t.Helper()
+	defer func() {
+		r := recover()
+		if r == nil {
+			return
+		}
+		e, ok := r.(error)
+		if !ok {
+			panic(r)
+		}
+		err = e
+	}()
+	Load(paths...)
+	return nil
 }
