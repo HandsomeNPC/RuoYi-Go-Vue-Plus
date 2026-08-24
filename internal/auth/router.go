@@ -16,10 +16,11 @@ import (
 // 显式传依赖而非在模块内部调 database.DB() / redis.Client()：
 // 那两个包级取值器未初始化时会 panic，把它们藏在业务代码里意味着
 // 每个 service 都能在任意时刻 panic，且无法脱离全局状态测试。
+// 配置不在此列：它由 config.Load 写入包级实例，这里直接 config.Get() 取，
+// 不必让 main 逐层传参（与 pkg/middleware 各中间件读配置的方式一致）。
 type Deps struct {
 	DB    *gorm.DB
 	Redis goredis.UniversalClient
-	Cfg   *config.Config
 }
 
 // RegisterRoutes 挂载认证模块路由，对应原项目 AuthController 的 @RequestMapping("/auth")。
@@ -34,9 +35,12 @@ type Deps struct {
 //
 // 原项目 AuthController 还有 register / social 相关接口，
 // 依赖注册开关与三方登录（阶段 4），届时在这里加。
+//
+// 读 config.Get()，故 **必须在 config.Load 之后调用**，否则 panic。
 func RegisterRoutes(r gin.IRouter, deps Deps) {
-	svc := service.NewAuthService(deps.DB, deps.Redis, deps.Cfg)
-	h := handler.NewAuthHandler(svc, deps.Cfg.Middleware.Auth)
+	cfg := config.Get()
+	svc := service.NewAuthService(deps.DB, deps.Redis, cfg)
+	h := handler.NewAuthHandler(svc, cfg.Middleware.Auth)
 
 	g := r.Group("/auth")
 	{

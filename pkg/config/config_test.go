@@ -14,10 +14,7 @@ const (
 )
 
 func TestLoadMergesInOrder(t *testing.T) {
-	cfg, err := Load(commonYAML, systemYAML)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	cfg := mustLoad(t, commonYAML, systemYAML)
 
 	// 来自 system.yaml
 	if got, want := cfg.Server.Addr, ":8081"; got != want {
@@ -43,10 +40,7 @@ func TestLoadMergesInOrder(t *testing.T) {
 
 // auth 与 system 共用公共配置，只有 server 段不同。
 func TestLoadAuthDiffersOnlyByServer(t *testing.T) {
-	cfg, err := Load(commonYAML, authYAML)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	cfg := mustLoad(t, commonYAML, authYAML)
 	if got, want := cfg.Server.Addr, ":8080"; got != want {
 		t.Errorf("Server.Addr = %q, want %q", got, want)
 	}
@@ -62,10 +56,7 @@ func TestLoadAuthDiffersOnlyByServer(t *testing.T) {
 // 单文件加载：只要内容完整就该通过。
 func TestLoadSingleFile(t *testing.T) {
 	path := writeYAML(t, fullYAML)
-	cfg, err := Load(path)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	cfg := mustLoad(t, path)
 	if got, want := cfg.Server.Addr, ":9000"; got != want {
 		t.Errorf("Server.Addr = %q, want %q", got, want)
 	}
@@ -81,10 +72,7 @@ datasource:
   host: mysql-prod
 `)
 
-	cfg, err := Load(base, override)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	cfg := mustLoad(t, base, override)
 	if got, want := cfg.Server.Addr, ":9999"; got != want {
 		t.Errorf("Server.Addr = %q, want %q", got, want)
 	}
@@ -106,10 +94,7 @@ func TestThreeFilesLastWins(t *testing.T) {
 	b := writeYAML(t, "server:\n  addr: \":8001\"\n")
 	c := writeYAML(t, "server:\n  addr: \":8002\"\n")
 
-	cfg, err := Load(a, b, c)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	cfg := mustLoad(t, a, b, c)
 	if got, want := cfg.Server.Addr, ":8002"; got != want {
 		t.Errorf("Server.Addr = %q, want %q", got, want)
 	}
@@ -117,28 +102,28 @@ func TestThreeFilesLastWins(t *testing.T) {
 
 func TestLoadErrors(t *testing.T) {
 	t.Run("未传路径", func(t *testing.T) {
-		if _, err := Load(); err == nil {
+		if err := Load(); err == nil {
 			t.Fatal("want error, got nil")
 		}
 	})
 
 	t.Run("文件不存在", func(t *testing.T) {
 		missing := filepath.Join(t.TempDir(), "nope.yaml")
-		if _, err := Load(missing); err == nil {
+		if err := Load(missing); err == nil {
 			t.Fatal("want error, got nil")
 		}
 	})
 
 	t.Run("第二个文件不存在", func(t *testing.T) {
 		missing := filepath.Join(t.TempDir(), "nope.yaml")
-		if _, err := Load(commonYAML, missing); err == nil {
+		if err := Load(commonYAML, missing); err == nil {
 			t.Fatal("want error, got nil")
 		}
 	})
 
 	t.Run("yaml 格式非法", func(t *testing.T) {
 		path := writeYAML(t, "server:\n\taddr: bad-tab\n")
-		if _, err := Load(path); err == nil {
+		if err := Load(path); err == nil {
 			t.Fatal("want error, got nil")
 		}
 	})
@@ -146,7 +131,7 @@ func TestLoadErrors(t *testing.T) {
 	t.Run("配置不完整未通过校验", func(t *testing.T) {
 		// 只有 server 段，缺 datasource/redis/jwt
 		path := writeYAML(t, "server:\n  name: x\n  addr: \":1\"\n")
-		if _, err := Load(path); err == nil {
+		if err := Load(path); err == nil {
 			t.Fatal("want error, got nil")
 		}
 	})
@@ -290,4 +275,16 @@ func writeYAML(t *testing.T, content string) string {
 		t.Fatalf("写入临时配置失败: %v", err)
 	}
 	return path
+}
+
+// mustLoad 加载配置并返回包级实例，失败即终止用例。
+//
+// Load 只返回 error，配置一律经 Get() 取 —— 本 helper 把这两步收拢，
+// 免得每个用例都重复一遍 if err != nil。
+func mustLoad(t *testing.T, paths ...string) *Config {
+	t.Helper()
+	if err := Load(paths...); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	return Get()
 }

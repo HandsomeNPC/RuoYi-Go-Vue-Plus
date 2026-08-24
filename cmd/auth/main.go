@@ -24,10 +24,10 @@ func main() {
 }
 
 func run() error {
-	cfg, err := config.Load("configs/application.yaml", "configs/auth.yaml")
-	if err != nil {
+	if err := config.Load("configs/application.yaml", "configs/auth.yaml"); err != nil {
 		return err
 	}
+	cfg := config.Get()
 
 	if err := database.Init(cfg.Datasource); err != nil {
 		return err
@@ -60,12 +60,12 @@ func run() error {
 	middleware.Register(r)
 
 	// 依赖显式注入：本模块内部不调 database.DB() / redis.Client()。
+	// 配置例外 —— RegisterRoutes 自己走 config.Get()（Load 已写入包级实例）。
 	// auth 的 service 直接 import system 的 service（同进程函数调用、
 	// 无网络开销），故这里传的 DB 与 system 进程连的是同一个库。
 	auth.RegisterRoutes(r, auth.Deps{
 		DB:    database.DB(),
 		Redis: redis.Client(),
-		Cfg:   cfg,
 	})
 
 	r.GET("/auth/ping", func(c *gin.Context) {

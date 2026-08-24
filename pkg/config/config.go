@@ -9,9 +9,8 @@
 //
 // 公共配置放 application.yaml，进程独有配置(端口等)放 <module>.yaml。
 //
-// Load 成功后配置同时写入包级实例，用 Get() 取回。pkg/middleware 走这个入口 ——
-// 中间件在 r.Use(...) 时读一次配置，不必由 main 逐层传参。因此
-// **必须先 Load 再注册中间件**，否则 Get() 会 panic。
+// Load 只返回 error，配置本身写入包级实例，一律用 Get() 取回 ——
+// 包括 main 自己。**必须先 Load 再读 Get()**，否则 Get() 会 panic。
 package config
 
 import (
@@ -36,11 +35,11 @@ type Config struct {
 // 至少需要一个路径。任一文件不存在或格式错误都会返回错误，
 // 合并完成后逐个子配置执行 validate。
 //
-// 加载成功后同时写入包级实例，可用 Get() 取回 —— 中间件等
-// 拿不到 *Config 的调用方走那个入口。
-func Load(paths ...string) (*Config, error) {
+// 只返回 error：配置写入包级实例，调用方随后用 Get() 取。
+// 失败时不改动包级实例（半成品配置比没有配置更难查）。
+func Load(paths ...string) error {
 	if len(paths) == 0 {
-		return nil, fmt.Errorf("config: 至少需要一个配置文件路径")
+		return fmt.Errorf("config: 至少需要一个配置文件路径")
 	}
 
 	v := viper.New()
@@ -62,23 +61,23 @@ func Load(paths ...string) (*Config, error) {
 			read = v.ReadInConfig
 		}
 		if err := read(); err != nil {
-			return nil, fmt.Errorf("config: 读取 %s 失败: %w", path, err)
+			return fmt.Errorf("config: 读取 %s 失败: %w", path, err)
 		}
 	}
 
 	var cfg Config
 	if err := v.Unmarshal(&cfg); err != nil {
-		return nil, fmt.Errorf("config: 解析配置失败: %w", err)
+		return fmt.Errorf("config: 解析配置失败: %w", err)
 	}
 
 	if err := cfg.validate(); err != nil {
-		return nil, err
+		return err
 	}
 
 	mu.Lock()
 	current = &cfg
 	mu.Unlock()
-	return &cfg, nil
+	return nil
 }
 
 // 包级默认实例。写于 Load 成功之后，读写加锁以免竞态。
@@ -90,8 +89,8 @@ var (
 // Get 返回包级默认实例。未成功 Load 过会 panic——
 // 这是启动期编排错误，不该留到运行时才发现。
 //
-// 供中间件等「拿不到 *Config 但需要配置」的调用方使用。因为它会 panic，
-// 只应在启动期调用（中间件在 r.Use(...) 那一刻读一次并捕获进闭包），
+// 这是取配置的**唯一**入口（Load 不再返回配置）。因为它会 panic，
+// 只应在启动期调用（main 开头、中间件在 r.Use(...) 那一刻读一次并捕获进闭包），
 // 不要放进每请求的路径。
 func Get() *Config {
 	mu.RLock()

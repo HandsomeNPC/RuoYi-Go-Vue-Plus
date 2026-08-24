@@ -37,10 +37,10 @@ func main() {
 }
 
 func run() error {
-	cfg, err := config.Load("configs/application.yaml", "configs/auth.yaml")
-	if err != nil {
+	if err := config.Load("configs/application.yaml", "configs/auth.yaml"); err != nil {
 		return err
 	}
+	cfg := config.Get()
 
 	rdb := goredis.NewClient(&goredis.Options{
 		Addr:     cfg.Redis.Addr(),

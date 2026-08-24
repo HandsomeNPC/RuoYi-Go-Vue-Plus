@@ -32,7 +32,7 @@ func TestMain(m *testing.M) {
 	// excludeUrls 拼错路径之类），本包断言默认行为的用例会直接失败，
 	// 而不是等到线上才发现。application.yaml 缺 server 段过不了校验，
 	// 所以带上 system.yaml。
-	if _, err := config.Load(
+	if err := config.Load(
 		"../../configs/application.yaml", "../../configs/system.yaml"); err != nil {
 		panic("middleware 测试无法加载配置: " + err.Error())
 	}

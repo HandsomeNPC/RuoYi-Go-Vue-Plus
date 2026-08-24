@@ -37,11 +37,10 @@ func main() {
 }
 
 func run() error {
-	cfg, err := config.Load("configs/application.yaml", "configs/auth.yaml")
-	if err != nil {
+	if err := config.Load("configs/application.yaml", "configs/auth.yaml"); err != nil {
 		return err
 	}
-	enc := cfg.Middleware.APIEncrypt
+	enc := config.Get().Middleware.APIEncrypt
 
 	// 前端加密请求用的是**公钥**；仓库里配的 publicKey 是给响应加密用的，
 	// 与 privateKey 不配对。这里直接从 privateKey 推出公钥 ——

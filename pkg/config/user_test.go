@@ -15,10 +15,7 @@ import (
 func TestUserDefaultsWhenAbsent(t *testing.T) {
 	// fullYAML 只有 server/datasource/redis/jwt，没有 user 段。
 	path := writeYAML(t, fullYAML)
-	cfg, err := Load(path)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	cfg := mustLoad(t, path)
 
 	if got, want := cfg.User, defaultUser(); !reflect.DeepEqual(got, want) {
 		t.Errorf("缺 user 段时的配置与 defaultUser() 不一致\ngot  = %+v\nwant = %+v", got, want)
@@ -30,10 +27,7 @@ func TestUserDefaultsWhenAbsent(t *testing.T) {
 // 与 TestRealYAMLMatchesDefaults 同一个用意：yaml 是安全的文档 ——
 // 照着改能预期行为，删掉整段也不会改行为。
 func TestRealYAMLUserMatchesDefaults(t *testing.T) {
-	cfg, err := Load(commonYAML, systemYAML)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	cfg := mustLoad(t, commonYAML, systemYAML)
 
 	if got, want := cfg.User, defaultUser(); !reflect.DeepEqual(got, want) {
 		t.Errorf("application.yaml 的 user 段与 defaultUser() 不一致\ngot  = %+v\nwant = %+v",
@@ -78,7 +72,7 @@ func TestUserValidateRejectsNonPositive(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			path := writeYAML(t, fullYAML+tt.yaml)
-			_, err := Load(path)
+			err := Load(path)
 			if err == nil {
 				t.Fatal("应校验失败")
 			}
@@ -95,10 +89,7 @@ func TestUserValidateRejectsNonPositive(t *testing.T) {
 // 免鉴权，Go 没有注解机制只能进配置名单。漏了它，登录接口自己就需要 token ——
 // 谁也登不进来，且症状（登录返回 401）会让人去查密码而不是查这份名单。
 func TestAuthExcludesCoverLoginEndpoints(t *testing.T) {
-	cfg, err := Load(commonYAML, systemYAML)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	cfg := mustLoad(t, commonYAML, systemYAML)
 
 	var found bool
 	for _, p := range cfg.Middleware.Auth.Excludes {
@@ -155,7 +146,7 @@ func TestAuthExcludesMatchJavaSecurityExcludes(t *testing.T) {
 // 是一条 `- ""` 或笔误留下的空行 —— 写的人多半以为自己排除了什么。
 func TestAuthValidateRejectsEmptyExclude(t *testing.T) {
 	path := writeYAML(t, fullYAML+"\nmiddleware:\n  auth:\n    excludes:\n      - \"\"\n")
-	_, err := Load(path)
+	err := Load(path)
 	if err == nil {
 		t.Fatal("含空路径的 excludes 应校验失败")
 	}

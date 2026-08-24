@@ -21,10 +21,10 @@ func main() {
 }
 
 func run() error {
-	cfg, err := config.Load("configs/application.yaml", "configs/system.yaml")
-	if err != nil {
+	if err := config.Load("configs/application.yaml", "configs/system.yaml"); err != nil {
 		return err
 	}
+	cfg := config.Get()
 
 	if err := database.Init(cfg.Datasource); err != nil {
 		return err

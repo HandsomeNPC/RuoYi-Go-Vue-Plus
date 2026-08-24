@@ -16,10 +16,7 @@ import (
 func TestMiddlewareDefaultsMatchSetDefault(t *testing.T) {
 	// fullYAML 只有 server/datasource/redis/jwt，没有 middleware 段。
 	path := writeYAML(t, fullYAML)
-	cfg, err := Load(path)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	cfg := mustLoad(t, path)
 
 	if got, want := cfg.Middleware, DefaultMiddleware(); !reflect.DeepEqual(got, want) {
 		t.Errorf("缺 middleware 段时的配置与 DefaultMiddleware() 不一致\ngot  = %+v\nwant = %+v",
@@ -42,10 +39,7 @@ func TestMiddlewareDefaultsMatchSetDefault(t *testing.T) {
 // yaml 里 enabled=true（对齐原项目）而默认值是 false（否则未配置的进程会因
 // 缺私钥而启动失败）。那段的内容由 TestRealYAMLEnablesAPIEncrypt 单独锁。
 func TestRealYAMLMatchesDefaults(t *testing.T) {
-	cfg, err := Load(commonYAML, systemYAML)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	cfg := mustLoad(t, commonYAML, systemYAML)
 
 	got, want := cfg.Middleware, DefaultMiddleware()
 	// 置成同一个值再比：这样将来新增的中间件配置仍会被本用例覆盖，
@@ -65,10 +59,7 @@ func TestRealYAMLMatchesDefaults(t *testing.T) {
 // 密钥解析也一并验：那对密钥是从原项目 yaml 手抄过来的 base64 长串，
 // 中间断一个字符不会有任何编译期症状，只会让所有加密接口在运行期解密失败。
 func TestRealYAMLEnablesAPIEncrypt(t *testing.T) {
-	cfg, err := Load(commonYAML, systemYAML)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	cfg := mustLoad(t, commonYAML, systemYAML)
 	a := cfg.Middleware.APIEncrypt
 
 	// 对齐原项目 application.yml:150 的 api-decrypt.enabled: true。
@@ -124,10 +115,7 @@ middleware:
   i18n:
     default: en-us
 `)
-	cfg, err := Load(path)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	cfg := mustLoad(t, path)
 
 	m := cfg.Middleware
 	if got, want := m.CORS.MaxAgeSeconds, 60; got != want {
@@ -234,27 +222,37 @@ func TestMiddlewareValidate(t *testing.T) {
 // application.yaml 的内容 —— 校验逻辑的测试不该在有人改配置时跟着红。
 const testRSAPrivateKey = "MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBAO8QO5Eg4zehk9aP1SShzmlCSVHg8Ufr9yWeN4WqMMsiAPJC+PGGCoBlAD4T14Pqq7oWxc+Yrx2Nwv6eHdwUfPilfjveMO87dK977zIvdVFDSfalGBDZrTUwmzL5bBNkIFhZ/RWctEi8A1ShZCDL2/P3irtVrjh2DsDX/cgJ/7EDAgMBAAECgYEAhNZAQyRDHWZq/45soS5Hw7VRiG21pIE5k22W7G7lLfp3DCaqrYoNy8pTmCruVh7PzVdaE0CEDaf38gNqFCBOT8iTFQiYV3am4W3hsEQM5wmVBeTvCM5P2jsaaBQbqmneRjiZVbs6ha205JSho1Oc85NbaZa8gFVjwZgZWJrbzgECQQD/iZWhkRPtbdeai/Xk7D/eIXKh1Gxid0rWKQq8ikxbaiergn47XzNKrpROVyka3Gn85o7jJphgxp99R3r8sH71AkEA738Dn7xs+I4Y+MLa2EcT78JG3f/VhlWS/ks3qGJ2dfqwS7ntnmf5Q+2Xw+9UcuiK/TxD8K/0inSCkIMeWBOFFwJBAIoTebq3faEJfTqQ7ekojsokIKC4+2epNdLKknaV8/RhQ9Y0yKikJD7yXkiGaDuPZeW1Xvf2XtfL+1niSd5IMBECQDCOOMbe5dzyuj9dCg+FQZZ/dey2XK0Slm22BD/ATrIWtD12IaXXAKNz/Sv9TsrJOLykxkV69wJHIt13p+RFeNsCQGn5XGRn4ZCRVCesJYXyx29MTqkl8sD/gzYcURTZYjHqX2EvtvAyC6gBm9H0EbxmHIi4Oq0tITzklCXj5SpvBEw="
 
-// Load 成功后 Get() 应返回同一份配置。
+// Load 成功后 Get() 应返回刚加载的那份配置。
+//
+// Load 不返回配置，所以这里只能比内容：换一份 addr 明显不同的配置再 Load，
+// Get() 必须跟着变 —— 锁住的是「Get() 反映最后一次成功 Load」。
 func TestGetReturnsLoadedConfig(t *testing.T) {
-	cfg, err := Load(commonYAML, systemYAML)
-	if err != nil {
+	if err := Load(commonYAML, systemYAML); err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if got := Get(); got != cfg {
-		t.Errorf("Get() = %p, want %p（应是 Load 返回的同一份）", got, cfg)
+	if got, want := Get().Server.Addr, ":8081"; got != want {
+		t.Errorf("Get().Server.Addr = %q, want %q", got, want)
+	}
+
+	// 再 Load 一份不同的，Get() 应指向新的那份。
+	if err := Load(writeYAML(t, fullYAML)); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got, want := Get().Server.Addr, ":9000"; got != want {
+		t.Errorf("重新 Load 后 Get().Server.Addr = %q, want %q", got, want)
 	}
 }
 
 // Load 失败不应污染包级实例 —— 半成品配置比没有配置更难查。
 func TestFailedLoadDoesNotOverwriteCurrent(t *testing.T) {
-	good, err := Load(commonYAML, systemYAML)
-	if err != nil {
+	if err := Load(commonYAML, systemYAML); err != nil {
 		t.Fatalf("Load: %v", err)
 	}
+	good := Get()
 
 	// 只有 server 段，过不了 datasource/redis/jwt 的校验。
 	bad := writeYAML(t, "server:\n  name: x\n  addr: \":1\"\n")
-	if _, err := Load(bad); err == nil {
+	if err := Load(bad); err == nil {
 		t.Fatal("残缺配置应加载失败")
 	}
 

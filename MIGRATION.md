@@ -35,7 +35,8 @@
 `RepeatableBody` / `AccessLog` / `XSS` / `I18n` / `Auth` **已全部落地**，由 `middleware.Register(r)` 统一按序注册
 （两个入口各一行调用）。 各中间件的配置在
 `configs/application.yaml` 的 `middleware` 段，结构体定义在 `pkg/config/middleware.go`， 运行期从 `config.Get()` 读 —— 因此
-**`config.Load` 必须早于 `middleware.Register`**（`Auth` 还要求先 `redis.Init`）。
+**`config.Load` 必须早于 `middleware.Register`**（`Auth` 还要求先 `redis.Init`）。 `config.Load` 只返回
+`error`，配置一律经 `config.Get()` 取（含 `main` 自身），不逐层传 `*config.Config`。
 
 > `ApiEncrypt`（接口加解密，对应 Java 的 `CryptoFilter`） **必须排在 `RepeatableBody` 之前**，
 > 否则日志只能看到密文、脱敏失效、handler 还绑不到参数。它是唯一带 `enabled` 开关的中间件。
