@@ -33,6 +33,7 @@ type Middleware struct {
 	RepeatableBody RepeatableBody `mapstructure:"repeatableBody"`
 	I18n           I18n           `mapstructure:"i18n"`
 	APIEncrypt     APIEncrypt     `mapstructure:"apiEncrypt"`
+	Auth           Auth           `mapstructure:"auth"`
 }
 
 // DefaultMiddleware 返回全部中间件的默认配置。
@@ -49,6 +50,7 @@ func DefaultMiddleware() Middleware {
 		RepeatableBody: defaultRepeatableBody(),
 		I18n:           defaultI18n(),
 		APIEncrypt:     defaultAPIEncrypt(),
+		Auth:           defaultAuth(),
 	}
 }
 
@@ -71,6 +73,7 @@ func setMiddlewareDefaults(v *viper.Viper) {
 	d.RepeatableBody.setDefaults(v)
 	d.I18n.setDefaults(v)
 	d.APIEncrypt.setDefaults(v)
+	d.Auth.setDefaults(v)
 }
 
 // validate 依次校验各中间件配置。
@@ -86,6 +89,7 @@ func (m Middleware) validate() error {
 		m.RepeatableBody.validate,
 		m.I18n.validate,
 		m.APIEncrypt.validate,
+		m.Auth.validate,
 	}
 	for _, fn := range validators {
 		if err := fn(); err != nil {

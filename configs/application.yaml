@@ -28,9 +28,26 @@ redis:
   connMaxIdleTime: 600        # 空闲连接最大存活(秒)
 
 jwt:
+  # 签名密钥，对应原项目 sa-token.jwt-secret-key。
+  # **两个进程必须配同一个值** —— 不同则 auth 签的 token 在 system 那边验不过，
+  # 症状是「登录成功但每个接口都 401」。
   secret: change-me-in-production
+  # 以下两项**当前不生效**，详见 pkg/config/jwt.go 的字段注释：
+  #   expireMinutes -> token 绝对有效期实际取 sys_client.timeout(种子数据 7 天)，
+  #                    对齐原项目(那边也没有全局 sa-token.timeout)
+  #   header        -> 已由 middleware.auth.header 承担；要改头名改那里
   expireMinutes: 720
   header: Authorization
+
+# 用户业务配置，对应原项目 application.yml 的 user 段(:38-43)。
+# **有意不放进 middleware 段**：密码重试限制作用在登录 service 里，与 HTTP 无关，
+# 阶段 4 的短信/邮箱登录也会复用同一份限制。键路径与原项目保持一致。
+user:
+  password:
+    maxRetryCount: 5          # 密码最大错误次数，达到即锁定
+    lockTime: 10              # 锁定时长(分钟)。同时是 pwd_err_cnt:<username> 的 TTL，
+    #                         # 且**每次失败都会重置**(滑动窗口非固定窗口) ——
+    #                         # 每 9 分钟错一次、错满 5 次跨越 40 分钟依然会锁。
 
 # 全局中间件。除 apiEncrypt 一节外，此处写的都是代码默认值(pkg/config.DefaultMiddleware)的
 # 显式重述，由 config 包的测试锁住一致性 —— 改这里的值会真的改行为，改错也会被测试发现。
@@ -76,6 +93,37 @@ middleware:
   i18n:
     header: content-language        # 对齐原项目，不是 Accept-Language(理由见 pkg/config/middleware.go)
     default: zh-cn                  # 请求未指定或语言标记不合规时使用
+
+  # 鉴权，对应原项目 SecurityConfig + sa-token 相关项。
+  #
+  # 键路径是 middleware.auth.* 而非原项目的顶层 security.excludes ——
+  # Go 侧全部中间件配置都收在 middleware 段下、一个中间件一个文件，
+  # 为一项破例会让「某个中间件的配置在哪」需要逐个记。
+  auth:
+    header: Authorization           # 读 token 的请求头名，对应 sa-token.token-name
+    tokenPrefix: Bearer             # token 前缀，对应 sa-token.token-prefix；
+    #                               # 显式写空串表示不用前缀(裸 token)
+    clientIdHeader: clientid        # 客户端标识的头名/查询串参数名，对应 LoginHelper.CLIENT_KEY。
+    #                               # token 本身**只从 header 取**(不接受查询串)：
+    #                               # 查询串会流进 nginx accesslog 与浏览器历史。
+    #                               # 同理不接受 cookie —— 原项目 is-read-cookie: false
+    #                               # 是刻意关掉以杜绝 CSRF，不要为了方便加回落。
+    excludes: # 免鉴权路径，Ant 风格(? 单字符 / * 单层 / ** 任意层)
+      # 前 11 条逐字对应原项目 security.excludes(application.yml:100-113)。
+      - /*.html                     # 与下一条都要有：Ant 语义下 * 不跨路径分隔符，
+      - /**/*.html                  # 前者匹配 /index.html，后者匹配 /static/a/index.html
+      - /**/*.css
+      - /**/*.js
+      - /favicon.ico
+      - /error
+      - /*/api-docs
+      - /*/api-docs/**
+      - /warm-flow-ui/config
+      - /snail-chat/**
+      - /api/snail/chat/**
+      # 相对原项目的**必要新增**：那边 AuthController 整个类挂 @SaIgnore 免鉴权，
+      # Go 没有注解机制只能进这份名单 —— 漏了它登录接口自己就需要 token，谁也登不进来。
+      - /auth/**
 
   # 接口加解密，对应原项目 api-decrypt 段(application.yml:148-158)。
   #

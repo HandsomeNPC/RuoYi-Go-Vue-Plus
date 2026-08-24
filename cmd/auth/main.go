@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"ruoyi-go-vue-plus/internal/auth"
 	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/database"
 	"ruoyi-go-vue-plus/pkg/middleware"
@@ -54,10 +55,18 @@ func run() error {
 	// 与 middleware.Recover() 的职责重叠且语义不符（详见 pkg/middleware/README.md）。
 	r := gin.New()
 	// 注册顺序与两个进程的一致性由 middleware.Register 保证。
-	// 它读 config.Get()，所以必须在 config.Load 之后调用。
+	// 它读 config.Get() 与 redis.Client()，所以必须在 config.Load 与
+	// redis.Init 之后调用 —— 鉴权中间件要用这两者。
 	middleware.Register(r)
 
-	// TODO: auth.RegisterRoutes(r, deps)
+	// 依赖显式注入：本模块内部不调 database.DB() / redis.Client()。
+	// auth 的 service 直接 import system 的 service（同进程函数调用、
+	// 无网络开销），故这里传的 DB 与 system 进程连的是同一个库。
+	auth.RegisterRoutes(r, auth.Deps{
+		DB:    database.DB(),
+		Redis: redis.Client(),
+		Cfg:   cfg,
+	})
 
 	r.GET("/auth/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"module": cfg.Server.Name, "message": "pong"})

@@ -22,23 +22,26 @@ Go 侧全部收拢到本包，由 `Register(r)` 按固定顺序显式 `r.Use(...
 
 路径以 `ruoyi-common/` 为根，省略 `src/main/java/org/dromara/common/`。
 
-| #  | 关注点          | 原 Java 位置                                                                            | 本包文件            |
-|----|-----------------|-----------------------------------------------------------------------------------------|---------------------|
-| 1  | 全局异常        | `ruoyi-common-web/…/web/handler/GlobalExceptionHandler.java` + 另 5 个 advice（见下）   | ✅ `recover.go`     |
-| 2  | CORS            | `ruoyi-common-web/…/web/config/ResourcesConfig.java:73-86`（`CorsFilter` bean）         | ✅ `cors.go`        |
-| 3  | TraceID         | **原项目不存在，净新增**                                                                | ✅ `trace.go`       |
-| 4  | 接口加解密      | `ruoyi-common-encrypt/…/encrypt/filter/CryptoFilter.java` + 另 2 个 wrapper             | ✅ `crypto.go`      |
-| 5  | 可重复读 Body   | `ruoyi-common-web/…/web/filter/RepeatableFilter.java` + `RepeatedlyRequestWrapper.java` | ✅ `body.go`        |
-| 6  | 请求日志 + 耗时 | `ruoyi-common-web/…/web/interceptor/PlusWebInvokeTimeInterceptor.java`                  | ✅ `logger.go`      |
-| 7  | XSS 过滤        | `ruoyi-common-web/…/web/filter/XssFilter.java` + `XssHttpServletRequestWrapper.java`    | ✅ `xss.go`         |
-| 8  | i18n            | `ruoyi-common-web/…/web/config/I18nConfig.java` + `web/core/I18nLocaleResolver.java`    | ✅ `i18n.go`        |
-| 9  | 鉴权            | `ruoyi-common-security/…/security/config/SecurityConfig.java:80-119`                    | `auth.go`（阶段 1） |
-| 10 | 响应增强        | `ruoyi-common-web/…/web/advice/ResponseEnhancementAdvice.java`                          | 阶段 3 再建         |
+| #  | 关注点          | 原 Java 位置                                                                            | 本包文件        |
+|----|-----------------|-----------------------------------------------------------------------------------------|-----------------|
+| 1  | 全局异常        | `ruoyi-common-web/…/web/handler/GlobalExceptionHandler.java` + 另 5 个 advice（见下）   | ✅ `recover.go` |
+| 2  | CORS            | `ruoyi-common-web/…/web/config/ResourcesConfig.java:73-86`（`CorsFilter` bean）         | ✅ `cors.go`    |
+| 3  | TraceID         | **原项目不存在，净新增**                                                                | ✅ `trace.go`   |
+| 4  | 接口加解密      | `ruoyi-common-encrypt/…/encrypt/filter/CryptoFilter.java` + 另 2 个 wrapper             | ✅ `crypto.go`  |
+| 5  | 可重复读 Body   | `ruoyi-common-web/…/web/filter/RepeatableFilter.java` + `RepeatedlyRequestWrapper.java` | ✅ `body.go`    |
+| 6  | 请求日志 + 耗时 | `ruoyi-common-web/…/web/interceptor/PlusWebInvokeTimeInterceptor.java`                  | ✅ `logger.go`  |
+| 7  | XSS 过滤        | `ruoyi-common-web/…/web/filter/XssFilter.java` + `XssHttpServletRequestWrapper.java`    | ✅ `xss.go`     |
+| 8  | i18n            | `ruoyi-common-web/…/web/config/I18nConfig.java` + `web/core/I18nLocaleResolver.java`    | ✅ `i18n.go`    |
+| 9  | 鉴权            | `ruoyi-common-security/…/security/config/SecurityConfig.java:80-119`                    | ✅ `auth.go`    |
+| 10 | 响应增强        | `ruoyi-common-web/…/web/advice/ResponseEnhancementAdvice.java`                          | 阶段 3 再建     |
 
-另有两个没有 Java 对照物的文件：`register.go`（按序注册全部中间件，对应 Spring 的四个 `AutoConfiguration.imports`
-清单）与 `path.go`（Ant 路径匹配，对应 `AntPathMatcher`，被 `xss.go`、`crypto.go` 与阶段 1 的 `auth.go` 共用）。 加解密原语不在本包，在
+另有三个没有 Java 直接对照物的文件：`register.go`（按序注册全部中间件，对应 Spring 的四个 `AutoConfiguration.imports`
+清单）、`path.go`（Ant 路径匹配，对应 `AntPathMatcher`，被 `xss.go`、`crypto.go`、`auth.go` 共用）与
+`ip.go`（客户端 IP 提取与 IP 规则匹配，对应 `ServletUtils.getClientIP` + `NetUtils.isMatchIpRule`， 被 `auth.go` 的客户端
+IP 白名单用，阶段 4+ 的 `@RateLimiter` 会复用）。 加解密原语不在本包，在
 `pkg/encrypt`（对应 `encrypt/utils/EncryptUtils.java`）—— 阶段 4+ 的
-`@EncryptField` 字段级加密会复用它，那条路径与 HTTP 无关、不该 import gin。 配置结构体不在本包，在
+`@EncryptField` 字段级加密会复用它，那条路径与 HTTP 无关、不该 import gin。 登录态原语（JWT 签发/校验、Redis 会话、密码哈希）在
+`pkg/auth`，同样不 import gin —— `internal/*/service` 要签发与销毁会话。 配置结构体不在本包，在
 `pkg/config/middleware.go`（见下方「配置怎么读到的」）。
 
 ### 注册顺序
@@ -65,8 +68,8 @@ Recover → CORS → TraceID → ApiEncrypt → RepeatableBody → AccessLog →
 第五条约束来自 i18n，宽松得多： **I18n 必须在 Auth 之前**（鉴权的提示文案要走词条）。它不读 body、不改请求， 与前四条没有交集，详见下方
 i18n 一节。
 
-> 截至当前，`Recover → CORS → TraceID → ApiEncrypt → RepeatableBody → AccessLog → XSS → I18n` 已全部在
-> `register.go` 的 `Register(r)` 里注册，两个入口各一行调用；只剩 `Auth` 待阶段 1 落地。
+> 截至当前，`Recover → CORS → TraceID → ApiEncrypt → RepeatableBody → AccessLog → XSS → I18n → Auth`
+> **已全部**在 `register.go` 的 `Register(r)` 里注册，两个入口各一行调用。
 > **两个入口的中间件链必须保持一致** —— 拆进程后同一个请求经 nginx 落到哪个进程是不定的，
 > 两边链路不同会让同一次调用表现出不同的清洗/脱敏行为，而那种差异极难从现象反推。
 > 收进 `Register` 就是为了让这件事 **物理上无法**做错：加 `Auth` 时只改一个文件，两个进程自动同步。
@@ -527,7 +530,7 @@ Go 的 `crypto/cipher` **有意不提供 ECB**，所以 `pkg/encrypt` 里手写�
 `AES/ECB/PKCS5Padding`，`encryptBase64` 走 base64）。 理想的验证是拿一段 hutool 真实产出的密文来解，但那需要跑 Java。
 **首次前后端联调时应重点验这两层。**
 
-### 9. 鉴权（阶段 1）：四步校验 + 一个易踩的坑
+### 9. 鉴权：两道前置跳过 + 四步校验
 
 `SecurityConfig.java:80-119` 注册 sa-token `SaInterceptor` 到 `/**`，排除 `securityProperties.getExcludes()`。每请求做四件事：
 
@@ -538,18 +541,137 @@ Go 的 `crypto/cipher` **有意不提供 ECB**，所以 `pkg/encrypt` 里手写�
    `NotPermissionException("当前客户端未授权访问该接口路径")`
 4. 同方法内按客户端做 **IP 白名单**（`NetUtils.isMatchIpRule`），不符抛「当前客户端IP不在白名单内」
 
-> **坑**：它用 `SaRouter.match(allUrlHandler.getUrls())` 匹配。
+Go 侧在这四步之前还有两道跳过，完整流程（`auth.go`）：
+
+```
+0a. 命中 middleware.auth.excludes（Ant 风格）   -> 放行
+0b. c.FullPath() == ""（未命中任何已注册路由）  -> 放行，交给 NoRoute 落 404
+ 1. Authorization 头取 token，验签 + 查 exp     -> 失败 401
+ 2. 查 Redis 会话（登出/空闲超时即无）          -> 失败 401
+ 3. clientid 交叉比对                           -> 失败 401
+ 4. 客户端访问路径 -> 客户端 IP 白名单          -> 失败 403
+ 5. 通过：滑动续期 + 把 LoginUser 写进两处上下文
+```
+
+四步的顺序不能调换：先确认「你是谁」再判「能否访问」，否则未登录的请求会先撞上 403 而非 401， 前端的处理分支完全不同（403
+提示无权限、401 跳登录页）。
+
+> **那个坑（`0b` 的来历）**：Java 用 `SaRouter.match(allUrlHandler.getUrls())` 匹配。
 > `ruoyi-common-security/…/security/handler/AllUrlHandler.java`
 > 在启动时遍历 `RequestMappingHandlerMapping` 收集 **所有已注册路由**（`{pathVariable}` 替换成 `*`）。
-> 也就是说 **未注册的路径根本不进鉴权，直接落 404 而非 401**。Gin 的 `NoRoute` 默认行为不同，
-> 若前端/测试依赖「乱路径返回 404 不是 401」，需显式对齐。
+> 也就是说 **未注册的路径根本不进鉴权，直接落 404 而非 401**。
+> Go 侧用 `c.FullPath() == ""` 判定同一件事 —— gin 在路由匹配阶段就填好它，未命中时是空串，
+> 比启动时枚举 `engine.Routes()` 再做 Ant 匹配既简单又精确（那还要处理 `:param` / `*wildcard` 的归一化）。
+> 代价是暴露了「哪些路径存在」这一位信息，这是 **对齐原项目的有意选择**，
+> 由 `TestAuthUnregisteredPathFalls404NotUnauthorized` 锁住。
 
-免鉴权名单：yaml `security.excludes`（`ruoyi-admin/src/main/resources/application.yml:100-113`），当前含
-`/*.html`、`/**/*.html`、`/**/*.css`、`/**/*.js`、`/favicon.ico`、`/error`、`/*/api-docs`、`/*/api-docs/**` 等。
+#### 登录态原语在 `pkg/auth`，不在本包
 
-token 解析规则在 `ruoyi-common-satoken/src/main/resources/common-satoken.yml`（由 `SaTokenConfig` 用
-`@PropertySource` 加载），注意 `is-read-cookie: false` —— **刻意关掉 cookie 认证来消除 CSRF**，Go 侧同样只从 header 取，
-不要为了方便加 cookie 回落。
+本包只做 **策略**（谁要鉴权、失败回什么）；「登录态是什么」在 `pkg/auth`：
+
+| 文件            | 内容                                                    | Java 对照物                        |
+|-----------------|---------------------------------------------------------|------------------------------------|
+| `login_user.go` | `LoginUser`（22 字段）+ `LoginID()` → `"sys_user:<id>"` | `system.api.model.LoginUser`       |
+| `claims.go`     | `Claims`：8 个 extra + `sub`/`exp`/`iat`                | `SaLoginParameter` 的 extra        |
+| `token.go`      | `Sign` / `Verify` / `TrimTokenPrefix`                   | `StpLogicJwtForSimple`             |
+| `session.go`    | `SessionStore`：`Save`/`Load`/`Renew`/`Delete`          | `PlusSaTokenDao` + token-session   |
+| `password.go`   | `HashPassword` / `VerifyPassword`（bcrypt cost 10）     | hutool `BCrypt.hashpw` / `checkpw` |
+
+分包理由与 `pkg/encrypt` 同源：`internal/*/service` 要签发与销毁会话，那条路径与 HTTP 无关、不该 import gin。
+
+两条最值得记住的：
+
+- **`Claims` 必须是具体结构体，不能用 `jwt.MapClaims`**。后者底层 `map[string]any`，数字一律解成
+  `float64`（53 位有效位），而 `userId`/`deptId` 是 19 位雪花 id —— 尾数会被 **静默** 抹掉。 与 `xss.go`/`logger.go` 用
+  `Decoder.UseNumber()` 挡的是同一个坑，但这里坏掉的是 **身份标识**： 拿被改过尾数的 userId 查库，查不到算走运，查到别人是事故。
+  `TestClaimsSnowflakeIDSurvivesRoundTrip`
+  同时断言 MapClaims 确实会损坏该值，让前提失效得明显。
+- **`Verify` 必须传 `jwt.WithValidMethods`**。不加则 alg 由 token 自己声明，改成 `none` 即免签名、 改成 `RS256` 能让服务端拿
+  HMAC 密钥当公钥去验一个自己签的 token。两层各有一道锁 （`pkg/auth` 与本包的 `TestAuthRejectsAlgNone`）。
+
+#### 两个超时的分工
+
+`sys_client` 有两列超时，落到 Go 侧是两道独立的闸：
+
+| 列               | 种子值        | 语义             | 载体                              |
+|------------------|---------------|------------------|-----------------------------------|
+| `timeout`        | 604800（7d）  | **绝对**有效期   | JWT 的 `exp`（签发即冻结）        |
+| `active_timeout` | 1800（30min） | **滑动**空闲超时 | Redis 会话的 TTL，每请求 `EXPIRE` |
+
+对应原项目 sa-token 的 `active-timeout` + `dynamic-active-timeout: true`（那边每请求更新
+`last-activity` 键，Go 侧直接对会话键续期，少一个键）。
+`ActiveTimeout` 存在会话里而非 claims 里：claims 逐字对齐 Java 的 8 个 extra（那是协议）， 而续期时长是服务端的实现细节 ——
+放会话侧则改配置对 **新会话**立即生效。
+
+Redis 键布局（ **有意不对齐 sa-token 那 4 个键**，那套是框架内部约定且值是 Jackson 带 `@class` 的多态格式， 复刻它只有「与运行中的
+Java 进程共用会话」这一个好处，而本项目是重写不是双跑）：
+
+```
+auth:token:<jwt>        -> Session(JSON)   TTL = activeTimeout，每请求滑动续期
+online_tokens:<jwt>     -> 在线用户记录     TTL = timeout
+pwd_err_cnt:<username>  -> 密码错误计数     TTL = lockTime，每次失败重置（滑动窗口）
+```
+
+后两个前缀沿用原项目的名字（`pkg/constant/cache_names.go` 已有），那两个是 **业务**键、原项目里也是自己拼的串， 保持同名以便数据可对照。
+
+#### Go 实现的有意偏差（`auth.go`）
+
+| 位置                | 偏差                                | 原因                                                                                                                                           |
+|---------------------|-------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| token 来源          | **只从 header 取**                  | sa-token 配了 `is-read-body: true`（可从请求参数读）。查询串会流进 nginx accesslog 与浏览器历史；cookie 则是原项目刻意关掉的（见下）           |
+| 缺 `clientid` claim | 返 **401**                          | Java 的 `StpUtil.getExtra(CLIENT_KEY).toString()`（`SecurityConfig.java:100`）对这种 token **NPE 成 500** —— 那是 bug 不是可对齐的行为         |
+| 失败响应            | 走 `c.Error` 由 `Recover` 渲染      | HTTP 状态码恒 200、业务码放响应体，与其余接口一致（`recover.go` 的硬约束）；Java 那边 advice 返回 `R<Void>` 也是 200                           |
+| 未注册路径          | `c.FullPath() == ""` 判定           | Java 靠启动时枚举路由表（`AllUrlHandler`），Go 用 gin 现成的字段，不必处理 `:param` 归一化                                                     |
+| 失败文案            | 只保留 2 句（Java 有 5 句）         | `BE_REPLACED`/`KICK_OUT` 需要「为什么没了会话」这一层信息，而本实现删会话时不留因由。阶段 3 做在线用户管理时再加，不摆永远走不到的分支         |
+| 文案来源            | **常量，不走 i18n 词条**            | Java 侧这几句就硬编码在 `SaTokenExceptionHandler` 里（不走 `MessageUtils`），`pkg/i18n` 也确实没有这些键。凭空新增词条会造出一份无从核对的差异 |
+| 客户端规则          | 从 JWT claims 读，**不实时查库**    | 与 Java 一致。每请求查一次 `sys_client` 会把鉴权变成带 DB 依赖的热路径。代价是改了客户端规则要等存量 token 过期                                |
+| 续期失败            | 只打日志，不中断请求                | 校验已经通过了，此刻因一次 Redis 抖动把已登录用户挡在门外不成比例；代价只是这次没延长空闲窗口                                                  |
+| Redis 故障          | 兜成系统异常（500），**不是 401**   | 回 401 会让一次抖动表现成「所有人被登出」，而日志里只有一片 401 —— 看不出真正的原因。由 `TestAuthRedisFailureIsNotUnauthorized` 锁住           |
+| 登录用户存放        | 同时写 `gin.Context` 与 request ctx | 与 `trace.go`/`i18n.go` 同一套做法：后者让 service/repository 层不必 import gin（阶段 4.1 的数据权限要用）                                     |
+
+`is-read-cookie: false` 那条（`ruoyi-common-satoken/src/main/resources/common-satoken.yml`）是 **刻意关掉 cookie 认证来消除
+CSRF**，Go 侧同样只从 header 取， **不要为了方便加 cookie 或查询串回落** —— 由 `TestAuthTokenNotReadFromQueryOrCookie` 锁住。
+`clientid` 仍保留 header-or-query 两种来源（对齐 `StringUtils.equalsAny`），因为它不是凭证、只是标识。
+
+免鉴权名单：`middleware.auth.excludes`，默认值前 11 条逐字对应原项目
+`security.excludes`（`ruoyi-admin/src/main/resources/application.yml:100-113`）， 外加一条 **`/auth/**`** —— Java 侧
+`AuthController` 整个类挂 `@SaIgnore` 免鉴权，Go 没有注解机制只能进名单。 **漏了它登录接口自己就要 token，谁也登不进来**
+，而症状（登录返回 401）会让人去查密码而不是查这份名单。 由 `TestAuthExcludesCoverLoginEndpoints` 与
+`TestAuthExcludesMatchJavaSecurityExcludes` 锁住。
+
+#### `ip.go`：两个容易静默放宽白名单的坑
+
+对应 `ServletUtils.getClientIP`（`:277-285`）与 `NetUtils.isMatchIpRule`（`:93-149`）。 规则优先级照抄： **精确相等 → 含 `/` 走
+CIDR → 含 `*`/`?` 走 glob → false**。
+
+1. **CIDR 必须显式对齐地址族**。Go 的 `net.IP` 会把 IPv4 规范化成 16 字节的 v4-mapped 形式 （`::ffff:1.2.3.4`），于是
+   `net.IPNet.Contains` 对 `::/0` 这条 v6 规则会把 IPv4 地址也算进去 —— **一条本意只放行 IPv6 的规则会静默放行全世界**
+   。Java 侧靠
+   `networkBytes.length != currentBytes.length` 挡住，Go 侧先各自 `To4()` 再比。
+2. **glob 不用 regexp**。Java 是 `rule.replace(".","\\.").replace("*",".*").replace("?",".")` 配
+   `String.matches`（ **全串**匹配），而 Go 的 `regexp.MatchString` 是 **部分**匹配 —— 照搬那三次 replace 会让
+   `192.168.1.*` 命中 `10.0.0.1#192.168.1.5`。要修就得自己补 `^$` 锚点， 一个容易漏、漏了就是静默放宽的口子。改为复用
+   `path.go` 的 `matchSegment`（同一套带回溯双指针）。
+   `TestIsMatchIPRuleGlobIsFullMatch` 同时断言「Java 正则 + 部分匹配」确实会误判前缀。
+
+**这些头都是可伪造的**（任何客户端都能自己发 `X-Forwarded-For`）。仍然信任它们是因为本项目部署在 nginx 之后、由 nginx
+覆写该头。进程直接暴露公网时 IP 白名单形同虚设 —— 这与原项目相同，不是本实现引入的。
+
+#### 登录/登出不在本包
+
+`POST /auth/login` `/auth/logout` 在 `internal/auth`（对应 `AuthController` + `SysLoginService` +
+`PasswordAuthStrategy`）。几条与本包配套的要点：
+
+- **密码错误计数的顺序是安全要求**：「查用户」必须早于「碰计数器」。否则攻击者能用任意 **不存在**的 用户名把某个真实账号刷到锁定（计数键按
+  username 存，而「这个用户名存不存在」在锁定前是未知的）。 对齐 Java 的 `loadUserByUsername` 先行，由
+  `TestLoginNonexistentUserDoesNotIncrementRetryCount` 锁住。
+- 代价是 **用户枚举可观测**（「账号不存在」与「密码输入错误N次」文案不同）。这是原项目的行为， 本次对齐 ——
+  改掉它要连前端提示一起改，且属安全加固而非迁移。
+- **授权类型用切分后精确比对**，不用 Java 的 `StringUtils.contains` 子串匹配 （那让 `grantType=pass` 命中
+  `"password,social"`）。
+- 密码是 BCrypt `$2a$10$`（hutool 默认 10 轮），`golang.org/x/crypto/bcrypt` 完全兼容 ——
+  `TestPasswordVerifiesJavaBCryptHash` **直接拿原项目种子数据的哈希验 `admin123`**， 这是唯一能真正证明跨语言兼容的验证方式（往返测试做不到：变体或
+  cost 选错也能自洽地往返成功）。
 
 ### 10. 响应增强：阶段 3 再说
 
@@ -560,14 +682,21 @@ token 解析规则在 `ruoyi-common-satoken/src/main/resources/common-satoken.ym
 
 这些在 Java 里是 `@Aspect` 或按注解生效，Go 侧应做成 **按路由挂的中间件或 handler 内显式调用**，不要塞进全局链：
 
-| 关注点            | 原 Java 位置                                                                               | 阶段     |
-|-------------------|--------------------------------------------------------------------------------------------|----------|
-| `@Log` 操作日志   | `ruoyi-common-log/…/log/aspect/LogAspect.java`（发 `OperLogEvent` 异步落库）               | 阶段 3   |
-| 登录日志          | **不是中间件**，`ruoyi-admin/…/web/service/SysLoginService.java` 里手动发 `LoginInfoEvent` | 阶段 1/3 |
-| `@RateLimiter`    | `ruoyi-common-redis/…/redis/aspectj/RateLimiterAspect.java`                                | 阶段 4+  |
-| `@RepeatSubmit`   | `ruoyi-common-redis/…/redis/aspectj/RepeatSubmitAspect.java`                               | 阶段 4+  |
-| `@Lock4j`         | `ruoyi-common-redis/…/redis/config/Lock4jConfig.java`                                      | 阶段 4+  |
-| `@DataPermission` | `ruoyi-common-mybatis/…/mybatis/interceptor/PlusDataPermissionInterceptor.java`            | 阶段 4.1 |
+| 关注点               | 原 Java 位置                                                                               | 阶段                                               |
+|----------------------|--------------------------------------------------------------------------------------------|----------------------------------------------------|
+| `@Log` 操作日志      | `ruoyi-common-log/…/log/aspect/LogAspect.java`（发 `OperLogEvent` 异步落库）               | 阶段 3                                             |
+| 登录日志             | **不是中间件**，`ruoyi-admin/…/web/service/SysLoginService.java` 里手动发 `LoginInfoEvent` | 阶段 3（阶段 1 只打日志，`sys_login_info` 表待建） |
+| `@SaCheckPermission` | `ruoyi-common-satoken/…/satoken/core/service/SaPermissionImpl.java` + 注解处理             | 阶段 2（权限码校验，依赖 `sys_menu`/`sys_role`）   |
+| `@RateLimiter`       | `ruoyi-common-redis/…/redis/aspectj/RateLimiterAspect.java`                                | 阶段 4+                                            |
+| `@RepeatSubmit`      | `ruoyi-common-redis/…/redis/aspectj/RepeatSubmitAspect.java`                               | 阶段 4+                                            |
+| `@Lock4j`            | `ruoyi-common-redis/…/redis/config/Lock4jConfig.java`                                      | 阶段 4+                                            |
+| `@DataPermission`    | `ruoyi-common-mybatis/…/mybatis/interceptor/PlusDataPermissionInterceptor.java`            | 阶段 4.1                                           |
+
+> `@SaCheckPermission` / `@SaCheckRole` 与本包的 `auth.go` 是 **两件事**，别混：
+> 前者是 **按接口**的权限码校验（`@SaCheckPermission("system:user:list")`），归阶段 2 做成按路由挂的中间件；
+> 后者是 **全局**的「你是谁」校验。Java 侧两者也是分开的 —— `SaInterceptor` 先跑登录校验那个 lambda，
+> 之后才处理方法上的注解。阶段 2 要用的 `menuPermission` / `rolePermission` 字段已在
+> `auth.LoginUser` 里留好（当前为空），从 Redis 会话里取，不必重新查库。
 
 `@ApiEncrypt` 曾经列在这张表里，现已落地为本包的 `crypto.go`（见上方第 8 节）—— 它 **不适合**「按路由挂」：
 `CryptoFilter` 虽然靠注解决定对谁生效，但 **请求解密这一步是全局的、且必须在 `RepeatableBody` 之前**
@@ -575,31 +704,43 @@ token 解析规则在 `ruoyi-common-satoken/src/main/resources/common-satoken.ym
 **响应加密**可以按路由， **请求解密**不行。
 
 数据权限见 `MIGRATION.md` 阶段 4.1 —— Java 是 MyBatis 拦截器改写 SQL，Go 要在 repository 层用 GORM Scopes 手写。 本包只负责
-**把当前用户的数据范围写进 context**，SQL 条件由 repository 层拼。
+**把当前用户的数据范围写进 context**，SQL 条件由 repository 层拼。 那一半已经就位：`auth.go` 校验通过后把
+`*auth.LoginUser` 同时写进 `gin.Context` 与 request 的 `context.Context`，repository 层用
+`middleware.UserFromContext(ctx)` 取（ **不必 import gin**）。当前 `LoginUser` 里的角色与数据范围字段为空， 待阶段 2 的
+`sys_role` 落地后填充。
 
 ## 相关 yaml key 速查
 
 除 sa-token 那份外，均在 `ruoyi-admin/src/main/resources/application.yml`。已确认 dev/prod 两个 profile **没有覆盖任何中间件相关
 key**，看主文件就够。
 
-| key                        | 行号                                                         | 作用                                        | 本项目对应 key                                 |
-|----------------------------|--------------------------------------------------------------|---------------------------------------------|------------------------------------------------|
-| `security.excludes`        | 100-113                                                      | 鉴权免登名单                                | 阶段 1 落地                                    |
-| `xss.enabled`              | 190-192                                                      | XSS 过滤开关                                | **有意无对应项**（见上方 XSS 一节）            |
-| `xss.excludeUrls`          | 193-196                                                      | XSS 跳过路径                                | `middleware.xss.excludeUrls`                   |
-| `web.cors.*`               | **缺失**                                                     | CORS，走代码默认值                          | `middleware.cors.*`（Go 侧提到了 yaml）        |
-| `spring.messages.basename` | 61-63                                                        | i18n 词条目录                               | 无 —— 词条编进 Go 源码，见 `pkg/i18n`          |
-| `message.path`             | 223                                                          | 被 `handleIoException` 读来静默 SSE 断连    | 无 —— Go 直接判 `*net.OpError`                 |
-| `api-decrypt.*`            | 148-158                                                      | `CryptoFilter` 开关与 RSA 密钥              | `middleware.apiEncrypt.*`                      |
-| `sa-token.token-name`      | 91                                                           | token 的 header/param 名（`Authorization`） | `jwt.header`                                   |
-| `sa-token.jwt-secret-key`  | 97                                                           | JWT 签名密钥                                | `jwt.secret`                                   |
-| `is-read-cookie: false`    | `ruoyi-common-satoken/src/main/resources/common-satoken.yml` | 关掉 cookie 认证                            | 阶段 1 —— 同样只从 header 取，不加 cookie 回落 |
+| key                        | 行号                                                         | 作用                                        | 本项目对应 key                                   |
+|----------------------------|--------------------------------------------------------------|---------------------------------------------|--------------------------------------------------|
+| `security.excludes`        | 100-113                                                      | 鉴权免登名单                                | `middleware.auth.excludes`（另加 `/auth/**`）    |
+| `xss.enabled`              | 190-192                                                      | XSS 过滤开关                                | **有意无对应项**（见上方 XSS 一节）              |
+| `xss.excludeUrls`          | 193-196                                                      | XSS 跳过路径                                | `middleware.xss.excludeUrls`                     |
+| `web.cors.*`               | **缺失**                                                     | CORS，走代码默认值                          | `middleware.cors.*`（Go 侧提到了 yaml）          |
+| `spring.messages.basename` | 61-63                                                        | i18n 词条目录                               | 无 —— 词条编进 Go 源码，见 `pkg/i18n`            |
+| `message.path`             | 223                                                          | 被 `handleIoException` 读来静默 SSE 断连    | 无 —— Go 直接判 `*net.OpError`                   |
+| `api-decrypt.*`            | 148-158                                                      | `CryptoFilter` 开关与 RSA 密钥              | `middleware.apiEncrypt.*`                        |
+| `sa-token.token-name`      | 91                                                           | token 的 header/param 名（`Authorization`） | `middleware.auth.header`                         |
+| `sa-token.token-prefix`    | `common-satoken.yml`                                         | token 前缀（`Bearer`）                      | `middleware.auth.tokenPrefix`                    |
+| `sa-token.jwt-secret-key`  | 97                                                           | JWT 签名密钥                                | `jwt.secret`                                     |
+| `user.password.*`          | 38-43                                                        | 密码最大错误次数与锁定时长                  | `user.password.*`（键路径与原项目一致）          |
+| `is-read-cookie: false`    | `ruoyi-common-satoken/src/main/resources/common-satoken.yml` | 关掉 cookie 认证                            | 同样只从 header 取，不加 cookie/查询串回落       |
+| `sa-token.timeout`         | 未全局配置                                                   | token 绝对超时                              | 无 —— 取 `sys_client.timeout`，落 JWT 的 `exp`   |
+| `sa-token.active-timeout`  | 未全局配置                                                   | token 空闲超时（滑动）                      | 无 —— 取 `sys_client.active_timeout`，落会话 TTL |
+
+> `jwt.header` 曾是 token 头名的对应项，现已由 `middleware.auth.header` 承担 ——
+> 所有中间件配置都收在 `middleware` 段下、一个中间件一个文件（见「配置怎么读到的」），
+> `jwt` 段只留签发用的 `secret` / `expireMinutes`。
 
 Go 侧还有几项 **原项目没有**的配置（都是本包相对 Java 的新增行为，前面各节已逐条说明原因）：
 `middleware.cors.exposedHeaders`、`middleware.traceId.*`、`middleware.accessLog.skipPaths`、
 `middleware.repeatableBody.maxBodySize`、`middleware.i18n.header`、
-`middleware.apiEncrypt.requestUrls` / `responseUrls` / `maxBodySize`
-（前两项是注解的替代物 —— Java 靠 `@ApiEncrypt` 反查，Go 无注解只能显式列路径）。
+`middleware.apiEncrypt.requestUrls` / `responseUrls` / `maxBodySize`、
+`middleware.auth.clientIdHeader`
+（`apiEncrypt` 那两项是注解的替代物 —— Java 靠 `@ApiEncrypt` 反查，Go 无注解只能显式列路径）。
 
 ## 配置怎么读到的
 

@@ -3,7 +3,8 @@
 将 `E:\WorkSpace\RuoYi-Plus\RuoYi-Vue-Plus` 逐步重写为 Go 实现。本计划按 **依赖顺序**推进：
 先地基（公共库），再核心闭环（登录），再业务模块，最后横切难点。
 
-> 现状：骨架已就绪（`go build ./...` 通过），仅 `pkg/response` 有实现，其余为占位。
+> 现状：阶段 0（pkg 公共层）与阶段 1（认证闭环）已完成，M1 达成 —— 登录/登出跑通、鉴权中间件生效、
+> 「auth 进程内嵌 system service 无网络调用」已验证。下一步是阶段 2 的 RBAC。
 
 ## 原项目规模（system 模块）
 
@@ -21,19 +22,20 @@
 | 任务         | 落地位置         | 说明                                                     |
 |--------------|------------------|----------------------------------------------------------|
 | 配置加载     | `pkg/config`     | ✅ viper 读 application.yaml + <module>.yaml，结构体绑定 |
-| DB 初始化    | `pkg/database`   | GORM + MySQL 驱动，连接池，全局 *gorm.DB                 |
-| Redis 初始化 | `pkg/redis`      | go-redis 客户端                                          |
+| DB 初始化    | `pkg/database`   | ✅ GORM + MySQL 驱动，连接池，全局 *gorm.DB              |
+| Redis 初始化 | `pkg/redis`      | ✅ go-redis 客户端                                       |
 | 统一响应     | `pkg/response`   | ✅ 已完成（R / PageResult）                              |
-| 全局中间件   | `pkg/middleware` | Recover(全局异常→response.Fail)、CORS、请求日志、TraceID |
+| 全局中间件   | `pkg/middleware` | ✅ 9 个全部落地，见下                                    |
 | 加解密原语   | `pkg/encrypt`    | ✅ AES-ECB / RSA / base64，对应 EncryptUtils             |
-| 常量         | `pkg/constant`   | 从原 common-core/constant 移植需要的常量                 |
+| 登录态原语   | `pkg/auth`       | ✅ JWT 签发/校验 + Redis 会话 + BCrypt，对应 sa-token    |
+| 常量         | `pkg/constant`   | ✅ 从原 common-core/constant 移植需要的常量              |
 | 国际化       | `pkg/i18n`       | ✅ 词条表 + Msg(ctx,...)，对应 MessageUtils              |
 
 全局中间件进度（详见 `pkg/middleware/README.md`）：`Recover` / `CORS` / `TraceID` / `ApiEncrypt` /
-`RepeatableBody` / `AccessLog` / `XSS` / `I18n` 均已落地，由 `middleware.Register(r)` 统一按序注册 （两个入口各一行调用），仅
-`Auth` 待阶段 1。 各中间件的配置在
+`RepeatableBody` / `AccessLog` / `XSS` / `I18n` / `Auth` **已全部落地**，由 `middleware.Register(r)` 统一按序注册
+（两个入口各一行调用）。 各中间件的配置在
 `configs/application.yaml` 的 `middleware` 段，结构体定义在 `pkg/config/middleware.go`， 运行期从 `config.Get()` 读 —— 因此
-**`config.Load` 必须早于 `middleware.Register`**。
+**`config.Load` 必须早于 `middleware.Register`**（`Auth` 还要求先 `redis.Init`）。
 
 > `ApiEncrypt`（接口加解密，对应 Java 的 `CryptoFilter`） **必须排在 `RepeatableBody` 之前**，
 > 否则日志只能看到密文、脱敏失效、handler 还绑不到参数。它是唯一带 `enabled` 开关的中间件。
@@ -42,31 +44,54 @@
 > 原项目 4 处 `@ApiEncrypt` 全是 `response=false`，那条链路从未被启用过。
 
 **依赖引入**：
-`go get gorm.io/gorm gorm.io/driver/mysql github.com/redis/go-redis/v9 github.com/spf13/viper github.com/golang-jwt/jwt/v5`
-，然后 `go mod tidy`。
+`go get gorm.io/gorm gorm.io/driver/mysql github.com/redis/go-redis/v9 github.com/spf13/viper github.com/golang-jwt/jwt/v5 golang.org/x/crypto/bcrypt`
+，然后 `go mod tidy`。测试用 `go get -t github.com/alicebob/miniredis/v2 github.com/glebarez/sqlite`
+（内存 Redis 与纯 Go 的 SQLite，让会话 TTL 与登录链路能脱离外部环境断言）。
 
-**验收**：`cmd/system` 能加载配置、连上 DB/Redis、挂上中间件启动。
+**验收**：`cmd/system` 能加载配置、连上 DB/Redis、挂上中间件启动。✅
 
 ---
 
-## 阶段 1：认证闭环（登录能跑通）— 最高优先级
+## 阶段 1：认证闭环（登录能跑通）— 最高优先级 ✅ 已完成
 
-打通 auth ←in-process→ system 的完整链路，验证架构成立。预计 3-4 天。
+打通 auth ←in-process→ system 的完整链路，验证架构成立。
 
-| 顺序 | 任务                                               | 位置                                             |
-|------|----------------------------------------------------|--------------------------------------------------|
-| 1    | `SysUser` 实体 + 表映射                            | `internal/system/model`                          |
-| 2    | UserRepository：按用户名查用户                     | `internal/system/repository`                     |
-| 3    | UserService：`GetByUsername`                       | `internal/system/service`（导出给 auth）         |
-| 4    | JWT 签发/校验 + Redis 会话                         | `pkg/auth`                                       |
-| 5    | AuthService：`Login`（校验密码→签发 token→存会话） | `internal/auth/service`（import system service） |
-| 6    | AuthHandler：`POST /auth/login` `/logout`          | `internal/auth/handler`                          |
-| 7    | 鉴权中间件：解析 token→校验会话                    | `pkg/middleware`                                 |
+| 顺序 | 任务                                                  | 位置                                             |
+|------|-------------------------------------------------------|--------------------------------------------------|
+| 1    | ✅ `SysUser` 实体 + 表映射                            | `internal/system/model/user.go`                  |
+| 2    | ✅ UserRepository：按用户名查用户                     | `internal/system/repository/user_repository.go`  |
+| 3    | ✅ UserService：`GetByUsername`                       | `internal/system/service`（导出给 auth）         |
+| 4    | ✅ JWT 签发/校验 + Redis 会话                         | `pkg/auth`（token/session/claims/password）      |
+| 5    | ✅ AuthService：`Login`（校验密码→签发 token→存会话） | `internal/auth/service`（import system service） |
+| 6    | ✅ AuthHandler：`POST /auth/login` `/logout`          | `internal/auth/handler` + `router.go`            |
+| 7    | ✅ 鉴权中间件：解析 token→校验会话                    | `pkg/middleware/auth.go` + `ip.go`               |
 
-**验收**：`POST /auth/login` 返回 token，带 token 访问受保护接口通过。 **架构验证点**——此阶段确认「auth 进程内嵌 system
-service、无网络调用」成立。
+顺带做了计划外但必需的几项：`SysClient` 实体与 repository/service（登录要按 `clientId` 查授权类型与超时配置）、
+`repository/scope.go` 的 `NotDeleted()`（Java 的 `@TableLogic` 在 GORM 没有等价物，漏一处就是一条能查出已删数据的路径）、
+`pkg/config` 的 `middleware.auth.*` 与 `user.password.*` 两段配置。
+
+**验收结果**（真实 MySQL + Redis，种子数据取原项目 `script/sql/ry_vue.sql`）：
+
+- `POST /auth/login`（按 `apiEncrypt` 协议加密）返回 token、`expire_in=604800`、`client_id` ✅
+- 带 token + 匹配的 `clientid` 访问 **system 进程**的受保护接口 → 200 ✅ （ **跨进程验证**：auth 签的 token 在 system
+  那边通过，靠的是同一个 `jwt.secret` 与同一个 Redis 会话）
+- 不带 token / 不带 clientid / clientid 不匹配 → `{"code":401,...}`，HTTP 状态码恒 **200** ✅
+- 未注册的乱路径 → **404 而非 401**（对齐 Java 的 `AllUrlHandler`）✅
+- 连错 5 次密码 → 「密码输入错误5次，账户锁定10分钟」，此后即使密码正确也拒绝；计数键 TTL 每次失败重置为 10 分钟 ✅
+- 登出后原 token 再访问 → 401（Redis 会话已删）✅
+
+> **架构验证点（M1）已确认成立**：`internal/auth/service` 直接 `import internal/system/service`，
+> 同进程函数调用、 **无任何 HTTP 客户端**。auth 进程因此也连同一个数据库。
+
+联调工具在 `tools/e2elogin` 与 `tools/e2elockout`（ **临时联调用，非产品代码**）——
+`configs/application.yaml` 里 `apiEncrypt.enabled=true` 且 `/auth/login` 在强制加密清单里， 用 curl 发明文会被 403
+拒掉，故需要按协议加密的客户端。这也顺带核实了 README 里「PKCS#7 填充与 base64 那两层仍未跨语言核实」中 Go
+侧自洽的那一半（前后端联调时仍需与真实前端对齐）。
 
 > 先只做 **密码登录（PasswordAuthStrategy）**。短信/邮箱/社交/小程序登录留到阶段 4。
+> 本阶段有意未做、已在代码里留 TODO 指向对应阶段的：验证码校验（阶段 3，需先有生成接口，
+> 原项目 `captcha.enable` 默认 false）、登录日志落库（`sys_login_info`，阶段 3，现只打日志）、
+> `menuPermission`/`rolePermission`/`roles`/`posts`/`deptName`（阶段 2，依赖 `sys_menu`/`sys_role`/`sys_post`/`sys_dept`）。
 
 ---
 
@@ -141,7 +166,7 @@ service、无网络调用」成立。
 
 ## 里程碑
 
-- **M1**（阶段 0-1）：登录闭环跑通，架构验证 ✅ 关键节点
+- **M1**（阶段 0-1）：登录闭环跑通，架构验证 ✅ **已达成**
 - **M2**（阶段 2）：RBAC 完整，可管理用户/角色/菜单
 - **M3**（阶段 3）：system 模块功能对齐
 - **M4**（阶段 4）：数据权限 + 多登录方式，安全能力对齐

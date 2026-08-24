@@ -28,6 +28,7 @@ type Config struct {
 	Redis      Redis      `mapstructure:"redis"`
 	JWT        JWT        `mapstructure:"jwt"`
 	Middleware Middleware `mapstructure:"middleware"`
+	User       User       `mapstructure:"user"`
 }
 
 // Load 按顺序读取并合并多个 yaml 配置文件，后者覆盖前者。
@@ -48,6 +49,9 @@ func Load(paths ...string) (*Config, error) {
 	// 必须在读文件之前铺默认值：viper 对缺失的键给零值，
 	// 而中间件多数字段的零值是「有意义但错误」的配置（详见 setMiddlewareDefaults）。
 	setMiddlewareDefaults(v)
+	// user 段同理：MaxRetryCount 的零值不是「不限制」而是**恒定锁死**
+	// （「已错次数 >= 0」在第一次尝试就成立），yaml 里漏写这段会让谁都登不进来。
+	setUserDefaults(v)
 
 	for i, path := range paths {
 		v.SetConfigFile(path)
@@ -107,6 +111,7 @@ func (c *Config) validate() error {
 		c.Redis.validate,
 		c.JWT.validate,
 		c.Middleware.validate,
+		c.User.validate,
 	}
 	for _, fn := range validators {
 		if err := fn(); err != nil {
