@@ -84,9 +84,9 @@ panic（与 `Get()` 同语义：启动期错误不往运行时带），配置一
 > **架构验证点（M1）已确认成立**：`internal/auth/service` 直接 `import internal/system/service`，
 > 同进程函数调用、 **无任何 HTTP 客户端**。auth 进程因此也连同一个数据库。
 
-联调工具在 `tools/e2elogin` 与 `tools/e2elockout`（ **临时联调用，非产品代码**）——
-`configs/application.yaml` 里 `apiEncrypt.enabled=true` 且 `/auth/login` 在强制加密清单里， 用 curl 发明文会被 403
-拒掉，故需要按协议加密的客户端。这也顺带核实了 README 里「PKCS#7 填充与 base64 那两层仍未跨语言核实」中 Go
+联调时注意：`configs/application.yaml` 里 `apiEncrypt.enabled=true` 且 `/auth/login` 在强制加密清单里， 用 curl 发明文会被
+403 拒掉，故需要按 `apiEncrypt` 协议加密的客户端（encrypt-key 头 = base64 (RSA公钥加密 (base64 (AES明文密钥)))， 请求体 =
+base64 (AES-ECB加密 (JSON 明文))）。这也顺带核实了 README 里「PKCS#7 填充与 base64 那两层仍未跨语言核实」中 Go
 侧自洽的那一半（前后端联调时仍需与真实前端对齐）。
 
 > 先只做 **密码登录（PasswordAuthStrategy）**。短信/邮箱/社交/小程序登录留到阶段 4。
