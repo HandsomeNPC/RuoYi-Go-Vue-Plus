@@ -2,8 +2,10 @@ package redis
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
@@ -82,13 +84,15 @@ func TestIntegrationNewAndRoundTrip(t *testing.T) {
 }
 
 // Init/Client/CloseDefault 的包级流程在真实环境下成立。
+//
+// Init 现在走 config.Get()，故先把 testConfig 写进临时 yaml 再 Load，
+// 让 config.Get().Redis 指向测试库（db=15）。
 func TestIntegrationInitAndClose(t *testing.T) {
 	cfg := testConfig(t)
+	loadRedisConfig(t, cfg)
 	resetDefault(t)
 
-	if err := Init(cfg); err != nil {
-		t.Fatalf("Init: %v", err)
-	}
+	Init()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -96,9 +100,7 @@ func TestIntegrationInitAndClose(t *testing.T) {
 		t.Fatalf("Ping: %v", err)
 	}
 
-	if err := CloseDefault(); err != nil {
-		t.Fatalf("CloseDefault: %v", err)
-	}
+	CloseDefault()
 
 	// 关闭后包级实例应已清空，再取用需重新 Init。
 	mu.RLock()
@@ -107,6 +109,47 @@ func TestIntegrationInitAndClose(t *testing.T) {
 	if got != nil {
 		t.Error("CloseDefault 后 defaultClient 应为 nil")
 	}
+}
+
+// loadRedisConfig 写入一份完整 yaml（redis 段取自 cfg）并 Load，
+// 使 config.Get().Redis 返回给定配置。用于驱动走 config.Get() 的 Init()。
+// datasource/server/jwt 段只是占位以通过 config 校验，本用例不碰它们。
+func loadRedisConfig(t *testing.T, cfg config.Redis) {
+	t.Helper()
+	yaml := fmt.Sprintf(`
+server:
+  name: test
+  addr: ":1"
+datasource:
+  driver: mysql
+  host: 127.0.0.1
+  port: 3306
+  username: root
+  password: root
+  dbname: ry-vue
+  params: charset=utf8mb4&parseTime=True&loc=Local
+redis:
+  host: %s
+  port: %d
+  password: %s
+  db: %d
+  clientName: %s
+  poolSize: %d
+  minIdleConns: %d
+  dialTimeoutMs: %d
+jwt:
+  secret: test-secret
+  expireMinutes: 720
+  header: Authorization
+`,
+		cfg.Host, cfg.Port, strconv.Quote(cfg.Password), cfg.DB,
+		strconv.Quote(cfg.ClientName), cfg.PoolSize, cfg.MinIdleConns, cfg.DialTimeoutMs,
+	)
+	path := filepath.Join(t.TempDir(), "cfg.yaml")
+	if err := os.WriteFile(path, []byte(yaml), 0o644); err != nil {
+		t.Fatalf("写入临时配置失败: %v", err)
+	}
+	config.Load(path)
 }
 
 // 密码错误必须报错，确认认证确实生效(测试环境 requirepass 已开启)。

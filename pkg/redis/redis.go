@@ -3,7 +3,8 @@
 // 两种用法，与 pkg/database 对称，按需选择：
 //
 //	rdb, err := redis.New(cfg.Redis)   // 返回实例，自行注入
-//	err := redis.Init(cfg.Redis)       // 同时设置为包级默认，redis.Client() 取用
+//	redis.Init()                        // 同时设置为包级默认，redis.Client() 取用
+//	                                    // 配置取自 config.Get()，失败 panic
 //
 // 对应原项目的 Redisson 单节点配置(redisson.singleServerConfig)。
 // 会话/缓存的 key 前缀等业务约定在 pkg/constant 定义，本包只管连接。
@@ -12,6 +13,7 @@ package redis
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -24,9 +26,6 @@ import (
 const pingTimeout = 5 * time.Second
 
 // New 按配置建立 Redis 客户端并完成连接池设置。
-//
-// 返回前会 Ping 一次，连不上直接报错，避免进程带着坏连接启动；
-// 失败时关闭已建立的连接，不泄漏。
 func New(cfg config.Redis) (*goredis.Client, error) {
 	client := goredis.NewClient(&goredis.Options{
 		Addr:            cfg.Addr(),
@@ -75,15 +74,17 @@ var (
 )
 
 // Init 建立连接并设置为包级默认实例。
-func Init(cfg config.Redis) error {
+func Init() {
+	c := config.Get()
+	cfg := c.Redis
 	client, err := New(cfg)
 	if err != nil {
-		return err
+		panic(fmt.Errorf("redis: 初始化失败: %w", err))
 	}
 	mu.Lock()
 	defaultClient = client
 	mu.Unlock()
-	return nil
+	log.Printf("[%s] Redis 已连接 %s db=%d", c.Server.Name, cfg.Addr(), cfg.DB)
 }
 
 // Client 返回包级默认实例。未调用 Init 会 panic——
@@ -99,10 +100,12 @@ func Client() *goredis.Client {
 }
 
 // CloseDefault 关闭并清空包级默认实例。
-func CloseDefault() error {
+func CloseDefault() {
 	mu.Lock()
 	client := defaultClient
 	defaultClient = nil
 	mu.Unlock()
-	return Close(client)
+	if err := Close(client); err != nil {
+		log.Printf("关闭 Redis 连接失败: %v", err)
+	}
 }
