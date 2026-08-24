@@ -151,7 +151,7 @@ func APIEncryptWithConfig(cfg config.APIEncrypt) gin.HandlerFunc {
 				// 这条分支拦的是「本该加密的接口收到了明文密码」。
 				log.Printf("[encrypt]%s 请求地址'%s',要求加密传输但未携带 %s 头",
 					logTracePrefix(c), path, header)
-				_ = c.Error(errs.NewCode(response.CodeForbidden, msgEncryptRequired))
+				_ = c.Error(errs.New(response.CodeForbidden, msgEncryptRequired, ""))
 				c.Abort()
 				return
 			}
@@ -240,7 +240,7 @@ func decryptRequest(c *gin.Context, headerValue string, key *rsa.PrivateKey, max
 func failDecrypt(c *gin.Context, detail string) {
 	log.Printf("[encrypt]%s 请求地址'%s',解密失败: %s",
 		logTracePrefix(c), c.Request.URL.Path, detail)
-	_ = c.Error(errs.New(msgDecryptFailed))
+	_ = c.Error(errs.New(0, msgDecryptFailed, ""))
 	c.Abort()
 }
 
@@ -320,7 +320,7 @@ func encryptResponse(c *gin.Context, header string, key *rsa.PublicKey) {
 func failEncrypt(c *gin.Context, detail string) {
 	log.Printf("[encrypt]%s 请求地址'%s',响应加密准备失败: %s",
 		logTracePrefix(c), c.Request.URL.Path, detail)
-	_ = c.Error(errs.New("响应加密失败"))
+	_ = c.Error(errs.New(0, "响应加密失败", ""))
 	c.Abort()
 }
 

@@ -7,10 +7,9 @@ import (
 	"context"
 	"errors"
 
-	"gorm.io/gorm"
-
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/repository"
+	"ruoyi-go-vue-plus/pkg/database"
 )
 
 // ErrUserNotFound 用户不存在，转自 repository 层的同名错误。
@@ -22,16 +21,15 @@ var ErrUserNotFound = errors.New("service: 用户不存在")
 
 // UserService 用户业务逻辑。
 //
+// 空结构体、无状态：db 走包级 database.DB()，不在本层持有 ——
+// 与 handler 层的 AuthApi 同一套做法。
+//
 // 导出给 internal/auth 复用 —— 这是 M1 的架构验证点：
 // auth 进程直接 import 本包、同进程函数调用，不走 HTTP。
-type UserService struct {
-	repo *repository.UserRepository
-}
+type UserService struct{}
 
-// NewUserService 构造用户 service。
-func NewUserService(db *gorm.DB) *UserService {
-	return &UserService{repo: repository.NewUserRepository(db)}
-}
+// UserSvcApp 包级实例，auth 模块 in-process 复用（service.UserSvcApp.xxx）。
+var UserSvcApp = new(UserService)
 
 // GetByUsername 按账号查用户，不存在时返回 ErrUserNotFound。
 //
@@ -44,7 +42,7 @@ func NewUserService(db *gorm.DB) *UserService {
 // 「停用的用户不能登录」是认证规则，而本方法将来还要服务于
 // 用户管理接口（阶段 2），那里查停用用户是正常需求。
 func (s *UserService) GetByUsername(ctx context.Context, username string) (*model.SysUser, error) {
-	user, err := s.repo.SelectByUserName(ctx, username)
+	user, err := repository.NewUserRepository(database.DB()).SelectByUserName(ctx, username)
 	if err != nil {
 		if errors.Is(err, repository.ErrUserNotFound) {
 			return nil, ErrUserNotFound
@@ -58,5 +56,5 @@ func (s *UserService) GetByUsername(ctx context.Context, username string) (*mode
 //
 // 登录成功后的副作用之一，由 auth 模块在签发 token 后调用。
 func (s *UserService) UpdateLoginInfo(ctx context.Context, userID int64, ip string) error {
-	return s.repo.UpdateLoginInfo(ctx, userID, ip)
+	return repository.NewUserRepository(database.DB()).UpdateLoginInfo(ctx, userID, ip)
 }

@@ -103,7 +103,7 @@ func TestRecoverPanicNilDeref(t *testing.T) {
 // 业务异常带业务码时，原样透出 code 与 msg。
 func TestRecoverServiceErrorWithCode(t *testing.T) {
 	r := newTestEngine(func(c *gin.Context) {
-		_ = c.Error(errs.NewCode(response.CodeUnauthorized, "客户端ID与Token不匹配"))
+		_ = c.Error(errs.New(response.CodeUnauthorized, "客户端ID与Token不匹配", ""))
 	})
 
 	_, body := do(t, r)
@@ -120,7 +120,7 @@ func TestRecoverServiceErrorWithCode(t *testing.T) {
 // 对齐 Java `code != null ? R.fail(code,msg) : R.fail(msg)`。
 func TestRecoverServiceErrorWithoutCode(t *testing.T) {
 	r := newTestEngine(func(c *gin.Context) {
-		_ = c.Error(errs.New("用户不存在"))
+		_ = c.Error(errs.New(0, "用户不存在", ""))
 	})
 
 	_, body := do(t, r)
@@ -136,7 +136,7 @@ func TestRecoverServiceErrorWithoutCode(t *testing.T) {
 // 业务异常的消息要原样回前端，不能被兜底文案吞掉，也不该拼错误编号。
 func TestRecoverServiceErrorMsgNotMasked(t *testing.T) {
 	r := newTestEngine(func(c *gin.Context) {
-		_ = c.Error(errs.New("存在下级部门,不允许删除"))
+		_ = c.Error(errs.New(0, "存在下级部门,不允许删除", ""))
 	})
 
 	_, body := do(t, r)
@@ -152,7 +152,7 @@ func TestRecoverServiceErrorMsgNotMasked(t *testing.T) {
 // 包装过的业务异常仍要被识别（errors.As 沿 Unwrap 链查找）。
 func TestRecoverWrappedServiceError(t *testing.T) {
 	r := newTestEngine(func(c *gin.Context) {
-		wrapped := errors.Join(errors.New("上下文"), errs.NewCode(601, "警告"))
+		wrapped := errors.Join(errors.New("上下文"), errs.New(601, "警告", ""))
 		_ = c.Error(wrapped)
 	})
 
@@ -227,8 +227,8 @@ func TestRecoverDoesNotOverwriteWrittenResponse(t *testing.T) {
 // 多个错误时取最后一个，对齐 gin 的 Errors.Last 语义。
 func TestRecoverUsesLastError(t *testing.T) {
 	r := newTestEngine(func(c *gin.Context) {
-		_ = c.Error(errs.New("第一个"))
-		_ = c.Error(errs.NewCode(403, "最后一个"))
+		_ = c.Error(errs.New(0, "第一个", ""))
+		_ = c.Error(errs.New(403, "最后一个", ""))
 	})
 
 	_, body := do(t, r)
@@ -244,7 +244,7 @@ func TestRecoverUsesLastError(t *testing.T) {
 // Detail 只进日志，绝不能回给前端。
 func TestRecoverDetailNotLeaked(t *testing.T) {
 	r := newTestEngine(func(c *gin.Context) {
-		_ = c.Error(errs.New("保存失败").WithDetail("INSERT INTO sys_user ... duplicate key 'admin'"))
+		_ = c.Error(errs.New(0, "保存失败", "INSERT INTO sys_user ... duplicate key 'admin'"))
 	})
 
 	_, body := do(t, r)

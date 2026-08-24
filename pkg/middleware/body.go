@@ -151,6 +151,6 @@ func shouldBufferBody(c *gin.Context, types []string) bool {
 func rejectOversizedBody(c *gin.Context, size, maxSize int64) {
 	log.Printf("[body]%s 请求地址'%s',请求体超限: %d > %d 字节",
 		logTracePrefix(c), c.Request.URL.Path, size, maxSize)
-	_ = c.Error(errs.New("请求体超出大小限制"))
+	_ = c.Error(errs.New(0, "请求体超出大小限制", ""))
 	c.Abort()
 }

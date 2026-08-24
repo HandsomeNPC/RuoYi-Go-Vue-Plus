@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -12,6 +13,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/auth"
 	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/errs"
+	"ruoyi-go-vue-plus/pkg/ip"
 	"ruoyi-go-vue-plus/pkg/redis"
 	"ruoyi-go-vue-plus/pkg/response"
 )
@@ -240,7 +242,7 @@ func checkClientRules(c *gin.Context, claims *auth.Claims, path string) (string,
 	}
 
 	if rules := splitClientRules(claims.ClientIPWhitelist); len(rules) > 0 {
-		if !MatchAnyIPRule(ClientIP(c.Request), rules) {
+		if !MatchAnyIPRule(ip.ClientIP(c.Request), rules) {
 			return msgNoPermission, false
 		}
 	}
@@ -303,7 +305,7 @@ func matchesAny(want string, candidates ...string) bool {
 func abortUnauthorized(c *gin.Context, msg, reason string) {
 	log.Printf("[auth]%s 请求地址'%s',认证失败: %s",
 		logTracePrefix(c), c.Request.URL.Path, reason)
-	_ = c.Error(errs.NewCode(response.CodeUnauthorized, msg))
+	_ = c.Error(errs.New(response.CodeUnauthorized, msg, ""))
 	c.Abort()
 }
 
@@ -314,7 +316,7 @@ func abortUnauthorized(c *gin.Context, msg, reason string) {
 func abortForbidden(c *gin.Context, msg string) {
 	log.Printf("[auth]%s 请求地址'%s',客户端访问规则校验失败",
 		logTracePrefix(c), c.Request.URL.Path)
-	_ = c.Error(errs.NewCode(response.CodeForbidden, msg))
+	_ = c.Error(errs.New(response.CodeForbidden, msg, ""))
 	c.Abort()
 }
 
@@ -357,4 +359,93 @@ func UserFromContext(ctx context.Context) *auth.LoginUser {
 // 与 i18n.NewContext 同一个用意。
 func NewUserContext(ctx context.Context, user *auth.LoginUser) context.Context {
 	return context.WithValue(ctx, loginUserCtxKey{}, user)
+}
+
+// IsMatchIPRule 判断客户端 IP 是否命中单条规则，对应 NetUtils.isMatchIpRule。
+//
+// 优先级照抄原实现，顺序有意义：
+//
+//  1. 精确相等（字符串比较，不解析）
+//  2. 含 "/" → 按 CIDR 匹配
+//  3. 含 "*" 或 "?" → 按 glob 匹配
+//  4. 其余一律 false
+//
+// 空规则或空 IP 返回 false —— 「没有规则」不能变成「全部放行」。
+// 调用方（checkClientRules）在整个白名单为空时才跳过检查，那是另一层判断。
+func IsMatchIPRule(rule, clientIP string) bool {
+	rule = strings.TrimSpace(rule)
+	if rule == "" || clientIP == "" {
+		return false
+	}
+
+	if rule == clientIP {
+		return true
+	}
+	if strings.Contains(rule, "/") {
+		return matchCIDR(rule, clientIP)
+	}
+	if strings.ContainsAny(rule, "*?") {
+		return matchIPGlob(rule, clientIP)
+	}
+	return false
+}
+
+// MatchAnyIPRule 判断客户端 IP 是否命中任意一条规则。
+//
+// 对应 SecurityConfig.validateClientAccessRules 里的
+// ipWhitelistList.stream().anyMatch(rule -> NetUtils.isMatchIpRule(rule, clientIp))。
+func MatchAnyIPRule(clientIP string, rules []string) bool {
+	for _, rule := range rules {
+		if IsMatchIPRule(rule, clientIP) {
+			return true
+		}
+	}
+	return false
+}
+
+// matchCIDR 按 CIDR 网段匹配，对应 NetUtils.isMatchCidr。
+//
+// **必须显式对齐地址族**。Java 侧靠 `networkBytes.length != currentBytes.length`
+// 挡住 v4/v6 混比；Go 的 net.IP 会把 IPv4 规范化成 16 字节的
+// v4-mapped 形式（::ffff:1.2.3.4），于是 net.IPNet.Contains 对
+// "::/0" 这条 v6 规则会把 IPv4 地址也算进去 —— 一条本意只放行 IPv6 的规则
+// 会静默放行全世界。所以先各自 To4()，一方是 v4 另一方不是就直接不匹配。
+func matchCIDR(rule, clientIP string) bool {
+	_, network, err := net.ParseCIDR(rule)
+	if err != nil {
+		return false
+	}
+	ip := net.ParseIP(clientIP)
+	if ip == nil {
+		return false
+	}
+
+	// To4() 非 nil 即为 IPv4（含 v4-mapped 形式）。两边必须同族。
+	if (network.IP.To4() != nil) != (ip.To4() != nil) {
+		return false
+	}
+	return network.Contains(ip)
+}
+
+// matchIPGlob 按通配符匹配，对应 NetUtils.isMatchIpRule 里的 glob 分支。
+//
+// Java 的实现是把规则转成正则再 `clientIp.matches(regex)`：
+//
+//	rule.replace(".", "\\.").replace("*", ".*").replace("?", ".")
+//
+// **Go 侧改为逐字符匹配，不转正则** —— 两个理由：
+//
+//  1. Java 的 String.matches 是**全串**匹配，Go 的 regexp.MatchString 是
+//     部分匹配。照搬那三次 replace 再 MatchString，规则 "192.168.1.*"
+//     会命中 "10.0.0.1#192.168.1.5"（虽然那不是合法 IP，但白名单的判断
+//     不该依赖输入一定合法）。要修就得自己补 ^$ 锚点 —— 一个容易漏、
+//     漏了就是静默放宽的口子。
+//  2. Java 那三次 replace 只转义了 `.`，IPv6 规则里的 `:` 在正则里无特殊
+//     含义还算走运，但这种「恰好没问题」的转义不值得复刻。
+//
+// 复用 path.go 的 matchSegment：那是同一套 `*`/`?` 语义的带回溯双指针实现，
+// 且已被 path_test.go 覆盖。唯一的语义差别是 path.go 里 `*` 不跨 `/`，
+// 而 IP 里没有 `/`（有 `/` 的走 CIDR 分支），故两者在此等价。
+func matchIPGlob(rule, clientIP string) bool {
+	return matchSegment(rule, clientIP)
 }

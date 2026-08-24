@@ -7,11 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"ruoyi-go-vue-plus/internal/auth/handler"
-	"ruoyi-go-vue-plus/internal/auth/service"
 	"ruoyi-go-vue-plus/pkg/config"
-	"ruoyi-go-vue-plus/pkg/database"
 	"ruoyi-go-vue-plus/pkg/middleware"
-	"ruoyi-go-vue-plus/pkg/redis"
 )
 
 // InitRouter 构建并返回 auth 进程的 gin 引擎
@@ -29,13 +26,11 @@ func InitRouter() *gin.Engine {
 	r.Use(middleware.Auth())
 
 	cfg := config.Get()
-	svc := service.NewAuthService(database.DB(), redis.Client(), cfg)
-	h := handler.NewAuthHandler(svc, cfg.Middleware.Auth)
 
 	g := r.Group("/auth")
 	{
-		g.POST("/login", h.Login)
-		g.POST("/logout", h.Logout)
+		g.POST("/login", handler.AuthApiApp.Login)
+		g.POST("/logout", handler.AuthApiApp.Logout)
 	}
 
 	r.GET("/auth/ping", func(c *gin.Context) {

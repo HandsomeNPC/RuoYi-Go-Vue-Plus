@@ -506,7 +506,7 @@ func TestAPIEncryptDeliversHandlerErrors(t *testing.T) {
 	r.Use(APIEncryptWithConfig(responseConfig(kp)))
 	r.POST("/auth/login", func(c *gin.Context) {
 		// 只登记错误、不写响应体 —— 这是本项目 handler 的标准错误路径。
-		_ = c.Error(errs.New("用户名或密码错误"))
+		_ = c.Error(errs.New(0, "用户名或密码错误", ""))
 	})
 
 	header, body := clientEncrypt(t, `{"a":1}`, "1234567890123456", &kp.priv.PublicKey)

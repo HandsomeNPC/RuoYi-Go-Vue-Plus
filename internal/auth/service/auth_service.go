@@ -1,7 +1,3 @@
-// Package service auth 模块业务逻辑层。
-//
-// in-process 复用 internal/system 的 service(用户/角色/菜单)，直接函数调用，
-// 无网络开销。因此 auth 进程需连接同一数据库。
 package service
 
 import (
@@ -13,7 +9,6 @@ import (
 	"time"
 
 	goredis "github.com/redis/go-redis/v9"
-	"gorm.io/gorm"
 
 	authmodel "ruoyi-go-vue-plus/internal/auth/model"
 	systemmodel "ruoyi-go-vue-plus/internal/system/model"
@@ -24,102 +19,49 @@ import (
 	"ruoyi-go-vue-plus/pkg/enum"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/i18n"
+	"ruoyi-go-vue-plus/pkg/redis"
 )
 
 // AuthService 认证业务逻辑：登录、登出。
-//
-// # 架构验证点（M1）
-//
-// 它直接持有 system 模块的 UserService / ClientService（同进程函数调用），
-// **没有任何 HTTP 客户端** —— 这就是 CLAUDE.md 里「auth 复用 system 走
-// in-process」那条约定的落地形态。auth 进程因此也要连同一个数据库。
-type AuthService struct {
-	users   *systemservice.UserService
-	clients *systemservice.ClientService
+type AuthService struct{}
 
-	sessions *auth.SessionStore
-	rdb      goredis.UniversalClient
+// AuthSvcApp 包级实例，handler 直接 service.AuthSvcApp.Login / .Logout 调用。
+var AuthSvcApp = new(AuthService)
 
-	jwtSecret string
-	passwdCfg config.UserPassword
-
-	// strategies 按 grantType 分派登录策略。
-	//
-	// 对应 Java 的 IAuthStrategy.login：那边靠拼 Spring bean 名
-	// （grantType + "AuthStrategy"）从容器里取，Go 没有容器，用一张表。
-	// 本阶段只注册 password；短信/邮箱/社交/小程序留阶段 4
-	// （届时各自实现 loginStrategy 并在 NewAuthService 里注册一行）。
-	strategies map[string]loginStrategy
-}
-
-// loginStrategy 一种登录方式的凭证校验，对应 Java 的 IAuthStrategy。
-//
-// 返回校验通过的用户。**只负责「证明你是你」**：查客户端、签 token、
-// 写会话那些所有策略共通的步骤在 Login 里，不重复实现 ——
-// Java 侧每个策略都自己调一遍 buildLoginUser/LoginHelper.login，
-// 那是重复代码，新增策略时容易漏掉某一步。
+// loginStrategy 一种登录方式的凭证校验
 type loginStrategy func(ctx context.Context, body *authmodel.LoginBody,
 	client *systemmodel.SysClient) (*systemmodel.SysUser, error)
 
-// NewAuthService 构造认证 service。
-//
-// db 与 rdb 由 cmd/auth 注入 —— 本层不调 database.DB() / redis.Client()，
-// 那两个包级取值器会 panic，不该出现在可被测试的业务代码里。
-func NewAuthService(db *gorm.DB, rdb goredis.UniversalClient, cfg *config.Config) *AuthService {
-	s := &AuthService{
-		users:     systemservice.NewUserService(db),
-		clients:   systemservice.NewClientService(db),
-		sessions:  auth.NewSessionStore(rdb),
-		rdb:       rdb,
-		jwtSecret: cfg.JWT.Secret,
-		passwdCfg: cfg.User.Password,
-	}
-	s.strategies = map[string]loginStrategy{
-		enum.LoginTypePassword.Code: s.passwordLogin,
-	}
-	return s
+// strategies 按 grantType 分派登录策略。
+var strategies = map[string]loginStrategy{
+	enum.LoginTypePassword.Code: AuthSvcApp.passwordLogin,
 }
 
-// Login 登录，对应原项目 AuthController.login + IAuthStrategy.login 那条链路。
-//
-// # 步骤顺序有安全含义，不要调整
-//
-//  1. 查客户端，校验授权类型与状态
-//  2. 按 grantType 分派策略，校验凭证（密码策略见 passwordLogin）
-//  3. 构造 LoginUser
-//  4. 签 JWT + 写 Redis 会话
-//  5. 副作用：在线用户记录、更新最后登录信息
-//
-// 第 2 步内部的顺序更要紧（「用户不存在」必须早于「密码错误计数」），
-// 详见 passwordLogin 的说明。
+// Login 登录
 func (s *AuthService) Login(ctx context.Context, body *authmodel.LoginBody, clientIP string) (*authmodel.LoginVo, error) {
 	// 1. 查客户端并校验。
-	client, err := s.clients.GetByClientID(ctx, body.ClientID)
+	client, err := systemservice.ClientSvcApp.GetByClientID(ctx, body.ClientID)
 	if err != nil {
 		if errors.Is(err, systemservice.ErrClientNotFound) {
-			// 与「授权类型不支持」折叠成同一句，对齐 Java：
-			// AuthController.java:85-88 对 client 为 null 和 grantType 不含
-			// 两种情况回的都是 auth.grant.type.error。
-			// 不区分也更好 —— 否则这个接口就成了枚举有效 clientId 的工具。
 			log.Printf("[auth] 客户端id: %s 认证类型: %s 异常", body.ClientID, body.GrantType)
-			return nil, errs.New(i18n.Msg(ctx, "auth.grant.type.error"))
+			return nil, errs.New(0, i18n.Msg(ctx, "auth.grant.type.error"), "")
 		}
 		return nil, err
 	}
 	if !client.SupportsGrantType(body.GrantType) {
 		log.Printf("[auth] 客户端id: %s 不支持认证类型: %s", body.ClientID, body.GrantType)
-		return nil, errs.New(i18n.Msg(ctx, "auth.grant.type.error"))
+		return nil, errs.New(0, i18n.Msg(ctx, "auth.grant.type.error"), "")
 	}
 	if client.Status != constant.StatusNormal {
-		return nil, errs.New(i18n.Msg(ctx, "auth.grant.type.blocked"))
+		return nil, errs.New(0, i18n.Msg(ctx, "auth.grant.type.blocked"), "")
 	}
 
 	// 2. 分派策略校验凭证。
-	strategy, ok := s.strategies[body.GrantType]
+	strategy, ok := strategies[body.GrantType]
 	if !ok {
 		// 走到这里说明 sys_client.grant_type 里配了一个还没实现的类型
 		// （如阶段 4 才做的 sms）。对齐 Java 的 ServiceException("授权类型不正确!")。
-		return nil, errs.New(i18n.Msg(ctx, "auth.grant.type.error"))
+		return nil, errs.New(0, i18n.Msg(ctx, "auth.grant.type.error"), "")
 	}
 	user, err := strategy(ctx, body, client)
 	if err != nil {
@@ -141,41 +83,26 @@ func (s *AuthService) Login(ctx context.Context, body *authmodel.LoginBody, clie
 	return vo, nil
 }
 
-// passwordLogin 密码登录，对应原项目 PasswordAuthStrategy。
-//
-// # 三步的顺序是安全要求
-//
-//  1. 查用户：不存在 / 已停用 -> 直接失败
-//  2. 错误次数前置检查：已达上限 -> 直接失败（不比密码）
-//  3. BCrypt 比对：失败则递增计数，成功则清零
-//
-// **第 1 步必须早于第 2、3 步**（对齐 Java 的 loadUserByUsername 先行）：
-// 用户不存在时直接抛，压根不碰错误计数器。否则攻击者能用任意不存在的
-// 用户名把某个真实账号刷到锁定 —— 计数键是按 username 存的，
-// 而「这个用户名存不存在」在锁定之前是未知的。
-//
-// 代价是**用户枚举可观测**：不存在回「账号不存在」、密码错回「密码输入错误N次」，
-// 两句文案不同。这是原项目的行为，本次对齐 —— 改掉它需要连同前端的
-// 提示逻辑一起改，且那属于安全加固而非迁移。
+// passwordLogin 密码登录
 func (s *AuthService) passwordLogin(ctx context.Context, body *authmodel.LoginBody,
 	_ *systemmodel.SysClient) (*systemmodel.SysUser, error) {
 
-	// TODO(阶段 3): 验证码校验。原项目 captcha.enable 默认 false
+	// TODO: 验证码校验。原项目 captcha.enable 默认 false
 	// （application.yml:20），且验证码生成接口属阶段 3 —— 现在校验会让
 	// 谁都登不进来。body.Code / body.UUID 字段已就位。
 
 	// 1. 查用户并校验状态。
-	user, err := s.users.GetByUsername(ctx, body.Username)
+	user, err := systemservice.UserSvcApp.GetByUsername(ctx, body.Username)
 	if err != nil {
 		if errors.Is(err, systemservice.ErrUserNotFound) {
 			log.Printf("[auth] 登录用户: %s 不存在", body.Username)
-			return nil, errs.New(i18n.Msg(ctx, "user.not.exists", body.Username))
+			return nil, errs.New(0, i18n.Msg(ctx, "user.not.exists", body.Username), "")
 		}
 		return nil, err
 	}
 	if user.Status == enum.UserStatusDisable.Code {
 		log.Printf("[auth] 登录用户: %s 已被停用", body.Username)
-		return nil, errs.New(i18n.Msg(ctx, "user.blocked", body.Username))
+		return nil, errs.New(0, i18n.Msg(ctx, "user.blocked", body.Username), "")
 	}
 
 	// 2 + 3. 错误次数检查与密码比对。
@@ -185,19 +112,16 @@ func (s *AuthService) passwordLogin(ctx context.Context, body *authmodel.LoginBo
 	return user, nil
 }
 
-// checkPassword 校验密码并维护错误次数，对应 Java SysLoginService.checkLogin（:206-235）。
-//
-// Redis 键 pwd_err_cnt:<username>，值是计数，TTL = lockTime。
-//
-// **TTL 每次失败都重置**（滑动窗口，非固定窗口）—— 这是原项目的行为：
-// 每 9 分钟错一次、错满 5 次跨越 40 分钟，依然会锁。
+// checkPassword 校验密码并维护错误次数
 func (s *AuthService) checkPassword(ctx context.Context, username, password, hashed string) error {
 	key := constant.PwdErrCntKeyPrefix + username
-	maxRetry := s.passwdCfg.MaxRetryCount
-	lockMinutes := s.passwdCfg.LockTime
+	passwdCfg := config.Get().User.Password
+	maxRetry := passwdCfg.MaxRetryCount
+	lockMinutes := passwdCfg.LockTime
 
+	rdb := redis.Client()
 	// 前置检查：已达上限则直接拒绝，不再比对密码。
-	errCount, err := s.rdb.Get(ctx, key).Int()
+	errCount, err := rdb.Get(ctx, key).Int()
 	if err != nil && !errors.Is(err, goredis.Nil) {
 		// Redis 故障不该让登录直接不可用，但也不能静默跳过限制 ——
 		// 那等于在 Redis 挂掉时打开暴力破解的门。折中：当作 0 次继续，
@@ -206,14 +130,14 @@ func (s *AuthService) checkPassword(ctx context.Context, username, password, has
 		errCount = 0
 	}
 	if errCount >= maxRetry {
-		return errs.New(i18n.Msg(ctx, enum.LoginTypePassword.RetryExceedKey, maxRetry, lockMinutes))
+		return errs.New(0, i18n.Msg(ctx, enum.LoginTypePassword.RetryExceedKey, maxRetry, lockMinutes), "")
 	}
 
 	// 密码比对。
 	verifyErr := auth.VerifyPassword(password, hashed)
 	if verifyErr == nil {
 		// 成功：清零计数。
-		if err := s.rdb.Del(ctx, key).Err(); err != nil {
+		if err := rdb.Del(ctx, key).Err(); err != nil {
 			log.Printf("[auth] 清除密码错误次数失败: %v", err)
 		}
 		return nil
@@ -227,15 +151,15 @@ func (s *AuthService) checkPassword(ctx context.Context, username, password, has
 
 	// 失败：递增计数并重设 TTL。
 	errCount++
-	if err := s.rdb.Set(ctx, key, errCount,
+	if err := rdb.Set(ctx, key, errCount,
 		time.Duration(lockMinutes)*time.Minute).Err(); err != nil {
 		log.Printf("[auth] 写入密码错误次数失败: %v", err)
 	}
 
 	if errCount >= maxRetry {
-		return errs.New(i18n.Msg(ctx, enum.LoginTypePassword.RetryExceedKey, maxRetry, lockMinutes))
+		return errs.New(0, i18n.Msg(ctx, enum.LoginTypePassword.RetryExceedKey, maxRetry, lockMinutes), "")
 	}
-	return errs.New(i18n.Msg(ctx, enum.LoginTypePassword.RetryCountKey, errCount))
+	return errs.New(0, i18n.Msg(ctx, enum.LoginTypePassword.RetryCountKey, errCount), "")
 }
 
 // buildLoginUser 构造登录用户，对应 Java SysLoginService.buildLoginUser（:155-182）。
@@ -316,7 +240,7 @@ func (s *AuthService) issue(ctx context.Context, loginUser *auth.LoginUser,
 	}
 	claims.Subject = loginID
 
-	token, err := auth.Sign(claims, s.jwtSecret, ttl)
+	token, err := auth.Sign(claims, config.Get().JWT.Secret, ttl)
 	if err != nil {
 		return nil, err
 	}
@@ -325,7 +249,7 @@ func (s *AuthService) issue(ctx context.Context, loginUser *auth.LoginUser,
 	loginUser.ExpireTime = time.Now().Add(ttl).UnixMilli()
 
 	sess := &auth.Session{User: loginUser, ActiveTimeout: client.ActiveTimeout}
-	if err := s.sessions.Save(ctx, token, sess); err != nil {
+	if err := auth.NewSessionStore(redis.Client()).Save(ctx, token, sess); err != nil {
 		return nil, err
 	}
 
@@ -353,7 +277,7 @@ func (s *AuthService) afterLogin(ctx context.Context, loginUser *auth.LoginUser,
 	s.recordOnline(ctx, loginUser, client, token)
 
 	// 更新 sys_user 的 login_ip / login_date。
-	if err := s.users.UpdateLoginInfo(ctx, loginUser.UserID, loginUser.IPAddr); err != nil {
+	if err := systemservice.UserSvcApp.UpdateLoginInfo(ctx, loginUser.UserID, loginUser.IPAddr); err != nil {
 		log.Printf("[auth] 更新用户 %d 最后登录信息失败: %v", loginUser.UserID, err)
 	}
 
@@ -363,28 +287,11 @@ func (s *AuthService) afterLogin(ctx context.Context, loginUser *auth.LoginUser,
 		loginUser.Username, loginUser.UserID, loginUser.IPAddr, client.ClientKey)
 }
 
-// onlineUser 在线用户记录，对应 Java 的 UserOnlineDTO。
-type onlineUser struct {
-	TokenID       string `json:"tokenId"`
-	UserName      string `json:"userName"`
-	IPAddr        string `json:"ipaddr"`
-	LoginLocation string `json:"loginLocation"`
-	Browser       string `json:"browser"`
-	OS            string `json:"os"`
-	DeptName      string `json:"deptName"`
-	ClientKey     string `json:"clientKey"`
-	DeviceType    string `json:"deviceType"`
-	LoginTime     int64  `json:"loginTime"`
-}
-
 // recordOnline 写在线用户记录。
-//
-// TTL 取 client.Timeout（绝对超时），对齐 Java：
-// timeout == -1 时不设过期，否则 Duration.ofSeconds(timeout)。
 func (s *AuthService) recordOnline(ctx context.Context, loginUser *auth.LoginUser,
 	client *systemmodel.SysClient, token string) {
 
-	dto := onlineUser{
+	dto := authmodel.OnlineUser{
 		TokenID:       token,
 		UserName:      loginUser.Username,
 		IPAddr:        loginUser.IPAddr,
@@ -407,7 +314,7 @@ func (s *AuthService) recordOnline(ctx context.Context, loginUser *auth.LoginUse
 	if client.Timeout > 0 {
 		ttl = time.Duration(client.Timeout) * time.Second
 	}
-	if err := s.rdb.Set(ctx, constant.OnlineTokenKeyPrefix+token, payload, ttl).Err(); err != nil {
+	if err := redis.Client().Set(ctx, constant.OnlineTokenKeyPrefix+token, payload, ttl).Err(); err != nil {
 		log.Printf("[auth] 写入在线用户记录失败: %v", err)
 	}
 }
@@ -426,20 +333,21 @@ func (s *AuthService) Logout(ctx context.Context, token string) error {
 		return nil
 	}
 
+	store := auth.NewSessionStore(redis.Client())
 	// 先取用户信息用于日志（会话可能已经没了，取不到就算了）。
-	if sess, err := s.sessions.Load(ctx, token); err == nil && sess.User != nil {
+	if sess, err := store.Load(ctx, token); err == nil && sess.User != nil {
 		// TODO(阶段 3): 登录日志落库，status = Logout。
 		log.Printf("[auth] 用户 %s(%d) 退出成功", sess.User.Username, sess.User.UserID)
 	}
 
-	if err := s.sessions.Delete(ctx, token); err != nil {
+	if err := store.Delete(ctx, token); err != nil {
 		// 会话删不掉是真问题（token 仍然有效），要上报 ——
 		// 与上面「日志取不到就算了」不同，这一步失败意味着登出没有生效。
 		return err
 	}
 
 	// 清在线用户记录，对应 UserActionListener.doLogout。
-	if err := s.rdb.Del(ctx, constant.OnlineTokenKeyPrefix+token).Err(); err != nil {
+	if err := redis.Client().Del(ctx, constant.OnlineTokenKeyPrefix+token).Err(); err != nil {
 		log.Printf("[auth] 清除在线用户记录失败: %v", err)
 	}
 	return nil

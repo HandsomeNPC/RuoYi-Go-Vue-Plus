@@ -37,8 +37,9 @@ Go 侧全部收拢到本包，由 `Register(r)` 按固定顺序显式 `r.Use(...
 
 另有三个没有 Java 直接对照物的文件：`register.go`（按序注册全部中间件，对应 Spring 的四个 `AutoConfiguration.imports`
 清单）、`path.go`（Ant 路径匹配，对应 `AntPathMatcher`，被 `xss.go`、`crypto.go`、`auth.go` 共用）与
-`ip.go`（客户端 IP 提取与 IP 规则匹配，对应 `ServletUtils.getClientIP` + `NetUtils.isMatchIpRule`， 被 `auth.go` 的客户端
-IP 白名单用，阶段 4+ 的 `@RateLimiter` 会复用）。 加解密原语不在本包，在
+`auth.go` 里的 IP 规则匹配（`IsMatchIPRule` / `MatchAnyIPRule`，对应 `NetUtils.isMatchIpRule`，被本文件的客户端 IP 白名单用）。
+客户端 IP **提取**（`ClientIP`，对应 `ServletUtils.getClientIP`）不在本包，在
+`pkg/ip`——鉴权白名单、登录 handler 记录登录 IP、阶段 4+ 的 `@RateLimiter` 三处复用同一份取值逻辑，故独立成包。 加解密原语不在本包，在
 `pkg/encrypt`（对应 `encrypt/utils/EncryptUtils.java`）—— 阶段 4+ 的
 `@EncryptField` 字段级加密会复用它，那条路径与 HTTP 无关、不该 import gin。 登录态原语（JWT 签发/校验、Redis 会话、密码哈希）在
 `pkg/auth`，同样不 import gin —— `internal/*/service` 要签发与销毁会话。 配置结构体不在本包，在
@@ -639,9 +640,11 @@ CSRF**，Go 侧同样只从 header 取， **不要为了方便加 cookie 或查�
 ，而症状（登录返回 401）会让人去查密码而不是查这份名单。 由 `TestAuthExcludesCoverLoginEndpoints` 与
 `TestAuthExcludesMatchJavaSecurityExcludes` 锁住。
 
-#### `ip.go`：两个容易静默放宽白名单的坑
+#### IP 规则匹配（`auth.go`）：两个容易静默放宽白名单的坑
 
-对应 `ServletUtils.getClientIP`（`:277-285`）与 `NetUtils.isMatchIpRule`（`:93-149`）。 规则优先级照抄： **精确相等 → 含 `/` 走
+IP 规则匹配 `IsMatchIPRule` / `MatchAnyIPRule` 现在位于 `auth.go`（从原 `ip.go` 并入）；客户端 IP **提取**
+`ClientIP` 对应 `ServletUtils.getClientIP`（`:277-285`），已移至 `pkg/ip`。规则匹配对应 `NetUtils.isMatchIpRule`
+（`:93-149`）。 规则优先级照抄： **精确相等 → 含 `/` 走
 CIDR → 含 `*`/`?` 走 glob → false**。
 
 1. **CIDR 必须显式对齐地址族**。Go 的 `net.IP` 会把 IPv4 规范化成 16 字节的 v4-mapped 形式 （`::ffff:1.2.3.4`），于是
@@ -654,8 +657,8 @@ CIDR → 含 `*`/`?` 走 glob → false**。
    `path.go` 的 `matchSegment`（同一套带回溯双指针）。
    `TestIsMatchIPRuleGlobIsFullMatch` 同时断言「Java 正则 + 部分匹配」确实会误判前缀。
 
-**这些头都是可伪造的**（任何客户端都能自己发 `X-Forwarded-For`）。仍然信任它们是因为本项目部署在 nginx 之后、由 nginx
-覆写该头。进程直接暴露公网时 IP 白名单形同虚设 —— 这与原项目相同，不是本实现引入的。
+**`ClientIP` 信任的代理头都是可伪造的**（任何客户端都能自己发 `X-Forwarded-For`，见 `pkg/ip`）。仍然信任它们是因为 本项目部署在
+nginx 之后、由 nginx 覆写该头。进程直接暴露公网时 IP 白名单形同虚设 —— 这与原项目相同，不是本实现引入的。
 
 #### 登录/登出不在本包
 
