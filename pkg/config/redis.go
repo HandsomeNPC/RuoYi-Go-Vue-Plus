@@ -6,17 +6,13 @@ import (
 )
 
 // Redis 缓存/会话/分布式锁配置。
-//
-// 连接池与超时项对应原项目 redisson.singleServerConfig：
-// poolSize→connectionPoolSize、minIdleConns→connectionMinimumIdleSize、
-// connMaxIdleTime→idleConnectionTimeout、readTimeout/writeTimeout→timeout。
 type Redis struct {
 	Host     string `mapstructure:"host"`
 	Port     int    `mapstructure:"port"`
 	Password string `mapstructure:"password"`
 	DB       int    `mapstructure:"db"`
 
-	ClientName      string `mapstructure:"clientName"`      // 连接标识，便于 CLIENT LIST 排查
+	ClientName      string `mapstructure:"clientName"`      // 连接标识
 	PoolSize        int    `mapstructure:"poolSize"`        // 连接池大小，缺省 go-redis 默认(10×CPU)
 	MinIdleConns    int    `mapstructure:"minIdleConns"`    // 最小空闲连接
 	DialTimeoutMs   int    `mapstructure:"dialTimeoutMs"`   // 建连超时(毫秒)，缺省 5000
@@ -35,7 +31,7 @@ func (r Redis) DialTimeout() time.Duration {
 	return msOrDefault(r.DialTimeoutMs, 5*time.Second)
 }
 
-// ReadTimeout 返回读超时，未配置时默认 3s（对齐原项目 timeout: 3000）。
+// ReadTimeout 返回读超时，未配置时默认 3s。
 func (r Redis) ReadTimeout() time.Duration {
 	return msOrDefault(r.ReadTimeoutMs, 3*time.Second)
 }

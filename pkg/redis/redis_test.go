@@ -10,17 +10,17 @@ import (
 	"ruoyi-go-vue-plus/pkg/config"
 )
 
-// 一份指向不存在的 Redis 的配置，用于验证失败路径。
+// unreachable 返回指向不存在 Redis 的配置。
 func unreachable() config.Redis {
 	return config.Redis{
 		Host:          "127.0.0.1",
-		Port:          1, // 不可能有 Redis 监听
+		Port:          1,
 		DB:            0,
 		DialTimeoutMs: 200,
 	}
 }
 
-// 连不上 Redis 时必须返回错误而不是可用实例，避免进程带坏连接启动。
+// TestNewFailsWhenUnreachable 验证连不上 Redis 时返回错误。
 func TestNewFailsWhenUnreachable(t *testing.T) {
 	client, err := New(unreachable())
 	if err == nil {
@@ -34,10 +34,7 @@ func TestNewFailsWhenUnreachable(t *testing.T) {
 	}
 }
 
-// Init 连不上 Redis 时必须 panic，且不污染包级实例。
-//
-// Init 现在走 config.Get()、失败直接 panic（对齐 config.Load 语义），故此处先
-// Load 一份指向不存在端口的完整配置，再断言 Init() panic、且 defaultClient 仍为 nil。
+// TestInitFailsPanicsAndLeavesDefaultUnset 验证 Init 连不上时 panic。
 func TestInitFailsPanicsAndLeavesDefaultUnset(t *testing.T) {
 	resetDefault(t)
 	loadUnreachableConfig(t)
@@ -64,7 +61,7 @@ func TestInitFailsPanicsAndLeavesDefaultUnset(t *testing.T) {
 	Init()
 }
 
-// 未 Init 就取用应当 panic，把编排错误暴露在启动期。
+// TestClientPanicsBeforeInit 验证未 Init 取用应 panic。
 func TestClientPanicsBeforeInit(t *testing.T) {
 	resetDefault(t)
 
@@ -76,17 +73,16 @@ func TestClientPanicsBeforeInit(t *testing.T) {
 	Client()
 }
 
-// Close/CloseDefault 对空实例应当安全。
+// TestCloseNilIsSafe 验证 Close/CloseDefault 对空实例安全。
 func TestCloseNilIsSafe(t *testing.T) {
 	if err := Close(nil); err != nil {
 		t.Errorf("Close(nil) = %v, want nil", err)
 	}
 	resetDefault(t)
-	// CloseDefault 现在内部消化错误、不再返回，未初始化时调用应安全且不 panic。
 	CloseDefault()
 }
 
-// 超时项：未配置走默认，配置了按配置换算。
+// TestTimeoutDefaults 验证超时项默认值。
 func TestTimeoutDefaults(t *testing.T) {
 	zero := config.Redis{}
 	if got, want := zero.DialTimeout(), 5*time.Second; got != want {
@@ -111,7 +107,7 @@ func TestTimeoutDefaults(t *testing.T) {
 	}
 }
 
-// 负值等同未配置，兜底为默认值。
+// TestTimeoutNegativeFallsBack 验证负值兜底为默认。
 func TestTimeoutNegativeFallsBack(t *testing.T) {
 	r := config.Redis{DialTimeoutMs: -1, ReadTimeoutMs: -100}
 	if got, want := r.DialTimeout(), 5*time.Second; got != want {
@@ -122,7 +118,7 @@ func TestTimeoutNegativeFallsBack(t *testing.T) {
 	}
 }
 
-// 空闲连接存活时长换算。
+// TestMaxIdleTime 验证空闲连接存活时长换算。
 func TestMaxIdleTime(t *testing.T) {
 	r := config.Redis{ConnMaxIdleTime: 600}
 	if got, want := r.MaxIdleTime(), 10*time.Minute; got != want {
@@ -130,7 +126,7 @@ func TestMaxIdleTime(t *testing.T) {
 	}
 }
 
-// resetDefault 清空包级实例，避免用例间互相影响。
+// resetDefault 清空包级实例。
 func resetDefault(t *testing.T) {
 	t.Helper()
 	mu.Lock()
@@ -138,8 +134,7 @@ func resetDefault(t *testing.T) {
 	mu.Unlock()
 }
 
-// unreachableYAML 一份能通过 config 校验、但 Redis 指向不存在端口的完整配置，
-// 用于驱动 Init() 的失败分支。middleware/user 段由 viper 默认值补齐。
+// unreachableYAML 一份能通过校验但 Redis 不可达的完整配置。
 const unreachableYAML = `
 server:
   name: test
@@ -154,7 +149,7 @@ datasource:
   params: charset=utf8mb4&parseTime=True&loc=Local
 redis:
   host: 127.0.0.1
-  port: 1  # 不可能有 Redis 监听
+  port: 1
   db: 0
   dialTimeoutMs: 200
 jwt:
@@ -163,7 +158,7 @@ jwt:
   header: Authorization
 `
 
-// loadUnreachableConfig 写入临时 yaml 并 Load，使 config.Get().Redis 指向不可达实例。
+// loadUnreachableConfig 写入临时 yaml 并 Load。
 func loadUnreachableConfig(t *testing.T) {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "cfg.yaml")

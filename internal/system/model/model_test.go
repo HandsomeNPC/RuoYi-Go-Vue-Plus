@@ -6,15 +6,7 @@ import (
 	"testing"
 )
 
-// TestSupportsGrantTypeIsExactNotSubstring 锁住相对 Java 的一处有意偏差。
-//
-// Java 侧是 `StringUtils.contains(client.getGrantType(), grantType)`
-// （AuthController.java:86）—— 对逗号拼接串做**子串**匹配，于是
-// grantType="pass" 会命中 "password,social"。那是 bug 不是可对齐的行为：
-// 一个拼错或恶意构造的 grantType 会通过校验，随后在策略分派处才失败
-// （或更糟，命中了别的策略）。
-//
-// 用例同时断言子串匹配确实会误判，让前提失效得明显。
+// TestSupportsGrantTypeIsExactNotSubstring 锁住授权类型精确比对。
 func TestSupportsGrantTypeIsExactNotSubstring(t *testing.T) {
 	c := &SysClient{GrantType: "password,social"}
 
@@ -31,18 +23,13 @@ func TestSupportsGrantTypeIsExactNotSubstring(t *testing.T) {
 		}
 	}
 
-	// 前提校验：确认 Java 的子串匹配真的会误判。
+	// 前提校验：确认子串匹配真的会误判。
 	if !strings.Contains(c.GrantType, "pass") {
 		t.Error("前提已失效：子串匹配竟不会误判 \"pass\"，请重新评估本偏差的必要性")
 	}
 }
 
 // TestAccessPathListNormalizes 归一化必须补上前导斜杠。
-//
-// 对应 SysClientServiceImpl.normalizeAccessPath（:254-266）。
-// 这一步不能省：Ant 匹配要求 pattern 与 path 同时以 / 开头
-// （见 pkg/middleware/path.go 的 AntPathMatch），而请求路径必然以 / 开头 ——
-// 规则漏了它就一条也匹配不上，表现为「配了白名单反而全被拒」。
 func TestAccessPathListNormalizes(t *testing.T) {
 	tests := []struct {
 		name string
@@ -69,9 +56,6 @@ func TestAccessPathListNormalizes(t *testing.T) {
 }
 
 // TestIPWhitelistListDoesNotNormalize IP 规则原样保留，不做路径归一化。
-//
-// 对应 Java 侧对这一项传 UnaryOperator.identity()。给 IP 规则补前导斜杠
-// 会让每一条都失效。
 func TestIPWhitelistListDoesNotNormalize(t *testing.T) {
 	c := &SysClient{IPWhitelist: "10.0.0.0/8, 192.168.1.*"}
 
@@ -82,13 +66,6 @@ func TestIPWhitelistListDoesNotNormalize(t *testing.T) {
 }
 
 // TestSplitRulesSeparators 按 , ; CR LF 切分，合并连续分隔符、trim、丢空段。
-//
-// 对应 Java 的 CLIENT_RULE_SEPARATOR_REGEX "[,;\r\n]+" 配
-// str2List(…, ignoreEmpty=true, isTrim=true)。
-//
-// 这份语义必须与 pkg/middleware/auth.go 的 splitClientRules 一致 ——
-// 那边切 JWT claims 里的规则串，这边切 DB 实体。两处没有合并成一处
-// （合并会让 pkg 依赖 internal，破坏分层），一致性靠各自的测试锁住。
 func TestSplitRulesSeparators(t *testing.T) {
 	tests := []struct {
 		in   string
@@ -112,7 +89,7 @@ func TestSplitRulesSeparators(t *testing.T) {
 	}
 }
 
-// TestTableNames 表名必须与原项目一致 —— 写错了查的是另一张（不存在的）表。
+// TestTableNames 表名必须与原项目一致。
 func TestTableNames(t *testing.T) {
 	if got, want := (SysUser{}).TableName(), "sys_user"; got != want {
 		t.Errorf("SysUser.TableName() = %q, 期望 %q", got, want)
@@ -123,11 +100,6 @@ func TestTableNames(t *testing.T) {
 }
 
 // TestPasswordAndSecretNeverSerialized 锁住密码与客户端密钥不会漏进响应体。
-//
-// SysUser.Password 与 SysClient.ClientSecret 都必须带 json:"-"，
-// 对齐 Java SysUserVo 上 @JsonIgnore + @JsonProperty 的「只读入不写出」。
-// 少这个标签，任何直接返回实体的接口都会把哈希/密钥泄出去 ——
-// 而那不会有任何编译期或运行期症状。
 func TestPasswordAndSecretNeverSerialized(t *testing.T) {
 	userField, ok := reflect.TypeOf(SysUser{}).FieldByName("Password")
 	if !ok {

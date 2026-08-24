@@ -1,4 +1,3 @@
-// Package system 系统管理模块(用户/角色/菜单/部门)。
 package system
 
 import (
@@ -9,7 +8,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/config"
 )
 
-// InitServer 启动 HTTP 服务并阻塞
+// InitServer 启动 HTTP 服务并阻塞。
 func InitServer(r *gin.Engine) {
 	cfg := config.Get()
 	log.Printf("[%s] 监听 %s", cfg.Server.Name, cfg.Server.Addr)

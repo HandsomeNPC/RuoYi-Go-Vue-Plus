@@ -1,4 +1,3 @@
-// Package system 系统管理模块(用户/角色/菜单/部门)。
 package system
 
 import (
@@ -10,7 +9,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/middleware"
 )
 
-// InitRouter 构建并返回 system 进程的 gin 引擎
+// InitRouter 构建并返回 system 进程的 gin 引擎。
 func InitRouter() *gin.Engine {
 	r := gin.New()
 
@@ -24,7 +23,7 @@ func InitRouter() *gin.Engine {
 	r.Use(middleware.I18n())
 	r.Use(middleware.Auth())
 
-	// TODO: 在此挂载 system 路由(用户/角色/菜单/部门等)，阶段 2 落地。
+	// TODO: 在此挂载 system 路由，阶段 2 落地。
 
 	cfg := config.Get()
 	r.GET("/system/ping", func(c *gin.Context) {

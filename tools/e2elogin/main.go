@@ -1,11 +1,5 @@
 // Command e2elogin 按 apiEncrypt 协议加密登录报文，验证登录闭环。
 //
-// 这是一个**临时的联调工具**，不属于产品代码。它存在的理由：
-// configs/application.yaml 里 apiEncrypt.enabled=true 且 /auth/login 在
-// requestUrls（强制加密）清单里，用 curl 发明文会被 403 拒掉，
-// 而那正是 README 说的「PKCS#7 填充与 base64 那两层仍未跨语言核实」
-// 该被验证的时机。
-//
 // 用法: go run ./tools/e2elogin
 package main
 
@@ -24,9 +18,7 @@ import (
 
 const (
 	baseURL = "http://127.0.0.1:8080" // auth 进程
-	// systemURL system 进程。受保护接口要在**它**上面探测 ——
-	// /system/** 的路由注册在那个进程里，auth 进程上访问会因为
-	// FullPath()=="" 而不进鉴权、直接落 404（那正是第 2 条用例要验的行为）。
+	// systemURL system 进程。受保护接口要在它上面探测。
 	systemURL = "http://127.0.0.1:8081"
 )
 
@@ -40,9 +32,7 @@ func run() error {
 	config.Load("configs/application.yaml", "configs/auth.yaml")
 	enc := config.Get().Middleware.APIEncrypt
 
-	// 前端加密请求用的是**公钥**；仓库里配的 publicKey 是给响应加密用的，
-	// 与 privateKey 不配对。这里直接从 privateKey 推出公钥 ——
-	// RSA 私钥里本就含公钥，这样必然配对。
+	// 前端加密请求用的是公钥；这里直接从 privateKey 推出公钥。
 	priv, err := encrypt.ParseRSAPrivateKey(enc.PrivateKey)
 	if err != nil {
 		return fmt.Errorf("解析私钥失败: %w", err)
@@ -51,7 +41,7 @@ func run() error {
 	body := `{"clientId":"e5cd7e4891bf95d1d19206ce24a7b32e","grantType":"password",` +
 		`"username":"admin","password":"admin123"}`
 
-	// 协议（见 configs/application.yaml 的注释）：
+	// 协议（见 configs/application.yaml）：
 	//   encrypt-key 头 = base64(RSA公钥加密( base64( AES明文密钥 ) ))
 	//   请求体         = base64(AES-ECB加密( JSON 明文 ))
 	aesKey := make([]byte, 16)
@@ -111,9 +101,6 @@ func login(headerFlag, encKey, cipherBody string) (string, error) {
 }
 
 // probeProtected 用拿到的 token 走一遍鉴权中间件的各条分支。
-//
-// 受保护接口用 system 进程的 /system/ping —— 它是一条**已注册**且不在
-// 免鉴权名单里的路由，正好能穿过鉴权中间件的全部四步。
 func probeProtected(token string) error {
 	const clientID = "e5cd7e4891bf95d1d19206ce24a7b32e"
 
@@ -149,7 +136,7 @@ func probeProtected(token string) error {
 		fmt.Printf("%s\n   -> %s\n", c.name, body)
 	}
 
-	// 8. 登出后原 token 失效 —— 这条验的是 JWT 的撤销机制。
+	// 8. 登出后原 token 失效。
 	req, _ := http.NewRequest(http.MethodPost, baseURL+"/auth/logout", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 	body, err := do(req)

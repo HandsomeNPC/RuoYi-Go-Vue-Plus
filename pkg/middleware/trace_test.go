@@ -14,11 +14,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/config"
 )
 
-// newTraceEngine 构造只挂 TraceID 的引擎，业务 handler 把它在两处
-// 上下文里看到的 id 回写出来，供断言比对。
-//
-// 分别取 gin.Context 和 request 的 context.Context 是刻意的：
-// 两条取值路径都得能拿到同一个 id，前者给 handler，后者给 service 层。
+// newTraceEngine 构造只挂 TraceID 的引擎，回写两处上下文里看到的 id。
 func newTraceEngine(cfg config.TraceID) *gin.Engine {
 	r := gin.New()
 	r.Use(TraceIDWithConfig(cfg))
@@ -42,8 +38,7 @@ func traceGet(r *gin.Engine, inbound string) *httptest.ResponseRecorder {
 	return w
 }
 
-// 没有入站 id 时应生成一个，且响应头与两处上下文里的值三者一致 ——
-// 不一致意味着日志里的 id 和前端看到的对不上，整个机制就失去意义。
+// TestTraceIDGeneratesAndPropagates 没有入站 id 时应生成一个，且三处一致。
 func TestTraceIDGeneratesAndPropagates(t *testing.T) {
 	w := traceGet(newTraceEngine(config.DefaultMiddleware().TraceID), "")
 
@@ -54,12 +49,12 @@ func TestTraceIDGeneratesAndPropagates(t *testing.T) {
 	body := w.Body.String()
 	for _, field := range []string{`"fromGin":"` + id + `"`, `"fromCtx":"` + id + `"`} {
 		if !strings.Contains(body, field) {
-			t.Errorf("body = %s, 应包含 %s（上下文与响应头的 id 必须一致）", body, field)
+			t.Errorf("body = %s, 应包含 %s", body, field)
 		}
 	}
 }
 
-// 每个请求必须拿到不同的 id，否则无法区分并发请求的日志。
+// TestTraceIDUniquePerRequest 每个请求必须拿到不同的 id。
 func TestTraceIDUniquePerRequest(t *testing.T) {
 	r := newTraceEngine(config.DefaultMiddleware().TraceID)
 
@@ -73,7 +68,7 @@ func TestTraceIDUniquePerRequest(t *testing.T) {
 	}
 }
 
-// 生成格式对齐 W3C trace-id / nginx $request_id：32 位小写十六进制。
+// TestNewTraceIDFormat 生成格式为 32 位小写十六进制。
 func TestNewTraceIDFormat(t *testing.T) {
 	id := NewTraceID()
 
@@ -87,7 +82,7 @@ func TestNewTraceIDFormat(t *testing.T) {
 	}
 }
 
-// 上游已生成 id 时必须沿用，否则同一次调用在各进程里 id 不同，链路断掉。
+// TestTraceIDReusesInbound 上游已生成 id 时必须沿用。
 func TestTraceIDReusesInbound(t *testing.T) {
 	inbound := "0af7651916cd43dd8448eb211c80319c"
 
@@ -101,8 +96,7 @@ func TestTraceIDReusesInbound(t *testing.T) {
 	}
 }
 
-// TrustInbound=false 时必须忽略入站 id 自己生成 ——
-// 进程直接暴露在公网时靠这个开关防止调用方给一万个请求发同一个 id。
+// TestTraceIDDistrustInbound TrustInbound=false 时必须忽略入站 id 自己生成。
 func TestTraceIDDistrustInbound(t *testing.T) {
 	cfg := config.DefaultMiddleware().TraceID
 	cfg.TrustInbound = false
@@ -117,10 +111,7 @@ func TestTraceIDDistrustInbound(t *testing.T) {
 	}
 }
 
-// 本文件最重要的一条：不合规的入站 id 必须丢弃并重新生成。
-//
-// 带 CR/LF 的 id 若原样写进响应头就是头注入，写进日志就是伪造日志行；
-// 超长的能零成本撑爆日志。这些都来自外部，必须当不可信输入处理。
+// TestTraceIDRejectsMaliciousInbound 不合规的入站 id 必须丢弃并重新生成。
 func TestTraceIDRejectsMaliciousInbound(t *testing.T) {
 	cases := map[string]string{
 		"CRLF 响应头注入": "abc\r\nX-Injected: evil",
@@ -143,7 +134,7 @@ func TestTraceIDRejectsMaliciousInbound(t *testing.T) {
 			if id == inbound {
 				t.Fatalf("非法入站 id 被沿用: %q", inbound)
 			}
-			// 必须回落到一个干净的新 id，而不是空串或被过滤后的残余。
+			// 必须回落到一个干净的新 id。
 			if len(id) != 32 {
 				t.Errorf("回落 id = %q, 应为 32 位新生成 id", id)
 			}
@@ -154,7 +145,7 @@ func TestTraceIDRejectsMaliciousInbound(t *testing.T) {
 	}
 }
 
-// 合法格式要放过：十六进制、UUID(带横线)、base64url 风格都是常见的上游 id。
+// TestSanitizeTraceIDAcceptsCommonFormats 合法格式要放过：十六进制、UUID、base64url 风格。
 func TestSanitizeTraceIDAcceptsCommonFormats(t *testing.T) {
 	valid := []string{
 		"0af7651916cd43dd8448eb211c80319c",     // W3C / nginx
@@ -170,8 +161,7 @@ func TestSanitizeTraceIDAcceptsCommonFormats(t *testing.T) {
 	}
 }
 
-// TraceIDFrom 拿不到 id 时返回空串而非 panic —— 调用方多半在打日志，
-// 不能因为少个 id 把请求搞挂。nil context 也要能扛住。
+// TestTraceIDFromMissing TraceIDFrom 拿不到 id 时返回空串而非 panic。
 func TestTraceIDFromMissing(t *testing.T) {
 	if got := TraceIDFrom(context.Background()); got != "" {
 		t.Errorf("TraceIDFrom(空 context) = %q, want \"\"", got)
@@ -182,8 +172,7 @@ func TestTraceIDFromMissing(t *testing.T) {
 	}
 }
 
-// 响应头必须在 handler 写 body 之前落定：body 一开始输出，header 就发出去了，
-// 事后 Set 会无声失效。这里让 handler 直接写 body 来验证顺序没写反。
+// TestTraceIDHeaderSetBeforeHandlerWrites 响应头必须在 handler 写 body 之前落定。
 func TestTraceIDHeaderSetBeforeHandlerWrites(t *testing.T) {
 	r := gin.New()
 	r.Use(TraceID())
@@ -198,7 +187,7 @@ func TestTraceIDHeaderSetBeforeHandlerWrites(t *testing.T) {
 	}
 }
 
-// 自定义头名要生效，且不能再读写默认头名。
+// TestTraceIDCustomHeader 自定义头名要生效。
 func TestTraceIDCustomHeader(t *testing.T) {
 	cfg := config.DefaultMiddleware().TraceID
 	cfg.Header = "X-Trace-Id"
@@ -217,7 +206,7 @@ func TestTraceIDCustomHeader(t *testing.T) {
 	}
 }
 
-// Header 留空要回落到默认头名，而不是写出一个空名字的头。
+// TestTraceIDEmptyHeaderFallsBack Header 留空要回落到默认头名。
 func TestTraceIDEmptyHeaderFallsBack(t *testing.T) {
 	w := traceGet(newTraceEngine(config.TraceID{TrustInbound: true}), "")
 
@@ -226,8 +215,7 @@ func TestTraceIDEmptyHeaderFallsBack(t *testing.T) {
 	}
 }
 
-// TraceID 必须在 CORS 的 ExposedHeaders 里，否则跨域下浏览器挡住这个头，
-// 前端拿不到 traceId 就无法和服务端日志对账。两处是配套的。
+// TestTraceIDExposedByDefaultCORS TraceID 必须在 CORS 的 ExposedHeaders 里。
 func TestTraceIDExposedByDefaultCORS(t *testing.T) {
 	exposed := config.DefaultMiddleware().CORS.ExposedHeaders
 
@@ -239,8 +227,7 @@ func TestTraceIDExposedByDefaultCORS(t *testing.T) {
 	t.Errorf("config.DefaultMiddleware().CORS.ExposedHeaders = %v, 应含 %s", exposed, TraceIDHeader)
 }
 
-// Recover 的日志要带上 traceId，否则排查时拿到 traceId 也搜不到异常那行 ——
-// 这是 TraceID 相对原项目（只有 8 位错误编号）真正多出来的能力。
+// TestRecoverLogsIncludeTraceID Recover 的日志要带上 traceId。
 func TestRecoverLogsIncludeTraceID(t *testing.T) {
 	var buf bytes.Buffer
 	restore := captureLog(&buf)
@@ -261,7 +248,7 @@ func TestRecoverLogsIncludeTraceID(t *testing.T) {
 	}
 }
 
-// 没挂 TraceID 时 Recover 仍要能正常打日志，不能留下空的 "[]" 占位。
+// TestRecoverLogsWithoutTraceID 没挂 TraceID 时 Recover 仍要能正常打日志。
 func TestRecoverLogsWithoutTraceID(t *testing.T) {
 	var buf bytes.Buffer
 	restore := captureLog(&buf)

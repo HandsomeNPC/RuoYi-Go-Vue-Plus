@@ -1,13 +1,13 @@
 package constant
 
 const (
-	StatusNormal              = "0" // 正常
-	StatusDisable             = "1" // 停用
+	StatusNormal              = "0"
+	StatusDisable             = "1"
 	Yes                       = "Y"
 	No                        = "N"
-	MenuTypeDir               = "M" // 目录
-	MenuTypeMenu              = "C" // 菜单
-	MenuTypeButton            = "F" // 按钮
+	MenuTypeDir               = "M"
+	MenuTypeMenu              = "C"
+	MenuTypeButton            = "F"
 	ComponentLayout           = "Layout"
 	ComponentParentView       = "ParentView"
 	ComponentInnerLink        = "InnerLink"

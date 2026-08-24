@@ -5,10 +5,10 @@ import (
 	"time"
 )
 
-// 支持的数据库驱动。目前只实现 MySQL，与原项目主库一致。
+// DriverMySQL 支持的数据库驱动。
 const DriverMySQL = "mysql"
 
-// SQL 日志级别取值，对应 gorm/logger 的四档。
+// SQL 日志级别取值。
 const (
 	LogLevelSilent = "silent"
 	LogLevelError  = "error"
@@ -16,7 +16,7 @@ const (
 	LogLevelInfo   = "info"
 )
 
-// Datasource MySQL 数据源配置。各进程共用同一数据库。
+// Datasource MySQL 数据源配置。
 type Datasource struct {
 	Driver          string `mapstructure:"driver"`
 	Host            string `mapstructure:"host"`

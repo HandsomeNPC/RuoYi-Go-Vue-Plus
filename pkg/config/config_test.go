@@ -7,7 +7,6 @@ import (
 	"testing"
 )
 
-// 仓库内真实配置文件，相对 pkg/config 的路径。
 const (
 	commonYAML = "../../configs/application.yaml"
 	systemYAML = "../../configs/system.yaml"
@@ -17,14 +16,12 @@ const (
 func TestLoadMergesInOrder(t *testing.T) {
 	cfg := mustLoad(t, commonYAML, systemYAML)
 
-	// 来自 system.yaml
 	if got, want := cfg.Server.Addr, ":8081"; got != want {
 		t.Errorf("Server.Addr = %q, want %q", got, want)
 	}
 	if got, want := cfg.Server.Name, "system"; got != want {
 		t.Errorf("Server.Name = %q, want %q", got, want)
 	}
-	// 来自 application.yaml
 	if got, want := cfg.Datasource.DBName, "ry-cloud"; got != want {
 		t.Errorf("Datasource.DBName = %q, want %q", got, want)
 	}
@@ -39,7 +36,6 @@ func TestLoadMergesInOrder(t *testing.T) {
 	}
 }
 
-// auth 与 system 共用公共配置，只有 server 段不同。
 func TestLoadAuthDiffersOnlyByServer(t *testing.T) {
 	cfg := mustLoad(t, commonYAML, authYAML)
 	if got, want := cfg.Server.Addr, ":8080"; got != want {
@@ -54,7 +50,6 @@ func TestLoadAuthDiffersOnlyByServer(t *testing.T) {
 	}
 }
 
-// 单文件加载：只要内容完整就该通过。
 func TestLoadSingleFile(t *testing.T) {
 	path := writeYAML(t, fullYAML)
 	cfg := mustLoad(t, path)
@@ -63,7 +58,6 @@ func TestLoadSingleFile(t *testing.T) {
 	}
 }
 
-// 后传入的文件覆盖先传入的，未提及的键保持不变。
 func TestLaterFileOverridesEarlier(t *testing.T) {
 	base := writeYAML(t, fullYAML)
 	override := writeYAML(t, `
@@ -80,7 +74,6 @@ datasource:
 	if got, want := cfg.Datasource.Host, "mysql-prod"; got != want {
 		t.Errorf("Datasource.Host = %q, want %q", got, want)
 	}
-	// 未被覆盖的键保留 base 的值
 	if got, want := cfg.Datasource.DBName, "ry-vue"; got != want {
 		t.Errorf("Datasource.DBName = %q, want %q", got, want)
 	}
@@ -89,7 +82,6 @@ datasource:
 	}
 }
 
-// 三个文件按顺序叠加，最后一个胜出。
 func TestThreeFilesLastWins(t *testing.T) {
 	a := writeYAML(t, fullYAML)
 	b := writeYAML(t, "server:\n  addr: \":8001\"\n")
@@ -101,7 +93,6 @@ func TestThreeFilesLastWins(t *testing.T) {
 	}
 }
 
-// 错误分支经 loadErr 接住 panic 后断言错误信息。
 func TestLoadErrors(t *testing.T) {
 	t.Run("未传路径", func(t *testing.T) {
 		if err := loadErr(t); err == nil {
@@ -131,7 +122,6 @@ func TestLoadErrors(t *testing.T) {
 	})
 
 	t.Run("配置不完整未通过校验", func(t *testing.T) {
-		// 只有 server 段，缺 datasource/redis/jwt
 		path := writeYAML(t, "server:\n  name: x\n  addr: \":1\"\n")
 		if err := loadErr(t, path); err == nil {
 			t.Fatal("want error, got nil")
@@ -139,10 +129,6 @@ func TestLoadErrors(t *testing.T) {
 	})
 }
 
-// 导出的 Load 遇错必须 panic，且带上原始错误。
-//
-// main 依赖这个行为：那里不再 if err != nil，配置错误全靠这一下崩掉进程。
-// 若哪天 Load 改回静默返回，进程会带着半份配置继续跑起来 —— 本用例守的是这个。
 func TestLoadPanicsOnError(t *testing.T) {
 	defer func() {
 		r := recover()
@@ -153,17 +139,14 @@ func TestLoadPanicsOnError(t *testing.T) {
 		if !ok {
 			t.Fatalf("panic 值应是 error，got %T: %v", r, r)
 		}
-		// 错误信息要指明缺哪一项，否则运维看到栈也不知道改什么。
 		if !strings.Contains(err.Error(), "config:") {
 			t.Errorf("panic 的错误信息应带 config: 前缀: %v", err)
 		}
 	}()
 
-	// 只有 server 段，过不了 datasource/redis/jwt 的校验。
 	Load(writeYAML(t, "server:\n  name: x\n  addr: \":1\"\n"))
 }
 
-// 路径正确时 Load 不该 panic，且 Get() 能取到。
 func TestLoadSucceedsWithoutPanic(t *testing.T) {
 	Load(commonYAML, systemYAML)
 	if got, want := Get().Server.Addr, ":8081"; got != want {
@@ -319,10 +302,6 @@ func mustLoad(t *testing.T, paths ...string) *Config {
 }
 
 // loadErr 调 Load 并接住 panic，返回其中的 error。
-//
-// Load 失败时 panic（对齐 Get() 的语义），错误分支的用例经这里拿到 error
-// 断言信息，不必每处都手写 defer recover。Load 没崩则返回 nil；
-// panic 值不是 error 时原样重抛 —— 那是代码缺陷而非用例要断言的事。
 func loadErr(t *testing.T, paths ...string) (err error) {
 	t.Helper()
 	defer func() {

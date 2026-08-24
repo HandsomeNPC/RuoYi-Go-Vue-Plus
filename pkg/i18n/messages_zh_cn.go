@@ -1,14 +1,6 @@
 package i18n
 
-// messagesZhCN 中文词条，逐条对应原项目
-// ruoyi-admin/src/main/resources/i18n/messages_zh_CN.properties。
-//
-// 该文件与无后缀的 messages.properties 内容完全一致（已 diff 确认），
-// 故本包用这一份同时承担「中文」与「默认兜底」两个角色，见 DefaultLocale。
-//
-// 键名与分组注释保持原文件的顺序，方便与原项目对照 diff。
-// 占位符 {0}/{1} 已改写为 %v（见包注释），但 {min}/{max} 有意保留原样 ——
-// 那是 Hibernate Validator 的属性占位符，不是位置参数。
+// messagesZhCN 中文词条。
 var messagesZhCN = map[string]string{
 	// 错误消息
 	"not.null":                           "* 必须填写",

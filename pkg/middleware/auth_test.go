@@ -30,11 +30,6 @@ type authFixture struct {
 }
 
 // authCfg 以真实默认配置为基准，再按需覆盖。
-//
-// **不要直接传 config.Auth{}**：那份零值的 TokenPrefix 是空串，而空串在本
-// 中间件里是**有意义的取值**（不使用前缀），于是 "Bearer xxx" 不会被剥掉、
-// 每个请求都 401。正常进程走 viper 铺的默认值，测试也应从同一处取，
-// 否则测的是一份现实中不存在的配置。
 func authCfg(override func(*config.Auth)) config.Auth {
 	cfg := config.DefaultMiddleware().Auth
 	if override != nil {
@@ -44,10 +39,6 @@ func authCfg(override func(*config.Auth)) config.Auth {
 }
 
 // newAuthFixture 构造只挂 Recover + Auth 的引擎。
-//
-// **必须带上 Recover**：本中间件的错误走 c.Error 而非自己写响应体，
-// 由 Recover 统一渲染成 response.R。不挂它就测不到真实的响应形态 ——
-// 那也正是 TestAuthErrorsRenderedAsHTTP200 要锁的东西。
 func newAuthFixture(t *testing.T, cfg config.Auth) *authFixture {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
@@ -60,7 +51,6 @@ func newAuthFixture(t *testing.T, cfg config.Auth) *authFixture {
 	r.Use(Recover())
 	r.Use(AuthWithConfig(cfg, authTestSecret, rdb))
 
-	// 受保护接口：回写中间件写进两处上下文的用户，确认它们一致。
 	handler := func(c *gin.Context) {
 		var fromCtx string
 		if u := UserFromContext(c.Request.Context()); u != nil {
@@ -145,12 +135,7 @@ func bodyMsg(t *testing.T, w *httptest.ResponseRecorder) string {
 	return r.Msg
 }
 
-// 正常路径：带有效 token 与匹配的 clientid 应放行，
-// 且登录用户同时出现在 gin.Context 与 request context 里。
-//
-// 两处都断言是刻意的：handler 走 gin.Context，而 service / repository 层走
-// request context（阶段 4.1 的数据权限要用）。只写一处会让另一条路径
-// 在真正需要时才发现是空的。
+// TestAuthAllowsValidToken 带有效 token 与匹配的 clientid 应放行。
 func TestAuthAllowsValidToken(t *testing.T) {
 	f := newAuthFixture(t, authCfg(nil))
 	token := f.issue(t, &auth.Claims{UserID: 1761100000000000001, Username: "admin"}, 1800)
@@ -175,12 +160,7 @@ func TestAuthAllowsValidToken(t *testing.T) {
 	}
 }
 
-// TestAuthErrorsRenderedAsHTTP200 锁住「HTTP 状态码恒 200，业务码放响应体」。
-//
-// 这是 recover.go 已有的硬约束：Java 侧那些 advice 返回 R<Void> 且未标
-// @ResponseStatus，前端统一拦 body.code 判成败。改成真实 401/403
-// 会让前端拦截器失效 —— 而那种故障表现为「所有接口都报错」，
-// 却与本次改动看不出关系。
+// TestAuthErrorsRenderedAsHTTP200 锁住 HTTP 状态码恒 200，业务码放响应体。
 func TestAuthErrorsRenderedAsHTTP200(t *testing.T) {
 	f := newAuthFixture(t, authCfg(nil))
 
@@ -196,7 +176,7 @@ func TestAuthErrorsRenderedAsHTTP200(t *testing.T) {
 	}
 }
 
-// 无 token / 畸形 token / 异密钥签发的 token 一律 401。
+// TestAuthRejectsMissingOrBadToken 无 token / 畸形 token / 异密钥签发的 token 一律 401。
 func TestAuthRejectsMissingOrBadToken(t *testing.T) {
 	f := newAuthFixture(t, authCfg(nil))
 
@@ -221,14 +201,10 @@ func TestAuthRejectsMissingOrBadToken(t *testing.T) {
 	}
 }
 
-// TestAuthRejectsAlgNone 锁住 pkg/auth.Verify 传了 jwt.WithValidMethods。
-//
-// 中间件层面再测一遍（pkg/auth 已有同名用例）：这条链路是完整的鉴权绕过，
-// 值得在两层各留一道锁 —— 将来谁重构 Verify 的调用方式，中间件这条也会红。
+// TestAuthRejectsAlgNone 锁住 alg=none 的 token 必须被拒。
 func TestAuthRejectsAlgNone(t *testing.T) {
 	f := newAuthFixture(t, authCfg(nil))
 
-	// header/payload 手工拼一个 alg=none 的 token，签名段留空。
 	const unsigned = "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0." +
 		"eyJ1c2VySWQiOjEsImNsaWVudGlkIjoiZTVjZDdlNDg5MWJmOTVkMWQxOTIwNmNlMjRhN2IzMmUifQ."
 
@@ -238,8 +214,7 @@ func TestAuthRejectsAlgNone(t *testing.T) {
 	}
 }
 
-// 过期 token 的文案与「非法」不同 —— 两者前端行为相同，但日志里必须能区分
-// 「正常用到过期」和「token 被篡改」。
+// TestAuthExpiredTokenHasOwnMessage 过期 token 的文案与「非法」不同。
 func TestAuthExpiredTokenHasOwnMessage(t *testing.T) {
 	f := newAuthFixture(t, authCfg(nil))
 
@@ -255,20 +230,15 @@ func TestAuthExpiredTokenHasOwnMessage(t *testing.T) {
 	}
 }
 
-// TestAuthRequiresSession 只验签不查会话，登出就形同虚设。
-//
-// token 本身完全有效（签名对、未过期），但会话已被删除 —— 必须 401。
-// 这条锁住 JWT 的撤销机制。
+// TestAuthRequiresSession 会话已被删除的有效 token 必须 401。
 func TestAuthRequiresSession(t *testing.T) {
 	f := newAuthFixture(t, authCfg(nil))
 	token := f.issue(t, &auth.Claims{UserID: 1, Username: "admin"}, 1800)
 
-	// 先确认能通。
 	if w := f.do(http.MethodGet, "/system/user/list", token, authTestClientID); w.Code != http.StatusOK {
 		t.Fatalf("前提不成立: 有效 token 应放行, body=%s", w.Body.String())
 	}
 
-	// 模拟登出。
 	if err := f.store.Delete(context.Background(), token); err != nil {
 		t.Fatalf("删除会话失败: %v", err)
 	}
@@ -282,7 +252,7 @@ func TestAuthRequiresSession(t *testing.T) {
 	}
 }
 
-// clientid 不匹配返 401，对应 Java 抛 NotLoginException code -100。
+// TestAuthClientIDMismatch clientid 不匹配返 401。
 func TestAuthClientIDMismatch(t *testing.T) {
 	f := newAuthFixture(t, authCfg(nil))
 	token := f.issue(t, &auth.Claims{UserID: 1, Username: "admin"}, 1800)
@@ -301,8 +271,7 @@ func TestAuthClientIDMismatch(t *testing.T) {
 	}
 }
 
-// TestAuthClientIDFromQueryAlsoWorks header 或 query 命中其一即可，
-// 对应 Java 的 StringUtils.equalsAny(clientId, headerCid, paramCid)。
+// TestAuthClientIDFromQueryAlsoWorks header 或 query 命中其一即可。
 func TestAuthClientIDFromQueryAlsoWorks(t *testing.T) {
 	f := newAuthFixture(t, authCfg(nil))
 	token := f.issue(t, &auth.Claims{UserID: 1, Username: "admin"}, 1800)
@@ -318,18 +287,10 @@ func TestAuthClientIDFromQueryAlsoWorks(t *testing.T) {
 	}
 }
 
-// TestAuthMissingClientIDClaimDoesNotPanic 锁住相对 Java 的一处有意偏差。
-//
-// Java 侧 StpUtil.getExtra(CLIENT_KEY).toString()（SecurityConfig.java:100）
-// 对缺 clientid claim 的 token 会 **NPE 成 500**，那是 bug 不是可对齐的行为。
-// Go 侧视为不匹配返 401。
-//
-// 关键点：请求也不带 clientid 时，两个空串**不能**被判成"相等"从而放行 ——
-// 那会让一个精心构造的 token 绕过整个客户端绑定。
+// TestAuthMissingClientIDClaimDoesNotPanic 缺 clientid claim 的 token 不 panic，返 401。
 func TestAuthMissingClientIDClaimDoesNotPanic(t *testing.T) {
 	f := newAuthFixture(t, authCfg(nil))
 
-	// 显式签一个不含 clientid 的 token（绕开 issue 的默认填充）。
 	token, err := auth.Sign(&auth.Claims{UserID: 1, Username: "admin"},
 		authTestSecret, time.Hour)
 	if err != nil {
@@ -343,7 +304,6 @@ func TestAuthMissingClientIDClaimDoesNotPanic(t *testing.T) {
 		t.Fatalf("写入会话失败: %v", err)
 	}
 
-	// 请求同样不带 clientid：两个空串不能判等。
 	w := f.do(http.MethodGet, "/system/user/list", token, "")
 	if w.Code != http.StatusOK {
 		t.Errorf("不该是 500(Java 侧的 NPE), HTTP 状态码 = %d", w.Code)
@@ -354,13 +314,6 @@ func TestAuthMissingClientIDClaimDoesNotPanic(t *testing.T) {
 }
 
 // TestAuthTokenNotReadFromQueryOrCookie 锁住「token 只从 header 取」。
-//
-// sa-token 配了 is-read-body: true（可从请求参数读），Go 侧**有意不跟**：
-// 查询串会流进 nginx accesslog 与浏览器历史；cookie 则是原项目
-// is-read-cookie: false 刻意关掉以杜绝 CSRF 的（README 已写明
-// 「不要为了方便加 cookie 回落」）。
-//
-// clientid 仍保留 header-or-query —— 那个不是凭证、只是标识。
 func TestAuthTokenNotReadFromQueryOrCookie(t *testing.T) {
 	f := newAuthFixture(t, authCfg(nil))
 	token := f.issue(t, &auth.Claims{UserID: 1, Username: "admin"}, 1800)
@@ -406,8 +359,7 @@ func TestAuthSkipsExcludes(t *testing.T) {
 	}
 }
 
-// TestAuthEmptyExcludesProtectsEverything 空名单意味着「什么都不排除」，
-// 不是「全部排除」—— 这个默认值取反就是敞开的口子。
+// TestAuthEmptyExcludesProtectsEverything 空名单意味着「什么都不排除」。
 func TestAuthEmptyExcludesProtectsEverything(t *testing.T) {
 	f := newAuthFixture(t, authCfg(func(c *config.Auth) { c.Excludes = nil }))
 
@@ -416,28 +368,17 @@ func TestAuthEmptyExcludesProtectsEverything(t *testing.T) {
 	}
 }
 
-// TestAuthUnregisteredPathFalls404NotUnauthorized 锁住对齐 Java AllUrlHandler 的行为。
-//
-// Java 侧 SaInterceptor 内部先 SaRouter.match(allUrlHandler.getUrls()) 筛一道，
-// 那是启动时收集的**全部已注册路由**。未注册的路径根本不进鉴权，
-// 直接落 404 而非 401。Go 侧用 c.FullPath() == "" 判定同一件事。
-//
-// 前端与测试可能依赖「乱路径返 404」这个行为，故显式锁住。
+// TestAuthUnregisteredPathFalls404NotUnauthorized 未注册路径落 404 而非 401。
 func TestAuthUnregisteredPathFalls404NotUnauthorized(t *testing.T) {
 	f := newAuthFixture(t, authCfg(nil))
 
-	// 不带 token 访问未注册路径。
 	w := f.do(http.MethodGet, "/nonexistent/path", "", "")
 	if w.Code != http.StatusNotFound {
 		t.Errorf("未注册路径应落 404(不进鉴权): 状态码 = %d, body=%s", w.Code, w.Body.String())
 	}
 }
 
-// TestAuthAccessPathReturns403 客户端访问路径白名单，
-// 对应 NotPermissionException("当前客户端未授权访问该接口路径")。
-//
-// 种子数据里 app 客户端的 access_path 是 /app/**，即它签发的 token
-// 不能访问 /system/** —— 这正是该机制存在的理由。
+// TestAuthAccessPathReturns403 客户端访问路径白名单校验。
 func TestAuthAccessPathReturns403(t *testing.T) {
 	f := newAuthFixture(t, authCfg(nil))
 	token := f.issue(t, &auth.Claims{
@@ -446,12 +387,10 @@ func TestAuthAccessPathReturns403(t *testing.T) {
 		ClientAccessPath: "/app/**",
 	}, 1800)
 
-	// 命中白名单 -> 放行。
 	if w := f.do(http.MethodGet, "/app/profile", token, authTestClientID); w.Code != http.StatusOK {
 		t.Errorf("/app/profile 在白名单内应放行: body=%s", w.Body.String())
 	}
 
-	// 未命中 -> 403（不是 401：身份是清楚的，只是不允许访问）。
 	w := f.do(http.MethodGet, "/system/user/list", token, authTestClientID)
 	if got := bodyCode(t, w); got != response.CodeForbidden {
 		t.Errorf("越界访问应返 403: code = %d", got)
@@ -462,9 +401,6 @@ func TestAuthAccessPathReturns403(t *testing.T) {
 }
 
 // TestAuthEmptyAccessPathMeansUnrestricted access_path 为空即不限制。
-//
-// 对齐 Java 的 StringUtils.isNotBlank 判断 —— sys_client 允许该列为 null，
-// 种子数据的 pc 客户端就是空的。若把空当成「什么都不许」，pc 端全挂。
 func TestAuthEmptyAccessPathMeansUnrestricted(t *testing.T) {
 	f := newAuthFixture(t, authCfg(nil))
 	token := f.issue(t, &auth.Claims{UserID: 1, Username: "admin", ClientAccessPath: ""}, 1800)
@@ -474,8 +410,7 @@ func TestAuthEmptyAccessPathMeansUnrestricted(t *testing.T) {
 	}
 }
 
-// TestAuthIPWhitelistReturns403 客户端 IP 白名单，
-// 对应 NotPermissionException("当前客户端IP不在白名单内")。
+// TestAuthIPWhitelistReturns403 客户端 IP 白名单校验。
 func TestAuthIPWhitelistReturns403(t *testing.T) {
 	f := newAuthFixture(t, authCfg(nil))
 	token := f.issue(t, &auth.Claims{
@@ -501,7 +436,6 @@ func TestAuthIPWhitelistReturns403(t *testing.T) {
 		}
 	}
 
-	// 白名单外 -> 403。
 	w := newReq("8.8.8.8")
 	if got := bodyCode(t, w); got != response.CodeForbidden {
 		t.Errorf("白名单外的 IP 应返 403: code = %d", got)
@@ -509,14 +443,10 @@ func TestAuthIPWhitelistReturns403(t *testing.T) {
 }
 
 // TestAuthRenewsSessionTTL 校验通过后滑动续期。
-//
-// 锁住「滑动」而非「固定」窗口：活跃用户不该在登录满 activeTimeout 后被登出。
-// 这是原项目 dynamic-active-timeout: true 的效果。
 func TestAuthRenewsSessionTTL(t *testing.T) {
 	f := newAuthFixture(t, authCfg(nil))
 	token := f.issue(t, &auth.Claims{UserID: 1, Username: "admin"}, 1800)
 
-	// 消耗掉一半空闲窗口。
 	f.mr.FastForward(900 * time.Second)
 	if got := f.mr.TTL(auth.TokenKeyPrefix + token); got != 900*time.Second {
 		t.Fatalf("前提不成立: 推进后 TTL = %v, 期望 900s", got)
@@ -532,8 +462,6 @@ func TestAuthRenewsSessionTTL(t *testing.T) {
 }
 
 // TestAuthAcceptsBareTokenWhenNoPrefix TokenPrefix 配空串表示不使用前缀。
-//
-// 那是**有意义的取值**而非「用默认值」，故不回落默认值。
 func TestAuthAcceptsBareTokenWhenNoPrefix(t *testing.T) {
 	f := newAuthFixture(t, authCfg(func(c *config.Auth) { c.TokenPrefix = "" }))
 	token := f.issue(t, &auth.Claims{UserID: 1, Username: "admin"}, 1800)
@@ -550,14 +478,11 @@ func TestAuthAcceptsBareTokenWhenNoPrefix(t *testing.T) {
 }
 
 // TestAuthRedisFailureIsNotUnauthorized Redis 故障必须与「未登录」区分。
-//
-// 回 401 会让一次 Redis 抖动表现成「所有人被登出」，而日志里只有一片 401，
-// 看不出真正的原因。应交给 Recover 兜成系统异常（500 业务码）并打日志。
 func TestAuthRedisFailureIsNotUnauthorized(t *testing.T) {
 	f := newAuthFixture(t, authCfg(nil))
 	token := f.issue(t, &auth.Claims{UserID: 1, Username: "admin"}, 1800)
 
-	f.mr.Close() // Redis 不可用
+	f.mr.Close()
 
 	w := f.do(http.MethodGet, "/system/user/list", token, authTestClientID)
 	if got := bodyCode(t, w); got == response.CodeUnauthorized {
@@ -589,8 +514,6 @@ func TestNewUserContext(t *testing.T) {
 }
 
 // TestSplitClientRules 规则串按 , ; CR LF 切分，trim 并丢弃空段。
-//
-// 对应 Java 的 CLIENT_RULE_SEPARATOR_REGEX "[,;\r\n]+" + str2List(…, true, true)。
 func TestSplitClientRules(t *testing.T) {
 	tests := []struct {
 		in   string
@@ -601,7 +524,6 @@ func TestSplitClientRules(t *testing.T) {
 		{"/app/**,/pub/**", []string{"/app/**", "/pub/**"}},
 		{"/app/**;/pub/**", []string{"/app/**", "/pub/**"}},
 		{"/app/**\r\n/pub/**", []string{"/app/**", "/pub/**"}},
-		// 连续分隔符合并、空段丢弃（对应 "+" 量词与 ignoreEmpty）。
 		{"/app/**,,;/pub/**", []string{"/app/**", "/pub/**"}},
 		{" /app/** , /pub/** ", []string{"/app/**", "/pub/**"}},
 		{",,,", nil},
@@ -622,9 +544,6 @@ func TestSplitClientRules(t *testing.T) {
 }
 
 // TestMatchesAnySkipsEmpty 空候选值必须跳过。
-//
-// 请求没带 clientid 时 header 与 query 都是空串，若不跳过，
-// 一个 clientid 为空的 token 就能匹配上任何不带该头的请求。
 func TestMatchesAnySkipsEmpty(t *testing.T) {
 	if matchesAny("", "", "") {
 		t.Error("空 want 与空候选值不该判等")

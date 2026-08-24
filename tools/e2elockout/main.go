@@ -1,9 +1,5 @@
 // Command e2elockout 验证密码错误锁定，走真实 MySQL + Redis。
 //
-// 与 e2elogin 同为**临时联调工具**，不属于产品代码。
-// 单独一个是因为它会把 admin 账号刷到锁定，跑完必须清 Redis 计数键，
-// 混进 e2elogin 会让那边的用例互相干扰。
-//
 // 用法: go run ./tools/e2elockout
 package main
 
@@ -54,7 +50,7 @@ func run() error {
 	if err := rdb.Del(ctx, key).Err(); err != nil {
 		return fmt.Errorf("清理计数键失败: %w", err)
 	}
-	// 跑完也清掉，别把 admin 真的锁在那里 10 分钟。
+	// 跑完也清掉。
 	defer func() {
 		if err := rdb.Del(ctx, key).Err(); err != nil {
 			log.Printf("清理计数键失败: %v", err)

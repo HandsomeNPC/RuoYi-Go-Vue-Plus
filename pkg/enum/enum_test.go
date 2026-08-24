@@ -7,10 +7,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/i18n"
 )
 
-// 锚定全部枚举取值。这些值直接落库、也被前端依赖，改动即为破坏性变更。
-//
-// 另一层作用：枚举实例是 var 而非 const（Go 不支持 struct 常量），
-// 若被某处误赋值，这个测试会失败。
+// TestEnumValues 锚定全部枚举取值。
 func TestEnumValues(t *testing.T) {
 	codes := map[string]string{
 		UserStatusOK.Code:      "0",
@@ -45,7 +42,7 @@ func TestEnumValues(t *testing.T) {
 	}
 }
 
-// Parse 系列按 Code 精确匹配，未命中返回 ok=false 且不得返回可用的零值。
+// TestParseExact 验证 Parse 系列按 Code 精确匹配。
 func TestParseExact(t *testing.T) {
 	if s, ok := ParseUserStatus("1"); !ok || s != UserStatusDisable {
 		t.Errorf("ParseUserStatus(\"1\") = %v, %v", s, ok)
@@ -53,7 +50,6 @@ func TestParseExact(t *testing.T) {
 	if _, ok := ParseUserStatus("9"); ok {
 		t.Error("ParseUserStatus(\"9\") 应返回 false")
 	}
-	// 精确匹配不能退化为子串匹配 —— 这是与 ParseUserTypeFromLoginID 的关键区别。
 	if _, ok := ParseUserType("sys_user:1"); ok {
 		t.Error("ParseUserType 应精确匹配，不该接受 loginId")
 	}
@@ -68,8 +64,7 @@ func TestParseExact(t *testing.T) {
 	}
 }
 
-// 从 loginId 提取用户类型走子串匹配（对齐原项目 UserType.getUserType）。
-// 空串必须拦住：strings.Contains(s, "") 恒为 true，不拦会误判成 UserTypeSys。
+// TestParseUserTypeFromLoginID 验证从 loginId 提取用户类型。
 func TestParseUserTypeFromLoginID(t *testing.T) {
 	cases := []struct {
 		loginID string
@@ -91,11 +86,7 @@ func TestParseUserTypeFromLoginID(t *testing.T) {
 	}
 }
 
-// 提示文案按登录方式渲染；social / xcx 不做重试计数，返回空串。
-//
-// 文案现在走 pkg/i18n（枚举里存的是词条键，对齐 Java 的 getRetryLimitExceed），
-// 所以这里顺带断言**同一个键在两种语言下都渲染正确** —— 这是之前存中文模板时
-// 根本无法覆盖的：那时英文界面下的登录失败提示只会是中文。
+// TestLoginTypeMessages 验证提示文案按登录方式渲染。
 func TestLoginTypeMessages(t *testing.T) {
 	zh := i18n.NewContext(context.Background(), i18n.LocaleZhCN)
 	en := i18n.NewContext(context.Background(), i18n.LocaleEnUS)
@@ -141,12 +132,6 @@ func TestLoginTypeMessages(t *testing.T) {
 		})
 	}
 
-	// 原项目 SocialAuthStrategy / XcxAuthStrategy 都不调 checkLogin，
-	// 无重试文案（Java 侧 XCX("", "")），渲染须返回空串。
-	//
-	// 空键必须**在查词条之前**短路：否则空 code 会走到 i18n.Msg 的
-	// 「词条缺失返回 code 本身」分支，返回空串纯属巧合；而一旦哪天
-	// 那个兜底改成返回别的标记，这里就会渗出脏字符串。
 	for _, lt := range []LoginType{LoginTypeSocial, LoginTypeXcx} {
 		if got := lt.RetryCountMsg(zh, 1); got != "" {
 			t.Errorf("%s.RetryCountMsg = %q, want 空串", lt.Code, got)
@@ -156,18 +141,12 @@ func TestLoginTypeMessages(t *testing.T) {
 		}
 	}
 
-	// 没带语言的 context 回落默认语言（中文），不能返回空串或词条键。
-	// 阶段 1 若有脱离请求的调用路径（比如定时解锁任务），走的就是这条。
 	if got := LoginTypePassword.RetryCountMsg(context.Background(), 3); got != "密码输入错误3次" {
 		t.Errorf("无语言 context 时 RetryCountMsg = %q, 应回落中文", got)
 	}
 }
 
-// 枚举里的词条键必须真实存在于词条表。
-//
-// 键是手写字符串，拼错不会有编译错误，而 i18n.Msg 对缺失键返回 code 本身 ——
-// 于是登录失败时前端会收到 "user.password.retry.limit.exceedd" 这种字符串。
-// 这条用例把键与词条表钉在一起，等价于给裸字符串加了一道编译期检查。
+// TestLoginTypeKeysExistInCatalog 验证词条键存在于词条表。
 func TestLoginTypeKeysExistInCatalog(t *testing.T) {
 	ctx := i18n.NewContext(context.Background(), i18n.LocaleZhCN)
 	for _, lt := range LoginTypes() {
@@ -176,9 +155,8 @@ func TestLoginTypeKeysExistInCatalog(t *testing.T) {
 			"RetryExceedKey": lt.RetryExceedKey,
 		} {
 			if key == "" {
-				continue // social / xcx 有意为空
+				continue
 			}
-			// 词条存在时 Msg 会渲染出与键不同的文案；返回键本身即表示查不到。
 			if got := i18n.Msg(ctx, key); got == key {
 				t.Errorf("%s.%s = %q 在词条表里不存在（Msg 原样返回了键）", lt.Code, name, key)
 			}
@@ -186,11 +164,7 @@ func TestLoginTypeKeysExistInCatalog(t *testing.T) {
 	}
 }
 
-// LoginType.Code 的取值域须与原项目 grantType 一致 —— 5 种授权类型，
-// 对应 ruoyi-admin 的 5 个 @Service("xxx"+IAuthStrategy.BASE_NAME) 策略 Bean。
-//
-// Java 的 LoginType 只有 4 个值（无 social），因为它仅用于取重试文案而
-// social 不需要；Go 侧 Code 是查表键，必须覆盖全部 grantType。
+// TestLoginTypeCoversAllGrantTypes 验证 Code 覆盖全部 grantType。
 func TestLoginTypeCoversAllGrantTypes(t *testing.T) {
 	grantTypes := []string{"password", "sms", "email", "social", "xcx"}
 	if len(loginTypes) != len(grantTypes) {
@@ -203,11 +177,7 @@ func TestLoginTypeCoversAllGrantTypes(t *testing.T) {
 	}
 }
 
-// DeviceType 是参考取值而非白名单：sys_client.device_type 种子数据里就有
-// "android" 这个不在枚举内的合法值。ok=false 不得被当作「设备类型非法」。
-//
-// 这个测试的作用是留档说明，防止后来者把 ParseDeviceType 用成登录校验 ——
-// 那样 app 客户端（device_type='android'）会直接登录失败。
+// TestParseDeviceTypeIsNotAWhitelist 验证枚举非白名单。
 func TestParseDeviceTypeIsNotAWhitelist(t *testing.T) {
 	if _, ok := ParseDeviceType("android"); ok {
 		t.Error("枚举里不该有 android —— 若已补充，请同时修正类型注释与本测试")
@@ -217,7 +187,7 @@ func TestParseDeviceTypeIsNotAWhitelist(t *testing.T) {
 	}
 }
 
-// Xxxs() 返回副本，调用方改动不得污染包内枚举表。
+// TestListsReturnCopies 验证 Xxxs() 返回副本。
 func TestListsReturnCopies(t *testing.T) {
 	list := UserStatuses()
 	if len(list) != 3 {

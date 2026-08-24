@@ -13,12 +13,12 @@ import (
 	"ruoyi-go-vue-plus/pkg/config"
 )
 
-// 一份指向不存在的数据库的配置，用于验证失败路径。
+// unreachable 返回指向不存在数据库的配置。
 func unreachable() config.Datasource {
 	return config.Datasource{
 		Driver:   config.DriverMySQL,
 		Host:     "127.0.0.1",
-		Port:     1, // 不可能有 MySQL 监听
+		Port:     1,
 		Username: "root",
 		Password: "root",
 		DBName:   "ry-vue",
@@ -26,7 +26,7 @@ func unreachable() config.Datasource {
 	}
 }
 
-// 连不上数据库时必须返回错误而不是可用实例，避免进程带坏连接启动。
+// TestNewFailsWhenUnreachable 验证连不上库时返回错误。
 func TestNewFailsWhenUnreachable(t *testing.T) {
 	db, err := New(unreachable())
 	if err == nil {
@@ -40,10 +40,7 @@ func TestNewFailsWhenUnreachable(t *testing.T) {
 	}
 }
 
-// Init 连不上库时必须 panic，且不污染包级实例。
-//
-// Init 走 config.Get()、失败直接 panic（对齐 config.Load 语义），故此处先 Load
-// 一份指向不存在端口的完整配置，再断言 Init() panic、且 defaultDB 仍为 nil。
+// TestInitFailsPanicsAndLeavesDefaultUnset 验证 Init 连不上库时 panic。
 func TestInitFailsPanicsAndLeavesDefaultUnset(t *testing.T) {
 	resetDefault(t)
 	loadUnreachableConfig(t)
@@ -70,7 +67,7 @@ func TestInitFailsPanicsAndLeavesDefaultUnset(t *testing.T) {
 	Init()
 }
 
-// 未 Init 就取用应当 panic，把编排错误暴露在启动期。
+// TestDBPanicsBeforeInit 验证未 Init 取用应 panic。
 func TestDBPanicsBeforeInit(t *testing.T) {
 	resetDefault(t)
 
@@ -82,17 +79,16 @@ func TestDBPanicsBeforeInit(t *testing.T) {
 	DB()
 }
 
-// Close/CloseDefault 对空实例应当安全。
+// TestCloseNilIsSafe 验证 Close/CloseDefault 对空实例安全。
 func TestCloseNilIsSafe(t *testing.T) {
 	if err := Close(nil); err != nil {
 		t.Errorf("Close(nil) = %v, want nil", err)
 	}
 	resetDefault(t)
-	// CloseDefault 现在内部消化错误、不再返回，未初始化时调用应安全且不 panic。
 	CloseDefault()
 }
 
-// 表名必须是单数：实体 SysUser → 表 sys_user，与原项目表结构对齐。
+// TestSingularTableNaming 验证表名单数。
 func TestSingularTableNaming(t *testing.T) {
 	ns := schema.NamingStrategy{SingularTable: true}
 
@@ -110,7 +106,7 @@ func TestSingularTableNaming(t *testing.T) {
 	}
 }
 
-// 配置里的字符串级别要正确映射到 GORM 级别，非法值兜底 Warn。
+// TestLogLevelMapping 验证配置级别映射到 GORM 级别。
 func TestLogLevelMapping(t *testing.T) {
 	tests := map[string]logger.LogLevel{
 		config.LogLevelSilent: logger.Silent,
@@ -127,14 +123,14 @@ func TestLogLevelMapping(t *testing.T) {
 	}
 }
 
-// newLogger 至少要能构造出可用实例，不 panic。
+// TestNewLogger 验证 newLogger 能构造可用实例。
 func TestNewLogger(t *testing.T) {
 	if got := newLogger(unreachable()); got == nil {
 		t.Error("newLogger 返回 nil")
 	}
 }
 
-// 慢 SQL 阈值：未配置走默认 200ms，配置了按配置。
+// TestSlowThreshold 验证慢 SQL 阈值换算。
 func TestSlowThreshold(t *testing.T) {
 	tests := map[int]time.Duration{
 		0:    200 * time.Millisecond,
@@ -150,7 +146,7 @@ func TestSlowThreshold(t *testing.T) {
 	}
 }
 
-// 日志级别缺省为 warn。
+// TestDatasourceLevelDefault 验证日志级别缺省为 warn。
 func TestDatasourceLevelDefault(t *testing.T) {
 	if got, want := (config.Datasource{}).Level(), config.LogLevelWarn; got != want {
 		t.Errorf("Level() = %q, want %q", got, want)
@@ -161,7 +157,7 @@ func TestDatasourceLevelDefault(t *testing.T) {
 	}
 }
 
-// 空闲连接存活时长换算。
+// TestMaxIdleTime 验证空闲连接存活时长换算。
 func TestMaxIdleTime(t *testing.T) {
 	d := config.Datasource{ConnMaxIdleTime: 600}
 	if got, want := d.MaxIdleTime(), 10*time.Minute; got != want {
@@ -169,7 +165,7 @@ func TestMaxIdleTime(t *testing.T) {
 	}
 }
 
-// resetDefault 清空包级实例，避免用例间互相影响。
+// resetDefault 清空包级实例。
 func resetDefault(t *testing.T) {
 	t.Helper()
 	mu.Lock()
@@ -177,8 +173,7 @@ func resetDefault(t *testing.T) {
 	mu.Unlock()
 }
 
-// unreachableYAML 一份能通过 config 校验、但数据源指向不存在端口的完整配置，
-// 用于驱动 Init() 的失败分支。middleware/user 段由 viper 默认值补齐。
+// unreachableYAML 一份能通过校验但数据源不可达的完整配置。
 const unreachableYAML = `
 server:
   name: test
@@ -186,7 +181,7 @@ server:
 datasource:
   driver: mysql
   host: 127.0.0.1
-  port: 1  # 不可能有 MySQL 监听
+  port: 1
   username: root
   password: root
   dbname: ry-vue
@@ -201,7 +196,7 @@ jwt:
   header: Authorization
 `
 
-// loadUnreachableConfig 写入临时 yaml 并 Load，使 config.Get() 返回不可达数据源。
+// loadUnreachableConfig 写入临时 yaml 并 Load。
 func loadUnreachableConfig(t *testing.T) {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "cfg.yaml")

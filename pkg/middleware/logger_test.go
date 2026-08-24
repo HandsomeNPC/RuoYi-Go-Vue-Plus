@@ -13,9 +13,6 @@ import (
 )
 
 // runCapturingLog 跑一次 fn 并返回期间打出的日志。
-//
-// 复用 trace_test.go 的 captureLog（它顺带把 log.Flags 清零，
-// 日志里不会混进时间戳，断言只面对中间件自己写的内容）。
 func runCapturingLog(t *testing.T, fn func()) string {
 	t.Helper()
 
@@ -28,9 +25,6 @@ func runCapturingLog(t *testing.T, fn func()) string {
 }
 
 // newAccessLogEngine 构造 TraceID + RepeatableBody + AccessLog 的引擎。
-//
-// 三个一起挂是刻意的：AccessLog 的 JSON 入参依赖 RepeatableBody 的缓存，
-// 日志前缀依赖 TraceID，单挂 AccessLog 测不出真实注册顺序下的行为。
 func newAccessLogEngine(cfg config.AccessLog) *gin.Engine {
 	r := gin.New()
 	r.Use(Recover())
@@ -39,7 +33,6 @@ func newAccessLogEngine(cfg config.AccessLog) *gin.Engine {
 	r.Use(AccessLogWithConfig(cfg))
 
 	h := func(c *gin.Context) {
-		// 读一次 body，确认 AccessLog 打完日志后 handler 仍能绑参。
 		var in map[string]any
 		_ = c.ShouldBindJSON(&in)
 		c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -62,8 +55,7 @@ func accessLogDo(t *testing.T, r *gin.Engine, method, target, contentType, body 
 	})
 }
 
-// 一次请求必须打「开始」「结束」两行，缺一不可 ——
-// 只有结束行的话，卡死的请求在日志里什么都不会留下。
+// TestAccessLogStartAndEnd 一次请求必须打「开始」「结束」两行。
 func TestAccessLogStartAndEnd(t *testing.T) {
 	out := accessLogDo(t, newAccessLogEngine(config.DefaultMiddleware().AccessLog),
 		http.MethodGet, "/test", "", "")
@@ -79,7 +71,7 @@ func TestAccessLogStartAndEnd(t *testing.T) {
 	}
 }
 
-// 无参数时走「无参数」分支，而不是打一个空的 [] 或 {}。
+// TestAccessLogNoParam 无参数时走「无参数」分支。
 func TestAccessLogNoParam(t *testing.T) {
 	out := accessLogDo(t, newAccessLogEngine(config.DefaultMiddleware().AccessLog),
 		http.MethodGet, "/test", "", "")
@@ -89,7 +81,7 @@ func TestAccessLogNoParam(t *testing.T) {
 	}
 }
 
-// 核心用例：JSON body 里的密码字段必须被摘掉，其余字段保留。
+// TestAccessLogSanitizesJSONBody JSON body 里的密码字段必须被摘掉，其余字段保留。
 func TestAccessLogSanitizesJSONBody(t *testing.T) {
 	out := accessLogDo(t, newAccessLogEngine(config.DefaultMiddleware().AccessLog),
 		http.MethodPost, "/test", "application/json;charset=UTF-8",
@@ -109,8 +101,7 @@ func TestAccessLogSanitizesJSONBody(t *testing.T) {
 	}
 }
 
-// 嵌套结构和数组里的敏感字段同样要摘掉 ——
-// 只删顶层的话，{"user":{"password":"x"}} 就漏了。
+// TestAccessLogSanitizesNested 嵌套结构和数组里的敏感字段同样要摘掉。
 func TestAccessLogSanitizesNested(t *testing.T) {
 	out := accessLogDo(t, newAccessLogEngine(config.DefaultMiddleware().AccessLog),
 		http.MethodPost, "/test", "application/json",
@@ -124,8 +115,7 @@ func TestAccessLogSanitizesNested(t *testing.T) {
 	}
 }
 
-// 雪花 id 是 19 位整数，不能被 float64 抹掉尾数 ——
-// 打进日志的假 id 拿去查库查不到，比不打还误导人。
+// TestAccessLogKeepsLargeIntegerPrecision 雪花 id 是 19 位整数，不能被 float64 抹掉尾数。
 func TestAccessLogKeepsLargeIntegerPrecision(t *testing.T) {
 	out := accessLogDo(t, newAccessLogEngine(config.DefaultMiddleware().AccessLog),
 		http.MethodPost, "/test", "application/json",
@@ -136,12 +126,11 @@ func TestAccessLogKeepsLargeIntegerPrecision(t *testing.T) {
 	}
 }
 
-// 非法 JSON 且含敏感字段名时必须整段丢弃 ——
-// 这是相对 Java 侧刻意收紧的一处（那边直接回原文，密码明文进日志）。
+// TestAccessLogDropsUnparsableSensitiveBody 非法 JSON 且含敏感字段名时整段丢弃。
 func TestAccessLogDropsUnparsableSensitiveBody(t *testing.T) {
 	out := accessLogDo(t, newAccessLogEngine(config.DefaultMiddleware().AccessLog),
 		http.MethodPost, "/test", "application/json",
-		`{"username":"admin","password":"admin123`) // 少个右括号
+		`{"username":"admin","password":"admin123`)
 
 	if strings.Contains(out, "admin123") {
 		t.Errorf("非法 JSON 中的密码泄漏, got=%q", out)
@@ -151,7 +140,7 @@ func TestAccessLogDropsUnparsableSensitiveBody(t *testing.T) {
 	}
 }
 
-// 非法 JSON 但不含敏感字段时保留原文，对齐 Java 的兜底行为。
+// TestAccessLogKeepsUnparsableSafeBody 非法 JSON 但不含敏感字段时保留原文。
 func TestAccessLogKeepsUnparsableSafeBody(t *testing.T) {
 	out := accessLogDo(t, newAccessLogEngine(config.DefaultMiddleware().AccessLog),
 		http.MethodPost, "/test", "application/json", `{"name":"admin`)
@@ -161,7 +150,7 @@ func TestAccessLogKeepsUnparsableSafeBody(t *testing.T) {
 	}
 }
 
-// 查询串里的敏感参数同样要摘掉，且不能因为打日志就把参数从请求里删掉。
+// TestAccessLogSanitizesQueryParams 查询串里的敏感参数同样要摘掉，且不能改动请求本身。
 func TestAccessLogSanitizesQueryParams(t *testing.T) {
 	r := gin.New()
 	r.Use(TraceID())
@@ -189,7 +178,7 @@ func TestAccessLogSanitizesQueryParams(t *testing.T) {
 	}
 }
 
-// 打日志时不能把 URL 的原始查询串直接输出，否则脱敏形同虚设。
+// TestAccessLogDoesNotLeakRawQueryString 打日志时不能把 URL 的原始查询串直接输出。
 func TestAccessLogDoesNotLeakRawQueryString(t *testing.T) {
 	r := gin.New()
 	r.Use(AccessLogWithConfig(config.DefaultMiddleware().AccessLog))
@@ -205,7 +194,7 @@ func TestAccessLogDoesNotLeakRawQueryString(t *testing.T) {
 	}
 }
 
-// 超长参数必须截断，且带上截断标记。
+// TestAccessLogTruncatesLongParam 超长参数必须截断，且带上截断标记。
 func TestAccessLogTruncatesLongParam(t *testing.T) {
 	long := strings.Repeat("a", 5000)
 	out := accessLogDo(t, newAccessLogEngine(config.DefaultMiddleware().AccessLog),
@@ -219,7 +208,7 @@ func TestAccessLogTruncatesLongParam(t *testing.T) {
 	}
 }
 
-// 按字符截断而非字节：中文从中间劈开会在日志里变成乱码。
+// TestLimitParamCutsByRune 按字符截断而非字节。
 func TestLimitParamCutsByRune(t *testing.T) {
 	got := limitParam(strings.Repeat("中", 10), 3)
 
@@ -229,7 +218,7 @@ func TestLimitParamCutsByRune(t *testing.T) {
 	}
 }
 
-// 恰好等于上限时不截断，不留多余标记。
+// TestLimitParamExactLength 恰好等于上限时不截断。
 func TestLimitParamExactLength(t *testing.T) {
 	s := strings.Repeat("中", 4)
 	if got := limitParam(s, 4); got != s {
@@ -237,7 +226,7 @@ func TestLimitParamExactLength(t *testing.T) {
 	}
 }
 
-// SkipPaths 里的路径完全不打日志 —— 探针每几秒一次，会把有用日志冲走。
+// TestAccessLogSkipPaths SkipPaths 里的路径完全不打日志。
 func TestAccessLogSkipPaths(t *testing.T) {
 	cfg := config.DefaultMiddleware().AccessLog
 	cfg.SkipPaths = []string{"/health"}
@@ -251,8 +240,7 @@ func TestAccessLogSkipPaths(t *testing.T) {
 	}
 }
 
-// handler panic 时结束行仍要打出来 —— 靠 defer 保证，
-// 对齐 afterCompletion 在 ex != null 时同样被调用。
+// TestAccessLogEndLineOnPanic handler panic 时结束行仍要打出来。
 func TestAccessLogEndLineOnPanic(t *testing.T) {
 	r := gin.New()
 	r.Use(Recover())
@@ -268,7 +256,7 @@ func TestAccessLogEndLineOnPanic(t *testing.T) {
 	}
 }
 
-// AccessLog 读过 body 之后，handler 必须还能绑到参数。
+// TestAccessLogDoesNotConsumeBody AccessLog 读过 body 之后 handler 必须还能绑到参数。
 func TestAccessLogDoesNotConsumeBody(t *testing.T) {
 	r := gin.New()
 	r.Use(TraceID())
@@ -298,7 +286,7 @@ func TestAccessLogDoesNotConsumeBody(t *testing.T) {
 	}
 }
 
-// 没挂 RepeatableBody 时只能打空参数，绝不能回头去读 c.Request.Body。
+// TestAccessLogWithoutRepeatableBody 没挂 RepeatableBody 时只能打空参数，绝不回头读 c.Request.Body。
 func TestAccessLogWithoutRepeatableBody(t *testing.T) {
 	r := gin.New()
 	r.Use(AccessLogWithConfig(config.DefaultMiddleware().AccessLog))
@@ -329,7 +317,7 @@ func TestAccessLogWithoutRepeatableBody(t *testing.T) {
 	}
 }
 
-// 日志行必须带 traceId 前缀，否则并发下开始行和结束行没法配对。
+// TestAccessLogHasTraceID 日志行必须带 traceId 前缀，否则并发下两行没法配对。
 func TestAccessLogHasTraceID(t *testing.T) {
 	r := gin.New()
 	r.Use(TraceID())

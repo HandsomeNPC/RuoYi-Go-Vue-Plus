@@ -1,13 +1,4 @@
-// Package redis Redis 客户端初始化(缓存 / 会话 / 分布式锁)。
-//
-// 两种用法，与 pkg/database 对称，按需选择：
-//
-//	rdb, err := redis.New(cfg.Redis)   // 返回实例，自行注入
-//	redis.Init()                        // 同时设置为包级默认，redis.Client() 取用
-//	                                    // 配置取自 config.Get()，失败 panic
-//
-// 对应原项目的 Redisson 单节点配置(redisson.singleServerConfig)。
-// 会话/缓存的 key 前缀等业务约定在 pkg/constant 定义，本包只管连接。
+// Package redis Redis 客户端初始化。
 package redis
 
 import (
@@ -41,7 +32,7 @@ func New(cfg config.Redis) (*goredis.Client, error) {
 	})
 
 	if err := ping(client); err != nil {
-		// 探活失败也要回收连接池，否则后台 goroutine 与连接会残留。
+		// 探活失败也要回收连接池。
 		_ = client.Close()
 		return nil, fmt.Errorf("redis: 连接 %s db=%d 失败: %w", cfg.Addr(), cfg.DB, err)
 	}
@@ -67,7 +58,7 @@ func Close(client *goredis.Client) error {
 	return client.Close()
 }
 
-// 包级默认实例。供 Init / Client / CloseDefault 使用，读写加锁以免竞态。
+// 包级默认实例。
 var (
 	mu            sync.RWMutex
 	defaultClient *goredis.Client
@@ -87,8 +78,7 @@ func Init() {
 	log.Printf("[%s] Redis 已连接 %s db=%d", c.Server.Name, cfg.Addr(), cfg.DB)
 }
 
-// Client 返回包级默认实例。未调用 Init 会 panic——
-// 这是启动期编排错误，不该留到运行时才发现。
+// Client 返回包级默认实例，未调用 Init 会 panic。
 func Client() *goredis.Client {
 	mu.RLock()
 	client := defaultClient
@@ -99,7 +89,7 @@ func Client() *goredis.Client {
 	return client
 }
 
-// CloseDefault 关闭并清空包级默认实例。
+// CloseDefault 关闭并清空包级默认实例，供进程退出时 defer 调用。
 func CloseDefault() {
 	mu.Lock()
 	client := defaultClient

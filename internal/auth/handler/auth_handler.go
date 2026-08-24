@@ -1,4 +1,3 @@
-// Package handler auth 模块 HTTP 层：登录、登出、验证码等接口。
 package handler
 
 import (
@@ -15,13 +14,13 @@ import (
 	"ruoyi-go-vue-plus/pkg/response"
 )
 
-// AuthApi 认证接口
+// AuthApi 认证接口。
 type AuthApi struct{}
 
-// AuthApiApp 包级实例，router 直接 handler.AuthApiApp.Login / .Logout 挂路由。
+// AuthApiApp 包级实例。
 var AuthApiApp = new(AuthApi)
 
-// Login 登录
+// Login 登录。
 func (a *AuthApi) Login(c *gin.Context) {
 	var body model.LoginBody
 	if err := c.ShouldBindJSON(&body); err != nil {
@@ -37,7 +36,7 @@ func (a *AuthApi) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(vo))
 }
 
-// Logout 登出
+// Logout 登出。
 func (a *AuthApi) Logout(c *gin.Context) {
 	cfg := config.Get().Middleware.Auth
 	header := cfg.Header

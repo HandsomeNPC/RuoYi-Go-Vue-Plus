@@ -5,7 +5,6 @@ import (
 	"testing"
 )
 
-// 成功响应的字段与原项目 R.ok(data) 对齐。
 func TestOk(t *testing.T) {
 	r := Ok(42)
 	if got, want := r.Code, CodeSuccess; got != want {
@@ -22,7 +21,6 @@ func TestOk(t *testing.T) {
 	}
 }
 
-// Fail 传空串时退化为默认提示，等价于原项目 R.fail()。
 func TestFailEmptyMsgFallsBack(t *testing.T) {
 	if got, want := Fail("").Msg, MsgFail; got != want {
 		t.Errorf("Fail(\"\").Msg = %q, want %q", got, want)
@@ -35,7 +33,6 @@ func TestFailEmptyMsgFallsBack(t *testing.T) {
 	}
 }
 
-// 警告响应用 601，不是 HTTP 状态码。
 func TestWarn(t *testing.T) {
 	r := Warn("存在下级部门,不允许删除")
 	if got, want := r.Code, 601; got != want {
@@ -52,8 +49,6 @@ func TestFailCode(t *testing.T) {
 	}
 }
 
-// data 字段恒定存在（序列化为 null），对齐原项目 Jackson 默认行为。
-// 若加了 omitempty，前端解构 res.data 会拿到 undefined。
 func TestVoidResponseKeepsDataField(t *testing.T) {
 	b, err := json.Marshal(OkVoid())
 	if err != nil {
@@ -64,8 +59,6 @@ func TestVoidResponseKeepsDataField(t *testing.T) {
 	}
 }
 
-// 分页响应整体形状：PageResult 嵌在 R.data 内，自身不带 code/msg。
-// 对应 Java 的 R<PageResult<SysUserVo>>。
 func TestPageNestedInR(t *testing.T) {
 	b, err := json.Marshal(Ok(Page([]string{"a", "b"}, 10)))
 	if err != nil {
@@ -77,7 +70,6 @@ func TestPageNestedInR(t *testing.T) {
 	}
 }
 
-// nil 切片要序列化成 []，不能是 null，对应 PageResult.emptyIfNull。
 func TestPageNilRowsSerializesAsEmptyArray(t *testing.T) {
 	b, err := json.Marshal(Page[string](nil, 0))
 	if err != nil {
@@ -88,7 +80,6 @@ func TestPageNilRowsSerializesAsEmptyArray(t *testing.T) {
 	}
 }
 
-// PageOf 用列表长度当总数。
 func TestPageOfUsesLen(t *testing.T) {
 	p := PageOf([]int{1, 2, 3})
 	if got, want := p.Total, int64(3); got != want {

@@ -13,12 +13,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/config"
 )
 
-// 真实 Redis 集成测试。默认跳过，需显式指定地址才运行：
-//
-//	RUOYI_TEST_REDIS_ADDR=127.0.0.1:6379 RUOYI_TEST_REDIS_PASSWORD=ruoyi123 \
-//	  go test ./pkg/redis -run Integration -v
-//
-// 用 db=15 而非默认 0，避免污染业务数据；用例自行清理写入的 key。
+// testConfig 返回真实 Redis 测试配置，未设置地址时跳过。
 func testConfig(t *testing.T) config.Redis {
 	t.Helper()
 
@@ -47,7 +42,7 @@ func testConfig(t *testing.T) config.Redis {
 	}
 }
 
-// 真实环境下 New 能连通，且读写往返正常。
+// TestIntegrationNewAndRoundTrip 验证真实环境下 New 与读写往返。
 func TestIntegrationNewAndRoundTrip(t *testing.T) {
 	client, err := New(testConfig(t))
 	if err != nil {
@@ -63,8 +58,7 @@ func TestIntegrationNewAndRoundTrip(t *testing.T) {
 	defer cancel()
 
 	const key = "ruoyi:test:roundtrip"
-	// defer 后进先出：这里注册在 Close 之后，故先删 key 再关连接。
-	// 用 t.Cleanup 会晚于所有 defer 执行，那时连接已关闭、删不掉。
+	// defer 后进先出：先删 key 再关连接。
 	defer func() {
 		if err := client.Del(ctx, key).Err(); err != nil {
 			t.Errorf("清理 key 失败: %v", err)
@@ -83,10 +77,7 @@ func TestIntegrationNewAndRoundTrip(t *testing.T) {
 	}
 }
 
-// Init/Client/CloseDefault 的包级流程在真实环境下成立。
-//
-// Init 现在走 config.Get()，故先把 testConfig 写进临时 yaml 再 Load，
-// 让 config.Get().Redis 指向测试库（db=15）。
+// TestIntegrationInitAndClose 验证真实环境下的 Init/Client/CloseDefault 流程。
 func TestIntegrationInitAndClose(t *testing.T) {
 	cfg := testConfig(t)
 	loadRedisConfig(t, cfg)
@@ -102,7 +93,7 @@ func TestIntegrationInitAndClose(t *testing.T) {
 
 	CloseDefault()
 
-	// 关闭后包级实例应已清空，再取用需重新 Init。
+	// 关闭后包级实例应已清空。
 	mu.RLock()
 	got := defaultClient
 	mu.RUnlock()
@@ -111,9 +102,7 @@ func TestIntegrationInitAndClose(t *testing.T) {
 	}
 }
 
-// loadRedisConfig 写入一份完整 yaml（redis 段取自 cfg）并 Load，
-// 使 config.Get().Redis 返回给定配置。用于驱动走 config.Get() 的 Init()。
-// datasource/server/jwt 段只是占位以通过 config 校验，本用例不碰它们。
+// loadRedisConfig 写入完整 yaml（redis 段取自 cfg）并 Load。
 func loadRedisConfig(t *testing.T, cfg config.Redis) {
 	t.Helper()
 	yaml := fmt.Sprintf(`
@@ -152,7 +141,7 @@ jwt:
 	config.Load(path)
 }
 
-// 密码错误必须报错，确认认证确实生效(测试环境 requirepass 已开启)。
+// TestIntegrationWrongPasswordFails 验证密码错误时报错。
 func TestIntegrationWrongPasswordFails(t *testing.T) {
 	cfg := testConfig(t)
 	if cfg.Password == "" {

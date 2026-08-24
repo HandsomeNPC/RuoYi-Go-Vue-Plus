@@ -1,14 +1,6 @@
 package i18n
 
-// messagesEnUS 英文词条，逐条对应原项目
-// ruoyi-admin/src/main/resources/i18n/messages_en_US.properties。
-//
-// 键集与 messagesZhCN 完全一致（已对原文件 diff 确认，两边各 54 条），
-// 由 TestCatalogKeySetsMatch 锁住 —— 缺键会静默回落到中文，
-// 在英文环境里冒出一句中文提示是很难注意到的那种 bug。
-//
-// 原文里的全角逗号（如 "Role disabled，please contact..."）**原样保留**：
-// 那是原项目的既有文案，这里的职责是迁移而不是校订，改了会让两边 diff 对不上。
+// messagesEnUS 英文词条。
 var messagesEnUS = map[string]string{
 	// 错误消息
 	"not.null":                           "* Required fill in",

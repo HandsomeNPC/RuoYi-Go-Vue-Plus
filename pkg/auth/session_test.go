@@ -10,12 +10,6 @@ import (
 	goredis "github.com/redis/go-redis/v9"
 )
 
-// newTestStore 起一个内存 Redis 并返回会话存储。
-//
-// 用 miniredis 而非真实 Redis：会话的 TTL 语义（滑动续期、过期即失效）
-// 是本包最需要锁住的行为，而它们靠真实 Redis 测要么依赖外部环境、
-// 要么得 sleep 等秒级过期。miniredis 支持 FastForward 直接推进时钟，
-// 让「空闲超时」这件事能被确定性地断言。
 func newTestStore(t *testing.T) (*SessionStore, *miniredis.Miniredis) {
 	t.Helper()
 
@@ -37,7 +31,6 @@ func testSession() *Session {
 	}
 }
 
-// TestSessionSaveLoadRoundTrip 会话读写往返，含雪花 id 精度。
 func TestSessionSaveLoadRoundTrip(t *testing.T) {
 	store, _ := newTestStore(t)
 	ctx := context.Background()
@@ -62,8 +55,6 @@ func TestSessionSaveLoadRoundTrip(t *testing.T) {
 	}
 }
 
-// TestSessionSaveSetsActiveTimeoutTTL 会话的 TTL 必须取 ActiveTimeout ——
-// 这是空闲超时的载体，不设就等于会话永不过期。
 func TestSessionSaveSetsActiveTimeoutTTL(t *testing.T) {
 	store, mr := newTestStore(t)
 	ctx := context.Background()
@@ -77,10 +68,6 @@ func TestSessionSaveSetsActiveTimeoutTTL(t *testing.T) {
 	}
 }
 
-// TestSessionExpiresAfterIdle 空闲超过 activeTimeout 后会话消失。
-//
-// 这正是「滑动空闲超时」要达成的效果：token 本身没过期（JWT 的 exp 是 7 天），
-// 但服务端会话没了，鉴权在第 2 步被拦下。
 func TestSessionExpiresAfterIdle(t *testing.T) {
 	store, mr := newTestStore(t)
 	ctx := context.Background()
@@ -96,9 +83,6 @@ func TestSessionExpiresAfterIdle(t *testing.T) {
 	}
 }
 
-// TestSessionRenewSlidesTTL 续期把 TTL 重置回完整的 activeTimeout。
-//
-// 锁住「滑动」而非「固定」窗口：活跃用户不该在登录满 30 分钟后被登出。
 func TestSessionRenewSlidesTTL(t *testing.T) {
 	store, mr := newTestStore(t)
 	ctx := context.Background()
@@ -121,10 +105,6 @@ func TestSessionRenewSlidesTTL(t *testing.T) {
 	}
 }
 
-// TestSessionDeleteRevokes 删除会话是 JWT 唯一的作废手段。
-//
-// token 本身签发后不可撤销，登出/踢下线全靠这一步 —— 若 Load 在会话删除后
-// 仍能成功，登出就形同虚设。
 func TestSessionDeleteRevokes(t *testing.T) {
 	store, _ := newTestStore(t)
 	ctx := context.Background()
@@ -140,7 +120,6 @@ func TestSessionDeleteRevokes(t *testing.T) {
 	}
 }
 
-// TestSessionDeleteIsIdempotent 重复登出、或 token 已过期后再登出，都不该报错。
 func TestSessionDeleteIsIdempotent(t *testing.T) {
 	store, _ := newTestStore(t)
 	ctx := context.Background()
@@ -153,11 +132,6 @@ func TestSessionDeleteIsIdempotent(t *testing.T) {
 	}
 }
 
-// TestSessionNeverExpireWhenTimeoutNonPositive ActiveTimeout <= 0 表示不过期。
-//
-// 对齐 sa-token 的 NEVER_EXPIRE(-1)。有意与 Java 的 PlusSaTokenDao 有一处偏差：
-// 那边 timeout==0 是**静默丢弃**（根本不写），会造出「登录成功但立刻没会话」
-// 这种无法自证的状态，不予复刻。
 func TestSessionNeverExpireWhenTimeoutNonPositive(t *testing.T) {
 	for _, timeout := range []int64{0, -1} {
 		store, mr := newTestStore(t)
@@ -172,7 +146,6 @@ func TestSessionNeverExpireWhenTimeoutNonPositive(t *testing.T) {
 		if ttl := mr.TTL(TokenKeyPrefix + "tok"); ttl != 0 {
 			t.Errorf("ActiveTimeout=%d 应不设过期, 得到 TTL=%v", timeout, ttl)
 		}
-		// 关键：即便推进很久，会话依然在。
 		mr.FastForward(365 * 24 * time.Hour)
 		if _, err := store.Load(ctx, "tok"); err != nil {
 			t.Errorf("ActiveTimeout=%d 的会话不该过期: %v", timeout, err)
@@ -180,8 +153,6 @@ func TestSessionNeverExpireWhenTimeoutNonPositive(t *testing.T) {
 	}
 }
 
-// TestSessionRenewNoopWhenNeverExpire 不过期的会话无需续期，
-// 且续期动作不能反而给它加上 TTL。
 func TestSessionRenewNoopWhenNeverExpire(t *testing.T) {
 	store, mr := newTestStore(t)
 	ctx := context.Background()
@@ -199,8 +170,6 @@ func TestSessionRenewNoopWhenNeverExpire(t *testing.T) {
 	}
 }
 
-// TestSessionLoadCorruptedPayload Redis 里存着读不懂的数据时，
-// 对调用方而言等同于「没有可用会话」，让用户重新登录即可。
 func TestSessionLoadCorruptedPayload(t *testing.T) {
 	store, mr := newTestStore(t)
 	ctx := context.Background()
@@ -210,14 +179,12 @@ func TestSessionLoadCorruptedPayload(t *testing.T) {
 		t.Errorf("损坏的会话数据应返回 ErrSessionNotFound: 得到 %v", err)
 	}
 
-	// 合法 JSON 但没有 user 字段，同样不可用。
 	mr.Set(TokenKeyPrefix+"tok2", `{"activeTimeout":1800}`)
 	if _, err := store.Load(ctx, "tok2"); !errors.Is(err, ErrSessionNotFound) {
 		t.Errorf("缺 user 的会话应返回 ErrSessionNotFound: 得到 %v", err)
 	}
 }
 
-// TestSessionSaveRejectsEmptyInput 空 token 或空内容是编程错误，应显式报错。
 func TestSessionSaveRejectsEmptyInput(t *testing.T) {
 	store, _ := newTestStore(t)
 	ctx := context.Background()
@@ -233,10 +200,6 @@ func TestSessionSaveRejectsEmptyInput(t *testing.T) {
 	}
 }
 
-// TestSessionLoadDistinguishesRedisFailure Redis 故障必须与「会话不存在」区分。
-//
-// 混为一谈会让一次 Redis 抖动表现成「所有人被登出」，而日志里只有一片 401 ——
-// 前者该告警并返回 500，后者是正常的登录态过期。
 func TestSessionLoadDistinguishesRedisFailure(t *testing.T) {
 	store, mr := newTestStore(t)
 	ctx := context.Background()

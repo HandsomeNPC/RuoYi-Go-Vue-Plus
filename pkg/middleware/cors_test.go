@@ -12,9 +12,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/config"
 )
 
-// newCORSEngine 构造只挂 CORS 的引擎，业务 handler 记录自己是否被执行到。
-//
-// reached 用来验证「预检不透给业务路由」这条约束 —— 光看响应码看不出来。
+// newCORSEngine 构造只挂 CORS 的引擎。
 func newCORSEngine(cfg config.CORS) (*gin.Engine, *bool) {
 	reached := false
 	r := gin.New()
@@ -52,8 +50,7 @@ func actual(r *gin.Engine, method, origin string) *httptest.ResponseRecorder {
 	return w
 }
 
-// 默认配置必须与 Java 侧 CorsProperties 的字段初始值一致 ——
-// 原项目 yaml 里没有 web.cors，生效的就是这些默认值。
+// TestDefaultCORSConfigMatchesJava 默认配置应与既定默认值一致。
 func TestDefaultCORSConfigMatchesJava(t *testing.T) {
 	cfg := config.DefaultMiddleware().CORS
 
@@ -74,8 +71,7 @@ func TestDefaultCORSConfigMatchesJava(t *testing.T) {
 	}
 }
 
-// 这是本文件最重要的一条：配 "*" 也必须回显具体 Origin。
-// allowCredentials=true 配 Origin: * 是浏览器非法组合，带凭证的请求会全挂。
+// TestCORSEchoesOriginNotWildcard 配 "*" 也必须回显具体 Origin。
 func TestCORSEchoesOriginNotWildcard(t *testing.T) {
 	r, _ := newCORSEngine(config.DefaultMiddleware().CORS)
 
@@ -89,7 +85,7 @@ func TestCORSEchoesOriginNotWildcard(t *testing.T) {
 	}
 }
 
-// 预检请求必须在中间件里就结束，不能进业务 handler。
+// TestCORSPreflightDoesNotReachHandler 预检请求必须在中间件内终止。
 func TestCORSPreflightDoesNotReachHandler(t *testing.T) {
 	r, reached := newCORSEngine(config.DefaultMiddleware().CORS)
 
@@ -106,8 +102,7 @@ func TestCORSPreflightDoesNotReachHandler(t *testing.T) {
 	}
 }
 
-// 配 "*" 时 Allow-Methods 回显请求的方法，对齐 checkHttpMethod
-// 在 ALL 时返回 singletonList(requestMethod) 的行为。
+// TestCORSPreflightEchoesRequestedMethodAndHeaders 配 "*" 时回显请求的方法与头。
 func TestCORSPreflightEchoesRequestedMethodAndHeaders(t *testing.T) {
 	r, _ := newCORSEngine(config.DefaultMiddleware().CORS)
 
@@ -121,7 +116,7 @@ func TestCORSPreflightEchoesRequestedMethodAndHeaders(t *testing.T) {
 	}
 }
 
-// 实际请求不该带预检专用的三个头。
+// TestCORSActualRequestOmitsPreflightHeaders 实际请求不带预检专用的三个头。
 func TestCORSActualRequestOmitsPreflightHeaders(t *testing.T) {
 	r, reached := newCORSEngine(config.DefaultMiddleware().CORS)
 
@@ -141,7 +136,7 @@ func TestCORSActualRequestOmitsPreflightHeaders(t *testing.T) {
 	}
 }
 
-// 同源请求（无 Origin 头）不加任何 CORS 头，但仍要放行。
+// TestCORSSameOriginNoHeaders 同源请求不加任何 CORS 头但仍放行。
 func TestCORSSameOriginNoHeaders(t *testing.T) {
 	r, reached := newCORSEngine(config.DefaultMiddleware().CORS)
 
@@ -155,7 +150,7 @@ func TestCORSSameOriginNoHeaders(t *testing.T) {
 	}
 }
 
-// Vary 三个头无条件加（含同源请求），否则 CDN 会把 A 站的跨域头缓存给 B 站。
+// TestCORSAlwaysSetsVary Vary 三个头无条件加（含同源请求）。
 func TestCORSAlwaysSetsVary(t *testing.T) {
 	r, _ := newCORSEngine(config.DefaultMiddleware().CORS)
 
@@ -174,8 +169,7 @@ func TestCORSAlwaysSetsVary(t *testing.T) {
 	}
 }
 
-// 普通 OPTIONS（不带 Access-Control-Request-Method）不是预检，
-// 应正常走后续链路 —— 对齐 CorsUtils.isPreFlightRequest 的双条件判断。
+// TestCORSPlainOptionsIsNotPreflight 普通 OPTIONS 不是预检，应走后续链路。
 func TestCORSPlainOptionsIsNotPreflight(t *testing.T) {
 	r := gin.New()
 	r.Use(CORSWithConfig(config.DefaultMiddleware().CORS))
@@ -198,7 +192,7 @@ func TestCORSPlainOptionsIsNotPreflight(t *testing.T) {
 	}
 }
 
-// 白名单外的来源要 403，且不能带 Allow-Origin 头。
+// TestCORSRejectsDisallowedOrigin 白名单外的来源返 403，不带 Allow-Origin 头。
 func TestCORSRejectsDisallowedOrigin(t *testing.T) {
 	cfg := config.DefaultMiddleware().CORS
 	cfg.AllowedOriginPatterns = []string{"https://admin.example.com"}
@@ -217,7 +211,7 @@ func TestCORSRejectsDisallowedOrigin(t *testing.T) {
 	}
 }
 
-// 显式方法白名单：命中放行，未命中 403。
+// TestCORSMethodWhitelist 显式方法白名单：命中放行，未命中 403。
 func TestCORSMethodWhitelist(t *testing.T) {
 	cfg := config.DefaultMiddleware().CORS
 	cfg.AllowedMethods = []string{"GET", "POST"}
@@ -231,13 +225,13 @@ func TestCORSMethodWhitelist(t *testing.T) {
 	}
 }
 
-// 显式头白名单：任一头不合规即整体拒绝，不是过滤掉那几个。
+// TestCORSHeaderWhitelistRejectsAny 显式头白名单：任一头不合规即整体拒绝。
 func TestCORSHeaderWhitelistRejectsAny(t *testing.T) {
 	cfg := config.DefaultMiddleware().CORS
 	cfg.AllowedHeaders = []string{"Content-Type", "Authorization"}
 	r, _ := newCORSEngine(cfg)
 
-	// 头名大小写不敏感，浏览器发的是小写。
+	// 头名大小写不敏感。
 	if got, want := preflight(r, "https://a.com", http.MethodPost, "content-type, AUTHORIZATION").Code,
 		http.StatusOK; got != want {
 		t.Errorf("合规头预检 HTTP 状态码 = %d, want %d", got, want)
@@ -248,7 +242,7 @@ func TestCORSHeaderWhitelistRejectsAny(t *testing.T) {
 	}
 }
 
-// ExposedHeaders 配了才输出 —— TraceID 落地后要靠它把 X-Request-Id 透给前端。
+// TestCORSExposedHeaders ExposedHeaders 配了才输出。
 func TestCORSExposedHeaders(t *testing.T) {
 	cfg := config.DefaultMiddleware().CORS
 	cfg.ExposedHeaders = []string{"X-Request-Id", "Content-Disposition"}
@@ -262,8 +256,7 @@ func TestCORSExposedHeaders(t *testing.T) {
 	}
 }
 
-// AllowCredentials=false 时不能输出该头（输出 "false" 也不行，
-// 浏览器只认这个头存在与否）。
+// TestCORSCredentialsDisabled AllowCredentials=false 时不输出该头。
 func TestCORSCredentialsDisabled(t *testing.T) {
 	cfg := config.DefaultMiddleware().CORS
 	cfg.AllowCredentials = false
@@ -279,7 +272,7 @@ func TestCORSCredentialsDisabled(t *testing.T) {
 	}
 }
 
-// MaxAgeSeconds 为 0 时不输出该头，让浏览器用自己的默认值。
+// TestCORSZeroMaxAge MaxAgeSeconds 为 0 时不输出该头。
 func TestCORSZeroMaxAge(t *testing.T) {
 	cfg := config.DefaultMiddleware().CORS
 	cfg.MaxAgeSeconds = 0
@@ -292,8 +285,7 @@ func TestCORSZeroMaxAge(t *testing.T) {
 	}
 }
 
-// 通配匹配的边界：前缀/后缀必须贴边，否则 *.example.com
-// 会被 evil.com 拼出来的域名蒙过去。
+// TestWildcardMatch 通配匹配的边界：前缀/后缀必须贴边。
 func TestWildcardMatch(t *testing.T) {
 	tests := []struct {
 		pattern string
@@ -304,16 +296,14 @@ func TestWildcardMatch(t *testing.T) {
 		{"*", "", true},
 		{"https://admin.example.com", "https://admin.example.com", true},
 		{"https://admin.example.com", "https://other.example.com", false},
-		// 大小写不敏感：Origin 的 scheme/host 按 RFC 6454 不区分大小写。
 		{"https://Admin.Example.com", "https://admin.example.com", true},
 
 		{"https://*.example.com", "https://admin.example.com", true},
 		{"https://*.example.com", "https://a.b.example.com", true},
 		{"https://*.example.com", "https://example.com", false},
-		// 协议不同不能放行 —— 混用 http 会让凭证明文传输。
 		{"https://*.example.com", "http://admin.example.com", false},
 
-		// 关键的绕过防护：后缀必须贴着结尾。
+		// 后缀必须贴着结尾。
 		{"https://*.example.com", "https://admin.example.com.evil.com", false},
 		// 前缀必须贴着开头。
 		{"https://*.example.com", "http://x.https://a.example.com", false},
@@ -322,7 +312,6 @@ func TestWildcardMatch(t *testing.T) {
 		{"http://localhost:*", "http://localhost:", true},
 		{"http://localhost:*", "http://127.0.0.1:8080", false},
 
-		// 多个通配符按顺序匹配。
 		{"https://*.*.example.com", "https://a.b.example.com", true},
 		{"https://*-test.example.com", "https://admin-test.example.com", true},
 		{"https://*-test.example.com", "https://admin-prod.example.com", false},
@@ -335,7 +324,7 @@ func TestWildcardMatch(t *testing.T) {
 	}
 }
 
-// 浏览器发的 ACRH 是 "a, b" 形式，拆分要去空白并丢掉空项。
+// TestSplitHeaderList 拆分逗号分隔的头列表，去空白并丢掉空项。
 func TestSplitHeaderList(t *testing.T) {
 	tests := []struct {
 		in   string
@@ -364,9 +353,7 @@ func TestSplitHeaderList(t *testing.T) {
 	}
 }
 
-// CORS 必须能在 Recover 之后正常工作，且业务 panic 时
-// 跨域头不能丢 —— 否则前端拿到的是不带 CORS 头的 500，
-// 只能看到「网络错误」而非真实错误信息。
+// TestCORSHeadersSurvivePanic 业务 panic 时跨域头不能丢。
 func TestCORSHeadersSurvivePanic(t *testing.T) {
 	r := gin.New()
 	r.Use(Recover())

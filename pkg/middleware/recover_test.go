@@ -20,20 +20,11 @@ import (
 
 func TestMain(m *testing.M) {
 	gin.SetMode(gin.TestMode)
-	// 中间件靠 log 打日志，测试里会刻意触发 panic/异常分支，
-	// 不静音会把真实失败信息淹掉。
+	// 中间件靠 log 打日志，测试里会刻意触发 panic/异常分支，不静音会把真实失败信息淹掉。
 	log.SetOutput(io.Discard)
 
-	// 无参构造函数（XSS() / I18n() 等）读 config.Get()，未 Load 过会 panic ——
-	// 那是刻意的（启动期编排错误不该留到运行时），但测试得先把配置备好。
-	//
-	// 有意加载**真实**的 configs/*.yaml 而不是就地拼一份最小配置：
-	// 这样一旦 yaml 里的中间件参数被改坏（exposedHeaders 漏了 X-Request-Id、
-	// excludeUrls 拼错路径之类），本包断言默认行为的用例会直接失败，
-	// 而不是等到线上才发现。application.yaml 缺 server 段过不了校验，
-	// 所以带上 system.yaml。
-	//
-	// Load 失败会 panic（与 Get() 同语义），这里不用 if err != nil。
+	// 无参构造函数读 config.Get()，未 Load 过会 panic，测试得先把配置备好。
+	// 有意加载真实的 configs/*.yaml，一旦 yaml 里的中间件参数被改坏，本包断言默认行为的用例会直接失败。
 	config.Load("../../configs/application.yaml", "../../configs/system.yaml")
 
 	m.Run()
@@ -62,7 +53,7 @@ func do(t *testing.T, r *gin.Engine) (*httptest.ResponseRecorder, response.R[any
 	return w, body
 }
 
-// panic 不能打挂进程，必须转成统一响应。
+// TestRecoverPanic panic 必须转成统一响应，HTTP 状态码恒为 200。
 func TestRecoverPanic(t *testing.T) {
 	r := newTestEngine(func(c *gin.Context) {
 		panic("boom")
@@ -70,8 +61,6 @@ func TestRecoverPanic(t *testing.T) {
 
 	w, body := do(t, r)
 
-	// HTTP 状态码恒为 200，业务码在响应体里 —— 对齐原项目，
-	// 前端拦截器只认 body.code。
 	if got, want := w.Code, http.StatusOK; got != want {
 		t.Errorf("HTTP 状态码 = %d, want %d", got, want)
 	}
@@ -83,7 +72,7 @@ func TestRecoverPanic(t *testing.T) {
 	}
 }
 
-// panic 值不是 string 时同样要兜住（最常见的是 runtime error）。
+// TestRecoverPanicNilDeref panic 值不是 string 时同样要兜住。
 func TestRecoverPanicNilDeref(t *testing.T) {
 	r := newTestEngine(func(c *gin.Context) {
 		var p *int
@@ -100,7 +89,7 @@ func TestRecoverPanicNilDeref(t *testing.T) {
 	}
 }
 
-// 业务异常带业务码时，原样透出 code 与 msg。
+// TestRecoverServiceErrorWithCode 业务异常带业务码时原样透出 code 与 msg。
 func TestRecoverServiceErrorWithCode(t *testing.T) {
 	r := newTestEngine(func(c *gin.Context) {
 		_ = c.Error(errs.New(response.CodeUnauthorized, "客户端ID与Token不匹配", ""))
@@ -116,8 +105,7 @@ func TestRecoverServiceErrorWithCode(t *testing.T) {
 	}
 }
 
-// 业务异常未指定 code 时回落 500，
-// 对齐 Java `code != null ? R.fail(code,msg) : R.fail(msg)`。
+// TestRecoverServiceErrorWithoutCode 业务异常未指定 code 时回落 500。
 func TestRecoverServiceErrorWithoutCode(t *testing.T) {
 	r := newTestEngine(func(c *gin.Context) {
 		_ = c.Error(errs.New(0, "用户不存在", ""))
@@ -133,7 +121,7 @@ func TestRecoverServiceErrorWithoutCode(t *testing.T) {
 	}
 }
 
-// 业务异常的消息要原样回前端，不能被兜底文案吞掉，也不该拼错误编号。
+// TestRecoverServiceErrorMsgNotMasked 业务异常的消息要原样回前端，不能被兜底文案吞掉。
 func TestRecoverServiceErrorMsgNotMasked(t *testing.T) {
 	r := newTestEngine(func(c *gin.Context) {
 		_ = c.Error(errs.New(0, "存在下级部门,不允许删除", ""))
@@ -149,7 +137,7 @@ func TestRecoverServiceErrorMsgNotMasked(t *testing.T) {
 	}
 }
 
-// 包装过的业务异常仍要被识别（errors.As 沿 Unwrap 链查找）。
+// TestRecoverWrappedServiceError 包装过的业务异常仍要被识别。
 func TestRecoverWrappedServiceError(t *testing.T) {
 	r := newTestEngine(func(c *gin.Context) {
 		wrapped := errors.Join(errors.New("上下文"), errs.New(601, "警告", ""))
@@ -163,7 +151,7 @@ func TestRecoverWrappedServiceError(t *testing.T) {
 	}
 }
 
-// 非业务错误必须脱敏：原始错误内容不能出现在响应里。
+// TestRecoverGenericErrorIsMasked 非业务错误必须脱敏：原始错误内容不能出现在响应里。
 func TestRecoverGenericErrorIsMasked(t *testing.T) {
 	const raw = "Error 1045: Access denied for user 'root'@'10.0.0.5'"
 	r := newTestEngine(func(c *gin.Context) {
@@ -178,7 +166,7 @@ func TestRecoverGenericErrorIsMasked(t *testing.T) {
 	if !strings.HasPrefix(body.Msg, msgUnknownError) {
 		t.Errorf("body.Msg = %q, 应以兜底文案开头", body.Msg)
 	}
-	// 带 8 位错误编号，便于和日志对账（对应 Java 的 randomNumbers(8)）。
+	// 带 8 位错误编号，便于和日志对账。
 	if !regexp.MustCompile(`\[错误编号: \d{8}]$`).MatchString(body.Msg) {
 		t.Errorf("body.Msg = %q, 应以 8 位错误编号结尾", body.Msg)
 	}
@@ -187,7 +175,7 @@ func TestRecoverGenericErrorIsMasked(t *testing.T) {
 	}
 }
 
-// handler 正常返回时中间件不得改动响应。
+// TestRecoverPassThrough handler 正常返回时中间件不得改动响应。
 func TestRecoverPassThrough(t *testing.T) {
 	r := newTestEngine(func(c *gin.Context) {
 		c.JSON(http.StatusOK, response.Ok("ok"))
@@ -206,7 +194,7 @@ func TestRecoverPassThrough(t *testing.T) {
 	}
 }
 
-// 已写过响应时不得再覆盖 —— 否则流式输出（SSE/下载）的报文会被污染。
+// TestRecoverDoesNotOverwriteWrittenResponse 已写过响应时不得再覆盖。
 func TestRecoverDoesNotOverwriteWrittenResponse(t *testing.T) {
 	r := newTestEngine(func(c *gin.Context) {
 		c.JSON(http.StatusOK, response.Ok("已发送"))
@@ -224,7 +212,7 @@ func TestRecoverDoesNotOverwriteWrittenResponse(t *testing.T) {
 	}
 }
 
-// 多个错误时取最后一个，对齐 gin 的 Errors.Last 语义。
+// TestRecoverUsesLastError 多个错误时取最后一个。
 func TestRecoverUsesLastError(t *testing.T) {
 	r := newTestEngine(func(c *gin.Context) {
 		_ = c.Error(errs.New(0, "第一个", ""))
@@ -241,7 +229,7 @@ func TestRecoverUsesLastError(t *testing.T) {
 	}
 }
 
-// Detail 只进日志，绝不能回给前端。
+// TestRecoverDetailNotLeaked Detail 只进日志，绝不能回给前端。
 func TestRecoverDetailNotLeaked(t *testing.T) {
 	r := newTestEngine(func(c *gin.Context) {
 		_ = c.Error(errs.New(0, "保存失败", "INSERT INTO sys_user ... duplicate key 'admin'"))
@@ -257,7 +245,7 @@ func TestRecoverDetailNotLeaked(t *testing.T) {
 	}
 }
 
-// 错误编号必须是 8 位，且不能每次都一样（否则失去对账价值）。
+// TestNewErrorID 错误编号必须是 8 位，且不能每次都一样。
 func TestNewErrorID(t *testing.T) {
 	seen := make(map[string]bool)
 	for range 100 {

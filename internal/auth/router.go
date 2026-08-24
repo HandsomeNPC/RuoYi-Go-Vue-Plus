@@ -1,4 +1,3 @@
-// Package auth 认证模块(登录/登出/验证码)。
 package auth
 
 import (
@@ -11,7 +10,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/middleware"
 )
 
-// InitRouter 构建并返回 auth 进程的 gin 引擎
+// InitRouter 构建并返回 auth 进程的 gin 引擎。
 func InitRouter() *gin.Engine {
 	r := gin.New()
 

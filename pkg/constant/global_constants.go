@@ -1,12 +1,8 @@
 package constant
 
-/**
- * 全局通用键常量，主要用于业务无关的 Redis Key 前缀定义。
- *
- * @author Lion Li
- */
+// 全局通用键常量，主要用于业务无关的 Redis Key 前缀定义。
 const (
-	// GlobalRedisKey 全局 redis key (业务无关的key)
+	// GlobalRedisKey 全局 redis key。
 	GlobalRedisKey = "global:"
 
 	// CaptchaCodeKey 验证码，后接 uuid。

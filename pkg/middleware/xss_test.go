@@ -18,15 +18,10 @@ import (
 	"github.com/gin-gonic/gin/binding"
 )
 
-// hutoolRegex 是 hutool RE_HTML_MARK 的原值（三段或）。
-//
-// 只在测试里出现：生产代码用的是化简后的单段版本，用它来证明化简没改行为。
+// hutoolRegex 是 hutool RE_HTML_MARK 的原值（三段或），用于证明化简没改行为。
 var hutoolRegex = regexp.MustCompile(`(<[^<]*?>)|(<[\s]*?/[^<]*?>)|(<[^<]*?/[\s]*?>)`)
 
 // newXSSEngine 构造 RepeatableBody + XSS + 回显 handler 的引擎。
-//
-// handler 回显它**实际收到**的参数 —— 这个中间件的全部意义就是让 handler
-// 拿到清洗后的值，所以断言必须落在 handler 侧，而不是中间件内部状态。
 func newXSSEngine(cfg config.XSS) *gin.Engine {
 	r := gin.New()
 	r.Use(Recover())
@@ -38,7 +33,6 @@ func newXSSEngine(cfg config.XSS) *gin.Engine {
 			"query": c.Query("q"),
 			"form":  c.PostForm("f"),
 		}
-		// JSON 请求额外回显绑定结果，验证结构没被破坏。
 		if isJSONRequest(c) {
 			var body map[string]any
 			if err := c.ShouldBindJSON(&body); err != nil {
@@ -77,7 +71,7 @@ func doXSS(t *testing.T, r *gin.Engine, method, target, contentType, body string
 	return out
 }
 
-// 核心用例：JSON 体里的标签被剔掉，且 handler 仍能正常绑定。
+// TestXSSCleansJSONBody JSON 体里的标签被剔掉，且 handler 仍能正常绑定。
 func TestXSSCleansJSONBody(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := newXSSEngine(config.DefaultMiddleware().XSS)
@@ -94,10 +88,7 @@ func TestXSSCleansJSONBody(t *testing.T) {
 	}
 }
 
-// 关键回归：Java 侧对整串做正则会破坏 JSON 结构，Go 侧逐值清洗必须不会。
-//
-// {"a":"1<2","b":"3>4"} 在 Java 侧会变成 {"a":"14"} —— b 字段凭空消失。
-// 这条用例锁住「结构完整」这个相对原项目的有意偏差，别为了对齐 Java 改回去。
+// TestXSSDoesNotCorruptJSONStructure 关键回归：逐值清洗不会破坏 JSON 结构。
 func TestXSSDoesNotCorruptJSONStructure(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := newXSSEngine(config.DefaultMiddleware().XSS)
@@ -113,21 +104,20 @@ func TestXSSDoesNotCorruptJSONStructure(t *testing.T) {
 		t.Errorf("a = %q, 期望原样保留 %q", body["a"], "1<2")
 	}
 	if body["b"] != "3>4" {
-		t.Errorf("b = %q, 期望原样保留 %q（Java 侧这里会整个丢字段）", body["b"], "3>4")
+		t.Errorf("b = %q, 期望原样保留 %q", body["b"], "3>4")
 	}
 
-	// 顺带证明：对整串清洗确实会造成上述损坏。
+	// 顺带证明：对整串清洗确实会造成损坏。
 	if got := hutoolRegex.ReplaceAllString(`{"a":"1<2","b":"3>4"}`, ""); got != `{"a":"14"}` {
-		t.Errorf("hutool 整串清洗结果 = %q，与预期的损坏形态不符（用例前提变了）", got)
+		t.Errorf("hutool 整串清洗结果 = %q，与预期的损坏形态不符", got)
 	}
 }
 
-// 嵌套结构里的标签也要清掉，且数字不能因浮点解析丢精度。
+// TestXSSCleansNestedAndPreservesNumbers 嵌套结构里的标签也要清掉，且数字不能因浮点解析丢精度。
 func TestXSSCleansNestedAndPreservesNumbers(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	// 直接读 handler 收到的原始 body：经回显 JSON 往返会被解成 float64，
-	// 那样就测不出中间件有没有丢精度了。
+	// 直接读 handler 收到的原始 body：经回显 JSON 往返会丢精度。
 	var got string
 	r := gin.New()
 	r.Use(RepeatableBody(), XSS())
@@ -137,8 +127,6 @@ func TestXSSCleansNestedAndPreservesNumbers(t *testing.T) {
 		c.Status(http.StatusOK)
 	})
 
-	// 1761100000000000001 是雪花 id 的量级，float64 只有 53 位有效位，
-	// 会把尾数抹成 ...0000 —— 那就是把 handler 要用的主键改成一个不存在的值。
 	req := httptest.NewRequest(http.MethodPost, "/nested", strings.NewReader(
 		`{"users":[{"bio":"<b>hi</b>","id":1761100000000000001}],"ok":true,"n":null}`))
 	req.Header.Set("Content-Type", "application/json")
@@ -155,7 +143,7 @@ func TestXSSCleansNestedAndPreservesNumbers(t *testing.T) {
 	}
 }
 
-// 顶层就是字符串的 JSON（合法）也要清洗 —— 这是 cleanJSONNode 必须返回值的原因。
+// TestXSSCleansTopLevelJSONString 顶层就是字符串的 JSON 也要清洗。
 func TestXSSCleansTopLevelJSONString(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -177,7 +165,7 @@ func TestXSSCleansTopLevelJSONString(t *testing.T) {
 	}
 }
 
-// 查询串要被清洗，含 percent 编码的载荷同样要拦下。
+// TestXSSCleansQuery 查询串要被清洗，含 percent 编码的载荷同样要拦下。
 func TestXSSCleansQuery(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := newXSSEngine(config.DefaultMiddleware().XSS)
@@ -189,7 +177,7 @@ func TestXSSCleansQuery(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			// 用 POST：GET 按原项目行为整体跳过清洗。
+			// 用 POST：GET 按默认行为整体跳过清洗。
 			out := doXSS(t, r, http.MethodPost, tc.target, "", "")
 			if out["query"] != tc.want {
 				t.Errorf("query = %q, 期望 %q", out["query"], tc.want)
@@ -198,7 +186,7 @@ func TestXSSCleansQuery(t *testing.T) {
 	}
 }
 
-// 表单字段要被清洗。
+// TestXSSCleansForm 表单字段要被清洗。
 func TestXSSCleansForm(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := newXSSEngine(config.DefaultMiddleware().XSS)
@@ -211,10 +199,7 @@ func TestXSSCleansForm(t *testing.T) {
 	}
 }
 
-// GET / DELETE 整体跳过，对齐 XssFilter.handleExcludeURL。
-//
-// 这同时是那个已知缺口的**行为锁**：它记录「GET 查询参数不被清洗」是
-// 有意对齐原项目，而不是漏了 —— 真正的防线在输出侧。
+// TestXSSSkipsGetAndDelete GET / DELETE 整体跳过。
 func TestXSSSkipsGetAndDelete(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := newXSSEngine(config.DefaultMiddleware().XSS)
@@ -229,7 +214,7 @@ func TestXSSSkipsGetAndDelete(t *testing.T) {
 	}
 }
 
-// excludeUrls 命中的路径整体跳过，富文本原样送达。
+// TestXSSSkipsExcludedURLs excludeUrls 命中的路径整体跳过，富文本原样送达。
 func TestXSSSkipsExcludedURLs(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := newXSSEngine(config.DefaultMiddleware().XSS)
@@ -241,7 +226,7 @@ func TestXSSSkipsExcludedURLs(t *testing.T) {
 		t.Errorf("content = %q, 期望富文本原样保留", body["content"])
 	}
 
-	// 带查询串时仍要命中排除规则（Java 用 getServletPath，不含查询串）。
+	// 带查询串时仍要命中排除规则（用 URL.Path，不含查询串）。
 	out = doXSS(t, r, http.MethodPost, "/system/notice?q=%3Cb%3Ex%3C%2Fb%3E",
 		"application/json", raw)
 	if out["query"] != "<b>x</b>" {
@@ -249,7 +234,7 @@ func TestXSSSkipsExcludedURLs(t *testing.T) {
 	}
 }
 
-// 清洗后 ContentLength 与 body 必须一致，且 ShouldBindBodyWith 也能读到清洗后的值。
+// TestXSSUpdatesContentLengthAndBodyCache 清洗后 ContentLength 与 body 必须一致，ShouldBindBodyWith 也能读到清洗后的值。
 func TestXSSUpdatesContentLengthAndBodyCache(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -277,7 +262,7 @@ func TestXSSUpdatesContentLengthAndBodyCache(t *testing.T) {
 	}
 }
 
-// 非法 JSON 原样放行：交给 handler 的绑定去拒，中间件不掺和。
+// TestXSSLeavesInvalidJSONUntouched 非法 JSON 原样放行。
 func TestXSSLeavesInvalidJSONUntouched(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -300,7 +285,7 @@ func TestXSSLeavesInvalidJSONUntouched(t *testing.T) {
 	}
 }
 
-// 无标签时不重新序列化 —— 字段顺序与数字格式保持原样。
+// TestXSSSkipsRewriteWhenNothingChanged 无标签时不重新序列化。
 func TestXSSSkipsRewriteWhenNothingChanged(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -324,7 +309,7 @@ func TestXSSSkipsRewriteWhenNothingChanged(t *testing.T) {
 	}
 }
 
-// 化简后的单段正则与 hutool 的三段或行为一致（固定用例 + 随机交叉验证）。
+// TestCleanHTMLTagMatchesHutoolRegex 化简后的单段正则与 hutool 的三段或行为一致。
 func TestCleanHTMLTagMatchesHutoolRegex(t *testing.T) {
 	fixed := []string{
 		"<script>alert(1)</script>", "</p>", "<br/>", "< /p>", "<br/ >",
@@ -338,7 +323,7 @@ func TestCleanHTMLTagMatchesHutoolRegex(t *testing.T) {
 		}
 	}
 
-	// 随机串：只用容易触发正则边界的字符表，比纯随机字节更可能撞出差异。
+	// 随机串：只用容易触发正则边界的字符表。
 	alphabet := []rune(`<>/ abc"'=`)
 	for i := 0; i < 3000; i++ {
 		n := rand.IntN(12)
@@ -353,7 +338,7 @@ func TestCleanHTMLTagMatchesHutoolRegex(t *testing.T) {
 	}
 }
 
-// cleanValues 就地改写并正确报告是否有改动。
+// TestCleanValues cleanValues 就地改写并正确报告是否有改动。
 func TestCleanValues(t *testing.T) {
 	v := url.Values{"a": {"<b>x</b>", "plain"}, "b": {" <i>y</i> "}}
 	if !cleanValues(v) {
@@ -367,11 +352,7 @@ func TestCleanValues(t *testing.T) {
 	}
 }
 
-// 全链路顺序验证：Recover → TraceID → RepeatableBody → AccessLog → XSS
-// 三处入参（查询串 / 表单 / JSON 体）都要被清洗。
-//
-// 这条用例的重点是 AccessLog 排在 XSS 之前 —— 它会先调一次 ParseForm，
-// 必须确认那不会让 XSS 的表单清洗失效（Form 已解析时仍要就地改写）。
+// TestXSSInFullChain 全链路顺序验证：三处入参都要被清洗。
 func TestXSSInFullChain(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -402,19 +383,13 @@ func TestXSSInFullChain(t *testing.T) {
 	}
 }
 
-// 锁住注册顺序约束：XSS **之前**若有中间件读过 gin 参数，
-// gin 会把 URL.Query() 的结果缓存进 queryCache，之后再改 RawQuery 不生效。
-//
-// 这条用例记录的是一个**真实存在的失效条件**，不是期望行为 ——
-// 它的意义在于：将来若有人把读参数的中间件（如提前解析 clientid 的鉴权）
-// 挪到 XSS 之前，这里会以「清洗突然失效」的形式暴露出来，
-// 而不是变成一个线上才发现的静默漏洞。
+// TestXSSIneffectiveIfQueryReadEarlier 锁住注册顺序约束：XSS 之前若有中间件读过 gin 参数，改 RawQuery 不再生效。
 func TestXSSIneffectiveIfQueryReadEarlier(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	var got string
 	r := gin.New()
-	// 故意在 XSS 之前读一次 —— 模拟被错误前置的中间件。
+	// 故意在 XSS 之前读一次，模拟被错误前置的中间件。
 	r.Use(func(c *gin.Context) { _ = c.Query("q"); c.Next() })
 	r.Use(XSS())
 	r.POST("/q", func(c *gin.Context) {
@@ -426,7 +401,6 @@ func TestXSSIneffectiveIfQueryReadEarlier(t *testing.T) {
 	r.ServeHTTP(httptest.NewRecorder(), req)
 
 	if got != "<b>x</b>" {
-		t.Errorf("got = %q。若已被清洗，说明 gin 的 queryCache 行为变了，"+
-			"xss.go 里「XSS 必须在所有读参数的中间件之前」那条注释需要重新核实", got)
+		t.Errorf("got = %q。若已被清洗，说明 gin 的 queryCache 行为变了", got)
 	}
 }
