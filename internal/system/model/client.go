@@ -61,10 +61,17 @@ func (SysClient) TableName() string {
 	return "sys_client"
 }
 
+// 以下方法一律用**值接收器**，与 TableName 保持一致 —— 同一类型上混用值/指针
+// 接收器是 Go 明确不推荐的（vet 会报）。这里没有任何方法要改状态，所以统一
+// 到值接收器一侧；反向统一（全改指针）会让 SysClient 值本身不再满足
+// GORM 的 Tabler 接口，只有 *SysClient 满足。
+//
+// 结构体是几个字符串字段，登录时各调一次，拷贝成本不值一提。
+
 // GrantTypeList 返回切分后的授权类型列表。
 //
 // 对应 SysClientVo.grantTypeList（由 fillClientRuleFields 填充）。
-func (c *SysClient) GrantTypeList() []string {
+func (c SysClient) GrantTypeList() []string {
 	return splitRules(c.GrantType)
 }
 
@@ -79,7 +86,7 @@ func (c *SysClient) GrantTypeList() []string {
 //
 // 这里改为切分后**精确比对**。差异只在畸形输入上 —— 正常前端发的
 // 是完整的 "password"，两种实现结果相同。
-func (c *SysClient) SupportsGrantType(grantType string) bool {
+func (c SysClient) SupportsGrantType(grantType string) bool {
 	if grantType == "" {
 		return false
 	}
@@ -94,7 +101,7 @@ func (c *SysClient) SupportsGrantType(grantType string) bool {
 // AccessPathList 返回切分并归一化后的访问路径规则。
 //
 // 对应 SysClientVo.accessPathList，归一化逻辑见 normalizeAccessPath。
-func (c *SysClient) AccessPathList() []string {
+func (c SysClient) AccessPathList() []string {
 	rules := splitRules(c.AccessPath)
 	for i, r := range rules {
 		rules[i] = normalizeAccessPath(r)
@@ -106,7 +113,7 @@ func (c *SysClient) AccessPathList() []string {
 //
 // 对应 SysClientVo.ipWhitelistList —— Java 侧对这一项传的是
 // UnaryOperator.identity()，即原样保留。
-func (c *SysClient) IPWhitelistList() []string {
+func (c SysClient) IPWhitelistList() []string {
 	return splitRules(c.IPWhitelist)
 }
 
