@@ -28,16 +28,11 @@ func run() error {
 	config.Load("configs/application.yaml", "configs/auth.yaml")
 	cfg := config.Get()
 
-	if err := database.Init(cfg.Datasource); err != nil {
-		return err
-	}
-	defer func() {
-		if err := database.CloseDefault(); err != nil {
-			log.Printf("关闭数据库连接失败: %v", err)
-		}
-	}()
-	log.Printf("[%s] 数据库已连接 %s:%d/%s",
-		cfg.Server.Name, cfg.Datasource.Host, cfg.Datasource.Port, cfg.Datasource.DBName)
+	database.Init()
+	// defer 留在 run() 而非 Init 内：Init 一返回 defer 就触发，
+	// 会立刻把连接关掉。跟着 r.Run 的退出收尾才是对的。
+	// 关闭失败由 CloseDefault 自己打日志，这里不必再兜一层 if。
+	defer database.CloseDefault()
 
 	if err := redis.Init(cfg.Redis); err != nil {
 		return err

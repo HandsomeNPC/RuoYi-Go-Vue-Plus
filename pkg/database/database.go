@@ -3,7 +3,8 @@
 // 两种用法，按需选择：
 //
 //	db, err := database.New(cfg.Datasource)   // 返回实例，自行注入 repository
-//	err := database.Init(cfg.Datasource)      // 同时设置为包级默认，database.DB() 取用
+//	database.Init()                           // 同时设置为包级默认，database.DB() 取用
+//	                                          // 数据源配置取自 config.Get()，失败 panic
 //
 // 表名策略为 **单数**（SingularTable），与原项目表结构对齐：
 // 实体 SysUser → 表 sys_user，而非 GORM 默认的 sys_users。
@@ -12,6 +13,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 
 	"gorm.io/driver/mysql"
@@ -104,15 +106,30 @@ var (
 )
 
 // Init 建立连接并设置为包级默认实例。
-func Init(cfg config.Datasource) error {
+//
+// 数据源配置取自 config.Get()（Load 已写入包级实例），调用方无需传入 ——
+// 与本仓库「配置一律走 config.Get()」的约定一致。故必须在 config.Load 之后调用。
+// 连接成功后打印一行连接信息，把 main 里那行 log 收进来。
+//
+// 连不上库直接 panic，不回传 error —— 与 config.Load / config.Get 同源：
+// 数据库初始化是启动期编排问题，进程本就无法工作，把 error 逐层往上传只是把
+// 「立刻崩」延后成「崩在别处」。失败时不改动包级实例。
+//
+// 注意：资源回收不在本函数内 defer。defer CloseDefault() 会在 Init 返回时
+// 立即触发、当场把连接关掉，server 随后就是空跑。关闭必须留在进程入口的
+// run() 里 defer，跟着 r.Run 的退出一起收尾。
+func Init() {
+	c := config.Get()
+	cfg := c.Datasource
 	db, err := New(cfg)
 	if err != nil {
-		return err
+		panic(fmt.Errorf("database: 初始化失败: %w", err))
 	}
 	mu.Lock()
 	defaultDB = db
 	mu.Unlock()
-	return nil
+	log.Printf("[%s] 数据库已连接 %s:%d/%s",
+		c.Server.Name, cfg.Host, cfg.Port, cfg.DBName)
 }
 
 // DB 返回包级默认实例。未调用 Init 会 panic——
@@ -128,10 +145,20 @@ func DB() *gorm.DB {
 }
 
 // CloseDefault 关闭并清空包级默认实例。
-func CloseDefault() error {
+//
+// 供进程退出时直接 defer 调用：`defer database.CloseDefault()`。
+// 错误只打日志不外抛 —— 此时进程已在收尾，调用方也没法再做什么，
+// 把 error 返出去只会让 main 多写一层 if 兜底。失败时仍清空包级实例。
+//
+// 注意：Close（按实例关闭）仍返回 error，那是可复用的通用工具，调用方
+// 可能要在非进程退出场景下处理失败；只有 CloseDefault 是启动/退出的编排钩子，
+// 才把日志收进来。
+func CloseDefault() {
 	mu.Lock()
 	db := defaultDB
 	defaultDB = nil
 	mu.Unlock()
-	return Close(db)
+	if err := Close(db); err != nil {
+		log.Printf("关闭数据库连接失败: %v", err)
+	}
 }
