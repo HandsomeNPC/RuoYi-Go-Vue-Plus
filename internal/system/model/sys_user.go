@@ -28,14 +28,9 @@ type SysUser struct {
 	LoginIP   string     `gorm:"column:login_ip" json:"loginIp"`
 	LoginDate *time.Time `gorm:"column:login_date" json:"loginDate"`
 
-	// 审计字段。
-	CreateDept int64      `gorm:"column:create_dept" json:"createDept"`
-	CreateBy   int64      `gorm:"column:create_by" json:"createBy"`
-	CreateTime *time.Time `gorm:"column:create_time" json:"createTime"`
-	UpdateBy   int64      `gorm:"column:update_by" json:"updateBy"`
-	UpdateTime *time.Time `gorm:"column:update_time" json:"updateTime"`
-
 	Remark string `gorm:"column:remark" json:"remark"`
+
+	BaseEntity
 }
 
 // TableName 显式指定表名。

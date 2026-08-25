@@ -1,0 +1,55 @@
+package service
+
+import (
+	"context"
+	"errors"
+	"log"
+
+	"github.com/gin-gonic/gin/binding"
+
+	authmodel "ruoyi-go-vue-plus/internal/auth/model"
+	systemmodel "ruoyi-go-vue-plus/internal/system/model"
+	systemvo "ruoyi-go-vue-plus/internal/system/model/vo"
+	systemservice "ruoyi-go-vue-plus/internal/system/service"
+	"ruoyi-go-vue-plus/pkg/bcrypt"
+	"ruoyi-go-vue-plus/pkg/enum"
+	"ruoyi-go-vue-plus/pkg/errs"
+	"ruoyi-go-vue-plus/pkg/i18n"
+	"ruoyi-go-vue-plus/pkg/response"
+)
+
+// passwordAuthStrategy 密码认证策略（对应 Java PasswordAuthStrategy）。
+type passwordAuthStrategy struct{}
+
+// Login 校验账号密码并返回登录用户。body 为原始 JSON 字节，这里解析成 LoginBody。
+func (*passwordAuthStrategy) Login(ctx context.Context, body []byte,
+	_ *systemvo.SysClientVo) (*systemmodel.SysUser, error) {
+
+	var loginBody authmodel.PasswordLoginBody
+	if err := binding.JSON.BindBody(body, &loginBody); err != nil {
+		return nil, errs.New(response.CodeBadRequest, "参数校验失败", err.Error())
+	}
+
+	// TODO: 验证码校验属阶段 3，loginBody.Code / loginBody.UUID 字段已就位。
+
+	user, err := systemservice.UserSvcApp.GetByUsername(ctx, loginBody.Username)
+	if err != nil {
+		if errors.Is(err, systemservice.ErrUserNotFound) {
+			log.Printf("[auth] 登录用户: %s 不存在", loginBody.Username)
+			return nil, errs.New(0, i18n.Msg(ctx, "user.not.exists", loginBody.Username), "")
+		}
+		return nil, err
+	}
+	if user.Status == enum.UserStatusDisable.Code {
+		log.Printf("[auth] 登录用户: %s 已被停用", loginBody.Username)
+		return nil, errs.New(0, i18n.Msg(ctx, "user.blocked", loginBody.Username), "")
+	}
+
+	if err := SysLoginSvcApp.CheckLogin(ctx, enum.LoginTypePassword, loginBody.Username,
+		func() bool {
+			return bcrypt.Checkpw(loginBody.Password, user.Password)
+		}); err != nil {
+		return nil, err
+	}
+	return user, nil
+}

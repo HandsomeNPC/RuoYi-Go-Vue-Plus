@@ -1,0 +1,44 @@
+package vo
+
+import (
+	"time"
+
+	systemmodel "ruoyi-go-vue-plus/internal/system/model"
+)
+
+// SysUserExportVo 用户对象导出视图对象，对应 Java SysUserExportVo。
+type SysUserExportVo struct {
+	UserID      int64  `json:"userId"`
+	UserName    string `json:"userName"`
+	DeptID      int64  `json:"deptId"`
+	NickName    string `json:"nickName"`
+	Email       string `json:"email"`
+	PhoneNumber string `json:"phoneNumber"`
+	// Gender 用户性别（0男 1女 2未知）。
+	Gender string `json:"gender"`
+	// Status 账号状态（0正常 1停用）。
+	Status    string     `json:"status"`
+	LoginIP   string     `json:"loginIp"`
+	LoginDate *time.Time `json:"loginDate"`
+	// LeaderName 部门负责人名，由导出 service 层按部门关系回填。
+	LeaderName string `json:"leaderName"`
+}
+
+// FromSysUserExport 把实体转成 VO。
+func FromSysUserExport(u *systemmodel.SysUser) *SysUserExportVo {
+	if u == nil {
+		return nil
+	}
+	return &SysUserExportVo{
+		UserID:      u.UserID,
+		UserName:    u.UserName,
+		DeptID:      u.DeptID,
+		NickName:    u.NickName,
+		Email:       u.Email,
+		PhoneNumber: u.PhoneNumber,
+		Gender:      u.Gender,
+		Status:      u.Status,
+		LoginIP:     u.LoginIP,
+		LoginDate:   u.LoginDate,
+	}
+}

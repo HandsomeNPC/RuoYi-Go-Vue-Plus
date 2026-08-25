@@ -1,16 +1,21 @@
 package handler
 
 import (
+	"log"
 	"net/http"
+	"slices"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 
 	"ruoyi-go-vue-plus/internal/auth/model"
-	"ruoyi-go-vue-plus/internal/auth/service"
+	authservice "ruoyi-go-vue-plus/internal/auth/service"
+	systemservice "ruoyi-go-vue-plus/internal/system/service"
 	"ruoyi-go-vue-plus/pkg/auth"
 	"ruoyi-go-vue-plus/pkg/config"
+	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/errs"
-	"ruoyi-go-vue-plus/pkg/ip"
+	"ruoyi-go-vue-plus/pkg/i18n"
 	"ruoyi-go-vue-plus/pkg/response"
 )
 
@@ -22,12 +27,40 @@ var AuthApiApp = new(AuthApi)
 
 // Login 登录。
 func (a *AuthApi) Login(c *gin.Context) {
+	// 对应 Java @RequestBody String body：读原始 JSON 字节，供具体策略自行解析。
+	raw, err := c.GetRawData()
+	if err != nil {
+		_ = c.Error(errs.New(response.CodeBadRequest, "读取请求体失败", err.Error()))
+		return
+	}
 	var body model.LoginBody
-	if err := c.ShouldBindJSON(&body); err != nil {
+	if err := binding.JSON.BindBody(raw, &body); err != nil {
 		_ = c.Error(errs.New(response.CodeBadRequest, "参数校验失败", err.Error()))
 		return
 	}
-	vo, err := service.AuthSvcApp.Login(c.Request.Context(), &body, ip.ClientIP(c.Request))
+	// 授权类型和客户端id
+	clientID := body.ClientID
+	grantType := body.GrantType
+	// 对应 Java: SysClientVo client = clientService.queryByClientId(clientId);
+	client, err := systemservice.ClientSvcApp.QueryByClientID(c.Request.Context(), clientID)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	// 查询不到 client 或 client 内不包含 grantType
+	// （精确比对，非子串匹配；Java 用 StringUtils.contains 是子串匹配，这里刻意更严）
+	if grantType == "" || !slices.Contains(client.GrantTypeList, grantType) {
+		log.Printf("[auth] 客户端id: %s 认证类型: %s 异常", clientID, grantType)
+		_ = c.Error(errs.New(0, i18n.Msg(c.Request.Context(), "auth.grant.type.error"), ""))
+		return
+	} else if client.Status != constant.StatusNormal {
+		// 客户端已停用
+		_ = c.Error(errs.New(0, i18n.Msg(c.Request.Context(), "auth.grant.type.blocked"), ""))
+		return
+	}
+	// 登录（client 已就绪，对应 Java IAuthStrategy.login(body, client, grantType)，不带 IP）。
+	// 透传 *http.Request，service 内部用 req.Context() 取 ctx、ip.ClientIP(req) 取 IP。
+	vo, err := authservice.AuthSvcApp.Login(c.Request, raw, grantType, client)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -44,7 +77,7 @@ func (a *AuthApi) Logout(c *gin.Context) {
 		header = config.TokenHeader
 	}
 	token := auth.TrimTokenPrefix(c.GetHeader(header), cfg.TokenPrefix)
-	if err := service.AuthSvcApp.Logout(c.Request.Context(), token); err != nil {
+	if err := authservice.AuthSvcApp.Logout(c.Request.Context(), token); err != nil {
 		_ = c.Error(err)
 		return
 	}

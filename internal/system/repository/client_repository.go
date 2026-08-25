@@ -42,3 +42,23 @@ func (r *ClientRepository) SelectByClientID(ctx context.Context, clientID string
 	}
 	return &client, nil
 }
+
+// SelectByID 按主键查客户端，不存在时返回 ErrClientNotFound。
+func (r *ClientRepository) SelectByID(ctx context.Context, id int64) (*model.SysClient, error) {
+	if id <= 0 {
+		return nil, ErrClientNotFound
+	}
+
+	var client model.SysClient
+	err := r.db.WithContext(ctx).
+		Scopes(NotDeleted()).
+		Where("id = ?", id).
+		First(&client).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrClientNotFound
+		}
+		return nil, fmt.Errorf("repository: 查询客户端 id=%d 失败: %w", id, err)
+	}
+	return &client, nil
+}

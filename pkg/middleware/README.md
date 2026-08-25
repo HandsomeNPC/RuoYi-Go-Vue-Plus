@@ -568,7 +568,7 @@ Go 侧在这四步之前还有两道跳过，完整流程（`auth.go`）：
 
 #### 登录态原语在 `pkg/auth`，不在本包
 
-本包只做 **策略**（谁要鉴权、失败回什么）；「登录态是什么」在 `pkg/auth`：
+本包只做 **策略**（谁要鉴权、失败回什么）；「登录态是什么」在 `pkg/auth`；
 
 | 文件            | 内容                                                    | Java 对照物                        |
 |-----------------|---------------------------------------------------------|------------------------------------|
@@ -576,7 +576,12 @@ Go 侧在这四步之前还有两道跳过，完整流程（`auth.go`）：
 | `claims.go`     | `Claims`：8 个 extra + `sub`/`exp`/`iat`                | `SaLoginParameter` 的 extra        |
 | `token.go`      | `Sign` / `Verify` / `TrimTokenPrefix`                   | `StpLogicJwtForSimple`             |
 | `session.go`    | `SessionStore`：`Save`/`Load`/`Renew`/`Delete`          | `PlusSaTokenDao` + token-session   |
-| `password.go`   | `HashPassword` / `VerifyPassword`（bcrypt cost 10）     | hutool `BCrypt.hashpw` / `checkpw` |
+
+密码哈希不在 `pkg/auth`，单列在 `pkg/bcrypt`（对应 hutool `cn.hutool.crypto.digest.BCrypt`）：
+
+| 文件        | 内容                                               | Java 对照物                        |
+|-------------|----------------------------------------------------|------------------------------------|
+| `bcrypt.go` | `Hashpw` / `HashpwWithCost` / `Verify` / `Checkpw` | hutool `BCrypt.hashpw` / `checkpw` |
 
 分包理由与 `pkg/encrypt` 同源：`internal/*/service` 要签发与销毁会话，那条路径与 HTTP 无关、不该 import gin。
 
