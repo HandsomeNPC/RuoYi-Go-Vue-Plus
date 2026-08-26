@@ -1,5 +1,7 @@
 package model
 
+import "ruoyi-go-vue-plus/pkg/repository"
+
 // SysDept 部门表（sys_dept），对应 Java org.dromara.system.domain.SysDept。
 type SysDept struct {
 	DeptID       int64  `gorm:"column:dept_id;primaryKey" json:"deptId"`
@@ -11,14 +13,14 @@ type SysDept struct {
 	Phone        string `gorm:"column:phone" json:"phone"`
 	Email        string `gorm:"column:email" json:"email"`
 	// Status 部门状态（0正常 1停用）。
-	Status string `gorm:"column:status" json:"status"`
-	// DelFlag 删除标志（0存在 1删除）。
-	DelFlag   string `gorm:"column:del_flag" json:"-"`
+	Status    string `gorm:"column:status" json:"status"`
 	Ancestors string `gorm:"column:ancestors" json:"ancestors"`
 
 	// Children 子部门，非表字段，构建部门树时由 service 层填充。
 	Children []*SysDept `gorm:"-" json:"children,omitempty"`
 
+	// LogicDelete 提供 del_flag 逻辑删除，查询/更新自动过滤已删除记录。
+	repository.LogicDelete
 	BaseEntity
 }
 

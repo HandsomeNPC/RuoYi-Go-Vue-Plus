@@ -1,6 +1,10 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"ruoyi-go-vue-plus/pkg/repository"
+)
 
 // SysUser 用户信息表。
 type SysUser struct {
@@ -22,14 +26,14 @@ type SysUser struct {
 
 	// Status 账号状态（0正常 1停用），取值见 enum.UserStatus。
 	Status string `gorm:"column:status" json:"status"`
-	// DelFlag 删除标志（0存在 1删除）。
-	DelFlag string `gorm:"column:del_flag" json:"-"`
 
 	LoginIP   string     `gorm:"column:login_ip" json:"loginIp"`
 	LoginDate *time.Time `gorm:"column:login_date" json:"loginDate"`
 
 	Remark string `gorm:"column:remark" json:"remark"`
 
+	// LogicDelete 提供 del_flag 逻辑删除，查询/更新自动过滤已删除记录。
+	repository.LogicDelete
 	BaseEntity
 }
 

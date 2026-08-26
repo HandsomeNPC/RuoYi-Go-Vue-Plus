@@ -32,7 +32,6 @@ func (r *UserRepository) SelectByUserName(ctx context.Context, userName string) 
 
 	var user model.SysUser
 	err := r.db.WithContext(ctx).
-		Scopes(NotDeleted()).
 		Where("user_name = ?", userName).
 		First(&user).Error
 	if err != nil {

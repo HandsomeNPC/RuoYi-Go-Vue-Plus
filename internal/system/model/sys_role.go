@@ -1,5 +1,7 @@
 package model
 
+import "ruoyi-go-vue-plus/pkg/repository"
+
 // SysRole 角色表（sys_role），对应 Java org.dromara.system.domain.SysRole。
 type SysRole struct {
 	RoleID   int64  `gorm:"column:role_id;primaryKey" json:"roleId"`
@@ -14,10 +16,10 @@ type SysRole struct {
 	DeptCheckStrictly bool `gorm:"column:dept_check_strictly" json:"deptCheckStrictly"`
 	// Status 角色状态（0正常 1停用）。
 	Status string `gorm:"column:status" json:"status"`
-	// DelFlag 删除标志（0存在 1删除）。
-	DelFlag string `gorm:"column:del_flag" json:"-"`
-	Remark  string `gorm:"column:remark" json:"remark"`
+	Remark string `gorm:"column:remark" json:"remark"`
 
+	// LogicDelete 提供 del_flag 逻辑删除，查询/更新自动过滤已删除记录。
+	repository.LogicDelete
 	BaseEntity
 }
 

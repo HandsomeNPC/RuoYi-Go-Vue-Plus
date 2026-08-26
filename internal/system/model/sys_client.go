@@ -1,5 +1,7 @@
 package model
 
+import "ruoyi-go-vue-plus/pkg/repository"
+
 // SysClient 系统授权表。纯 POJO，规则串的切分/归一化逻辑在 service 层。
 type SysClient struct {
 	ID        int64  `gorm:"column:id;primaryKey" json:"id"`
@@ -24,9 +26,10 @@ type SysClient struct {
 	Timeout int64 `gorm:"column:timeout" json:"timeout"`
 
 	// Status 状态（0正常 1停用）。
-	Status  string `gorm:"column:status" json:"status"`
-	DelFlag string `gorm:"column:del_flag" json:"-"`
+	Status string `gorm:"column:status" json:"status"`
 
+	// LogicDelete 提供 del_flag 逻辑删除，查询/更新自动过滤已删除记录。
+	repository.LogicDelete
 	BaseEntity
 }
 

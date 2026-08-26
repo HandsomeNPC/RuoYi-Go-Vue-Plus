@@ -31,7 +31,6 @@ func (r *ClientRepository) SelectByClientID(ctx context.Context, clientID string
 
 	var client model.SysClient
 	err := r.db.WithContext(ctx).
-		Scopes(NotDeleted()).
 		Where("client_id = ?", clientID).
 		First(&client).Error
 	if err != nil {
@@ -51,7 +50,6 @@ func (r *ClientRepository) SelectByID(ctx context.Context, id int64) (*model.Sys
 
 	var client model.SysClient
 	err := r.db.WithContext(ctx).
-		Scopes(NotDeleted()).
 		Where("id = ?", id).
 		First(&client).Error
 	if err != nil {
