@@ -2,14 +2,13 @@
 package model
 
 import (
+	"errors"
 	"strconv"
 
 	systemdto "ruoyi-go-vue-plus/internal/system/model/dto"
-	"ruoyi-go-vue-plus/pkg/enum"
 )
 
 // LoginUser 登录用户上下文对象，保存当前会话的身份、权限和终端信息。
-// 对应 Java org.dromara.system.api.model.LoginUser；是存入 Redis 的会话载荷。
 type LoginUser struct {
 	// UserID 用户ID。
 	UserID int64 `json:"userId"`
@@ -23,9 +22,9 @@ type LoginUser struct {
 	Token string `json:"token"`
 	// UserType 用户类型。
 	UserType string `json:"userType"`
-	// LoginTime 登录时间（毫秒）。
+	// LoginTime 登录时间。
 	LoginTime int64 `json:"loginTime"`
-	// ExpireTime 过期时间（毫秒）。
+	// ExpireTime 过期时间。
 	ExpireTime int64 `json:"expireTime"`
 	// IPAddr 登录IP地址。
 	IPAddr string `json:"ipaddr"`
@@ -57,42 +56,24 @@ type LoginUser struct {
 	DeviceType string `json:"deviceType"`
 }
 
-// LoginID 返回会话主体标识，形如 "sys_user:1761100000000000001"，
-// 对应 Java LoginUser#getLoginId()；空则 ok=false（Go 版以错误值替代 Java 抛异常）。
-func (u *LoginUser) LoginID() (string, bool) {
-	if u == nil || u.UserType == "" || u.UserID == 0 {
-		return "", false
+// 对应 Java getLoginId() 抛出的 IllegalArgumentException 两种入参校验失败。
+var (
+	// ErrUserTypeEmpty 用户类型为空。
+	ErrUserTypeEmpty = errors.New("用户类型不能为空")
+	// ErrUserIDEmpty 用户ID为空。
+	ErrUserIDEmpty = errors.New("用户ID不能为空")
+)
+
+// LoginID 获取会话使用的登录标识，形如 "sys_user:1761100000000000001"。
+func (u *LoginUser) LoginID() (string, error) {
+	if u == nil {
+		return "", ErrUserTypeEmpty
 	}
-	return u.UserType + ":" + strconv.FormatInt(u.UserID, 10), true
-}
-
-// ParseLoginID 从会话主体标识中拆出用户类型与用户 ID。
-func ParseLoginID(loginID string) (userType string, userID int64, ok bool) {
-	for i := 0; i < len(loginID); i++ {
-		if loginID[i] != ':' {
-			continue
-		}
-		userType = loginID[:i]
-		if userType == "" {
-			return "", 0, false
-		}
-		id, err := strconv.ParseInt(loginID[i+1:], 10, 64)
-		if err != nil || id == 0 {
-			return "", 0, false
-		}
-		return userType, id, true
+	if u.UserType == "" {
+		return "", ErrUserTypeEmpty
 	}
-	return "", 0, false
+	if u.UserID == 0 {
+		return "", ErrUserIDEmpty
+	}
+	return u.UserType + ":" + strconv.FormatInt(u.UserID, 10), nil
 }
-
-// IsSuperAdmin 判断是否超级管理员。
-func (u *LoginUser) IsSuperAdmin() bool {
-	return u != nil && u.UserID == superAdminUserID
-}
-
-// superAdminUserID 超级管理员用户 ID，与 constant.SuperAdminUserID 保持一致
-// （由 login_user_test.go 的 TestSuperAdminIDMatchesConstant 在测试期防漂移）。
-const superAdminUserID int64 = 1761100000000000001
-
-// UserTypeSys 后台系统用户的类型标识。
-var UserTypeSys = enum.UserTypeSys.Code

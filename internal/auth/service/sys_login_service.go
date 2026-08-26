@@ -7,6 +7,7 @@ import (
 	"time"
 
 	goredis "github.com/redis/go-redis/v9"
+	"golang.org/x/sync/errgroup"
 
 	authmodel "ruoyi-go-vue-plus/internal/auth/model"
 	systemdto "ruoyi-go-vue-plus/internal/system/model/dto"
@@ -25,31 +26,17 @@ type SysLoginService struct{}
 // SysLoginSvcApp 包级实例。
 var SysLoginSvcApp = new(SysLoginService)
 
-// BuildLoginUser 根据用户视图对象组装登录态上下文（对应 Java SysLoginService#buildLoginUser）。
-// user/dept/权限等由 system 各 service 填充；client 字段（ClientKey/DeviceType）来自授权客户端。
-// 不在此设 IPAddr——IP 由 handler 注入 context，afterLogin 时按需取（对应 Java 在 record 阶段 getClientIP）。
-// 各查询顺序与 Java 一致；Java 用虚拟线程并发拉取，此处顺序拉取（登录非热路径，便于错误短路）。
-func (*SysLoginService) BuildLoginUser(ctx context.Context, user *systemvo.SysUserVo,
-	client *systemvo.SysClientVo) (*authmodel.LoginUser, error) {
-
-	userType := user.UserType
-	if userType == "" {
-		userType = authmodel.UserTypeSys
-	}
-
+// BuildLoginUser 根据用户视图对象组装登录态上下文
+func (*SysLoginService) BuildLoginUser(ctx context.Context, user *systemvo.SysUserVo) (*authmodel.LoginUser, error) {
 	loginUser := &authmodel.LoginUser{
-		UserID:     user.UserID,
-		DeptID:     user.DeptID,
-		Username:   user.UserName,
-		Nickname:   user.NickName,
-		UserType:   userType,
-		LoginTime:  time.Now().UnixMilli(),
-		ClientKey:  client.ClientKey,
-		DeviceType: client.DeviceType,
-		// IPAddr / LoginLocation / Browser / OS 在 afterLogin 按请求上下文与 UA 填充（阶段 3）。
+		UserID:   user.UserID,
+		DeptID:   user.DeptID,
+		Username: user.UserName,
+		Nickname: user.NickName,
+		UserType: user.UserType,
 	}
 
-	// 部门名 / 部门类别：deptId 为空则留空（对应 Java ObjectUtil.isNotNull(deptId) 分支，dept 为空时 orElse(EMPTY)）。
+	// 部门名 / 部门类别：deptId 为空则留空；查一次 dept 复用取两个字段（对应 Java Opt.map(deptService::selectDeptById)）。
 	if user.DeptID != 0 {
 		dept, err := systemservice.DeptSvcApp.SelectByID(ctx, user.DeptID)
 		if err != nil {
@@ -61,37 +48,47 @@ func (*SysLoginService) BuildLoginUser(ctx context.Context, user *systemvo.SysUs
 		}
 	}
 
-	// 角色列表（供 roles 与 dataScopeRoleMap 复用）。
-	roles, err := systemservice.RoleSvcApp.SelectRolesByUserId(ctx, user.UserID)
-	if err != nil {
+	// 四组查询并发拉取（对应 Java ThreadUtils.virtualInvokeAll），写入 loginUser 不同字段，互不竞争。
+	g, gctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		mp, err := systemservice.PermissionSvcApp.GetMenuPermission(gctx, user.UserID)
+		if err != nil {
+			return err
+		}
+		loginUser.MenuPermission = mp
+		return nil
+	})
+	g.Go(func() error {
+		rp, err := systemservice.PermissionSvcApp.GetRolePermission(gctx, user.UserID)
+		if err != nil {
+			return err
+		}
+		loginUser.RolePermission = rp
+		return nil
+	})
+	g.Go(func() error {
+		roles, err := systemservice.RoleSvcApp.SelectRolesByUserId(gctx, user.UserID)
+		if err != nil {
+			return err
+		}
+		// 角色摘要（对应 Java BeanUtil.copyToList(roles, RoleDTO.class)），
+		// 供 loginUser.Roles 与 GetDataScopeRoleMap 共用，避免重复转换。
+		roleDTOs := systemdto.Conv.ConvertToRoleDTOList(roles)
+		loginUser.Roles = roleDTOs
+		loginUser.DataScopeRoleMap, err = systemservice.PermissionSvcApp.GetDataScopeRoleMap(gctx, roleDTOs)
+		return err
+	})
+	g.Go(func() error {
+		posts, err := systemservice.PostSvcApp.SelectPostsByUserId(gctx, user.UserID)
+		if err != nil {
+			return err
+		}
+		loginUser.Posts = systemdto.Conv.ConvertToPostDTOList(posts)
+		return nil
+	})
+	if err := g.Wait(); err != nil {
 		return nil, err
 	}
-	// 角色摘要（对应 Java BeanUtil.copyToList(roles, RoleDTO.class)），
-	// 供 loginUser.Roles 与 GetDataScopeRoleMap 共用，避免重复转换。
-	roleDTOs := systemdto.Conv.ConvertToRoleDTOList(roles)
-
-	menuPermission, err := systemservice.PermissionSvcApp.GetMenuPermission(ctx, user.UserID)
-	if err != nil {
-		return nil, err
-	}
-	rolePermission, err := systemservice.PermissionSvcApp.GetRolePermission(ctx, user.UserID)
-	if err != nil {
-		return nil, err
-	}
-	dataScopeRoleMap, err := systemservice.PermissionSvcApp.GetDataScopeRoleMap(ctx, roleDTOs)
-	if err != nil {
-		return nil, err
-	}
-	posts, err := systemservice.PostSvcApp.SelectPostsByUserId(ctx, user.UserID)
-	if err != nil {
-		return nil, err
-	}
-
-	loginUser.MenuPermission = menuPermission
-	loginUser.RolePermission = rolePermission
-	loginUser.DataScopeRoleMap = dataScopeRoleMap
-	loginUser.Roles = roleDTOs
-	loginUser.Posts = systemdto.Conv.ConvertToPostDTOList(posts)
 	return loginUser, nil
 }
 
