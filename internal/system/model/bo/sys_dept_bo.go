@@ -1,9 +1,5 @@
 package bo
 
-import (
-	systemmodel "ruoyi-go-vue-plus/internal/system/model"
-)
-
 // SysDeptBo 部门业务对象（入参），对应 Java SysDeptBo。
 type SysDeptBo struct {
 	DeptID       int64  `json:"deptId"`
@@ -20,22 +16,4 @@ type SysDeptBo struct {
 	BelongDeptID int64 `json:"belongDeptId"`
 	// Params 请求参数袋，不落表。
 	Params map[string]any `json:"params"`
-}
-
-// ToSysDept 把 BO 转成实体。
-func (b *SysDeptBo) ToSysDept() *systemmodel.SysDept {
-	if b == nil {
-		return nil
-	}
-	return &systemmodel.SysDept{
-		DeptID:       b.DeptID,
-		ParentID:     b.ParentID,
-		DeptName:     b.DeptName,
-		DeptCategory: b.DeptCategory,
-		OrderNum:     b.OrderNum,
-		Leader:       b.Leader,
-		Phone:        b.Phone,
-		Email:        b.Email,
-		Status:       b.Status,
-	}
 }

@@ -1,9 +1,5 @@
 package bo
 
-import (
-	systemmodel "ruoyi-go-vue-plus/internal/system/model"
-)
-
 // SysSocialBo 社会化关系业务对象（入参），对应 Java SysSocialBo。
 type SysSocialBo struct {
 	ID               int64  `json:"id"`
@@ -28,35 +24,4 @@ type SysSocialBo struct {
 	Code             string `json:"code"`
 	OauthToken       string `json:"oauthToken"`
 	OauthTokenSecret string `json:"oauthTokenSecret"`
-}
-
-// ToSysSocial 把 BO 转成实体。
-func (b *SysSocialBo) ToSysSocial() *systemmodel.SysSocial {
-	if b == nil {
-		return nil
-	}
-	return &systemmodel.SysSocial{
-		ID:               b.ID,
-		UserID:           b.UserID,
-		AuthID:           b.AuthID,
-		Source:           b.Source,
-		AccessToken:      b.AccessToken,
-		ExpireIn:         b.ExpireIn,
-		RefreshToken:     b.RefreshToken,
-		OpenID:           b.OpenID,
-		UserName:         b.UserName,
-		NickName:         b.NickName,
-		Email:            b.Email,
-		Avatar:           b.Avatar,
-		AccessCode:       b.AccessCode,
-		UnionID:          b.UnionID,
-		Scope:            b.Scope,
-		TokenType:        b.TokenType,
-		IDToken:          b.IDToken,
-		MacAlgorithm:     b.MacAlgorithm,
-		MacKey:           b.MacKey,
-		Code:             b.Code,
-		OauthToken:       b.OauthToken,
-		OauthTokenSecret: b.OauthTokenSecret,
-	}
 }

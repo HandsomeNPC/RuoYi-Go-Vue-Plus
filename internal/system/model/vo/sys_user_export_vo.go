@@ -2,8 +2,6 @@ package vo
 
 import (
 	"time"
-
-	systemmodel "ruoyi-go-vue-plus/internal/system/model"
 )
 
 // SysUserExportVo 用户对象导出视图对象，对应 Java SysUserExportVo。
@@ -22,23 +20,4 @@ type SysUserExportVo struct {
 	LoginDate *time.Time `json:"loginDate"`
 	// LeaderName 部门负责人名，由导出 service 层按部门关系回填。
 	LeaderName string `json:"leaderName"`
-}
-
-// FromSysUserExport 把实体转成 VO。
-func FromSysUserExport(u *systemmodel.SysUser) *SysUserExportVo {
-	if u == nil {
-		return nil
-	}
-	return &SysUserExportVo{
-		UserID:      u.UserID,
-		UserName:    u.UserName,
-		DeptID:      u.DeptID,
-		NickName:    u.NickName,
-		Email:       u.Email,
-		PhoneNumber: u.PhoneNumber,
-		Gender:      u.Gender,
-		Status:      u.Status,
-		LoginIP:     u.LoginIP,
-		LoginDate:   u.LoginDate,
-	}
 }

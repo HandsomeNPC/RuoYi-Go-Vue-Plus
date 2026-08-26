@@ -2,8 +2,6 @@ package vo
 
 import (
 	"time"
-
-	systemmodel "ruoyi-go-vue-plus/internal/system/model"
 )
 
 // SysUserVo 用户信息视图对象，对应 Java SysUserVo。
@@ -39,29 +37,4 @@ type SysUserVo struct {
 	PostIDs []int64 `json:"postIds"`
 	// RoleID 数据权限当前角色ID，由 service 层回填。
 	RoleID int64 `json:"roleId"`
-}
-
-// FromSysUser 把实体转成 VO。
-func FromSysUser(u *systemmodel.SysUser) *SysUserVo {
-	if u == nil {
-		return nil
-	}
-	return &SysUserVo{
-		UserID:      u.UserID,
-		DeptID:      u.DeptID,
-		UserName:    u.UserName,
-		NickName:    u.NickName,
-		UserType:    u.UserType,
-		Email:       u.Email,
-		PhoneNumber: u.PhoneNumber,
-		Gender:      u.Gender,
-		Avatar:      u.Avatar,
-		Password:    u.Password,
-		Status:      u.Status,
-		LoginIP:     u.LoginIP,
-		LoginDate:   u.LoginDate,
-		Remark:      u.Remark,
-		CreateTime:  u.CreateTime,
-		UpdateTime:  u.UpdateTime,
-	}
 }

@@ -2,8 +2,6 @@ package vo
 
 import (
 	"time"
-
-	systemmodel "ruoyi-go-vue-plus/internal/system/model"
 )
 
 // SysMenuVo 菜单权限视图对象，对应 Java SysMenuVo。
@@ -34,32 +32,4 @@ type SysMenuVo struct {
 	CreateTime *time.Time `json:"createTime"`
 	// Children 子菜单，由 service 层构建菜单树时回填。
 	Children []SysMenuVo `json:"children"`
-}
-
-// FromSysMenu 把实体转成 VO。
-func FromSysMenu(m *systemmodel.SysMenu) *SysMenuVo {
-	if m == nil {
-		return nil
-	}
-	return &SysMenuVo{
-		MenuID:     m.MenuID,
-		MenuName:   m.MenuName,
-		ParentID:   m.ParentID,
-		OrderNum:   m.OrderNum,
-		Path:       m.Path,
-		Component:  m.Component,
-		QueryParam: m.QueryParam,
-		IsFrame:    m.IsFrame,
-		IsCache:    m.IsCache,
-		MenuType:   m.MenuType,
-		Visible:    m.Visible,
-		Status:     m.Status,
-		Perms:      m.Perms,
-		Icon:       m.Icon,
-		ActiveMenu: m.ActiveMenu,
-		Ext:        m.Ext,
-		CreateDept: m.CreateDept,
-		Remark:     m.Remark,
-		CreateTime: m.CreateTime,
-	}
 }

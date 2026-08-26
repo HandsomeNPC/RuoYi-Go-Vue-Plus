@@ -29,7 +29,7 @@ func (s *ClientService) QueryByClientID(ctx context.Context, clientID string) (*
 		}
 		return nil, err
 	}
-	out := vo.FromSysClient(client)
+	out := vo.Conv.ConvertToSysClientVo(client)
 	s.fillRuleFields(out)
 	return out, nil
 }
@@ -44,7 +44,7 @@ func (s *ClientService) QueryByID(ctx context.Context, id int64) (*vo.SysClientV
 		}
 		return nil, err
 	}
-	out := vo.FromSysClient(client)
+	out := vo.Conv.ConvertToSysClientVo(client)
 	s.fillRuleFields(out)
 	return out, nil
 }

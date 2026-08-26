@@ -1,7 +1,5 @@
 package vo
 
-import systemmodel "ruoyi-go-vue-plus/internal/system/model"
-
 // SysOssConfigVo 对象存储配置视图对象，对应 Java SysOssConfigVo。
 type SysOssConfigVo struct {
 	OssConfigID int64  `json:"ossConfigId"`
@@ -21,27 +19,4 @@ type SysOssConfigVo struct {
 	Remark string `json:"remark"`
 	// AccessPolicy 桶权限类型（0private 1public 2custom）。
 	AccessPolicy string `json:"accessPolicy"`
-}
-
-// FromSysOssConfig 把实体转成 VO。
-func FromSysOssConfig(c *systemmodel.SysOssConfig) *SysOssConfigVo {
-	if c == nil {
-		return nil
-	}
-	return &SysOssConfigVo{
-		OssConfigID:  c.OssConfigID,
-		ConfigKey:    c.ConfigKey,
-		AccessKey:    c.AccessKey,
-		SecretKey:    c.SecretKey,
-		BucketName:   c.BucketName,
-		Prefix:       c.Prefix,
-		Endpoint:     c.Endpoint,
-		DomainURL:    c.DomainURL,
-		IsHttps:      c.IsHttps,
-		Region:       c.Region,
-		Status:       c.Status,
-		Ext1:         c.Ext1,
-		Remark:       c.Remark,
-		AccessPolicy: c.AccessPolicy,
-	}
 }

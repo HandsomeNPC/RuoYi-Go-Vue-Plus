@@ -1,9 +1,5 @@
 package bo
 
-import (
-	systemmodel "ruoyi-go-vue-plus/internal/system/model"
-)
-
 // SysMenuBo 菜单权限业务对象（入参），对应 Java SysMenuBo。
 type SysMenuBo struct {
 	MenuID     int64  `json:"menuId"`
@@ -28,30 +24,4 @@ type SysMenuBo struct {
 	ActiveMenu string `json:"activeMenu" binding:"omitempty,max=255"`
 	Ext        string `json:"ext" binding:"omitempty,max=2000"`
 	Remark     string `json:"remark"`
-}
-
-// ToSysMenu 把 BO 转成实体。
-func (b *SysMenuBo) ToSysMenu() *systemmodel.SysMenu {
-	if b == nil {
-		return nil
-	}
-	return &systemmodel.SysMenu{
-		MenuID:     b.MenuID,
-		ParentID:   b.ParentID,
-		MenuName:   b.MenuName,
-		OrderNum:   b.OrderNum,
-		Path:       b.Path,
-		Component:  b.Component,
-		QueryParam: b.QueryParam,
-		IsFrame:    b.IsFrame,
-		IsCache:    b.IsCache,
-		MenuType:   b.MenuType,
-		Visible:    b.Visible,
-		Status:     b.Status,
-		Perms:      b.Perms,
-		Icon:       b.Icon,
-		ActiveMenu: b.ActiveMenu,
-		Ext:        b.Ext,
-		Remark:     b.Remark,
-	}
 }

@@ -2,8 +2,6 @@ package vo
 
 import (
 	"time"
-
-	systemmodel "ruoyi-go-vue-plus/internal/system/model"
 )
 
 // SysDeptVo 部门视图对象，对应 Java SysDeptVo。
@@ -26,24 +24,4 @@ type SysDeptVo struct {
 	CreateTime *time.Time `json:"createTime"`
 	// Children 子部门，由 service 层构建部门树时回填。
 	Children []SysDeptVo `json:"children"`
-}
-
-// FromSysDept 把实体转成 VO。
-func FromSysDept(d *systemmodel.SysDept) *SysDeptVo {
-	if d == nil {
-		return nil
-	}
-	return &SysDeptVo{
-		DeptID:       d.DeptID,
-		ParentID:     d.ParentID,
-		Ancestors:    d.Ancestors,
-		DeptName:     d.DeptName,
-		DeptCategory: d.DeptCategory,
-		OrderNum:     d.OrderNum,
-		Leader:       d.Leader,
-		Phone:        d.Phone,
-		Email:        d.Email,
-		Status:       d.Status,
-		CreateTime:   d.CreateTime,
-	}
 }

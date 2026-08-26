@@ -2,8 +2,6 @@ package vo
 
 import (
 	"time"
-
-	systemmodel "ruoyi-go-vue-plus/internal/system/model"
 )
 
 // SysOssVo OSS 对象存储视图对象，对应 Java SysOssVo。
@@ -19,22 +17,4 @@ type SysOssVo struct {
 	// CreateByName 上传人名称，由翻译层按 USER_ID_TO_NAME 从 CreateBy 回填。
 	CreateByName string `json:"createByName"`
 	Service      string `json:"service"`
-}
-
-// FromSysOss 把实体转成 VO。
-func FromSysOss(o *systemmodel.SysOss) *SysOssVo {
-	if o == nil {
-		return nil
-	}
-	return &SysOssVo{
-		OssID:        o.OssID,
-		FileName:     o.FileName,
-		OriginalName: o.OriginalName,
-		FileSuffix:   o.FileSuffix,
-		URL:          o.URL,
-		Ext1:         o.Ext1,
-		CreateTime:   o.CreateTime,
-		CreateBy:     o.CreateBy,
-		Service:      o.Service,
-	}
 }

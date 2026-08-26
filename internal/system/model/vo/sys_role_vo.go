@@ -2,8 +2,6 @@ package vo
 
 import (
 	"time"
-
-	systemmodel "ruoyi-go-vue-plus/internal/system/model"
 )
 
 // SysRoleVo 角色信息视图对象，对应 Java SysRoleVo。
@@ -22,23 +20,4 @@ type SysRoleVo struct {
 	CreateTime *time.Time `json:"createTime"`
 	// Flag 用户是否存在此角色标识，默认 false，由 service 层回填。
 	Flag bool `json:"flag"`
-}
-
-// FromSysRole 把实体转成 VO。
-func FromSysRole(r *systemmodel.SysRole) *SysRoleVo {
-	if r == nil {
-		return nil
-	}
-	return &SysRoleVo{
-		RoleID:            r.RoleID,
-		RoleName:          r.RoleName,
-		RoleKey:           r.RoleKey,
-		RoleSort:          r.RoleSort,
-		DataScope:         r.DataScope,
-		MenuCheckStrictly: r.MenuCheckStrictly,
-		DeptCheckStrictly: r.DeptCheckStrictly,
-		Status:            r.Status,
-		Remark:            r.Remark,
-		CreateTime:        r.CreateTime,
-	}
 }

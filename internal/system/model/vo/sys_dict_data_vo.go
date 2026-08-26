@@ -2,8 +2,6 @@ package vo
 
 import (
 	"time"
-
-	systemmodel "ruoyi-go-vue-plus/internal/system/model"
 )
 
 // SysDictDataVo 字典数据视图对象，对应 Java SysDictDataVo。
@@ -19,23 +17,4 @@ type SysDictDataVo struct {
 	IsDefault  string     `json:"isDefault"`
 	Remark     string     `json:"remark"`
 	CreateTime *time.Time `json:"createTime"`
-}
-
-// FromSysDictData 把实体转成 VO。
-func FromSysDictData(d *systemmodel.SysDictData) *SysDictDataVo {
-	if d == nil {
-		return nil
-	}
-	return &SysDictDataVo{
-		DictCode:   d.DictCode,
-		DictSort:   d.DictSort,
-		DictLabel:  d.DictLabel,
-		DictValue:  d.DictValue,
-		DictType:   d.DictType,
-		CssClass:   d.CssClass,
-		ListClass:  d.ListClass,
-		IsDefault:  d.IsDefault,
-		Remark:     d.Remark,
-		CreateTime: d.CreateTime,
-	}
 }

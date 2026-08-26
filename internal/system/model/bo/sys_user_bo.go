@@ -1,9 +1,5 @@
 package bo
 
-import (
-	systemmodel "ruoyi-go-vue-plus/internal/system/model"
-)
-
 // SysUserBo 用户信息业务对象（入参），对应 Java SysUserBo。
 type SysUserBo struct {
 	UserID      int64  `json:"userId"`
@@ -33,29 +29,4 @@ type SysUserBo struct {
 	ExcludeUserIds string `json:"excludeUserIds"`
 	CreateBy       int64  `json:"createBy"`
 	UpdateBy       int64  `json:"updateBy"`
-}
-
-// ToSysUser 把 BO 转成实体。
-func (b *SysUserBo) ToSysUser() *systemmodel.SysUser {
-	if b == nil {
-		return nil
-	}
-	return &systemmodel.SysUser{
-		UserID:      b.UserID,
-		DeptID:      b.DeptID,
-		UserName:    b.UserName,
-		NickName:    b.NickName,
-		UserType:    b.UserType,
-		Email:       b.Email,
-		PhoneNumber: b.PhoneNumber,
-		Gender:      b.Gender,
-		Avatar:      b.Avatar,
-		Password:    b.Password,
-		Status:      b.Status,
-		Remark:      b.Remark,
-		BaseEntity: systemmodel.BaseEntity{
-			CreateBy: b.CreateBy,
-			UpdateBy: b.UpdateBy,
-		},
-	}
 }

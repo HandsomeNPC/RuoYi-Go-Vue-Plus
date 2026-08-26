@@ -2,8 +2,6 @@ package vo
 
 import (
 	"time"
-
-	systemmodel "ruoyi-go-vue-plus/internal/system/model"
 )
 
 // SysOperLogVo 操作日志记录视图对象，对应 Java SysOperLogVo。
@@ -36,36 +34,4 @@ type SysOperLogVo struct {
 	ErrorMsg string     `json:"errorMsg"`
 	OperTime *time.Time `json:"operTime"`
 	CostTime int64      `json:"costTime"`
-}
-
-// FromSysOperLog 把实体转成 VO。
-func FromSysOperLog(o *systemmodel.SysOperLog) *SysOperLogVo {
-	if o == nil {
-		return nil
-	}
-	return &SysOperLogVo{
-		OperID:        o.OperID,
-		Title:         o.Title,
-		BusinessType:  o.BusinessType,
-		Method:        o.Method,
-		RequestMethod: o.RequestMethod,
-		OperatorType:  o.OperatorType,
-		OperName:      o.OperName,
-		UserID:        o.UserID,
-		DeptID:        o.DeptID,
-		DeptName:      o.DeptName,
-		ClientKey:     o.ClientKey,
-		DeviceType:    o.DeviceType,
-		Browser:       o.Browser,
-		OS:            o.OS,
-		OperURL:       o.OperURL,
-		OperIP:        o.OperIP,
-		OperLocation:  o.OperLocation,
-		OperParam:     o.OperParam,
-		JSONResult:    o.JSONResult,
-		Status:        o.Status,
-		ErrorMsg:      o.ErrorMsg,
-		OperTime:      o.OperTime,
-		CostTime:      o.CostTime,
-	}
 }

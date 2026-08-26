@@ -2,8 +2,6 @@ package vo
 
 import (
 	"time"
-
-	systemmodel "ruoyi-go-vue-plus/internal/system/model"
 )
 
 // SysSocialVo 社会化关系视图对象，对应 Java SysSocialVo。
@@ -31,36 +29,4 @@ type SysSocialVo struct {
 	OauthToken       string     `json:"oauthToken"`
 	OauthTokenSecret string     `json:"oauthTokenSecret"`
 	CreateTime       *time.Time `json:"createTime"`
-}
-
-// FromSysSocial 把实体转成 VO。
-func FromSysSocial(s *systemmodel.SysSocial) *SysSocialVo {
-	if s == nil {
-		return nil
-	}
-	return &SysSocialVo{
-		ID:               s.ID,
-		UserID:           s.UserID,
-		AuthID:           s.AuthID,
-		Source:           s.Source,
-		AccessToken:      s.AccessToken,
-		ExpireIn:         s.ExpireIn,
-		RefreshToken:     s.RefreshToken,
-		OpenID:           s.OpenID,
-		UserName:         s.UserName,
-		NickName:         s.NickName,
-		Email:            s.Email,
-		Avatar:           s.Avatar,
-		AccessCode:       s.AccessCode,
-		UnionID:          s.UnionID,
-		Scope:            s.Scope,
-		TokenType:        s.TokenType,
-		IDToken:          s.IDToken,
-		MacAlgorithm:     s.MacAlgorithm,
-		MacKey:           s.MacKey,
-		Code:             s.Code,
-		OauthToken:       s.OauthToken,
-		OauthTokenSecret: s.OauthTokenSecret,
-		CreateTime:       s.CreateTime,
-	}
 }

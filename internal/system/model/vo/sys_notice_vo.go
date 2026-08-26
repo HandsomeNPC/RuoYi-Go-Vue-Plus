@@ -2,8 +2,6 @@ package vo
 
 import (
 	"time"
-
-	systemmodel "ruoyi-go-vue-plus/internal/system/model"
 )
 
 // SysNoticeVo 通知公告视图对象，对应 Java SysNoticeVo。
@@ -20,21 +18,4 @@ type SysNoticeVo struct {
 	// CreateByName 创建人名称，由翻译层按 USER_ID_TO_NAME 从 CreateBy 回填。
 	CreateByName string     `json:"createByName"`
 	CreateTime   *time.Time `json:"createTime"`
-}
-
-// FromSysNotice 把实体转成 VO。
-func FromSysNotice(n *systemmodel.SysNotice) *SysNoticeVo {
-	if n == nil {
-		return nil
-	}
-	return &SysNoticeVo{
-		NoticeID:      n.NoticeID,
-		NoticeTitle:   n.NoticeTitle,
-		NoticeType:    n.NoticeType,
-		NoticeContent: n.NoticeContent,
-		Status:        n.Status,
-		Remark:        n.Remark,
-		CreateBy:      n.CreateBy,
-		CreateTime:    n.CreateTime,
-	}
 }

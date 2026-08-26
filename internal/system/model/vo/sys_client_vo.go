@@ -1,9 +1,5 @@
 package vo
 
-import (
-	systemmodel "ruoyi-go-vue-plus/internal/system/model"
-)
-
 // SysClientVo 授权管理视图对象，对应 Java SysClientVo。
 type SysClientVo struct {
 	ID           int64  `json:"id"`
@@ -24,24 +20,4 @@ type SysClientVo struct {
 	Timeout         int64    `json:"timeout"`
 	// Status 状态（0正常 1停用）。
 	Status string `json:"status"`
-}
-
-// FromSysClient 把实体转成 VO。
-func FromSysClient(c *systemmodel.SysClient) *SysClientVo {
-	if c == nil {
-		return nil
-	}
-	return &SysClientVo{
-		ID:            c.ID,
-		ClientID:      c.ClientID,
-		ClientKey:     c.ClientKey,
-		ClientSecret:  c.ClientSecret,
-		GrantType:     c.GrantType,
-		DeviceType:    c.DeviceType,
-		AccessPath:    c.AccessPath,
-		IPWhitelist:   c.IPWhitelist,
-		ActiveTimeout: c.ActiveTimeout,
-		Timeout:       c.Timeout,
-		Status:        c.Status,
-	}
 }

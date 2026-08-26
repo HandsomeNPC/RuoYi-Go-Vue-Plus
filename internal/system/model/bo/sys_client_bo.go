@@ -1,9 +1,5 @@
 package bo
 
-import (
-	systemmodel "ruoyi-go-vue-plus/internal/system/model"
-)
-
 // SysClientBo 授权管理业务对象（入参），对应 Java SysClientBo。
 type SysClientBo struct {
 	ID           int64  `json:"id"`
@@ -24,24 +20,4 @@ type SysClientBo struct {
 	Timeout         int64    `json:"timeout"`
 	// Status 状态（0正常 1停用）。
 	Status string `json:"status"`
-}
-
-// ToSysClient 把 BO 转成实体。
-func (b *SysClientBo) ToSysClient() *systemmodel.SysClient {
-	if b == nil {
-		return nil
-	}
-	return &systemmodel.SysClient{
-		ID:            b.ID,
-		ClientID:      b.ClientID,
-		ClientKey:     b.ClientKey,
-		ClientSecret:  b.ClientSecret,
-		GrantType:     b.GrantType,
-		DeviceType:    b.DeviceType,
-		AccessPath:    b.AccessPath,
-		IPWhitelist:   b.IPWhitelist,
-		ActiveTimeout: b.ActiveTimeout,
-		Timeout:       b.Timeout,
-		Status:        b.Status,
-	}
 }
