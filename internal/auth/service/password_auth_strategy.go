@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin/binding"
 
 	authmodel "ruoyi-go-vue-plus/internal/auth/model"
-	systemmodel "ruoyi-go-vue-plus/internal/system/model"
+	authvo "ruoyi-go-vue-plus/internal/auth/model/vo"
 	systemvo "ruoyi-go-vue-plus/internal/system/model/vo"
 	systemservice "ruoyi-go-vue-plus/internal/system/service"
 	"ruoyi-go-vue-plus/pkg/bcrypt"
@@ -21,17 +21,14 @@ import (
 // passwordAuthStrategy 密码认证策略（对应 Java PasswordAuthStrategy）。
 type passwordAuthStrategy struct{}
 
-// Login 校验账号密码并返回登录用户。body 为原始 JSON 字节，这里解析成 LoginBody。
+// Login 校验账号密码、签发令牌并返回登录结果。body 为原始 JSON 字节，这里解析成 LoginBody。
 func (*passwordAuthStrategy) Login(ctx context.Context, body []byte,
-	_ *systemvo.SysClientVo) (*systemmodel.SysUser, error) {
-
+	client *systemvo.SysClientVo) (*authvo.LoginVo, error) {
 	var loginBody authmodel.PasswordLoginBody
 	if err := binding.JSON.BindBody(body, &loginBody); err != nil {
 		return nil, errs.New(response.CodeBadRequest, "参数校验失败", err.Error())
 	}
-
 	// TODO: 验证码校验属阶段 3，loginBody.Code / loginBody.UUID 字段已就位。
-
 	user, err := systemservice.UserSvcApp.GetByUsername(ctx, loginBody.Username)
 	if err != nil {
 		if errors.Is(err, systemservice.ErrUserNotFound) {
@@ -51,5 +48,7 @@ func (*passwordAuthStrategy) Login(ctx context.Context, body []byte,
 		}); err != nil {
 		return nil, err
 	}
-	return user, nil
+
+	// TODO(阶段 3): 构造登录用户（BuildLoginUser）并签发令牌/写会话/在线记录，待重建。
+	return &authvo.LoginVo{ClientID: client.ClientID}, nil
 }

@@ -11,7 +11,7 @@ datasource:
   maxOpenConns: 100
   connMaxLifetime: 3600   # 连接最大存活(秒)
   connMaxIdleTime: 600    # 空闲连接最大存活(秒)
-  logLevel: warn          # SQL 日志级别 silent/error/warn/info
+  logLevel: warn          # silent/error/warn/info
   slowThresholdMs: 200    # 慢 SQL 阈值(毫秒)
 
 redis:
@@ -19,99 +19,82 @@ redis:
   port: 6379
   password: ruoyi123
   db: 0
-  clientName: ruoyi-go        # 连接标识，便于 CLIENT LIST 排查
-  poolSize: 32                # 连接池大小
-  minIdleConns: 8             # 最小空闲连接
-  dialTimeoutMs: 5000         # 建连超时(毫秒)
-  readTimeoutMs: 3000         # 读超时(毫秒)
-  writeTimeoutMs: 3000        # 写超时(毫秒)
+  clientName: ruoyi-go        # 便于 CLIENT LIST 排查
+  poolSize: 32
+  minIdleConns: 8
+  dialTimeoutMs: 5000
+  readTimeoutMs: 3000
+  writeTimeoutMs: 3000
   connMaxIdleTime: 600        # 空闲连接最大存活(秒)
 
 jwt:
   # 签名密钥，对应原项目 sa-token.jwt-secret-key。
-  # **两个进程必须配同一个值** —— 不同则 auth 签的 token 在 system 那边验不过，
-  # 症状是「登录成功但每个接口都 401」。
+  # 两个进程必须配同一个值，否则 auth 签的 token 在 system 那边验不过(登录成功但接口 401)。
   secret: change-me-in-production
-  # 以下两项**当前不生效**，详见 pkg/config/jwt.go 的字段注释：
-  #   expireMinutes -> token 绝对有效期实际取 sys_client.timeout(种子数据 7 天)，
-  #                    对齐原项目(那边也没有全局 sa-token.timeout)
-  #   header        -> 已由 middleware.auth.header 承担；要改头名改那里
+  # 以下两项当前不生效，详见 pkg/config/jwt.go：
+  #   expireMinutes -> 实际取 sys_client.timeout(7 天)，对齐原项目
+  #   header        -> 已由 middleware.auth.header 承担
   expireMinutes: 720
   header: Authorization
 
-# 用户业务配置，对应原项目 application.yml 的 user 段(:38-43)。
-# **有意不放进 middleware 段**：密码重试限制作用在登录 service 里，与 HTTP 无关，
-# 阶段 4 的短信/邮箱登录也会复用同一份限制。键路径与原项目保持一致。
+# 用户业务配置，对应原项目 application.yml 的 user 段。
+# 不放进 middleware 段：密码重试作用在登录 service，与 HTTP 无关；短信/邮箱登录也复用此限制。
 user:
   password:
-    maxRetryCount: 5          # 密码最大错误次数，达到即锁定
-    lockTime: 10              # 锁定时长(分钟)。同时是 pwd_err_cnt:<username> 的 TTL，
-    #                         # 且**每次失败都会重置**(滑动窗口非固定窗口) ——
-    #                         # 每 9 分钟错一次、错满 5 次跨越 40 分钟依然会锁。
+    maxRetryCount: 5          # 达到即锁定
+    lockTime: 10              # 锁定时长(分钟)，同时是 pwd_err_cnt:<username> 的 TTL
+    # 每次失败都重置 TTL(滑动窗口)：每 9 分钟错一次、错满 5 次跨越 40 分钟依然会锁。
 
-# 全局中间件。除 apiEncrypt 一节外，此处写的都是代码默认值(pkg/config.DefaultMiddleware)的
-# 显式重述，由 config 包的测试锁住一致性 —— 改这里的值会真的改行为，改错也会被测试发现。
-# apiEncrypt 是唯一有意与默认值不同的一节(见那里的说明)，由单独的用例锁。
-#
-# 有意没有 enabled 开关：Go 侧「注册」就是 middleware.Register 里那行 r.Use(XSS())，
-# 不写即关闭。再加布尔开关只会造出「注册了但不生效」这种要翻两处才能确诊的状态。
-# 唯一例外是 apiEncrypt —— 它不生效时请求会被当明文处理并报出一个与真实原因无关的
-# 参数错误，必须能区分「没开」和「开了但密钥错」。理由详见那一节。
-#
-# **不要**放进 system.yaml / auth.yaml：拆进程后请求经 nginx 落到哪个进程不定，
-# 两个入口的中间件行为必须一致，在那里开分叉口子等于把这条约束变成可选项。
+# 全局中间件。除 apiEncrypt 外，均为代码默认值(pkg/config.DefaultMiddleware)的显式重述，
+# 由 config 包测试锁住一致性。除 apiEncrypt 外不带 enabled 开关 —— 注册即生效(r.Use)，
+# 不写即关闭。
+# 不要放进 system.yaml / auth.yaml：拆进程后请求经 nginx 落点不定，两入口行为必须一致。
 middleware:
   cors:
     allowCredentials: true          # 允许携带 cookie / Authorization
-    allowedOriginPatterns: [ "*" ]    # 支持 * 通配，如 https://*.example.com；命中后回显请求的 Origin
-    allowedMethods: [ "*" ]           # * 表示回显预检请求的方法
-    allowedHeaders: [ "*" ]           # * 表示回显预检请求的头
+    allowedOriginPatterns: [ "*" ]    # 支持 * 通配，如 https://*.example.com；命中后回显 Origin
+    allowedMethods: [ "*" ]           # 回显预检请求的方法
+    allowedHeaders: [ "*" ]           # 回显预检请求的头
     exposedHeaders: # 允许前端 JS 读取的响应头
-      - X-Request-Id                # 不给前端就拿不到 traceId，无法与服务端日志对账
-    maxAgeSeconds: 1800           # 预检结果缓存时长(秒)
+      - X-Request-Id                # 给前端才能拿到 traceId 对账
+    maxAgeSeconds: 1800           # 预检结果缓存(秒)
 
   xss:
     excludeUrls: # 跳过清洗的路径，Ant 风格(? 单字符 / * 单层 / ** 任意层)
       - /system/notice              # 富文本公告，清洗会破坏内容
       - /warm-flow/save-json        # 流程定义 JSON，需原样存标签
-    skipMethods: [ GET, DELETE ]      # 按 REST 语义不携带落库内容；留空则用这两个默认值
+    skipMethods: [ GET, DELETE ]      # REST 语义不携带落库内容
 
   accessLog:
-    maxParamLength: 4000            # 参数日志最大字符数(rune 非字节)，<=0 用默认 4000
-    # skipPaths:                    # 不打日志的路径(精确匹配)，给探针这类高频零信息量请求用
-    #   - /system/ping              # 默认不排除任何路径，与原项目一致
+    maxParamLength: 4000            # 参数日志最大字符数(rune)，<=0 用默认 4000
+    # skipPaths:                    # 不打日志的路径(精确匹配)，给探针这类高频零信息请求用
+    #   - /system/ping              # 默认不排除任何路径
 
   traceId:
-    header: X-Request-Id            # 读写链路 id 的头名，与 cors.exposedHeaders 配套
-    trustInbound: true              # 沿用上游 nginx/网关已生成的 id；进程直接暴露公网时应关掉
+    header: X-Request-Id            # 与 cors.exposedHeaders 配套
+    trustInbound: true              # 沿用上游 nginx/网关生成的 id；进程直接暴露公网时应关掉
 
   repeatableBody:
-    contentTypes: # 需要缓存的 content-type 前缀，大小写不敏感
-      - application/json            # 不要加 multipart/form-data —— 会把上传文件整个读进内存
-    maxBodySize: 10485760           # 10MB，超出直接拒绝请求(不截断)
+    contentTypes: # 需缓存的 content-type 前缀，大小写不敏感
+      - application/json            # 不要加 multipart/form-data —— 会把上传文件读进内存
+    maxBodySize: 10485760           # 10MB，超出直接拒绝(不截断)
 
   i18n:
-    header: content-language        # 对齐原项目，不是 Accept-Language(理由见 pkg/config/middleware.go)
-    default: zh-cn                  # 请求未指定或语言标记不合规时使用
+    header: content-language        # 对齐原项目，非 Accept-Language(详见 pkg/config/middleware.go)
+    default: zh-cn                  # 未指定或不合规时使用
 
-  # 鉴权，对应原项目 SecurityConfig + sa-token 相关项。
-  #
-  # 键路径是 middleware.auth.* 而非原项目的顶层 security.excludes ——
-  # Go 侧全部中间件配置都收在 middleware 段下、一个中间件一个文件，
-  # 为一项破例会让「某个中间件的配置在哪」需要逐个记。
+  # 鉴权，对应原项目 SecurityConfig + sa-token。键路径为 middleware.auth.*，
+  # 因 Go 侧中间件配置统一收在 middleware 段下、一个中间件一个文件。
   auth:
-    header: Authorization           # 读 token 的请求头名，对应 sa-token.token-name
-    tokenPrefix: Bearer             # token 前缀，对应 sa-token.token-prefix；
-    #                               # 显式写空串表示不用前缀(裸 token)
-    clientIdHeader: clientid        # 客户端标识的头名/查询串参数名，对应 LoginHelper.CLIENT_KEY。
-    #                               # token 本身**只从 header 取**(不接受查询串)：
-    #                               # 查询串会流进 nginx accesslog 与浏览器历史。
-    #                               # 同理不接受 cookie —— 原项目 is-read-cookie: false
-    #                               # 是刻意关掉以杜绝 CSRF，不要为了方便加回落。
-    excludes: # 免鉴权路径，Ant 风格(? 单字符 / * 单层 / ** 任意层)
+    header: Authorization           # 对应 sa-token.token-name
+    tokenPrefix: Bearer             # 对应 sa-token.token-prefix；空串表示不用前缀(裸 token)
+    clientIdHeader: clientid        # 对应 LoginHelper.CLIENT_KEY
+    # token 只从 header 取(不接受查询串/cookie)：查询串会进 nginx accesslog 与浏览器历史，
+    # cookie 会引入 CSRF(原项目 is-read-cookie: false 即刻意关掉)。
+    excludes: # 免鉴权路径，Ant 风格
       # 前 11 条逐字对应原项目 security.excludes(application.yml:100-113)。
-      - /*.html                     # 与下一条都要有：Ant 语义下 * 不跨路径分隔符，
-      - /**/*.html                  # 前者匹配 /index.html，后者匹配 /static/a/index.html
+      - /*.html                     # Ant 下 * 不跨分隔符：本条匹配 /index.html
+      - /**/*.html                  # 匹配 /static/a/index.html
       - /**/*.css
       - /**/*.js
       - /favicon.ico
@@ -121,48 +104,33 @@ middleware:
       - /warm-flow-ui/config
       - /snail-chat/**
       - /api/snail/chat/**
-      # 相对原项目的**必要新增**：那边 AuthController 整个类挂 @SaIgnore 免鉴权，
-      # Go 没有注解机制只能进这份名单 —— 漏了它登录接口自己就需要 token，谁也登不进来。
+      # 必要新增：原项目 AuthController 整个类挂 @SaIgnore 免鉴权，Go 无注解只能进此名单。
       - /auth/**
 
   # 接口加解密，对应原项目 api-decrypt 段(application.yml:148-158)。
-  #
-  # 这是**唯一带 enabled 开关的中间件**：不生效时带 encrypt-key 头的请求会被当明文
-  # 交给 handler、报出一个与真实原因无关的参数错误，必须能区分「没开」与「开了但密钥错」。
-  # 其余中间件靠 register.go 里在不在场表达开关。
-  #
-  # 也是本段里**唯一与代码默认值不同**的一节(默认 enabled=false，这里是 true)。
-  # 默认值必须在「没有配置文件」时也讲得通，而启用状态下缺私钥必须报错 ——
-  # 默认 true + 默认空私钥会让任何未配置的进程启动失败。与原项目对齐的是本文件。
-  # 这个差异由 pkg/config 的 TestRealYAMLEnablesAPIEncrypt 显式锁住。
-  #
-  # 协议(请求方向；两层 base64 套嵌是原项目的既有约定，少一层就与前端对不上)：
+  # 唯一带 enabled 的中间件：不生效时带 encrypt-key 头的请求会被当明文，报出无关的参数错误，
+  # 必须能区分「没开」与「开了但密钥错」。
+  # 也是唯一与代码默认值不同的一节(默认 enabled=false)。默认值要在「无配置文件」时也讲得通，
+  # 而 enabled=true + 空私钥会让任何未配置进程启动失败。此差异由 config 包测试锁住。
+  # 协议(两层 base64 套嵌是原项目既有约定，少一层就对不上前端)：
   #   encrypt-key 头 = base64(RSA公钥加密( base64( AES明文密钥 ) ))
   #   请求体         = base64(AES-ECB加密( JSON 明文 ))
   apiEncrypt:
     enabled: true                   # 对齐原项目 application.yml:150
-    headerFlag: encrypt-key         # 请求与响应共用同一个头名，只是载荷方向不同
-    requestUrls: # 强制加密的接口(Ant 风格)；命中却没带密钥头 -> 拒绝
-      # 对应原项目 4 处 @ApiEncrypt。这些接口都在传密码，列在这里才能保证
-      # 「本该加密的接口收到了明文密码」会被拒，而不是静默放过。
+    headerFlag: encrypt-key         # 请求与响应共用同一头名，载荷方向不同
+    requestUrls: # 强制加密接口(Ant 风格)；命中却没带密钥头 -> 拒绝
+      # 对应原项目 4 处 @ApiEncrypt，都在传密码，列在这里防止「本该加密的接口收到明文密码」被静默放过。
       - /auth/login                    # AuthController.login
       - /auth/register                 # AuthController.register
       - /system/user/resetPwd          # SysUserController.resetPwd
       - /system/user/profile/updatePwd # SysProfileController.updatePwd
-    # responseUrls:                 # 需要加密响应体的接口，对应 @ApiEncrypt(response=true)。
-    #   - /auth/login               # 原项目 4 处 @ApiEncrypt 全是默认的 response=false，
-    #                               # 即响应加密从未启用过，故默认为空。开启前先确认
-    #                               # 前端确实实现了响应解密，且下方 publicKey 已配。
-    maxBodySize: 10485760           # 10MB 密文上限。与 repeatableBody 那项分开配：
-    #                               # 这里读的是密文，base64 后比明文大约 4/3。
+    # responseUrls:                 # 加密响应体，对应 @ApiEncrypt(response=true)。原项目全为 false，
+    #   - /auth/login               # 即响应加密从未启用。开启前确认前端已实现响应解密，且 publicKey 已配。
+    maxBodySize: 10485760           # 10MB 密文上限(密文 base64 后比明文约 4/3)
 
-    # ⚠️ 以下密钥直接照抄原项目 application.yml，**是上游仓库公开的开发用密钥，
-    # ⚠️ 任何人都拿得到**，且只有 1024 位(低于 NIST 自 2013 年起建议的 2048 位)。
-    # ⚠️ 照抄的唯一理由是配套公钥硬编码在现有前端里，换掉就联调不通。
-    # ⚠️ 上线前必须与前端一起换成新密钥 —— 否则等于没有加密。
-    #
-    # privateKey 解密**请求**，对应前端的加密公钥。格式 base64(PKCS#8 DER)。
+    # ⚠️ 以下密钥照抄原项目 application.yml，是上游公开的开发用密钥(1024 位，低于 2048 位建议)，
+    # ⚠️ 照抄因配套公钥硬编码在现有前端里，换掉联调不通。上线前必须与前端一起换新密钥。
+    # privateKey 解密请求(对应前端加密公钥)，格式 base64(PKCS#8 DER)。
     privateKey: MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBAO8QO5Eg4zehk9aP1SShzmlCSVHg8Ufr9yWeN4WqMMsiAPJC+PGGCoBlAD4T14Pqq7oWxc+Yrx2Nwv6eHdwUfPilfjveMO87dK977zIvdVFDSfalGBDZrTUwmzL5bBNkIFhZ/RWctEi8A1ShZCDL2/P3irtVrjh2DsDX/cgJ/7EDAgMBAAECgYEAhNZAQyRDHWZq/45soS5Hw7VRiG21pIE5k22W7G7lLfp3DCaqrYoNy8pTmCruVh7PzVdaE0CEDaf38gNqFCBOT8iTFQiYV3am4W3hsEQM5wmVBeTvCM5P2jsaaBQbqmneRjiZVbs6ha205JSho1Oc85NbaZa8gFVjwZgZWJrbzgECQQD/iZWhkRPtbdeai/Xk7D/eIXKh1Gxid0rWKQq8ikxbaiergn47XzNKrpROVyka3Gn85o7jJphgxp99R3r8sH71AkEA738Dn7xs+I4Y+MLa2EcT78JG3f/VhlWS/ks3qGJ2dfqwS7ntnmf5Q+2Xw+9UcuiK/TxD8K/0inSCkIMeWBOFFwJBAIoTebq3faEJfTqQ7ekojsokIKC4+2epNdLKknaV8/RhQ9Y0yKikJD7yXkiGaDuPZeW1Xvf2XtfL+1niSd5IMBECQDCOOMbe5dzyuj9dCg+FQZZ/dey2XK0Slm22BD/ATrIWtD12IaXXAKNz/Sv9TsrJOLykxkV69wJHIt13p+RFeNsCQGn5XGRn4ZCRVCesJYXyx29MTqkl8sD/gzYcURTZYjHqX2EvtvAyC6gBm9H0EbxmHIi4Oq0tITzklCXj5SpvBEw=
-    # publicKey 加密**响应**，对应前端的解密私钥。格式 base64(X.509 SPKI)。
-    # 只在配了 responseUrls 时才用到(否则 validate 不强求)。
+    # publicKey 加密响应(对应前端解密私钥)，格式 base64(X.509 SPKI)。仅在配了 responseUrls 时用到。
     publicKey: MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDm6u8q8X78onmbU4wGMq3b4ufbWE18YzuWo5jwkUlwWPTPcENbZYtveyTepp2Od1CTDcjhTUmVYvFkhaCF46UfOxZrwoSZc3jf3WXXd0hLOPBHuulynknj2KsWvKDuRig7J2o4KbDhyl0nnlUiMrIiD0tv1rBKpNCJ/T+MN0bERQIDAQAB

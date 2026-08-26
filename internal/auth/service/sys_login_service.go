@@ -8,9 +8,10 @@ import (
 
 	goredis "github.com/redis/go-redis/v9"
 
-	systemmodel "ruoyi-go-vue-plus/internal/system/model"
+	authmodel "ruoyi-go-vue-plus/internal/auth/model"
+	systemdto "ruoyi-go-vue-plus/internal/system/model/dto"
 	systemvo "ruoyi-go-vue-plus/internal/system/model/vo"
-	"ruoyi-go-vue-plus/pkg/auth"
+	systemservice "ruoyi-go-vue-plus/internal/system/service"
 	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/enum"
@@ -24,31 +25,74 @@ type SysLoginService struct{}
 // SysLoginSvcApp 包级实例。
 var SysLoginSvcApp = new(SysLoginService)
 
-// BuildLoginUser 构造登录用户（对应 Java SysLoginService#buildLoginUser）。
+// BuildLoginUser 根据用户视图对象组装登录态上下文（对应 Java SysLoginService#buildLoginUser）。
 // user/dept/权限等由 system 各 service 填充；client 字段（ClientKey/DeviceType）来自授权客户端。
 // 不在此设 IPAddr——IP 由 handler 注入 context，afterLogin 时按需取（对应 Java 在 record 阶段 getClientIP）。
-func (*SysLoginService) BuildLoginUser(user *systemmodel.SysUser,
-	client *systemvo.SysClientVo) *auth.LoginUser {
+// 各查询顺序与 Java 一致；Java 用虚拟线程并发拉取，此处顺序拉取（登录非热路径，便于错误短路）。
+func (*SysLoginService) BuildLoginUser(ctx context.Context, user *systemvo.SysUserVo,
+	client *systemvo.SysClientVo) (*authmodel.LoginUser, error) {
 
 	userType := user.UserType
 	if userType == "" {
-		userType = auth.UserTypeSys
+		userType = authmodel.UserTypeSys
 	}
 
-	return &auth.LoginUser{
-		UserID:   user.UserID,
-		DeptID:   user.DeptID,
-		Username: user.UserName,
-		Nickname: user.NickName,
-		UserType: userType,
-
-		// TODO(阶段 2): DeptName / DeptCategory / 权限 / 角色需 sys_dept / sys_menu / sys_role / sys_post。
-		LoginTime: time.Now().UnixMilli(),
-		// IPAddr / LoginLocation / Browser / OS 在 afterLogin 按请求上下文与 UA 填充（阶段 3）。
-
+	loginUser := &authmodel.LoginUser{
+		UserID:     user.UserID,
+		DeptID:     user.DeptID,
+		Username:   user.UserName,
+		Nickname:   user.NickName,
+		UserType:   userType,
+		LoginTime:  time.Now().UnixMilli(),
 		ClientKey:  client.ClientKey,
 		DeviceType: client.DeviceType,
+		// IPAddr / LoginLocation / Browser / OS 在 afterLogin 按请求上下文与 UA 填充（阶段 3）。
 	}
+
+	// 部门名 / 部门类别：deptId 为空则留空（对应 Java ObjectUtil.isNotNull(deptId) 分支，dept 为空时 orElse(EMPTY)）。
+	if user.DeptID != 0 {
+		dept, err := systemservice.DeptSvcApp.SelectByID(ctx, user.DeptID)
+		if err != nil {
+			return nil, err
+		}
+		if dept != nil {
+			loginUser.DeptName = dept.DeptName
+			loginUser.DeptCategory = dept.DeptCategory
+		}
+	}
+
+	// 角色列表（供 roles 与 dataScopeRoleMap 复用）。
+	roles, err := systemservice.RoleSvcApp.SelectRolesByUserId(ctx, user.UserID)
+	if err != nil {
+		return nil, err
+	}
+	// 角色摘要（对应 Java BeanUtil.copyToList(roles, RoleDTO.class)），
+	// 供 loginUser.Roles 与 GetDataScopeRoleMap 共用，避免重复转换。
+	roleDTOs := systemdto.Conv.ConvertToRoleDTOList(roles)
+
+	menuPermission, err := systemservice.PermissionSvcApp.GetMenuPermission(ctx, user.UserID)
+	if err != nil {
+		return nil, err
+	}
+	rolePermission, err := systemservice.PermissionSvcApp.GetRolePermission(ctx, user.UserID)
+	if err != nil {
+		return nil, err
+	}
+	dataScopeRoleMap, err := systemservice.PermissionSvcApp.GetDataScopeRoleMap(ctx, roleDTOs)
+	if err != nil {
+		return nil, err
+	}
+	posts, err := systemservice.PostSvcApp.SelectPostsByUserId(ctx, user.UserID)
+	if err != nil {
+		return nil, err
+	}
+
+	loginUser.MenuPermission = menuPermission
+	loginUser.RolePermission = rolePermission
+	loginUser.DataScopeRoleMap = dataScopeRoleMap
+	loginUser.Roles = roleDTOs
+	loginUser.Posts = systemdto.Conv.ConvertToPostDTOList(posts)
+	return loginUser, nil
 }
 
 // CheckLogin 执行登录失败次数校验，并在成功后清空失败计数

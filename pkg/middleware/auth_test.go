@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	goredis "github.com/redis/go-redis/v9"
 
+	authmodel "ruoyi-go-vue-plus/internal/auth/model"
 	"ruoyi-go-vue-plus/pkg/auth"
 	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/response"
@@ -83,10 +84,10 @@ func (f *authFixture) issue(t *testing.T, claims *auth.Claims, activeTimeout int
 	}
 
 	sess := &auth.Session{
-		User: &auth.LoginUser{
+		User: &authmodel.LoginUser{
 			UserID:   claims.UserID,
 			Username: claims.Username,
-			UserType: auth.UserTypeSys,
+			UserType: authmodel.UserTypeSys,
 		},
 		ActiveTimeout: activeTimeout,
 	}
@@ -297,7 +298,7 @@ func TestAuthMissingClientIDClaimDoesNotPanic(t *testing.T) {
 		t.Fatalf("签发失败: %v", err)
 	}
 	sess := &auth.Session{
-		User:          &auth.LoginUser{UserID: 1, Username: "admin", UserType: auth.UserTypeSys},
+		User:          &authmodel.LoginUser{UserID: 1, Username: "admin", UserType: authmodel.UserTypeSys},
 		ActiveTimeout: 1800,
 	}
 	if err := f.store.Save(context.Background(), token, sess); err != nil {
@@ -495,7 +496,7 @@ func TestAuthRedisFailureIsNotUnauthorized(t *testing.T) {
 
 // TestNewUserContext 脱离请求的场景（定时任务、消息消费）能构造用户上下文。
 func TestNewUserContext(t *testing.T) {
-	user := &auth.LoginUser{UserID: 1, Username: "admin"}
+	user := &authmodel.LoginUser{UserID: 1, Username: "admin"}
 	ctx := NewUserContext(context.Background(), user)
 
 	if got := UserFromContext(ctx); got != user {

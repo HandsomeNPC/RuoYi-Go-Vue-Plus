@@ -8,6 +8,8 @@ import (
 
 	"github.com/alicebob/miniredis/v2"
 	goredis "github.com/redis/go-redis/v9"
+
+	authmodel "ruoyi-go-vue-plus/internal/auth/model"
 )
 
 func newTestStore(t *testing.T) (*SessionStore, *miniredis.Miniredis) {
@@ -22,10 +24,10 @@ func newTestStore(t *testing.T) (*SessionStore, *miniredis.Miniredis) {
 
 func testSession() *Session {
 	return &Session{
-		User: &LoginUser{
+		User: &authmodel.LoginUser{
 			UserID:   1761100000000000001,
 			Username: "admin",
-			UserType: UserTypeSys,
+			UserType: authmodel.UserTypeSys,
 		},
 		ActiveTimeout: 1800,
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	goredis "github.com/redis/go-redis/v9"
 
+	authmodel "ruoyi-go-vue-plus/internal/auth/model"
 	"ruoyi-go-vue-plus/pkg/auth"
 	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/errs"
@@ -179,26 +180,26 @@ func abortForbidden(c *gin.Context, msg string) {
 }
 
 // CurrentUser 从 gin.Context 取当前登录用户，未登录时返回 nil。
-func CurrentUser(c *gin.Context) *auth.LoginUser {
+func CurrentUser(c *gin.Context) *authmodel.LoginUser {
 	if c == nil {
 		return nil
 	}
 	u, _ := c.Get(LoginUserKey)
-	user, _ := u.(*auth.LoginUser)
+	user, _ := u.(*authmodel.LoginUser)
 	return user
 }
 
 // UserFromContext 从 context.Context 取当前登录用户，未登录时返回 nil。
-func UserFromContext(ctx context.Context) *auth.LoginUser {
+func UserFromContext(ctx context.Context) *authmodel.LoginUser {
 	if ctx == nil {
 		return nil
 	}
-	user, _ := ctx.Value(loginUserCtxKey{}).(*auth.LoginUser)
+	user, _ := ctx.Value(loginUserCtxKey{}).(*authmodel.LoginUser)
 	return user
 }
 
 // NewUserContext 返回携带登录用户的子 context。
-func NewUserContext(ctx context.Context, user *auth.LoginUser) context.Context {
+func NewUserContext(ctx context.Context, user *authmodel.LoginUser) context.Context {
 	return context.WithValue(ctx, loginUserCtxKey{}, user)
 }
 

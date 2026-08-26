@@ -8,6 +8,8 @@ import (
 	"time"
 
 	goredis "github.com/redis/go-redis/v9"
+
+	authmodel "ruoyi-go-vue-plus/internal/auth/model"
 )
 
 // TokenKeyPrefix 会话在 Redis 里的键前缀，完整键为 auth:token:<jwt>。
@@ -18,7 +20,7 @@ var ErrSessionNotFound = errors.New("auth: 会话不存在")
 
 // Session Redis 里存的会话。
 type Session struct {
-	User *LoginUser `json:"user"`
+	User *authmodel.LoginUser `json:"user"`
 	// ActiveTimeout 空闲超时（秒），<=0 表示不设过期。
 	ActiveTimeout int64 `json:"activeTimeout"`
 }
