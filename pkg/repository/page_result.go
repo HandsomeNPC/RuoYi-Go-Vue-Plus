@@ -1,4 +1,4 @@
-package response
+package repository
 
 // PageResult 表格分页数据对象，不含 code/msg，需嵌在 R.data 里返回。
 type PageResult[T any] struct {
@@ -22,7 +22,7 @@ func EmptyPage[T any]() PageResult[T] {
 	return PageResult[T]{Total: 0, Rows: []T{}}
 }
 
-// emptyIfNil 空切片兜底，保证序列化为 [] 而不是 null。
+// emptyIfNil 空切片兜底，保证序列化为 [] 而非 null。
 func emptyIfNil[T any](rows []T) []T {
 	if rows == nil {
 		return []T{}

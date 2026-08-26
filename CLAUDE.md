@@ -56,15 +56,16 @@ docker compose -f deploy/docker-compose.yaml up --build   # 一键起全套(经 
 
 ## 从 Java 原项目迁移的对应关系
 
-| RuoYi (Java)                   | 本项目 (Go)                            |
-|--------------------------------|----------------------------------------|
-| ruoyi-admin(聚合启动)          | cmd/<module>/main.go(每模块一进程)     |
-| Controller                     | internal/<module>/handler              |
-| IXxxService / XxxServiceImpl   | internal/<module>/service              |
-| XxxMapper (MyBatis)            | internal/<module>/repository (GORM)    |
-| domain / domain.bo / domain.vo | model(entity / dto / vo)               |
-| ruoyi-common-*                 | pkg/*                                  |
-| R<T> / TableDataInfo           | response.R[T] / response.PageResult[T] |
+| RuoYi (Java)                   | 本项目 (Go)                              |
+|--------------------------------|------------------------------------------|
+| ruoyi-admin(聚合启动)          | cmd/<module>/main.go(每模块一进程)       |
+| Controller                     | internal/<module>/handler                |
+| IXxxService / XxxServiceImpl   | internal/<module>/service                |
+| XxxMapper (MyBatis)            | internal/<module>/repository (GORM)      |
+| domain / domain.bo / domain.vo | model(entity / dto / vo)                 |
+| ruoyi-common-*                 | pkg/*                                    |
+| R<T> / TableDataInfo           | response.R[T] / repository.PageResult[T] |
+| PageQuery                      | repository.PageQuery                     |
 
 ## 迁移中最需要注意的两个难点
 
