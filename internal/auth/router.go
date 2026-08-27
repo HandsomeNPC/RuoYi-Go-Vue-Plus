@@ -3,11 +3,13 @@ package auth
 import (
 	"net/http"
 
-	"github.com/gin-gonic/gin"
-
 	"ruoyi-go-vue-plus/internal/auth/handler"
 	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/middleware"
+	"ruoyi-go-vue-plus/pkg/satoken"
+
+	"github.com/gin-gonic/gin"
+	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 )
 
 // InitRouter 构建并返回 auth 进程的 gin 引擎。
@@ -23,20 +25,18 @@ func InitRouter() *gin.Engine {
 	r.Use(middleware.XSS())
 	r.Use(middleware.I18n())
 
-	// TODO: 阶段 3 接入 sagin 鉴权中间件（sagin.NewPlugin(...).PathAuthMiddleware / AuthMiddleware）。
-	//       免鉴权名单（/auth/**）届时由 PathAuthConfig.SetExclude 承担。
-
 	cfg := config.Get()
+	plugin := sagin.NewPlugin(satoken.Manager())
 
 	g := r.Group("/auth")
+	g.Use(plugin.TokenInterceptor())
 	{
-		g.POST("/login", handler.AuthApiApp.Login)
-		g.POST("/logout", handler.AuthApiApp.Logout)
+		g.POST("/login", sagin.Ignore(), handler.AuthApiApp.Login)
+		g.POST("/logout", sagin.Ignore(), handler.AuthApiApp.Logout)
+		g.GET("/ping", sagin.Ignore(), func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"module": cfg.Server.Name, "message": "pong"})
+		})
 	}
-
-	r.GET("/auth/ping", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"module": cfg.Server.Name, "message": "pong"})
-	})
 
 	return r
 }

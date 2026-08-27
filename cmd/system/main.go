@@ -6,6 +6,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/database"
 	"ruoyi-go-vue-plus/pkg/redis"
+	"ruoyi-go-vue-plus/pkg/satoken"
 )
 
 func main() {
@@ -16,6 +17,8 @@ func main() {
 
 	redis.Init()
 	defer redis.CloseDefault()
+
+	satoken.Init()
 
 	r := system.InitRouter()
 	system.InitServer(r)
