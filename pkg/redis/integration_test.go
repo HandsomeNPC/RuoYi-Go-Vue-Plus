@@ -14,7 +14,7 @@ import (
 )
 
 // testConfig 返回真实 Redis 测试配置，未设置地址时跳过。
-func testConfig(t *testing.T) config.Redis {
+func testConfig(t *testing.T) config.RedisConfig {
 	t.Helper()
 
 	addr := os.Getenv("RUOYI_TEST_REDIS_ADDR")
@@ -31,7 +31,7 @@ func testConfig(t *testing.T) config.Redis {
 		t.Fatalf("端口非法: %v", err)
 	}
 
-	return config.Redis{
+	return config.RedisConfig{
 		Host:         host,
 		Port:         port,
 		Password:     os.Getenv("RUOYI_TEST_REDIS_PASSWORD"),
@@ -103,7 +103,7 @@ func TestIntegrationInitAndClose(t *testing.T) {
 }
 
 // loadRedisConfig 写入完整 yaml（redis 段取自 cfg）并 Load。
-func loadRedisConfig(t *testing.T, cfg config.Redis) {
+func loadRedisConfig(t *testing.T, cfg config.RedisConfig) {
 	t.Helper()
 	yaml := fmt.Sprintf(`
 server:

@@ -14,7 +14,7 @@ import (
 )
 
 // newI18nEngine 构造只挂 I18n 的引擎，回写三处看到的语言。
-func newI18nEngine(cfg config.I18n) *gin.Engine {
+func newI18nEngine(cfg config.I18nConfig) *gin.Engine {
 	r := gin.New()
 	r.Use(I18nWithConfig(cfg))
 	r.GET("/test", func(c *gin.Context) {
@@ -54,7 +54,7 @@ func TestI18nPropagatesToAllContexts(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			w := i18nGet(newI18nEngine(config.DefaultMiddleware().I18n), LocaleHeader, tc.lang)
+			w := i18nGet(newI18nEngine(config.DefaultI18n()), LocaleHeader, tc.lang)
 			body := w.Body.String()
 
 			for _, field := range []string{
@@ -73,7 +73,7 @@ func TestI18nPropagatesToAllContexts(t *testing.T) {
 
 // TestI18nFallsBackToDefault 不带语言头时回落默认语言。
 func TestI18nFallsBackToDefault(t *testing.T) {
-	w := i18nGet(newI18nEngine(config.DefaultMiddleware().I18n), LocaleHeader, "")
+	w := i18nGet(newI18nEngine(config.DefaultI18n()), LocaleHeader, "")
 	if !strings.Contains(w.Body.String(), `"msg":"退出成功"`) {
 		t.Errorf("body = %s, 无语言头时应回落中文", w.Body.String())
 	}
@@ -81,7 +81,7 @@ func TestI18nFallsBackToDefault(t *testing.T) {
 
 // TestI18nReadsContentLanguageNotAcceptLanguage 读的是 content-language，不是 Accept-Language。
 func TestI18nReadsContentLanguageNotAcceptLanguage(t *testing.T) {
-	r := newI18nEngine(config.DefaultMiddleware().I18n)
+	r := newI18nEngine(config.DefaultI18n())
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.Header.Set("Accept-Language", "en-US")
@@ -96,7 +96,7 @@ func TestI18nReadsContentLanguageNotAcceptLanguage(t *testing.T) {
 // TestI18nHeaderNameCaseInsensitive 头名大小写不敏感。
 func TestI18nHeaderNameCaseInsensitive(t *testing.T) {
 	for _, name := range []string{"content-language", "Content-Language", "CONTENT-LANGUAGE"} {
-		w := i18nGet(newI18nEngine(config.DefaultMiddleware().I18n), name, "en-US")
+		w := i18nGet(newI18nEngine(config.DefaultI18n()), name, "en-US")
 		if !strings.Contains(w.Body.String(), `"msg":"Exit successful"`) {
 			t.Errorf("头名 %q 未被识别: %s", name, w.Body.String())
 		}
@@ -111,7 +111,7 @@ func TestI18nMalformedHeaderDoesNotFailRequest(t *testing.T) {
 		"zh CN",
 		strings.Repeat("a", 200),
 	} {
-		w := i18nGet(newI18nEngine(config.DefaultMiddleware().I18n), LocaleHeader, bad)
+		w := i18nGet(newI18nEngine(config.DefaultI18n()), LocaleHeader, bad)
 		if w.Code != http.StatusOK {
 			t.Errorf("语言头 %q 导致状态码 %d, 应仍为 200", bad, w.Code)
 		}
@@ -123,7 +123,7 @@ func TestI18nMalformedHeaderDoesNotFailRequest(t *testing.T) {
 
 // TestI18nRejectsHeaderInjection 带 CR/LF 的语言头不得进响应头。
 func TestI18nRejectsHeaderInjection(t *testing.T) {
-	w := i18nGet(newI18nEngine(config.DefaultMiddleware().I18n), LocaleHeader, "zh-CN\r\nX-Injected: 1")
+	w := i18nGet(newI18nEngine(config.DefaultI18n()), LocaleHeader, "zh-CN\r\nX-Injected: 1")
 
 	if got := w.Header().Get("X-Injected"); got != "" {
 		t.Errorf("注入的头被写出: X-Injected = %q", got)
@@ -142,7 +142,7 @@ func TestI18nEchoesContentLanguageHeader(t *testing.T) {
 		"zh-Hans-CN": "zh-hans-cn",
 	}
 	for in, want := range cases {
-		w := i18nGet(newI18nEngine(config.DefaultMiddleware().I18n), LocaleHeader, in)
+		w := i18nGet(newI18nEngine(config.DefaultI18n()), LocaleHeader, in)
 		if got := w.Header().Get("Content-Language"); got != want {
 			t.Errorf("语言头 %q → 响应 Content-Language = %q, 期望 %q", in, got, want)
 		}
@@ -169,7 +169,7 @@ func TestI18nHeaderSetBeforeHandlerWritesBody(t *testing.T) {
 
 // TestI18nWithCustomConfig 自定义配置：换头名、换默认语言。
 func TestI18nWithCustomConfig(t *testing.T) {
-	cfg := config.I18n{Header: "Accept-Language", Default: i18n.LocaleEnUS}
+	cfg := config.I18nConfig{Header: "Accept-Language", Default: i18n.LocaleEnUS}
 	r := newI18nEngine(cfg)
 
 	w := i18nGet(r, "Accept-Language", "zh-CN")
@@ -185,7 +185,7 @@ func TestI18nWithCustomConfig(t *testing.T) {
 
 // TestI18nZeroConfigUsesDefaults 零值配置必须能用，回落到包级默认。
 func TestI18nZeroConfigUsesDefaults(t *testing.T) {
-	w := i18nGet(newI18nEngine(config.I18n{}), LocaleHeader, "en-US")
+	w := i18nGet(newI18nEngine(config.I18nConfig{}), LocaleHeader, "en-US")
 	if !strings.Contains(w.Body.String(), `"msg":"Exit successful"`) {
 		t.Errorf("零值配置应回落默认头名与默认语言: %s", w.Body.String())
 	}

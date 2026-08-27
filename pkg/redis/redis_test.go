@@ -11,8 +11,8 @@ import (
 )
 
 // unreachable 返回指向不存在 Redis 的配置。
-func unreachable() config.Redis {
-	return config.Redis{
+func unreachable() config.RedisConfig {
+	return config.RedisConfig{
 		Host:          "127.0.0.1",
 		Port:          1,
 		DB:            0,
@@ -84,7 +84,7 @@ func TestCloseNilIsSafe(t *testing.T) {
 
 // TestTimeoutDefaults 验证超时项默认值。
 func TestTimeoutDefaults(t *testing.T) {
-	zero := config.Redis{}
+	zero := config.RedisConfig{}
 	if got, want := zero.DialTimeout(), 5*time.Second; got != want {
 		t.Errorf("DialTimeout() = %v, want %v", got, want)
 	}
@@ -95,7 +95,7 @@ func TestTimeoutDefaults(t *testing.T) {
 		t.Errorf("WriteTimeout() = %v, want %v", got, want)
 	}
 
-	set := config.Redis{DialTimeoutMs: 1000, ReadTimeoutMs: 500, WriteTimeoutMs: 1500}
+	set := config.RedisConfig{DialTimeoutMs: 1000, ReadTimeoutMs: 500, WriteTimeoutMs: 1500}
 	if got, want := set.DialTimeout(), time.Second; got != want {
 		t.Errorf("DialTimeout() = %v, want %v", got, want)
 	}
@@ -109,7 +109,7 @@ func TestTimeoutDefaults(t *testing.T) {
 
 // TestTimeoutNegativeFallsBack 验证负值兜底为默认。
 func TestTimeoutNegativeFallsBack(t *testing.T) {
-	r := config.Redis{DialTimeoutMs: -1, ReadTimeoutMs: -100}
+	r := config.RedisConfig{DialTimeoutMs: -1, ReadTimeoutMs: -100}
 	if got, want := r.DialTimeout(), 5*time.Second; got != want {
 		t.Errorf("DialTimeout() = %v, want %v", got, want)
 	}
@@ -120,7 +120,7 @@ func TestTimeoutNegativeFallsBack(t *testing.T) {
 
 // TestMaxIdleTime 验证空闲连接存活时长换算。
 func TestMaxIdleTime(t *testing.T) {
-	r := config.Redis{ConnMaxIdleTime: 600}
+	r := config.RedisConfig{ConnMaxIdleTime: 600}
 	if got, want := r.MaxIdleTime(), 10*time.Minute; got != want {
 		t.Errorf("MaxIdleTime() = %v, want %v", got, want)
 	}

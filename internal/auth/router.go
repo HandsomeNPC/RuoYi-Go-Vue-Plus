@@ -22,7 +22,9 @@ func InitRouter() *gin.Engine {
 	r.Use(middleware.AccessLog())
 	r.Use(middleware.XSS())
 	r.Use(middleware.I18n())
-	r.Use(middleware.Auth())
+
+	// TODO: 阶段 3 接入 sagin 鉴权中间件（sagin.NewPlugin(...).PathAuthMiddleware / AuthMiddleware）。
+	//       免鉴权名单（/auth/**）届时由 PathAuthConfig.SetExclude 承担。
 
 	cfg := config.Get()
 

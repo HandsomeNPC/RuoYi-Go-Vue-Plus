@@ -17,7 +17,7 @@ const (
 )
 
 // Datasource MySQL 数据源配置。
-type Datasource struct {
+type DatasourceConfig struct {
 	Driver          string `mapstructure:"driver"`
 	Host            string `mapstructure:"host"`
 	Port            int    `mapstructure:"port"`
@@ -34,23 +34,23 @@ type Datasource struct {
 }
 
 // DSN 返回 GORM MySQL 连接串。
-func (d Datasource) DSN() string {
+func (d DatasourceConfig) DSN() string {
 	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?%s",
 		d.Username, d.Password, d.Host, d.Port, d.DBName, d.Params)
 }
 
 // MaxLifetime 返回连接最大存活时长。
-func (d Datasource) MaxLifetime() time.Duration {
+func (d DatasourceConfig) MaxLifetime() time.Duration {
 	return time.Duration(d.ConnMaxLifetime) * time.Second
 }
 
 // MaxIdleTime 返回空闲连接最大存活时长。
-func (d Datasource) MaxIdleTime() time.Duration {
+func (d DatasourceConfig) MaxIdleTime() time.Duration {
 	return time.Duration(d.ConnMaxIdleTime) * time.Second
 }
 
 // SlowThreshold 返回慢 SQL 阈值，未配置时默认 200ms。
-func (d Datasource) SlowThreshold() time.Duration {
+func (d DatasourceConfig) SlowThreshold() time.Duration {
 	if d.SlowThresholdMs <= 0 {
 		return 200 * time.Millisecond
 	}
@@ -58,7 +58,7 @@ func (d Datasource) SlowThreshold() time.Duration {
 }
 
 // Level 返回规范化后的 SQL 日志级别，未配置时默认 warn。
-func (d Datasource) Level() string {
+func (d DatasourceConfig) Level() string {
 	if d.LogLevel == "" {
 		return LogLevelWarn
 	}
@@ -66,7 +66,7 @@ func (d Datasource) Level() string {
 }
 
 // validate 校验数据源配置。
-func (d Datasource) validate() error {
+func (d DatasourceConfig) validate() error {
 	if d.Driver != "" && d.Driver != DriverMySQL {
 		return errInvalid("datasource.driver", "仅支持 "+DriverMySQL)
 	}

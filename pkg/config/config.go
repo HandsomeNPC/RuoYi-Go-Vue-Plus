@@ -10,12 +10,18 @@ import (
 
 // Config 应用完整配置。
 type Config struct {
-	Server     Server     `mapstructure:"server"`
-	Datasource Datasource `mapstructure:"datasource"`
-	Redis      Redis      `mapstructure:"redis"`
-	JWT        JWT        `mapstructure:"jwt"`
-	Middleware Middleware `mapstructure:"middleware"`
-	User       User       `mapstructure:"user"`
+	Server         ServerConfig         `mapstructure:"server"`
+	Datasource     DatasourceConfig     `mapstructure:"datasource"`
+	Redis          RedisConfig          `mapstructure:"redis"`
+	SAToken        SATokenConfig        `mapstructure:"satoken"`
+	CORS           CORSConfig           `mapstructure:"cors"`
+	XSS            XSSConfig            `mapstructure:"xss"`
+	AccessLog      AccessLogConfig      `mapstructure:"accessLog"`
+	TraceID        TraceIDConfig        `mapstructure:"traceId"`
+	RepeatableBody RepeatableBodyConfig `mapstructure:"repeatableBody"`
+	I18n           I18nConfig           `mapstructure:"i18n"`
+	APIEncrypt     APIEncryptConfig     `mapstructure:"apiEncrypt"`
+	User           UserConfig           `mapstructure:"user"`
 }
 
 // Load 按顺序读取并合并多个 yaml 配置文件，后者覆盖前者，随后写入包级实例。
@@ -27,8 +33,17 @@ func Load(paths ...string) {
 	v := viper.New()
 	v.SetConfigType("yaml")
 
-	setMiddlewareDefaults(v)
-	setUserDefaults(v)
+	// 默认值必须在读配置文件之前铺好，否则 yaml 没写的字段会落零值而非默认值。
+	// 中间件配置已拍平到 Config 顶层，yaml 键也从 middleware.* 提到 cors:/xss:/... 顶层。
+	DefaultCORS().setDefaults(v)
+	DefaultXSS().setDefaults(v)
+	DefaultAccessLog().setDefaults(v)
+	DefaultTraceID().setDefaults(v)
+	DefaultRepeatableBody().setDefaults(v)
+	DefaultI18n().setDefaults(v)
+	DefaultAPIEncrypt().setDefaults(v)
+	DefaultSAToken().setDefaults(v)
+	DefaultUser().setDefaults(v)
 
 	for i, path := range paths {
 		v.SetConfigFile(path)
@@ -78,8 +93,14 @@ func (c *Config) validate() error {
 		c.Server.validate,
 		c.Datasource.validate,
 		c.Redis.validate,
-		c.JWT.validate,
-		c.Middleware.validate,
+		c.SAToken.validate,
+		c.CORS.validate,
+		c.XSS.validate,
+		c.AccessLog.validate,
+		c.TraceID.validate,
+		c.RepeatableBody.validate,
+		c.I18n.validate,
+		c.APIEncrypt.validate,
 		c.User.validate,
 	}
 	for _, fn := range validators {

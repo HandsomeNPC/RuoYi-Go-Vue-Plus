@@ -19,16 +19,16 @@ var reHTMLTag = regexp.MustCompile(`<[^<]*?>`)
 
 // XSS 请求清洗中间件，配置取自 config.Get()。
 func XSS() gin.HandlerFunc {
-	return XSSWithConfig(config.Get().Middleware.XSS)
+	return XSSWithConfig(config.Get().XSS)
 }
 
 // XSSWithConfig 请求清洗中间件：把请求里的 HTML 标签剔掉（保留标签内的文字）。
 // 必须注册在 RepeatableBody 之后、所有读参数的中间件与 handler 之前。
-func XSSWithConfig(cfg config.XSS) gin.HandlerFunc {
+func XSSWithConfig(cfg config.XSSConfig) gin.HandlerFunc {
 	skip := make(map[string]struct{}, len(cfg.SkipMethods))
 	methods := cfg.SkipMethods
 	if len(methods) == 0 {
-		methods = config.DefaultMiddleware().XSS.SkipMethods
+		methods = config.DefaultXSS().SkipMethods
 	}
 	for _, m := range methods {
 		skip[strings.ToUpper(strings.TrimSpace(m))] = struct{}{}

@@ -15,7 +15,7 @@ import (
 )
 
 // newTraceEngine 构造只挂 TraceID 的引擎，回写两处上下文里看到的 id。
-func newTraceEngine(cfg config.TraceID) *gin.Engine {
+func newTraceEngine(cfg config.TraceIDConfig) *gin.Engine {
 	r := gin.New()
 	r.Use(TraceIDWithConfig(cfg))
 	r.GET("/test", func(c *gin.Context) {
@@ -40,7 +40,7 @@ func traceGet(r *gin.Engine, inbound string) *httptest.ResponseRecorder {
 
 // TestTraceIDGeneratesAndPropagates 没有入站 id 时应生成一个，且三处一致。
 func TestTraceIDGeneratesAndPropagates(t *testing.T) {
-	w := traceGet(newTraceEngine(config.DefaultMiddleware().TraceID), "")
+	w := traceGet(newTraceEngine(config.DefaultTraceID()), "")
 
 	id := w.Header().Get(TraceIDHeader)
 	if id == "" {
@@ -56,7 +56,7 @@ func TestTraceIDGeneratesAndPropagates(t *testing.T) {
 
 // TestTraceIDUniquePerRequest 每个请求必须拿到不同的 id。
 func TestTraceIDUniquePerRequest(t *testing.T) {
-	r := newTraceEngine(config.DefaultMiddleware().TraceID)
+	r := newTraceEngine(config.DefaultTraceID())
 
 	seen := make(map[string]bool, 100)
 	for range 100 {
@@ -86,7 +86,7 @@ func TestNewTraceIDFormat(t *testing.T) {
 func TestTraceIDReusesInbound(t *testing.T) {
 	inbound := "0af7651916cd43dd8448eb211c80319c"
 
-	w := traceGet(newTraceEngine(config.DefaultMiddleware().TraceID), inbound)
+	w := traceGet(newTraceEngine(config.DefaultTraceID()), inbound)
 
 	if got := w.Header().Get(TraceIDHeader); got != inbound {
 		t.Errorf("响应头 id = %q, want %q（应沿用入站 id）", got, inbound)
@@ -98,7 +98,7 @@ func TestTraceIDReusesInbound(t *testing.T) {
 
 // TestTraceIDDistrustInbound TrustInbound=false 时必须忽略入站 id 自己生成。
 func TestTraceIDDistrustInbound(t *testing.T) {
-	cfg := config.DefaultMiddleware().TraceID
+	cfg := config.DefaultTraceID()
 	cfg.TrustInbound = false
 	inbound := "attacker-supplied-id"
 
@@ -125,7 +125,7 @@ func TestTraceIDRejectsMaliciousInbound(t *testing.T) {
 		"CORS 头闭合字符": "abc\"def",
 	}
 
-	r := newTraceEngine(config.DefaultMiddleware().TraceID)
+	r := newTraceEngine(config.DefaultTraceID())
 	for name, inbound := range cases {
 		t.Run(name, func(t *testing.T) {
 			w := traceGet(r, inbound)
@@ -189,7 +189,7 @@ func TestTraceIDHeaderSetBeforeHandlerWrites(t *testing.T) {
 
 // TestTraceIDCustomHeader 自定义头名要生效。
 func TestTraceIDCustomHeader(t *testing.T) {
-	cfg := config.DefaultMiddleware().TraceID
+	cfg := config.DefaultTraceID()
 	cfg.Header = "X-Trace-Id"
 	r := newTraceEngine(cfg)
 
@@ -208,7 +208,7 @@ func TestTraceIDCustomHeader(t *testing.T) {
 
 // TestTraceIDEmptyHeaderFallsBack Header 留空要回落到默认头名。
 func TestTraceIDEmptyHeaderFallsBack(t *testing.T) {
-	w := traceGet(newTraceEngine(config.TraceID{TrustInbound: true}), "")
+	w := traceGet(newTraceEngine(config.TraceIDConfig{TrustInbound: true}), "")
 
 	if w.Header().Get(TraceIDHeader) == "" {
 		t.Errorf("Header 为空时应回落到 %s", TraceIDHeader)
@@ -217,14 +217,14 @@ func TestTraceIDEmptyHeaderFallsBack(t *testing.T) {
 
 // TestTraceIDExposedByDefaultCORS TraceID 必须在 CORS 的 ExposedHeaders 里。
 func TestTraceIDExposedByDefaultCORS(t *testing.T) {
-	exposed := config.DefaultMiddleware().CORS.ExposedHeaders
+	exposed := config.DefaultCORS().ExposedHeaders
 
 	for _, h := range exposed {
 		if h == TraceIDHeader {
 			return
 		}
 	}
-	t.Errorf("config.DefaultMiddleware().CORS.ExposedHeaders = %v, 应含 %s", exposed, TraceIDHeader)
+	t.Errorf("config.DefaultCORS().ExposedHeaders = %v, 应含 %s", exposed, TraceIDHeader)
 }
 
 // TestRecoverLogsIncludeTraceID Recover 的日志要带上 traceId。

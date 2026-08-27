@@ -25,7 +25,7 @@ func runCapturingLog(t *testing.T, fn func()) string {
 }
 
 // newAccessLogEngine 构造 TraceID + RepeatableBody + AccessLog 的引擎。
-func newAccessLogEngine(cfg config.AccessLog) *gin.Engine {
+func newAccessLogEngine(cfg config.AccessLogConfig) *gin.Engine {
 	r := gin.New()
 	r.Use(Recover())
 	r.Use(TraceID())
@@ -57,7 +57,7 @@ func accessLogDo(t *testing.T, r *gin.Engine, method, target, contentType, body 
 
 // TestAccessLogStartAndEnd 一次请求必须打「开始」「结束」两行。
 func TestAccessLogStartAndEnd(t *testing.T) {
-	out := accessLogDo(t, newAccessLogEngine(config.DefaultMiddleware().AccessLog),
+	out := accessLogDo(t, newAccessLogEngine(config.DefaultAccessLog()),
 		http.MethodGet, "/test", "", "")
 
 	if !strings.Contains(out, "开始请求 => URL[GET /test]") {
@@ -73,7 +73,7 @@ func TestAccessLogStartAndEnd(t *testing.T) {
 
 // TestAccessLogNoParam 无参数时走「无参数」分支。
 func TestAccessLogNoParam(t *testing.T) {
-	out := accessLogDo(t, newAccessLogEngine(config.DefaultMiddleware().AccessLog),
+	out := accessLogDo(t, newAccessLogEngine(config.DefaultAccessLog()),
 		http.MethodGet, "/test", "", "")
 
 	if !strings.Contains(out, "无参数") {
@@ -83,7 +83,7 @@ func TestAccessLogNoParam(t *testing.T) {
 
 // TestAccessLogSanitizesJSONBody JSON body 里的密码字段必须被摘掉，其余字段保留。
 func TestAccessLogSanitizesJSONBody(t *testing.T) {
-	out := accessLogDo(t, newAccessLogEngine(config.DefaultMiddleware().AccessLog),
+	out := accessLogDo(t, newAccessLogEngine(config.DefaultAccessLog()),
 		http.MethodPost, "/test", "application/json;charset=UTF-8",
 		`{"username":"admin","password":"admin123"}`)
 
@@ -103,7 +103,7 @@ func TestAccessLogSanitizesJSONBody(t *testing.T) {
 
 // TestAccessLogSanitizesNested 嵌套结构和数组里的敏感字段同样要摘掉。
 func TestAccessLogSanitizesNested(t *testing.T) {
-	out := accessLogDo(t, newAccessLogEngine(config.DefaultMiddleware().AccessLog),
+	out := accessLogDo(t, newAccessLogEngine(config.DefaultAccessLog()),
 		http.MethodPost, "/test", "application/json",
 		`{"list":[{"name":"a","password":"leak1"}],"user":{"newPassword":"leak2"}}`)
 
@@ -117,7 +117,7 @@ func TestAccessLogSanitizesNested(t *testing.T) {
 
 // TestAccessLogKeepsLargeIntegerPrecision 雪花 id 是 19 位整数，不能被 float64 抹掉尾数。
 func TestAccessLogKeepsLargeIntegerPrecision(t *testing.T) {
-	out := accessLogDo(t, newAccessLogEngine(config.DefaultMiddleware().AccessLog),
+	out := accessLogDo(t, newAccessLogEngine(config.DefaultAccessLog()),
 		http.MethodPost, "/test", "application/json",
 		`{"userId":1761100000000000001}`)
 
@@ -128,7 +128,7 @@ func TestAccessLogKeepsLargeIntegerPrecision(t *testing.T) {
 
 // TestAccessLogDropsUnparsableSensitiveBody 非法 JSON 且含敏感字段名时整段丢弃。
 func TestAccessLogDropsUnparsableSensitiveBody(t *testing.T) {
-	out := accessLogDo(t, newAccessLogEngine(config.DefaultMiddleware().AccessLog),
+	out := accessLogDo(t, newAccessLogEngine(config.DefaultAccessLog()),
 		http.MethodPost, "/test", "application/json",
 		`{"username":"admin","password":"admin123`)
 
@@ -142,7 +142,7 @@ func TestAccessLogDropsUnparsableSensitiveBody(t *testing.T) {
 
 // TestAccessLogKeepsUnparsableSafeBody 非法 JSON 但不含敏感字段时保留原文。
 func TestAccessLogKeepsUnparsableSafeBody(t *testing.T) {
-	out := accessLogDo(t, newAccessLogEngine(config.DefaultMiddleware().AccessLog),
+	out := accessLogDo(t, newAccessLogEngine(config.DefaultAccessLog()),
 		http.MethodPost, "/test", "application/json", `{"name":"admin`)
 
 	if !strings.Contains(out, "admin") {
@@ -155,7 +155,7 @@ func TestAccessLogSanitizesQueryParams(t *testing.T) {
 	r := gin.New()
 	r.Use(TraceID())
 	var gotPassword string
-	r.Use(AccessLogWithConfig(config.DefaultMiddleware().AccessLog))
+	r.Use(AccessLogWithConfig(config.DefaultAccessLog()))
 	r.GET("/test", func(c *gin.Context) {
 		gotPassword = c.Query("password")
 		c.Status(http.StatusOK)
@@ -181,7 +181,7 @@ func TestAccessLogSanitizesQueryParams(t *testing.T) {
 // TestAccessLogDoesNotLeakRawQueryString 打日志时不能把 URL 的原始查询串直接输出。
 func TestAccessLogDoesNotLeakRawQueryString(t *testing.T) {
 	r := gin.New()
-	r.Use(AccessLogWithConfig(config.DefaultMiddleware().AccessLog))
+	r.Use(AccessLogWithConfig(config.DefaultAccessLog()))
 	r.GET("/test", func(c *gin.Context) { c.Status(http.StatusOK) })
 
 	out := runCapturingLog(t, func() {
@@ -197,7 +197,7 @@ func TestAccessLogDoesNotLeakRawQueryString(t *testing.T) {
 // TestAccessLogTruncatesLongParam 超长参数必须截断，且带上截断标记。
 func TestAccessLogTruncatesLongParam(t *testing.T) {
 	long := strings.Repeat("a", 5000)
-	out := accessLogDo(t, newAccessLogEngine(config.DefaultMiddleware().AccessLog),
+	out := accessLogDo(t, newAccessLogEngine(config.DefaultAccessLog()),
 		http.MethodPost, "/test", "application/json", `{"name":"`+long+`"}`)
 
 	if !strings.Contains(out, truncatedSuffix) {
@@ -228,7 +228,7 @@ func TestLimitParamExactLength(t *testing.T) {
 
 // TestAccessLogSkipPaths SkipPaths 里的路径完全不打日志。
 func TestAccessLogSkipPaths(t *testing.T) {
-	cfg := config.DefaultMiddleware().AccessLog
+	cfg := config.DefaultAccessLog()
 	cfg.SkipPaths = []string{"/health"}
 	r := newAccessLogEngine(cfg)
 
@@ -244,7 +244,7 @@ func TestAccessLogSkipPaths(t *testing.T) {
 func TestAccessLogEndLineOnPanic(t *testing.T) {
 	r := gin.New()
 	r.Use(Recover())
-	r.Use(AccessLogWithConfig(config.DefaultMiddleware().AccessLog))
+	r.Use(AccessLogWithConfig(config.DefaultAccessLog()))
 	r.GET("/test", func(c *gin.Context) { panic("boom") })
 
 	out := runCapturingLog(t, func() {
@@ -261,7 +261,7 @@ func TestAccessLogDoesNotConsumeBody(t *testing.T) {
 	r := gin.New()
 	r.Use(TraceID())
 	r.Use(RepeatableBody())
-	r.Use(AccessLogWithConfig(config.DefaultMiddleware().AccessLog))
+	r.Use(AccessLogWithConfig(config.DefaultAccessLog()))
 
 	var bound string
 	r.POST("/test", func(c *gin.Context) {
@@ -289,7 +289,7 @@ func TestAccessLogDoesNotConsumeBody(t *testing.T) {
 // TestAccessLogWithoutRepeatableBody 没挂 RepeatableBody 时只能打空参数，绝不回头读 c.Request.Body。
 func TestAccessLogWithoutRepeatableBody(t *testing.T) {
 	r := gin.New()
-	r.Use(AccessLogWithConfig(config.DefaultMiddleware().AccessLog))
+	r.Use(AccessLogWithConfig(config.DefaultAccessLog()))
 
 	var bound string
 	r.POST("/test", func(c *gin.Context) {
@@ -321,7 +321,7 @@ func TestAccessLogWithoutRepeatableBody(t *testing.T) {
 func TestAccessLogHasTraceID(t *testing.T) {
 	r := gin.New()
 	r.Use(TraceID())
-	r.Use(AccessLogWithConfig(config.DefaultMiddleware().AccessLog))
+	r.Use(AccessLogWithConfig(config.DefaultAccessLog()))
 	r.GET("/test", func(c *gin.Context) { c.Status(http.StatusOK) })
 
 	var id string

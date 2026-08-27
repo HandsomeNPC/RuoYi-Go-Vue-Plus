@@ -15,11 +15,11 @@ const LocaleKey = "locale"
 
 // I18n 国际化中间件，配置取自 config.Get()。
 func I18n() gin.HandlerFunc {
-	return I18nWithConfig(config.Get().Middleware.I18n)
+	return I18nWithConfig(config.Get().I18n)
 }
 
 // I18nWithConfig 国际化中间件。必须注册在 Auth 之前。
-func I18nWithConfig(cfg config.I18n) gin.HandlerFunc {
+func I18nWithConfig(cfg config.I18nConfig) gin.HandlerFunc {
 	header := cfg.Header
 	if header == "" {
 		header = LocaleHeader

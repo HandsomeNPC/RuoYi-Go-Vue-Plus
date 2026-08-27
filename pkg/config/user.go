@@ -7,7 +7,7 @@ import (
 )
 
 // User 用户相关业务配置，对应 yaml 的 user 段。
-type User struct {
+type UserConfig struct {
 	Password UserPassword `mapstructure:"password"`
 }
 
@@ -20,9 +20,9 @@ type UserPassword struct {
 	LockTime int `mapstructure:"lockTime"`
 }
 
-// defaultUser 返回默认配置。
-func defaultUser() User {
-	return User{
+// DefaultUser 返回用户默认配置。
+func DefaultUser() UserConfig {
+	return UserConfig{
 		Password: UserPassword{
 			MaxRetryCount: 5,
 			LockTime:      10,
@@ -35,15 +35,14 @@ func (p UserPassword) Lock() time.Duration {
 	return time.Duration(p.LockTime) * time.Minute
 }
 
-// setUserDefaults 把默认值铺给 viper，必须在读配置文件之前调用。
-func setUserDefaults(v *viper.Viper) {
-	d := defaultUser()
-	v.SetDefault("user.password.maxRetryCount", d.Password.MaxRetryCount)
-	v.SetDefault("user.password.lockTime", d.Password.LockTime)
+// setDefaults 把默认值铺给 viper。
+func (u UserConfig) setDefaults(v *viper.Viper) {
+	v.SetDefault("user.password.maxRetryCount", u.Password.MaxRetryCount)
+	v.SetDefault("user.password.lockTime", u.Password.LockTime)
 }
 
 // validate 校验用户配置。
-func (u User) validate() error {
+func (u UserConfig) validate() error {
 	if u.Password.MaxRetryCount <= 0 {
 		return errInvalid("user.password.maxRetryCount", "必须大于 0")
 	}

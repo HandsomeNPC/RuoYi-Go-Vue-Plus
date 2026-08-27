@@ -6,7 +6,7 @@ import (
 )
 
 // Redis 缓存/会话/分布式锁配置。
-type Redis struct {
+type RedisConfig struct {
 	Host     string `mapstructure:"host"`
 	Port     int    `mapstructure:"port"`
 	Password string `mapstructure:"password"`
@@ -22,27 +22,27 @@ type Redis struct {
 }
 
 // Addr 返回 Redis 连接地址。
-func (r Redis) Addr() string {
+func (r RedisConfig) Addr() string {
 	return fmt.Sprintf("%s:%d", r.Host, r.Port)
 }
 
 // DialTimeout 返回建连超时，未配置时默认 5s。
-func (r Redis) DialTimeout() time.Duration {
+func (r RedisConfig) DialTimeout() time.Duration {
 	return msOrDefault(r.DialTimeoutMs, 5*time.Second)
 }
 
 // ReadTimeout 返回读超时，未配置时默认 3s。
-func (r Redis) ReadTimeout() time.Duration {
+func (r RedisConfig) ReadTimeout() time.Duration {
 	return msOrDefault(r.ReadTimeoutMs, 3*time.Second)
 }
 
 // WriteTimeout 返回写超时，未配置时默认 3s。
-func (r Redis) WriteTimeout() time.Duration {
+func (r RedisConfig) WriteTimeout() time.Duration {
 	return msOrDefault(r.WriteTimeoutMs, 3*time.Second)
 }
 
 // MaxIdleTime 返回空闲连接最大存活时长。
-func (r Redis) MaxIdleTime() time.Duration {
+func (r RedisConfig) MaxIdleTime() time.Duration {
 	return time.Duration(r.ConnMaxIdleTime) * time.Second
 }
 
@@ -55,7 +55,7 @@ func msOrDefault(ms int, fallback time.Duration) time.Duration {
 }
 
 // validate 校验 Redis 配置。
-func (r Redis) validate() error {
+func (r RedisConfig) validate() error {
 	if r.Host == "" {
 		return errMissing("redis.host")
 	}

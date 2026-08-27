@@ -11,7 +11,7 @@ import (
 )
 
 // newLogger 按数据源配置构造 GORM 日志器。
-func newLogger(cfg config.Datasource) gormlogger.Interface {
+func newLogger(cfg config.DatasourceConfig) gormlogger.Interface {
 	return gormlogger.New(
 		log.New(os.Stdout, "[sql] ", log.LstdFlags),
 		gormlogger.Config{

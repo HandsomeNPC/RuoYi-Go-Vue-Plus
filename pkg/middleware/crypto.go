@@ -25,11 +25,11 @@ const msgEncryptRequired = "没有访问权限，请联系管理员授权"
 
 // APIEncrypt 接口加解密中间件，配置取自 config.Get()。
 func APIEncrypt() gin.HandlerFunc {
-	return APIEncryptWithConfig(config.Get().Middleware.APIEncrypt)
+	return APIEncryptWithConfig(config.Get().APIEncrypt)
 }
 
 // APIEncryptWithConfig 接口加解密中间件。必须注册在 RepeatableBody 之前。
-func APIEncryptWithConfig(cfg config.APIEncrypt) gin.HandlerFunc {
+func APIEncryptWithConfig(cfg config.APIEncryptConfig) gin.HandlerFunc {
 	if !cfg.Enabled {
 		return func(c *gin.Context) { c.Next() }
 	}
@@ -53,7 +53,7 @@ func APIEncryptWithConfig(cfg config.APIEncrypt) gin.HandlerFunc {
 
 	maxSize := cfg.MaxBodySize
 	if maxSize <= 0 {
-		maxSize = config.DefaultMiddleware().APIEncrypt.MaxBodySize
+		maxSize = config.DefaultAPIEncrypt().MaxBodySize
 	}
 
 	return func(c *gin.Context) {

@@ -78,7 +78,7 @@ func rsaEncryptHeader(t *testing.T, aesPassword string, pub *rsa.PublicKey) stri
 }
 
 // newCryptoEngine 构造完整链路：APIEncrypt → RepeatableBody → AccessLog → XSS。
-func newCryptoEngine(cfg config.APIEncrypt) *gin.Engine {
+func newCryptoEngine(cfg config.APIEncryptConfig) *gin.Engine {
 	r := gin.New()
 	r.Use(Recover())
 	r.Use(TraceID())
@@ -107,8 +107,8 @@ func newCryptoEngine(cfg config.APIEncrypt) *gin.Engine {
 }
 
 // enabledConfig 一份启用了解密的配置。
-func enabledConfig(kp testKeyPair) config.APIEncrypt {
-	return config.APIEncrypt{
+func enabledConfig(kp testKeyPair) config.APIEncryptConfig {
+	return config.APIEncryptConfig{
 		Enabled:     true,
 		HeaderFlag:  config.DefaultAPIEncryptHeader,
 		PrivateKey:  kp.privBase64,
@@ -353,7 +353,7 @@ func TestAPIEncryptAbortsOnFailure(t *testing.T) {
 
 // TestAPIEncryptDisabled 关闭时应完全放行。
 func TestAPIEncryptDisabled(t *testing.T) {
-	r := newCryptoEngine(config.APIEncrypt{Enabled: false})
+	r := newCryptoEngine(config.APIEncryptConfig{Enabled: false})
 
 	req := httptest.NewRequest(http.MethodPost, "/auth/login",
 		strings.NewReader(`{"username":"admin"}`))
@@ -431,7 +431,7 @@ func TestAPIEncryptPanicsOnBadKey(t *testing.T) {
 			t.Error("私钥非法时应 panic（启动期编排错误）")
 		}
 	}()
-	APIEncryptWithConfig(config.APIEncrypt{
+	APIEncryptWithConfig(config.APIEncryptConfig{
 		Enabled:    true,
 		PrivateKey: "not-a-key",
 	})
@@ -485,7 +485,7 @@ func TestAPIEncryptDeliversHandlerErrors(t *testing.T) {
 //
 // 响应加密用的公钥在真实部署里是**前端的**公钥（服务端加密、前端用配套
 // 私钥解密）。测试里用同一对，好让我们能解开来验证。
-func responseConfig(kp testKeyPair) config.APIEncrypt {
+func responseConfig(kp testKeyPair) config.APIEncryptConfig {
 	cfg := enabledConfig(kp)
 	cfg.ResponseURLs = []string{"/auth/login"}
 	return cfg

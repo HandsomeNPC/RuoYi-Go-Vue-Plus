@@ -47,7 +47,7 @@ func (s *passwordAuthStrategy) Login(ctx context.Context, body []byte,
 	loginUser.DeviceType = client.DeviceType
 
 	// TODO(阶段 3): 签发令牌（对应 Java IAuthStrategy.buildLoginParameter + LoginHelper.login），
-	// 回填 LoginVo.AccessToken / ExpireIn。pkg/auth 尚未实现。
+	// 回填 LoginVo.AccessToken / ExpireIn。pkg/satoken 已就绪，调 sagin.Login + SetPermissions/SetRoles。
 	_ = loginUser
 	return &authvo.LoginVo{ClientID: client.ClientID}, nil
 }

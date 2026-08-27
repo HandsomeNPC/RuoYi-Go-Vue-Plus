@@ -12,11 +12,11 @@ import (
 
 // CORS 跨域中间件，配置取自 config.Get()。
 func CORS() gin.HandlerFunc {
-	return CORSWithConfig(config.Get().Middleware.CORS)
+	return CORSWithConfig(config.Get().CORS)
 }
 
 // CORSWithConfig 跨域中间件。必须注册在 Auth 之前。
-func CORSWithConfig(cfg config.CORS) gin.HandlerFunc {
+func CORSWithConfig(cfg config.CORSConfig) gin.HandlerFunc {
 	maxAge := strconv.FormatInt(int64(cfg.MaxAge().Seconds()), 10)
 	exposed := strings.Join(cfg.ExposedHeaders, ", ")
 

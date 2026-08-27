@@ -25,11 +25,11 @@ const traceIDMaxLength = 64
 
 // TraceID 链路 id 中间件，配置取自 config.Get()。
 func TraceID() gin.HandlerFunc {
-	return TraceIDWithConfig(config.Get().Middleware.TraceID)
+	return TraceIDWithConfig(config.Get().TraceID)
 }
 
 // TraceIDWithConfig 链路 id 中间件：取或生成 id，写进上下文与响应头。必须注册在 CORS 之后。
-func TraceIDWithConfig(cfg config.TraceID) gin.HandlerFunc {
+func TraceIDWithConfig(cfg config.TraceIDConfig) gin.HandlerFunc {
 	header := cfg.Header
 	if header == "" {
 		header = TraceIDHeader

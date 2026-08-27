@@ -14,8 +14,8 @@ import (
 )
 
 // unreachable 返回指向不存在数据库的配置。
-func unreachable() config.Datasource {
-	return config.Datasource{
+func unreachable() config.DatasourceConfig {
+	return config.DatasourceConfig{
 		Driver:   config.DriverMySQL,
 		Host:     "127.0.0.1",
 		Port:     1,
@@ -139,7 +139,7 @@ func TestSlowThreshold(t *testing.T) {
 		1000: time.Second,
 	}
 	for ms, want := range tests {
-		d := config.Datasource{SlowThresholdMs: ms}
+		d := config.DatasourceConfig{SlowThresholdMs: ms}
 		if got := d.SlowThreshold(); got != want {
 			t.Errorf("SlowThresholdMs=%d: SlowThreshold() = %v, want %v", ms, got, want)
 		}
@@ -148,10 +148,10 @@ func TestSlowThreshold(t *testing.T) {
 
 // TestDatasourceLevelDefault 验证日志级别缺省为 warn。
 func TestDatasourceLevelDefault(t *testing.T) {
-	if got, want := (config.Datasource{}).Level(), config.LogLevelWarn; got != want {
+	if got, want := (config.DatasourceConfig{}).Level(), config.LogLevelWarn; got != want {
 		t.Errorf("Level() = %q, want %q", got, want)
 	}
-	if got, want := (config.Datasource{LogLevel: config.LogLevelInfo}).Level(),
+	if got, want := (config.DatasourceConfig{LogLevel: config.LogLevelInfo}).Level(),
 		config.LogLevelInfo; got != want {
 		t.Errorf("Level() = %q, want %q", got, want)
 	}
@@ -159,7 +159,7 @@ func TestDatasourceLevelDefault(t *testing.T) {
 
 // TestMaxIdleTime 验证空闲连接存活时长换算。
 func TestMaxIdleTime(t *testing.T) {
-	d := config.Datasource{ConnMaxIdleTime: 600}
+	d := config.DatasourceConfig{ConnMaxIdleTime: 600}
 	if got, want := d.MaxIdleTime(), 10*time.Minute; got != want {
 		t.Errorf("MaxIdleTime() = %v, want %v", got, want)
 	}

@@ -12,8 +12,8 @@ const TraceIDHeader = "X-Request-Id"
 // defaultCORSMaxAgeSeconds 预检结果缓存时长。
 const defaultCORSMaxAgeSeconds = 1800
 
-// CORS 跨域配置。
-type CORS struct {
+// CORSConfig 跨域配置。
+type CORSConfig struct {
 	// AllowCredentials 是否允许携带凭证(cookie / Authorization)。
 	AllowCredentials bool `mapstructure:"allowCredentials"`
 
@@ -34,13 +34,13 @@ type CORS struct {
 }
 
 // MaxAge 返回预检结果缓存时长。
-func (c CORS) MaxAge() time.Duration {
+func (c CORSConfig) MaxAge() time.Duration {
 	return time.Duration(c.MaxAgeSeconds) * time.Second
 }
 
-// defaultCORS 返回默认配置。
-func defaultCORS() CORS {
-	return CORS{
+// DefaultCORS 返回跨域默认配置。
+func DefaultCORS() CORSConfig {
+	return CORSConfig{
 		AllowCredentials:      true,
 		AllowedOriginPatterns: []string{"*"},
 		AllowedMethods:        []string{"*"},
@@ -51,22 +51,22 @@ func defaultCORS() CORS {
 }
 
 // setDefaults 把默认值铺给 viper。
-func (c CORS) setDefaults(v *viper.Viper) {
-	v.SetDefault("middleware.cors.allowCredentials", c.AllowCredentials)
-	v.SetDefault("middleware.cors.allowedOriginPatterns", c.AllowedOriginPatterns)
-	v.SetDefault("middleware.cors.allowedMethods", c.AllowedMethods)
-	v.SetDefault("middleware.cors.allowedHeaders", c.AllowedHeaders)
-	v.SetDefault("middleware.cors.exposedHeaders", c.ExposedHeaders)
-	v.SetDefault("middleware.cors.maxAgeSeconds", c.MaxAgeSeconds)
+func (c CORSConfig) setDefaults(v *viper.Viper) {
+	v.SetDefault("cors.allowCredentials", c.AllowCredentials)
+	v.SetDefault("cors.allowedOriginPatterns", c.AllowedOriginPatterns)
+	v.SetDefault("cors.allowedMethods", c.AllowedMethods)
+	v.SetDefault("cors.allowedHeaders", c.AllowedHeaders)
+	v.SetDefault("cors.exposedHeaders", c.ExposedHeaders)
+	v.SetDefault("cors.maxAgeSeconds", c.MaxAgeSeconds)
 }
 
 // validate 校验跨域配置。
-func (c CORS) validate() error {
+func (c CORSConfig) validate() error {
 	if c.MaxAgeSeconds < 0 {
-		return errInvalid("middleware.cors.maxAgeSeconds", "不能为负数")
+		return errInvalid("cors.maxAgeSeconds", "不能为负数")
 	}
 	if len(c.AllowedOriginPatterns) == 0 {
-		return errMissing("middleware.cors.allowedOriginPatterns")
+		return errMissing("cors.allowedOriginPatterns")
 	}
 	return nil
 }

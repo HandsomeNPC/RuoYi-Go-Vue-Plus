@@ -17,14 +17,14 @@ const ContentTypeJSON = config.ContentTypeJSON
 
 // RepeatableBody 可重复读请求体中间件，配置取自 config.Get()。
 func RepeatableBody() gin.HandlerFunc {
-	return RepeatableBodyWithConfig(config.Get().Middleware.RepeatableBody)
+	return RepeatableBodyWithConfig(config.Get().RepeatableBody)
 }
 
 // RepeatableBodyWithConfig 可重复读请求体中间件。
-func RepeatableBodyWithConfig(cfg config.RepeatableBody) gin.HandlerFunc {
+func RepeatableBodyWithConfig(cfg config.RepeatableBodyConfig) gin.HandlerFunc {
 	maxSize := cfg.MaxBodySize
 	if maxSize <= 0 {
-		maxSize = config.DefaultMiddleware().RepeatableBody.MaxBodySize
+		maxSize = config.DefaultRepeatableBody().MaxBodySize
 	}
 	types := make([]string, 0, len(cfg.ContentTypes))
 	for _, t := range cfg.ContentTypes {

@@ -15,7 +15,7 @@ import (
 )
 
 // New 按配置建立数据库连接并完成连接池设置。
-func New(cfg config.Datasource) (*gorm.DB, error) {
+func New(cfg config.DatasourceConfig) (*gorm.DB, error) {
 	db, err := gorm.Open(mysql.Open(cfg.DSN()), &gorm.Config{
 		Logger: newLogger(cfg),
 		NamingStrategy: schema.NamingStrategy{
@@ -39,7 +39,7 @@ func New(cfg config.Datasource) (*gorm.DB, error) {
 }
 
 // setupPool 应用连接池参数。
-func setupPool(db *gorm.DB, cfg config.Datasource) error {
+func setupPool(db *gorm.DB, cfg config.DatasourceConfig) error {
 	sqlDB, err := db.DB()
 	if err != nil {
 		return fmt.Errorf("database: 获取底层连接池失败: %w", err)

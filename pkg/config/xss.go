@@ -9,8 +9,8 @@ import (
 // defaultXSSSkipMethods XSS 默认跳过清洗的请求方法。
 var defaultXSSSkipMethods = []string{http.MethodGet, http.MethodDelete}
 
-// XSS 清洗配置。
-type XSS struct {
+// XSSConfig 清洗配置。
+type XSSConfig struct {
 	// ExcludeURLs 跳过清洗的路径，Ant 风格。
 	ExcludeURLs []string `mapstructure:"excludeUrls"`
 
@@ -18,21 +18,21 @@ type XSS struct {
 	SkipMethods []string `mapstructure:"skipMethods"`
 }
 
-// defaultXSS 返回默认配置。
-func defaultXSS() XSS {
-	return XSS{
+// DefaultXSS 返回清洗默认配置。
+func DefaultXSS() XSSConfig {
+	return XSSConfig{
 		ExcludeURLs: []string{"/system/notice", "/warm-flow/save-json"},
 		SkipMethods: defaultXSSSkipMethods,
 	}
 }
 
 // setDefaults 把默认值铺给 viper。
-func (x XSS) setDefaults(v *viper.Viper) {
-	v.SetDefault("middleware.xss.excludeUrls", x.ExcludeURLs)
-	v.SetDefault("middleware.xss.skipMethods", x.SkipMethods)
+func (x XSSConfig) setDefaults(v *viper.Viper) {
+	v.SetDefault("xss.excludeUrls", x.ExcludeURLs)
+	v.SetDefault("xss.skipMethods", x.SkipMethods)
 }
 
 // validate 校验 XSS 配置。
-func (x XSS) validate() error {
+func (x XSSConfig) validate() error {
 	return nil
 }

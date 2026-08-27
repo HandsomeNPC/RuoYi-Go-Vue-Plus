@@ -5,8 +5,8 @@ import "github.com/spf13/viper"
 // DefaultMaxParamLength 参数日志的最大长度（字符数）。
 const DefaultMaxParamLength = 4000
 
-// AccessLog 请求日志配置。
-type AccessLog struct {
+// AccessLogConfig 请求日志配置。
+type AccessLogConfig struct {
 	// MaxParamLength 参数日志最大字符数，<=0 表示用默认值 4000。
 	MaxParamLength int `mapstructure:"maxParamLength"`
 
@@ -14,24 +14,24 @@ type AccessLog struct {
 	SkipPaths []string `mapstructure:"skipPaths"`
 }
 
-// defaultAccessLog 返回默认配置。
-func defaultAccessLog() AccessLog {
-	return AccessLog{
+// DefaultAccessLog 返回请求日志默认配置。
+func DefaultAccessLog() AccessLogConfig {
+	return AccessLogConfig{
 		MaxParamLength: DefaultMaxParamLength,
 		SkipPaths:      nil,
 	}
 }
 
 // setDefaults 把默认值铺给 viper。
-func (a AccessLog) setDefaults(v *viper.Viper) {
-	v.SetDefault("middleware.accessLog.maxParamLength", a.MaxParamLength)
-	v.SetDefault("middleware.accessLog.skipPaths", a.SkipPaths)
+func (a AccessLogConfig) setDefaults(v *viper.Viper) {
+	v.SetDefault("accessLog.maxParamLength", a.MaxParamLength)
+	v.SetDefault("accessLog.skipPaths", a.SkipPaths)
 }
 
 // validate 校验请求日志配置。
-func (a AccessLog) validate() error {
+func (a AccessLogConfig) validate() error {
 	if a.MaxParamLength < 0 {
-		return errInvalid("middleware.accessLog.maxParamLength", "不能为负数")
+		return errInvalid("accessLog.maxParamLength", "不能为负数")
 	}
 	return nil
 }

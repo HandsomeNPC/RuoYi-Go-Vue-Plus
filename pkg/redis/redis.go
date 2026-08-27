@@ -17,7 +17,7 @@ import (
 const pingTimeout = 5 * time.Second
 
 // New 按配置建立 Redis 客户端并完成连接池设置。
-func New(cfg config.Redis) (*goredis.Client, error) {
+func New(cfg config.RedisConfig) (*goredis.Client, error) {
 	client := goredis.NewClient(&goredis.Options{
 		Addr:            cfg.Addr(),
 		Password:        cfg.Password,

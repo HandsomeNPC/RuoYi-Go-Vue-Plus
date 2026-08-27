@@ -16,7 +16,7 @@ import (
 )
 
 // newBodyEngine 构造 RepeatableBody + 业务 handler 的引擎。
-func newBodyEngine(cfg config.RepeatableBody) *gin.Engine {
+func newBodyEngine(cfg config.RepeatableBodyConfig) *gin.Engine {
 	r := gin.New()
 	r.Use(Recover())
 	r.Use(RepeatableBodyWithConfig(cfg))
@@ -58,7 +58,7 @@ func bodyPost(r *gin.Engine, contentType, body string) *httptest.ResponseRecorde
 // TestRepeatableBodyAllowsRebind 中间件读完 body 后 handler 必须还能绑到参数。
 func TestRepeatableBodyAllowsRebind(t *testing.T) {
 	body := `{"name":"张三"}`
-	w := bodyPost(newBodyEngine(config.DefaultMiddleware().RepeatableBody), "application/json", body)
+	w := bodyPost(newBodyEngine(config.DefaultRepeatableBody()), "application/json", body)
 
 	var got struct {
 		Name         string `json:"name"`
@@ -207,7 +207,7 @@ func TestRepeatableBodyBuffersDelete(t *testing.T) {
 // TestRepeatableBodyRejectsOversized 超限必须拒绝，且走统一响应。
 func TestRepeatableBodyRejectsOversized(t *testing.T) {
 	const maxSize = 16
-	cfg := config.RepeatableBody{
+	cfg := config.RepeatableBodyConfig{
 		ContentTypes: []string{ContentTypeJSON},
 		MaxBodySize:  maxSize,
 	}
@@ -250,7 +250,7 @@ func TestRepeatableBodyRejectsOversized(t *testing.T) {
 
 // TestRepeatableBodyRejectsByContentLength ContentLength 已报超限就不该白读一遍。
 func TestRepeatableBodyRejectsByContentLength(t *testing.T) {
-	cfg := config.RepeatableBody{
+	cfg := config.RepeatableBodyConfig{
 		ContentTypes: []string{ContentTypeJSON},
 		MaxBodySize:  8,
 	}
@@ -274,7 +274,7 @@ func TestRepeatableBodyRejectsByContentLength(t *testing.T) {
 // TestRepeatableBodyAllowsExactLimit 刚好等于上限必须放行。
 func TestRepeatableBodyAllowsExactLimit(t *testing.T) {
 	body := `{"name":"ab"}`
-	cfg := config.RepeatableBody{
+	cfg := config.RepeatableBodyConfig{
 		ContentTypes: []string{ContentTypeJSON},
 		MaxBodySize:  int64(len(body)),
 	}
@@ -303,7 +303,7 @@ func TestRepeatableBodyAllowsExactLimit(t *testing.T) {
 func TestRepeatableBodyZeroMaxSizeFallsBack(t *testing.T) {
 	var buffered bool
 	r := gin.New()
-	r.Use(RepeatableBodyWithConfig(config.RepeatableBody{
+	r.Use(RepeatableBodyWithConfig(config.RepeatableBodyConfig{
 		ContentTypes: []string{ContentTypeJSON},
 	}))
 	r.POST("/test", func(c *gin.Context) {
