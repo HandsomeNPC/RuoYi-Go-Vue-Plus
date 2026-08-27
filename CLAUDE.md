@@ -78,4 +78,3 @@ docker compose -f deploy/docker-compose.yaml up --build   # 一键起全套(经 
 
 - 原项目：`E:\WorkSpace\RuoYi-Plus\RuoYi-Vue-Plus`（Java 源码，迁移时对照它的业务逻辑）
 - 建表 SQL：原项目 `script/sql/` 目录，表结构直接复用
-- 详细迁移路线见 `MIGRATION.md`
