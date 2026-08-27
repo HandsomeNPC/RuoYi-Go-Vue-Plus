@@ -25,7 +25,7 @@ func (s *passwordAuthStrategy) Login(ctx context.Context, body []byte,
 	if err := binding.JSON.BindBody(body, &loginBody); err != nil {
 		return nil, errs.New(response.CodeBadRequest, "参数校验失败", err.Error())
 	}
-	// TODO: 验证码校验属阶段 3，loginBody.Code / loginBody.UUID 字段已就位。
+	// TODO: 验证码校验
 	user, err := systemservice.UserSvcApp.LoadUserByUsername(ctx, loginBody.Username)
 	if err != nil {
 		return nil, err
@@ -38,6 +38,16 @@ func (s *passwordAuthStrategy) Login(ctx context.Context, body []byte,
 		return nil, err
 	}
 
-	// TODO(阶段 3): 构造登录用户（BuildLoginUser）并签发令牌/写会话/在线记录，待重建。
+	// 此处可根据登录用户的数据不同 自行创建 loginUser。
+	loginUser, err := SysLoginSvcApp.BuildLoginUser(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+	loginUser.ClientKey = client.ClientKey
+	loginUser.DeviceType = client.DeviceType
+
+	// TODO(阶段 3): 签发令牌（对应 Java IAuthStrategy.buildLoginParameter + LoginHelper.login），
+	// 回填 LoginVo.AccessToken / ExpireIn。pkg/auth 尚未实现。
+	_ = loginUser
 	return &authvo.LoginVo{ClientID: client.ClientID}, nil
 }

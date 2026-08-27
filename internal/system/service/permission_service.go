@@ -40,21 +40,38 @@ func (s *PermissionService) GetDataScopeRoleMap(ctx context.Context,
 		return map[string][]int64{}, nil
 	}
 
+	// 按 roles 顺序去重收集角色ID（对应 Java Map<Long, Set<String>> 以 roleId 为键天然折叠重复）。
 	roleIDs := make([]int64, 0, len(roles))
+	seenRole := make(map[int64]struct{}, len(roles))
 	for i := range roles {
-		roleIDs = append(roleIDs, roles[i].RoleID)
+		if roles[i] == nil {
+			continue
+		}
+		roleID := roles[i].RoleID
+		if _, dup := seenRole[roleID]; dup {
+			continue
+		}
+		seenRole[roleID] = struct{}{}
+		roleIDs = append(roleIDs, roleID)
 	}
 
 	permsByRole, err := MenuSvcApp.SelectMenuPermsByRoleIds(ctx, roleIDs)
 	if err != nil {
 		return nil, err
 	}
+	return invertPermsByRole(roleIDs, permsByRole), nil
+}
 
+// invertPermsByRole 把 map[roleID]perms 翻转成 map[perm]roleIDs。
+// 必须按 roleIDs 顺序遍历而非 range permsByRole：Go map 迭代顺序随机，
+// 直接 range 会让同一用户每次登录得到的角色ID列表顺序漂移
+// （对应 Java 侧 LinkedHashMap 的稳定插入序）。
+func invertPermsByRole(roleIDs []int64, permsByRole map[int64][]string) map[string][]int64 {
 	out := make(map[string][]int64)
-	for roleID, perms := range permsByRole {
-		for _, perm := range perms {
+	for _, roleID := range roleIDs {
+		for _, perm := range permsByRole[roleID] {
 			out[perm] = append(out[perm], roleID)
 		}
 	}
-	return out, nil
+	return out
 }
