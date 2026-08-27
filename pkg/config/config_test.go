@@ -35,8 +35,11 @@ func TestLoadMergesInOrder(t *testing.T) {
 	if got, want := cfg.Redis.Port, 6379; got != want {
 		t.Errorf("Redis.Port = %d, want %d", got, want)
 	}
-	if got, want := cfg.SAToken.Timeout, int64(2592000); got != want {
-		t.Errorf("SAToken.Timeout = %d, want %d", got, want)
+	if got, want := cfg.SAToken.TokenName, "Authorization"; got != want {
+		t.Errorf("SAToken.TokenName = %q, want %q", got, want)
+	}
+	if got, want := cfg.SAToken.IsShare, false; got != want {
+		t.Errorf("SAToken.IsShare = %v, want %v", got, want)
 	}
 }
 
@@ -225,18 +228,14 @@ func TestRedisValidate(t *testing.T) {
 }
 
 func TestSATokenValidate(t *testing.T) {
-	valid := SATokenConfig{TokenName: "Authorization", Timeout: 720, TokenStyle: "uuid", IsReadHeader: true}
+	valid := SATokenConfig{TokenName: "Authorization", IsConcurrent: true, IsShare: false, JwtSecretKey: "test-secret"}
 	if err := valid.validate(); err != nil {
 		t.Errorf("完整配置不应报错: %v", err)
 	}
 
 	tests := map[string]func(*SATokenConfig){
-		"缺 tokenName":   func(s *SATokenConfig) { s.TokenName = "" },
-		"timeout 0":     func(s *SATokenConfig) { s.Timeout = 0 },
-		"timeout 为负":    func(s *SATokenConfig) { s.Timeout = -1 },
-		"非法 tokenStyle": func(s *SATokenConfig) { s.TokenStyle = "bogus" },
-		"jwt 缺 secret":  func(s *SATokenConfig) { s.TokenStyle = "jwt"; s.JwtSecretKey = "" },
-		"读取全关":          func(s *SATokenConfig) { s.IsReadHeader = false },
+		"缺 tokenName":  func(s *SATokenConfig) { s.TokenName = "" },
+		"缺 jwt secret": func(s *SATokenConfig) { s.JwtSecretKey = "" },
 	}
 	for name, breakIt := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -283,9 +282,9 @@ redis:
   db: 0
 satoken:
   tokenName: Authorization
-  timeout: 2592000
-  tokenStyle: uuid
-  isReadHeader: true
+  isConcurrent: true
+  isShare: false
+  jwtSecretKey: test-secret
 `
 
 // writeYAML 把内容写入临时 yaml 文件并返回路径。

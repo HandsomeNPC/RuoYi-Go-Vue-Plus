@@ -27,25 +27,14 @@ redis:
   writeTimeoutMs: 3000
   connMaxIdleTime: 600        # 空闲连接最大存活(秒)
 
-# sa-token-go 鉴权配置(对应原项目 sa-token 段)。取代已删除的 jwt / middleware.auth 两段。
-# 多进程(auth / system)必须读同一份值，登录态存在 Redis 里，两进程共用此 Manager。
+# sa-token-go 鉴权配置。仅暴露 4 个可配项，其余策略(JWT 模式、30 天超时、仅读 Header、
+# auto-renew、键前缀 satoken 等)在 pkg/satoken.Init 里固定写死。
+# 多进程(auth / system)读同一份值，登录态存 Redis，两进程共用此 Manager。
 satoken:
-  tokenName: Authorization          # 对应 sa-token.token-name；读取 token 的请求头名
-  timeout: 2592000                  # token 绝对有效期(秒)，30 天。对应 sa-token.timeout
-  activeTimeout: 0                  # 活跃超时(秒)；<=0 表示不限。对应 sa-token.active-timeout
+  tokenName: Authorization          # 读取 token 的请求头名(对应 sa-token.token-name)
   isConcurrent: true                # 允许同一账号并发登录(多端在线)
-  isShare: true                     # 多端登录共享同一 token
-  tokenStyle: uuid                  # uuid/simple/random-32/random-64/random-128/jwt/hash/timestamp/tik
-  jwtSecretKey: ""                  # 仅 tokenStyle=jwt 时必填
-  # token 只从 header 取(不接受查询串/cookie)：查询串会进 nginx accesslog 与浏览器历史，
-  # cookie 会引入 CSRF(原项目 is-read-cookie: false 即刻意关掉)。
-  isReadHeader: true
-  isReadCookie: false
-  isReadBody: false
-  autoRenew: true                   # 访问时异步续期
-  keyPrefix: satoken                # Redis 键前缀(自动补冒号)，与 Java sa-token 兼容
-  isLog: false
-  isPrintBanner: false             # 多进程会重复打印，默认关
+  isShare: false                    # 多端登录是否共享同一 token
+  jwtSecretKey: "ruoyi-go-vue-plus-dev-jwt-secret-please-change-in-production-32bytes"  # 必填，JWT 签名密钥；生产务必替换
 
 
 # 用户业务配置，对应原项目 application.yml 的 user 段。
