@@ -9,7 +9,6 @@ import (
 	goredis "github.com/redis/go-redis/v9"
 	"golang.org/x/sync/errgroup"
 
-	authmodel "ruoyi-go-vue-plus/internal/auth/model"
 	systemdto "ruoyi-go-vue-plus/internal/system/model/dto"
 	systemvo "ruoyi-go-vue-plus/internal/system/model/vo"
 	systemservice "ruoyi-go-vue-plus/internal/system/service"
@@ -17,6 +16,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/enum"
 	"ruoyi-go-vue-plus/pkg/errs"
+	authmodel "ruoyi-go-vue-plus/pkg/model"
 	"ruoyi-go-vue-plus/pkg/redis"
 )
 

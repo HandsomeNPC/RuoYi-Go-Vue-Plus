@@ -1,4 +1,4 @@
-// Package model 鉴权域模型：登录态上下文、登录入参体等。
+// Package model 跨模块复用的领域模型。
 package model
 
 import (
@@ -60,7 +60,7 @@ type LoginUser struct {
 var (
 	// ErrUserTypeEmpty 用户类型为空。
 	ErrUserTypeEmpty = errors.New("用户类型不能为空")
-	// ErrUserIDEmpty 用户ID为空。
+	// ErrUserIDEmpty 用户ID不能为空。
 	ErrUserIDEmpty = errors.New("用户ID不能为空")
 )
 
