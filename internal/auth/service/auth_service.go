@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"net/http"
 
 	authvo "ruoyi-go-vue-plus/internal/auth/model/vo"
@@ -19,7 +18,7 @@ var AuthSvcApp = new(AuthService)
 
 // AuthStrategy 授权策略（对应 Java IAuthStrategy）。
 type AuthStrategy interface {
-	Login(ctx context.Context, body []byte, client *systemvo.SysClientVo) (*authvo.LoginVo, error)
+	Login(req *http.Request, body []byte, client *systemvo.SysClientVo) (*authvo.LoginVo, error)
 }
 
 // authStrategies 按 grantType 分派授权策略
@@ -35,5 +34,5 @@ func (s *AuthService) Login(req *http.Request, body []byte, grantType string,
 	if !ok {
 		return nil, errs.New(0, i18n.Msg(ctx, "auth.grant.type.error"), "")
 	}
-	return strategy.Login(ctx, body, client)
+	return strategy.Login(req, body, client)
 }

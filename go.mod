@@ -4,6 +4,8 @@ go 1.26.5
 
 require (
 	github.com/gin-gonic/gin v1.12.0
+	github.com/lionsoul2014/ip2region/binding/golang v0.0.0-20260814054437-800d19424237
+	github.com/mssola/useragent v1.0.0
 	github.com/redis/go-redis/v9 v9.22.0
 	github.com/sa-tokens/sa-token-go/integrations/gin v0.2.4
 	github.com/sa-tokens/sa-token-go/storage/redis v0.2.4

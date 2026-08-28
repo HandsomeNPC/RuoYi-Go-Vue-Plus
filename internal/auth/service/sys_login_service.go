@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net/http"
 	"time"
 
 	goredis "github.com/redis/go-redis/v9"
@@ -16,8 +17,10 @@ import (
 	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/enum"
 	"ruoyi-go-vue-plus/pkg/errs"
+	"ruoyi-go-vue-plus/pkg/ip"
 	authmodel "ruoyi-go-vue-plus/pkg/model"
 	"ruoyi-go-vue-plus/pkg/redis"
+	"ruoyi-go-vue-plus/pkg/useragent"
 )
 
 // SysLoginService 登录态组装（对应 Java SysLoginService）。
@@ -26,8 +29,9 @@ type SysLoginService struct{}
 // SysLoginSvcApp 包级实例。
 var SysLoginSvcApp = new(SysLoginService)
 
-// BuildLoginUser 根据用户视图对象组装登录态上下文
-func (*SysLoginService) BuildLoginUser(ctx context.Context, user *systemvo.SysUserVo) (*authmodel.LoginUser, error) {
+// BuildLoginUser 组装登录态上下文并填充终端信息(IP/位置/浏览器/OS)。
+func (*SysLoginService) BuildLoginUser(req *http.Request, user *systemvo.SysUserVo) (*authmodel.LoginUser, error) {
+	ctx := req.Context()
 	loginUser := &authmodel.LoginUser{
 		UserID:   user.UserID,
 		DeptID:   user.DeptID,
@@ -36,20 +40,40 @@ func (*SysLoginService) BuildLoginUser(ctx context.Context, user *systemvo.SysUs
 		UserType: user.UserType,
 	}
 
-	// 部门名 / 部门类别：deptId 为空则留空；查一次 dept 复用取两个字段（对应 Java Opt.map(deptService::selectDeptById)）。
-	if user.DeptID != 0 {
-		dept, err := systemservice.DeptSvcApp.SelectByID(ctx, user.DeptID)
+	// 终端信息
+	if loginUser.IPAddr == "" {
+		loginUser.IPAddr = ip.ClientIP(req)
+	}
+	if loginUser.LoginLocation == "" && loginUser.IPAddr != "" {
+		loginUser.LoginLocation = ip.RealAddressByIP(loginUser.IPAddr)
+	}
+	if loginUser.Browser == "" || loginUser.OS == "" {
+		browser, osName := useragent.Parse(req.Header.Get("User-Agent"))
+		if loginUser.Browser == "" {
+			loginUser.Browser = browser
+		}
+		if loginUser.OS == "" {
+			loginUser.OS = osName
+		}
+	}
+
+	// 并发拉取部门/权限/角色/岗位，互不竞争，写入 loginUser 不同字段。
+	g, gctx := errgroup.WithContext(ctx)
+	// 部门名 / 部门类别：deptId 为空则留空。
+	g.Go(func() error {
+		if user.DeptID == 0 {
+			return nil
+		}
+		dept, err := systemservice.DeptSvcApp.SelectByID(gctx, user.DeptID)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if dept != nil {
 			loginUser.DeptName = dept.DeptName
 			loginUser.DeptCategory = dept.DeptCategory
 		}
-	}
-
-	// 四组查询并发拉取（对应 Java ThreadUtils.virtualInvokeAll），写入 loginUser 不同字段，互不竞争。
-	g, gctx := errgroup.WithContext(ctx)
+		return nil
+	})
 	g.Go(func() error {
 		mp, err := systemservice.PermissionSvcApp.GetMenuPermission(gctx, user.UserID)
 		if err != nil {
@@ -71,8 +95,7 @@ func (*SysLoginService) BuildLoginUser(ctx context.Context, user *systemvo.SysUs
 		if err != nil {
 			return err
 		}
-		// 角色摘要（对应 Java BeanUtil.copyToList(roles, RoleDTO.class)），
-		// 供 loginUser.Roles 与 GetDataScopeRoleMap 共用，避免重复转换。
+		// 角色摘要，供 Roles 与 DataScopeRoleMap 共用。
 		roleDTOs := systemdto.Conv.ConvertToRoleDTOList(roles)
 		loginUser.Roles = roleDTOs
 		loginUser.DataScopeRoleMap, err = systemservice.PermissionSvcApp.GetDataScopeRoleMap(gctx, roleDTOs)
@@ -102,7 +125,7 @@ func (*SysLoginService) CheckLogin(ctx context.Context, loginType enum.LoginType
 	lockMinutes := passwdCfg.LockTime
 
 	rdb := redis.Client()
-	// 获取用户登录错误次数，默认为 0（可自定义限制策略，例如: key + username + ip）。
+	// 读取登录错误次数，默认 0。
 	errorNumber, err := rdb.Get(ctx, key).Int()
 	if err != nil && !errors.Is(err, goredis.Nil) {
 		log.Printf("[auth] 读取密码错误次数失败(按 0 次继续): %v", err)
@@ -115,18 +138,16 @@ func (*SysLoginService) CheckLogin(ctx context.Context, loginType enum.LoginType
 	}
 
 	if !authSuccess() {
-		// 错误次数递增。
 		errorNumber++
 		if err := rdb.Set(ctx, key, errorNumber,
 			time.Duration(lockMinutes)*time.Minute).Err(); err != nil {
 			log.Printf("[auth] 写入密码错误次数失败: %v", err)
 		}
 		if errorNumber >= maxRetry {
-			// 达到规定错误次数则锁定登录。
+			// 达上限则锁定。
 			// TODO(阶段 3): recordLoginInfo(username, LOGIN_FAIL, RetryExceedMsg)。
 			return errs.New(0, loginType.RetryExceedMsg(ctx, maxRetry, lockMinutes), "")
 		}
-		// 未达到规定错误次数。
 		// TODO(阶段 3): recordLoginInfo(username, LOGIN_FAIL, RetryCountMsg)。
 		return errs.New(0, loginType.RetryCountMsg(ctx, errorNumber), "")
 	}

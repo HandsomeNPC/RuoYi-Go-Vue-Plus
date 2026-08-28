@@ -1,9 +1,10 @@
 package service
 
 import (
-	"context"
+	"net/http"
 
 	"github.com/gin-gonic/gin/binding"
+	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 
 	authmodel "ruoyi-go-vue-plus/internal/auth/model"
 	authvo "ruoyi-go-vue-plus/internal/auth/model/vo"
@@ -13,14 +14,16 @@ import (
 	"ruoyi-go-vue-plus/pkg/enum"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/response"
+	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 )
 
 // passwordAuthStrategy 密码认证策略（对应 Java PasswordAuthStrategy）。
 type passwordAuthStrategy struct{}
 
-// Login 校验账号密码、签发令牌并返回登录结果。body 为原始 JSON 字节，这里解析成 LoginBody。
-func (s *passwordAuthStrategy) Login(ctx context.Context, body []byte,
+// Login 校验账号密码、签发令牌并返回登录结果。body 为原始 JSON 字节，解析成 PasswordLoginBody。
+func (s *passwordAuthStrategy) Login(req *http.Request, body []byte,
 	client *systemvo.SysClientVo) (*authvo.LoginVo, error) {
+	ctx := req.Context()
 	var loginBody authmodel.PasswordLoginBody
 	if err := binding.JSON.BindBody(body, &loginBody); err != nil {
 		return nil, errs.New(response.CodeBadRequest, "参数校验失败", err.Error())
@@ -38,16 +41,20 @@ func (s *passwordAuthStrategy) Login(ctx context.Context, body []byte,
 		return nil, err
 	}
 
-	// 此处可根据登录用户的数据不同 自行创建 loginUser。
-	loginUser, err := SysLoginSvcApp.BuildLoginUser(ctx, user)
+	loginUser, err := SysLoginSvcApp.BuildLoginUser(req, user)
 	if err != nil {
 		return nil, err
 	}
 	loginUser.ClientKey = client.ClientKey
 	loginUser.DeviceType = client.DeviceType
+	token, err := loginhelper.Login(loginUser, client.DeviceType)
+	if err != nil {
+		return nil, err
+	}
 
-	// TODO(阶段 3): 签发令牌（对应 Java IAuthStrategy.buildLoginParameter + LoginHelper.login），
-	// 回填 LoginVo.AccessToken / ExpireIn。pkg/satoken 已就绪，调 sagin.Login + SetPermissions/SetRoles。
-	_ = loginUser
-	return &authvo.LoginVo{ClientID: client.ClientID}, nil
+	return &authvo.LoginVo{
+		AccessToken: token,
+		ExpireIn:    sagin.GetManager().GetConfig().Timeout,
+		ClientID:    client.ClientID,
+	}, nil
 }
