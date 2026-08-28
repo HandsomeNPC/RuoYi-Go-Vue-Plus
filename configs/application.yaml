@@ -27,29 +27,19 @@ redis:
   writeTimeoutMs: 3000
   connMaxIdleTime: 600        # 空闲连接最大存活(秒)
 
-# sa-token-go 鉴权配置。仅暴露 4 个可配项，其余策略(JWT 模式、30 天超时、仅读 Header、
-# auto-renew、键前缀 satoken 等)在 pkg/satoken.Init 里固定写死。
-# 多进程(auth / system)读同一份值，登录态存 Redis，两进程共用此 Manager。
+# sa-token-go 鉴权配置
 satoken:
   tokenName: Authorization          # 读取 token 的请求头名(对应 sa-token.token-name)
   isConcurrent: true                # 允许同一账号并发登录(多端在线)
   isShare: false                    # 多端登录是否共享同一 token
-  jwtSecretKey: "ruoyi-go-vue-plus-dev-jwt-secret-please-change-in-production-32bytes"  # 必填，JWT 签名密钥；生产务必替换
+  jwtSecretKey: abcdefghijklmnopqrstuvwxyz # jwt秘钥
 
 
-# 用户业务配置，对应原项目 application.yml 的 user 段。
-# 不放进 middleware 段：密码重试作用在登录 service，与 HTTP 无关；短信/邮箱登录也复用此限制。
 user:
   password:
     maxRetryCount: 5          # 达到即锁定
-    lockTime: 10              # 锁定时长(分钟)，同时是 pwd_err_cnt:<username> 的 TTL
-    # 每次失败都重置 TTL(滑动窗口)：每 9 分钟错一次、错满 5 次跨越 40 分钟依然会锁。
+    lockTime: 10              # 锁定时长(分钟)
 
-# 中间件配置已拍平到顶层(cors:/xss:/...，不再套在 middleware: 下)，与 Config 结构一一对应。
-# 除 apiEncrypt 外，均为代码默认值(pkg/config.DefaultCORS / DefaultXSS ...)的显式重述，
-# 由 config 包测试锁住一致性。除 apiEncrypt 外不带 enabled 开关 —— 注册即生效(r.Use)，
-# 不写即关闭。
-# 不要放进 system.yaml / auth.yaml：拆进程后请求经 nginx 落点不定，两入口行为必须一致。
 cors:
   allowCredentials: true          # 允许携带 cookie / Authorization
   allowedOriginPatterns: [ "*" ]    # 支持 * 通配，如 https://*.example.com；命中后回显 Origin
@@ -83,32 +73,12 @@ i18n:
   header: content-language        # 对齐原项目，非 Accept-Language(详见 pkg/config/middleware_i18n.go)
   default: zh-cn                  # 未指定或不合规时使用
 
-# 鉴权免登名单等配置已迁移至 satoken 段，中间件鉴权待阶段 3 接入 sagin。
-
-# 接口加解密，对应原项目 api-decrypt 段(application.yml:148-158)。
-# 唯一带 enabled 的中间件：不生效时带 encrypt-key 头的请求会被当明文，报出无关的参数错误，
-# 必须能区分「没开」与「开了但密钥错」。
-# 也是唯一与代码默认值不同的一节(默认 enabled=false)。默认值要在「无配置文件」时也讲得通，
-# 而 enabled=true + 空私钥会让任何未配置进程启动失败。此差异由 config 包测试锁住。
-# 协议(两层 base64 套嵌是原项目既有约定，少一层就对不上前端)：
-#   encrypt-key 头 = base64(RSA公钥加密( base64( AES明文密钥 ) ))
-#   请求体         = base64(AES-ECB加密( JSON 明文 ))
 apiEncrypt:
-  enabled: true                   # 对齐原项目 application.yml:150
-  headerFlag: encrypt-key         # 请求与响应共用同一头名，载荷方向不同
-  requestUrls: # 强制加密接口(Ant 风格)；命中却没带密钥头 -> 拒绝
-    # 对应原项目 4 处 @ApiEncrypt，都在传密码，列在这里防止「本该加密的接口收到明文密码」被静默放过。
-    - /auth/login                    # AuthController.login
-    - /auth/register                 # AuthController.register
-    - /system/user/resetPwd          # SysUserController.resetPwd
-    - /system/user/profile/updatePwd # SysProfileController.updatePwd
-  # responseUrls:                 # 加密响应体，对应 @ApiEncrypt(response=true)。原项目全为 false，
-  #   - /auth/login               # 即响应加密从未启用。开启前确认前端已实现响应解密，且 publicKey 已配。
-  maxBodySize: 10485760           # 10MB 密文上限(密文 base64 后比明文约 4/3)
-
-  # ⚠️ 以下密钥照抄原项目 application.yml，是上游公开的开发用密钥(1024 位，低于 2048 位建议)，
-  # ⚠️ 照抄因配套公钥硬编码在现有前端里，换掉联调不通。上线前必须与前端一起换新密钥。
-  # privateKey 解密请求(对应前端加密公钥)，格式 base64(PKCS#8 DER)。
-  privateKey: MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBAO8QO5Eg4zehk9aP1SShzmlCSVHg8Ufr9yWeN4WqMMsiAPJC+PGGCoBlAD4T14Pqq7oWxc+Yrx2Nwv6eHdwUfPilfjveMO87dK977zIvdVFDSfalGBDZrTUwmzL5bBNkIFhZ/RWctEi8A1ShZCDL2/P3irtVrjh2DsDX/cgJ/7EDAgMBAAECgYEAhNZAQyRDHWZq/45soS5Hw7VRiG21pIE5k22W7G7lLfp3DCaqrYoNy8pTmCruVh7PzVdaE0CEDaf38gNqFCBOT8iTFQiYV3am4W3hsEQM5wmVBeTvCM5P2jsaaBQbqmneRjiZVbs6ha205JSho1Oc85NbaZa8gFVjwZgZWJrbzgECQQD/iZWhkRPtbdeai/Xk7D/eIXKh1Gxid0rWKQq8ikxbaiergn47XzNKrpROVyka3Gn85o7jJphgxp99R3r8sH71AkEA738Dn7xs+I4Y+MLa2EcT78JG3f/VhlWS/ks3qGJ2dfqwS7ntnmf5Q+2Xw+9UcuiK/TxD8K/0inSCkIMeWBOFFwJBAIoTebq3faEJfTqQ7ekojsokIKC4+2epNdLKknaV8/RhQ9Y0yKikJD7yXkiGaDuPZeW1Xvf2XtfL+1niSd5IMBECQDCOOMbe5dzyuj9dCg+FQZZ/dey2XK0Slm22BD/ATrIWtD12IaXXAKNz/Sv9TsrJOLykxkV69wJHIt13p+RFeNsCQGn5XGRn4ZCRVCesJYXyx29MTqkl8sD/gzYcURTZYjHqX2EvtvAyC6gBm9H0EbxmHIi4Oq0tITzklCXj5SpvBEw=
-  # publicKey 加密响应(对应前端解密私钥)，格式 base64(X.509 SPKI)。仅在配了 responseUrls 时用到。
+  # 是否开启全局接口加密
+  enabled: true
+  # AES 加密头标识
+  headerFlag: encrypt-key
+  # 响应加密公钥
   publicKey: MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDm6u8q8X78onmbU4wGMq3b4ufbWE18YzuWo5jwkUlwWPTPcENbZYtveyTepp2Od1CTDcjhTUmVYvFkhaCF46UfOxZrwoSZc3jf3WXXd0hLOPBHuulynknj2KsWvKDuRig7J2o4KbDhyl0nnlUiMrIiD0tv1rBKpNCJ/T+MN0bERQIDAQAB
+  # 请求解密私钥
+  privateKey: MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBAO8QO5Eg4zehk9aP1SShzmlCSVHg8Ufr9yWeN4WqMMsiAPJC+PGGCoBlAD4T14Pqq7oWxc+Yrx2Nwv6eHdwUfPilfjveMO87dK977zIvdVFDSfalGBDZrTUwmzL5bBNkIFhZ/RWctEi8A1ShZCDL2/P3irtVrjh2DsDX/cgJ/7EDAgMBAAECgYEAhNZAQyRDHWZq/45soS5Hw7VRiG21pIE5k22W7G7lLfp3DCaqrYoNy8pTmCruVh7PzVdaE0CEDaf38gNqFCBOT8iTFQiYV3am4W3hsEQM5wmVBeTvCM5P2jsaaBQbqmneRjiZVbs6ha205JSho1Oc85NbaZa8gFVjwZgZWJrbzgECQQD/iZWhkRPtbdeai/Xk7D/eIXKh1Gxid0rWKQq8ikxbaiergn47XzNKrpROVyka3Gn85o7jJphgxp99R3r8sH71AkEA738Dn7xs+I4Y+MLa2EcT78JG3f/VhlWS/ks3qGJ2dfqwS7ntnmf5Q+2Xw+9UcuiK/TxD8K/0inSCkIMeWBOFFwJBAIoTebq3faEJfTqQ7ekojsokIKC4+2epNdLKknaV8/RhQ9Y0yKikJD7yXkiGaDuPZeW1Xvf2XtfL+1niSd5IMBECQDCOOMbe5dzyuj9dCg+FQZZ/dey2XK0Slm22BD/ATrIWtD12IaXXAKNz/Sv9TsrJOLykxkV69wJHIt13p+RFeNsCQGn5XGRn4ZCRVCesJYXyx29MTqkl8sD/gzYcURTZYjHqX2EvtvAyC6gBm9H0EbxmHIi4Oq0tITzklCXj5SpvBEw=

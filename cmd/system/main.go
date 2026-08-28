@@ -5,6 +5,7 @@ import (
 	"ruoyi-go-vue-plus/internal/system"
 	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/database"
+	"ruoyi-go-vue-plus/pkg/encrypt"
 	"ruoyi-go-vue-plus/pkg/redis"
 	"ruoyi-go-vue-plus/pkg/satoken"
 )
@@ -19,6 +20,7 @@ func main() {
 	defer redis.CloseDefault()
 
 	satoken.Init()
+	encrypt.Init()
 
 	r := system.InitRouter()
 	system.InitServer(r)

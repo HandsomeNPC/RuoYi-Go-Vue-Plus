@@ -18,7 +18,6 @@ func InitRouter() *gin.Engine {
 	r.Use(middleware.Recover())
 	r.Use(middleware.CORS())
 	r.Use(middleware.TraceID())
-	r.Use(middleware.APIEncrypt())
 	r.Use(middleware.RepeatableBody())
 	r.Use(middleware.AccessLog())
 	r.Use(middleware.XSS())

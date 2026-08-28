@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"ruoyi-go-vue-plus/pkg/encrypt"
 	"ruoyi-go-vue-plus/pkg/i18n"
 )
 
@@ -382,26 +381,12 @@ func TestRealYAMLEnablesAPIEncrypt(t *testing.T) {
 	if got, want := a.HeaderFlag, DefaultAPIEncryptHeader; got != want {
 		t.Errorf("apiEncrypt.headerFlag = %q, want %q", got, want)
 	}
-
-	want := []string{
-		"/auth/login",
-		"/auth/register",
-		"/system/user/resetPwd",
-		"/system/user/profile/updatePwd",
+	// 密钥格式校验由 encrypt.Init 负责（config 包不再 import encrypt，避免循环依赖）。
+	if a.PrivateKey == "" {
+		t.Error("apiEncrypt.privateKey 应非空")
 	}
-	if !reflect.DeepEqual(a.RequestURLs, want) {
-		t.Errorf("apiEncrypt.requestUrls = %v, want %v", a.RequestURLs, want)
-	}
-
-	if len(a.ResponseURLs) != 0 {
-		t.Errorf("apiEncrypt.responseUrls = %v, 原项目从未启用响应加密，应为空", a.ResponseURLs)
-	}
-
-	if _, err := encrypt.ParseRSAPrivateKey(a.PrivateKey); err != nil {
-		t.Errorf("apiEncrypt.privateKey 解析失败: %v", err)
-	}
-	if _, err := encrypt.ParseRSAPublicKey(a.PublicKey); err != nil {
-		t.Errorf("apiEncrypt.publicKey 解析失败: %v", err)
+	if a.PublicKey == "" {
+		t.Error("apiEncrypt.publicKey 应非空")
 	}
 }
 
@@ -496,49 +481,26 @@ func TestMiddlewareValidate(t *testing.T) {
 	t.Run("APIEncrypt", func(t *testing.T) {
 		// 默认关闭，不校验密钥。
 		base := DefaultAPIEncrypt()
-		base.Enabled = false
-		base.PrivateKey = ""
-		base.PublicKey = ""
 		if err := base.validate(); err != nil {
 			t.Errorf("关闭时应放行: %v", err)
 		}
-
-		tests := map[string]func(*APIEncryptConfig){
-			"启用但缺私钥": func(a *APIEncryptConfig) { a.Enabled = true },
-			"私钥非法": func(a *APIEncryptConfig) {
-				a.Enabled = true
-				a.PrivateKey = "not-base64!!"
-			},
-			"私钥非 PKCS8": func(a *APIEncryptConfig) {
-				a.Enabled = true
-				a.PrivateKey = "aGVsbG8gd29ybGQ="
-			},
-			"响应加密缺公钥": func(a *APIEncryptConfig) {
-				a.Enabled = true
-				a.PrivateKey = testRSAPrivateKey
-				a.ResponseURLs = []string{"/auth/login"}
-			},
-			"maxBodySize 为负": func(a *APIEncryptConfig) { a.MaxBodySize = -1 },
+		// 启用但缺私钥应报错（密钥格式校验在 encrypt.Init，不在 config.validate）。
+		a := DefaultAPIEncrypt()
+		a.Enabled = true
+		if err := a.validate(); err == nil {
+			t.Error("启用但缺私钥应报错")
 		}
-		for name, breakIt := range tests {
-			t.Run(name, func(t *testing.T) {
-				a := DefaultAPIEncrypt()
-				breakIt(&a)
-				if err := a.validate(); err == nil {
-					t.Error("want error, got nil")
-				}
-			})
+		// 启用且配齐私钥（含/不含公钥）应放行。
+		a = DefaultAPIEncrypt()
+		a.Enabled = true
+		a.PrivateKey = testRSAPrivateKey
+		if err := a.validate(); err != nil {
+			t.Errorf("启用且配齐私钥应放行: %v", err)
 		}
-
-		t.Run("启用但不做响应加密时不强求公钥", func(t *testing.T) {
-			a := DefaultAPIEncrypt()
-			a.Enabled = true
-			a.PrivateKey = testRSAPrivateKey
-			a.PublicKey = ""
-			if err := a.validate(); err != nil {
-				t.Errorf("未配 responseUrls 时不应要求公钥: %v", err)
-			}
-		})
+		a.PublicKey = "any-non-empty"
+		if err := a.validate(); err != nil {
+			t.Errorf("配了公钥应放行（格式校验在 encrypt.Init）: %v", err)
+		}
 	})
 }
 

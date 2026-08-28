@@ -190,10 +190,11 @@ redis:
   host: 127.0.0.1
   port: 6379
   db: 0
-jwt:
-  secret: test-secret
-  expireMinutes: 720
-  header: Authorization
+satoken:
+  tokenName: Authorization
+  isConcurrent: true
+  isShare: false
+  jwtSecretKey: test-secret
 `
 
 // loadUnreachableConfig 写入临时 yaml 并 Load。

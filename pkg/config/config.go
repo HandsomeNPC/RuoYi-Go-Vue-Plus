@@ -33,8 +33,6 @@ func Load(paths ...string) {
 	v := viper.New()
 	v.SetConfigType("yaml")
 
-	// 默认值必须在读配置文件之前铺好，否则 yaml 没写的字段会落零值而非默认值。
-	// 中间件配置已拍平到 Config 顶层，yaml 键也从 middleware.* 提到 cors:/xss:/... 顶层。
 	DefaultCORS().setDefaults(v)
 	DefaultXSS().setDefaults(v)
 	DefaultAccessLog().setDefaults(v)
