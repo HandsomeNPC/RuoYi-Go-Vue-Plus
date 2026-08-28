@@ -1,4 +1,4 @@
-// Command system 系统管理模块进程入口，默认监听 :8081。
+// Command system 系统管理模块进程入口，监听端口见 configs/system.yaml。
 package main
 
 import (

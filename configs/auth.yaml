@@ -1,3 +1,3 @@
 server:
   name: auth
-  addr: ":8080"
+  addr: ":9210"

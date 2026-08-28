@@ -51,8 +51,9 @@ binary、独立进程启动，nginx 按路径前缀路由并对热点模块做�
 
 ```bash
 go build ./...
-go run ./cmd/system    # :8081/system/ping
-go run ./cmd/auth      # :8080/auth/ping
+go run ./cmd/modular/system  # :9201/ping
+go run ./cmd/modular/auth    # :9210/ping
+go run ./cmd/standalone      # :8080/auth/ping、:8080/system/ping（单体）
 
 # Docker 一键(经 nginx)
 docker compose -f deploy/docker-compose.yaml up --build

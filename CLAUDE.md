@@ -45,8 +45,9 @@ deploy/                  nginx.conf / Dockerfile / docker-compose.yaml
 ```bash
 go build ./...              # 全量编译（提交前必过）
 go vet ./...                # 静态检查（提交前必过）
-go run ./cmd/system         # 启动 system 进程 :8081
-go run ./cmd/auth           # 启动 auth 进程   :8080
+go run ./cmd/modular/system  # 启动 system 进程 :9201
+go run ./cmd/modular/auth    # 启动 auth 进程   :9210
+go run ./cmd/standalone      # 单体进程 auth+system :8080
 go mod tidy                 # 引入新依赖后整理
 
 docker compose -f deploy/docker-compose.yaml up --build   # 一键起全套(经 nginx)
