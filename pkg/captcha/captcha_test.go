@@ -27,11 +27,6 @@ func TestNewDisabled(t *testing.T) {
 	if vo.CaptchaEnabled || vo.UUID != "" || vo.Img != "" {
 		t.Errorf("未启用时应返回空 Vo, got %+v", vo)
 	}
-
-	// 未启用时 Validate 直接放行，任何值都不该报错。
-	if err := c.Validate(t.Context(), "", "任意值"); err != nil {
-		t.Errorf("未启用时 Validate 应放行, got %v", err)
-	}
 }
 
 // TestNewUnknownType 未知类型应报错。

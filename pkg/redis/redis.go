@@ -89,6 +89,20 @@ func Client() *goredis.Client {
 	return client
 }
 
+// SetClient 设置包级默认实例并返回恢复原值的函数，供集成测试注入测试专用连接
+// （业务代码用 Client()，不该调本函数；生产路径一律走 Init）。
+func SetClient(client *goredis.Client) (restore func()) {
+	mu.Lock()
+	prev := defaultClient
+	defaultClient = client
+	mu.Unlock()
+	return func() {
+		mu.Lock()
+		defaultClient = prev
+		mu.Unlock()
+	}
+}
+
 // CloseDefault 关闭并清空包级默认实例，供进程退出时 defer 调用。
 func CloseDefault() {
 	mu.Lock()

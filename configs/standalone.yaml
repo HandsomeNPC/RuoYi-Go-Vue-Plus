@@ -1,3 +1,9 @@
 server:
   name: standalone
   addr: ":8080"
+
+# 单体进程独占，用默认 0 即可；若与 modular 进程同时连同一个库，需改成未占用的值。
+# 分配：auth=1 system=2 standalone=0
+snowflake:
+  workerId: 0
+  datacenterId: 0

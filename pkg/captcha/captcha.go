@@ -1,17 +1,21 @@
-// Package captcha 图形验证码的生成与校验，对照 Java CaptchaController.getCodeImpl
-// 与 PasswordAuthStrategy.validateCaptcha。
+// Package captcha 图形验证码的生成，对照 Java CaptchaController.getCodeImpl。
 //
 // 初始化对照 redis.Init / encrypt.Init：captcha.Init() 无参，自读 config.Get().Captcha，
-// 构造驱动并设包级全局；业务侧用包级 captcha.Generate() / captcha.Validate()。
+// 构造驱动并设包级全局；业务侧用包级 captcha.Generate() / captcha.Enabled()。
+//
+// **只管出题、画图、把答案写进 Redis**。校验(取值→删除→判空→比对)不在本包，而在
+// internal/auth/service 各认证策略的 validateCaptcha 里——校验失败要记登录失败日志，
+// 那要调 internal/system 的 service，而 pkg 不能 import internal/。这与 Java 一致：
+// Java 的校验也写在 PasswordAuthStrategy 而非验证码组件里。答案的 Redis 键由
+// constant.CaptchaCodeKey 约定，两侧共用。
 //
 // 底层图形绘制用 base64Captcha 的 Driver（只用 DrawCaptcha 画图），
 // 不用它的 Captcha/Store —— Store 接口无 TTL 也无 ctx，塞不进
-// "global:captcha_codes: 前缀 + 2 分钟过期" 的约定，Redis 读写在本包自己做。
+// "global:captcha_codes: 前缀 + 2 分钟过期" 的约定，Redis 写入在本包自己做。
 package captcha
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"math/rand/v2"
@@ -25,8 +29,6 @@ import (
 
 	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/constant"
-	"ruoyi-go-vue-plus/pkg/errs"
-	"ruoyi-go-vue-plus/pkg/i18n"
 	"ruoyi-go-vue-plus/pkg/redis"
 )
 
@@ -175,40 +177,10 @@ func (c *Captcha) Generate(ctx context.Context) (*Vo, error) {
 	return &Vo{CaptchaEnabled: true, UUID: id, Img: stripB64Prefix(item.EncodeB64string())}, nil
 }
 
-// Validate 校验验证码：取值 → 无条件删除 → 判空 → 忽略大小写比对。
-// 对照 Java PasswordAuthStrategy.validateCaptcha。
-//
-// TODO: 对照 Java 在两个失败分支调 recordLoginInfo 记登录失败日志。
-func Validate(ctx context.Context, id, code string) error { return get().Validate(ctx, id, code) }
-
-// Validate 见包级 Validate。
-func (c *Captcha) Validate(ctx context.Context, id, code string) error {
-	// 未启用：直接放行，对照 Java `if (captchaEnabled) { validateCaptcha(...) }`。
-	if !c.enabled {
-		return nil
-	}
-
-	k := key(id)
-	rdb := c.client()
-	answer, err := rdb.Get(ctx, k).Result()
-	// 无论对错先删，杜绝同一 uuid 反复试错，对照 Java 取值后立即 deleteObject。
-	if delErr := rdb.Del(ctx, k).Err(); delErr != nil {
-		log.Printf("captcha: 删除 %s 失败: %v", k, delErr)
-	}
-
-	if err != nil {
-		if errors.Is(err, goredis.Nil) {
-			// 键不存在(过期或 uuid 无效)，对照 Java CaptchaExpireException。
-			return errs.New(0, i18n.Msg(ctx, "user.jcaptcha.expire"), "")
-		}
-		return fmt.Errorf("captcha: 读取 redis 失败: %w", err)
-	}
-	// 对照 Java StringUtils.equalsIgnoreCase：算术答案大小写无关，字符验证码忽略大小写。
-	if !strings.EqualFold(strings.TrimSpace(code), answer) {
-		return errs.New(0, i18n.Msg(ctx, "user.jcaptcha.error"), "")
-	}
-	return nil
-}
+// Enabled 返回验证码校验是否启用，对照 Java CaptchaProperties.getEnable()。
+// 校验逻辑在调用方（internal/auth 各认证策略的 validateCaptcha），本包只出题画图，
+// 故开关也交由调用方判断，对照 Java `if (captchaEnabled) { validateCaptcha(...) }`。
+func Enabled() bool { return get().enabled }
 
 // next 出题，返回画在图上的题面与用于比对的答案。
 // 字符验证码题面即答案；算术验证码题面是表达式、答案是计算结果，

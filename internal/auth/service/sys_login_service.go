@@ -115,9 +115,39 @@ func (*SysLoginService) BuildLoginUser(req *http.Request, user *systemvo.SysUser
 	return loginUser, nil
 }
 
-// CheckLogin 执行登录失败次数校验，并在成功后清空失败计数
-func (*SysLoginService) CheckLogin(ctx context.Context, loginType enum.LoginType,
+// RecordLoginInfo 记录登录信息，对应 Java SysLoginService.recordLoginInfo。
+//
+// Java 从 ServletUtils.getRequest()（线程绑定）取 IP/UA/clientid 后发 Spring 事件；
+// Go 无线程本地，req 必须由调用方显式传入，req 为 nil 时只记 username/status/message。
+//
+// 落库异步，本函数立即返回、不报错：日志写失败不该影响登录结果。ctx 用
+// context.WithoutCancel 脱开请求生命周期，否则响应一发完 ctx 即取消，落库必失败。
+func (*SysLoginService) RecordLoginInfo(req *http.Request, username, status, message string) {
+	evt := &systemdto.LoginInfoEvent{
+		Username: username,
+		Status:   status,
+		Message:  message,
+	}
+	ctx := context.Background()
+	if req != nil {
+		evt.IP = ip.ClientIP(req)
+		evt.UserAgent = req.Header.Get("User-Agent")
+		evt.ClientID = req.Header.Get(constant.ClientIDHeader)
+		ctx = context.WithoutCancel(req.Context())
+	}
+	// 同进程直接调 system service，不走 HTTP（对照 CLAUDE.md 的 in-process 约定）。
+	systemservice.LoginInfoSvcApp.RecordLoginInfo(ctx, evt)
+}
+
+// CheckLogin 执行登录失败次数校验，并在成功后清空失败计数。
+// req 除了提供 ctx，还用于记录登录日志（取 IP/UA/clientid），对照 BuildLoginUser 的取参方式。
+func (s *SysLoginService) CheckLogin(req *http.Request, loginType enum.LoginType,
 	username string, authSuccess func() bool) error {
+
+	ctx := context.Background()
+	if req != nil {
+		ctx = req.Context()
+	}
 
 	key := constant.PwdErrCntKeyPrefix + username
 	passwdCfg := config.Get().User.Password
@@ -133,8 +163,9 @@ func (*SysLoginService) CheckLogin(ctx context.Context, loginType enum.LoginType
 	}
 	// 锁定时间内登录则踢出。
 	if errorNumber >= maxRetry {
-		// TODO(阶段 3): recordLoginInfo(username, LOGIN_FAIL, RetryExceedMsg)。
-		return errs.New(0, loginType.RetryExceedMsg(ctx, maxRetry, lockMinutes), "")
+		msg := loginType.RetryExceedMsg(ctx, maxRetry, lockMinutes)
+		s.RecordLoginInfo(req, username, constant.ConstantLoginFail, msg)
+		return errs.New(0, msg, "")
 	}
 
 	if !authSuccess() {
@@ -145,11 +176,13 @@ func (*SysLoginService) CheckLogin(ctx context.Context, loginType enum.LoginType
 		}
 		if errorNumber >= maxRetry {
 			// 达上限则锁定。
-			// TODO(阶段 3): recordLoginInfo(username, LOGIN_FAIL, RetryExceedMsg)。
-			return errs.New(0, loginType.RetryExceedMsg(ctx, maxRetry, lockMinutes), "")
+			msg := loginType.RetryExceedMsg(ctx, maxRetry, lockMinutes)
+			s.RecordLoginInfo(req, username, constant.ConstantLoginFail, msg)
+			return errs.New(0, msg, "")
 		}
-		// TODO(阶段 3): recordLoginInfo(username, LOGIN_FAIL, RetryCountMsg)。
-		return errs.New(0, loginType.RetryCountMsg(ctx, errorNumber), "")
+		msg := loginType.RetryCountMsg(ctx, errorNumber)
+		s.RecordLoginInfo(req, username, constant.ConstantLoginFail, msg)
+		return errs.New(0, msg, "")
 	}
 
 	// 登录成功，清空错误次数。

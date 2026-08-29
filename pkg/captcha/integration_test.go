@@ -1,17 +1,14 @@
 package captcha
 
 import (
-	"errors"
 	"net"
 	"os"
 	"strconv"
-	"strings"
 	"testing"
 
 	goredis "github.com/redis/go-redis/v9"
 
 	"ruoyi-go-vue-plus/pkg/config"
-	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/redis"
 )
 
@@ -109,108 +106,7 @@ func TestGenerateWritesAnswerToRedis(t *testing.T) {
 	}
 }
 
-// TestValidateSuccess 答案正确应通过，且校验后键被删除(一次性)。
-func TestValidateSuccess(t *testing.T) {
-	c := mathCaptcha(t)
-	ctx := t.Context()
-
-	vo, err := c.Generate(ctx)
-	if err != nil {
-		t.Fatalf("Generate 失败: %v", err)
-	}
-	rdb := c.client()
-	k := key(vo.UUID)
-	t.Cleanup(func() { _ = rdb.Del(ctx, k).Err() })
-
-	answer, err := rdb.Get(ctx, k).Result()
-	if err != nil {
-		t.Fatalf("读取答案失败: %v", err)
-	}
-
-	if err := c.Validate(ctx, vo.UUID, answer); err != nil {
-		t.Fatalf("正确答案应校验通过, got %v", err)
-	}
-
-	// 校验后键必须已删除。
-	if err := rdb.Get(ctx, k).Err(); !errors.Is(err, goredis.Nil) {
-		t.Errorf("校验后键应被删除, got err=%v", err)
-	}
-	// 同一 uuid 二次校验必须失败，杜绝重放。
-	if err := c.Validate(ctx, vo.UUID, answer); err == nil {
-		t.Error("同一 uuid 二次校验应失败")
-	}
-}
-
-// TestValidateWrongAnswerConsumesCode 答案错误时也必须删键，杜绝同一 uuid 反复试错。
-func TestValidateWrongAnswerConsumesCode(t *testing.T) {
-	c := mathCaptcha(t)
-	ctx := t.Context()
-
-	vo, err := c.Generate(ctx)
-	if err != nil {
-		t.Fatalf("Generate 失败: %v", err)
-	}
-	rdb := c.client()
-	k := key(vo.UUID)
-	t.Cleanup(func() { _ = rdb.Del(ctx, k).Err() })
-
-	err = c.Validate(ctx, vo.UUID, "绝不可能是答案")
-	if err == nil {
-		t.Fatal("错误答案应校验失败")
-	}
-	var se *errs.ServiceError
-	if !errors.As(err, &se) {
-		t.Fatalf("应返回 ServiceError, got %T", err)
-	}
-	if se.Msg != "验证码错误" {
-		t.Errorf("提示应为 验证码错误, got %q", se.Msg)
-	}
-
-	if err := rdb.Get(ctx, k).Err(); !errors.Is(err, goredis.Nil) {
-		t.Errorf("答错后键也应被删除, got err=%v", err)
-	}
-}
-
-// TestValidateExpired uuid 不存在(过期/伪造)应返回"已失效"。
-func TestValidateExpired(t *testing.T) {
-	c := mathCaptcha(t)
-
-	err := c.Validate(t.Context(), "根本不存在的uuid", "1")
-	if err == nil {
-		t.Fatal("不存在的 uuid 应校验失败")
-	}
-	var se *errs.ServiceError
-	if !errors.As(err, &se) {
-		t.Fatalf("应返回 ServiceError, got %T", err)
-	}
-	if se.Msg != "验证码已失效" {
-		t.Errorf("提示应为 验证码已失效, got %q", se.Msg)
-	}
-}
-
-// TestValidateCharIgnoreCase 字符验证码应忽略大小写，对照 Java equalsIgnoreCase。
-func TestValidateCharIgnoreCase(t *testing.T) {
-	ctx := t.Context()
-
-	c := newCaptcha(t, config.CaptchaConfig{
-		Enable: true, Type: config.CaptchaTypeChar, CharLength: 4,
-	})
-
-	vo, err := c.Generate(ctx)
-	if err != nil {
-		t.Fatalf("Generate 失败: %v", err)
-	}
-	rdb := c.client()
-	k := key(vo.UUID)
-	t.Cleanup(func() { _ = rdb.Del(ctx, k).Err() })
-
-	answer, err := rdb.Get(ctx, k).Result()
-	if err != nil {
-		t.Fatalf("读取答案失败: %v", err)
-	}
-
-	// 全部翻成大写后仍应通过。
-	if err := c.Validate(ctx, vo.UUID, strings.ToUpper(answer)); err != nil {
-		t.Errorf("大小写不同应仍校验通过, got %v", err)
-	}
-}
+// TestValidateSuccess / WrongAnswer / Expired / CharIgnoreCase 已随校验逻辑迁至
+// internal/auth/service/captcha_integration_test.go —— 校验(取值→删除→判空→比对)
+// 现在在认证策略的 validateCaptcha 里，对照 Java PasswordAuthStrategy。
+// 本包只保留生成侧用例。
