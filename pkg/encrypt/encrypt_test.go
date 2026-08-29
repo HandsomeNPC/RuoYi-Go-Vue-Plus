@@ -453,3 +453,56 @@ func TestGenerateAESPassword(t *testing.T) {
 		seen[pw] = true
 	}
 }
+
+// TestUnwrapJSONString 前端 axios 会把密文 JSON.stringify 一次，带上外层引号，
+// 必须剥掉才能过 Go 严格的 base64 解码。
+func TestUnwrapJSONString(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"带引号(前端实际形态)", `"abc123=="`, "abc123=="},
+		{"无引号原样返回", "abc123==", "abc123=="},
+		{"只有前引号不剥", `"abc123==`, `"abc123==`},
+		{"只有后引号不剥", `abc123=="`, `abc123=="`},
+		{"空串", "", ""},
+		{"单个引号不越界", `"`, `"`},
+		{"两个引号剥成空", `""`, ""},
+		{"内部引号保留", `"a"b"`, `a"b`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := unwrapJSONString([]byte(tc.in)); got != tc.want {
+				t.Errorf("unwrapJSONString(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestDecryptByAESAcceptsQuotedCipher 端到端确认：加密结果套上 JSON 引号后，
+// 经 unwrapJSONString 处理仍能解回原文。
+func TestDecryptByAESAcceptsQuotedCipher(t *testing.T) {
+	pw, err := GenerateAESPassword()
+	if err != nil {
+		t.Fatalf("GenerateAESPassword: %v", err)
+	}
+	const plain = `{"username":"admin","password":"admin123"}`
+	cipher, err := EncryptByAES(plain, pw)
+	if err != nil {
+		t.Fatalf("EncryptByAES: %v", err)
+	}
+
+	// 未剥引号时必须失败(复现线上报错)。
+	if _, err := DecryptByAES(`"`+cipher+`"`, pw); err == nil {
+		t.Error("带引号的密文直接解密应失败，否则说明 base64 解码不够严格")
+	}
+	// 剥引号后必须解回原文。
+	got, err := DecryptByAES(unwrapJSONString([]byte(`"`+cipher+`"`)), pw)
+	if err != nil {
+		t.Fatalf("剥引号后解密失败: %v", err)
+	}
+	if got != plain {
+		t.Errorf("解密结果 = %q, want %q", got, plain)
+	}
+}

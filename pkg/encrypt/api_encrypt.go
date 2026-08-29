@@ -161,7 +161,7 @@ func (e *Crypto) decryptRequest(c *gin.Context, headerValue string) bool {
 		return false
 	}
 	// AES 解密请求体。
-	plain, err := DecryptByAES(string(bytes.TrimSpace(cipherBody)), aesPassword)
+	plain, err := DecryptByAES(unwrapJSONString(bytes.TrimSpace(cipherBody)), aesPassword)
 	if err != nil {
 		e.fail(c, "AES 解密请求体失败: "+err.Error())
 		return false
@@ -218,6 +218,19 @@ func (e *Crypto) encryptResponse(c *gin.Context) {
 		return
 	}
 	buf.writeEncrypted(cipherText)
+}
+
+// unwrapJSONString 剥掉密文外层的 JSON 字符串引号。
+//
+// 前端 axios 把加密后的 base64 串当 JSON body 发（Content-Type 是 application/json），
+// transformRequest 会 JSON.stringify 一次，于是上线的 body 是 "abc123=="——带引号。
+// Java 端能直接解是因为 hutool 的 base64 解码器会静默跳过非字母表字符（引号被忽略），
+// 而 Go 标准库 base64 严格报错(illegal base64 data at input byte 0)，故须显式剥离。
+func unwrapJSONString(b []byte) string {
+	if len(b) >= 2 && b[0] == '"' && b[len(b)-1] == '"' {
+		return string(b[1 : len(b)-1])
+	}
+	return string(b)
 }
 
 // fail 记录明细并回请求解密失败的统一文案。
