@@ -2,6 +2,7 @@ package main
 
 import (
 	"ruoyi-go-vue-plus/internal/auth"
+	"ruoyi-go-vue-plus/pkg/captcha"
 	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/database"
 	"ruoyi-go-vue-plus/pkg/encrypt"
@@ -20,6 +21,8 @@ func main() {
 
 	satoken.Init()
 	encrypt.Init()
+	// 依赖 redis(验证码存 Redis)，须在 redis.Init 之后。
+	captcha.Init()
 
 	r := auth.InitRouter()
 	auth.InitServer(r)

@@ -11,6 +11,7 @@ import (
 	"ruoyi-go-vue-plus/internal/auth/model"
 	authservice "ruoyi-go-vue-plus/internal/auth/service"
 	systemservice "ruoyi-go-vue-plus/internal/system/service"
+	"ruoyi-go-vue-plus/pkg/captcha"
 	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/i18n"
@@ -65,4 +66,15 @@ func (a *AuthApi) Login(c *gin.Context) {
 func (a *AuthApi) Logout(c *gin.Context) {
 	// TODO(阶段 3): 登出逻辑待重建（原 AuthService.Logout 已删，待基于会话/在线记录重写）。
 	c.JSON(http.StatusOK, response.OkMsg("退出成功"))
+}
+
+// Code 获取图形验证码，对照 Java CaptchaController.getCode。
+func (a *AuthApi) Code(c *gin.Context) {
+	vo, err := captcha.Generate(c.Request.Context())
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, response.Ok(vo))
 }

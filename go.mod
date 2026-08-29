@@ -4,7 +4,9 @@ go 1.26.5
 
 require (
 	github.com/gin-gonic/gin v1.12.0
+	github.com/google/uuid v1.6.0
 	github.com/lionsoul2014/ip2region/binding/golang v0.0.0-20260814054437-800d19424237
+	github.com/mojocn/base64Captcha v1.3.8
 	github.com/mssola/useragent v1.0.0
 	github.com/redis/go-redis/v9 v9.22.0
 	github.com/sa-tokens/sa-token-go/integrations/gin v0.2.4
@@ -35,7 +37,7 @@ require (
 	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
-	github.com/google/uuid v1.6.0 // indirect
+	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jmattheis/goverter v1.9.4 // indirect
@@ -63,6 +65,7 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/arch v0.27.0 // indirect
+	golang.org/x/image v0.23.0 // indirect
 	golang.org/x/mod v0.38.0 // indirect
 	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect

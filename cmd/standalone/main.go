@@ -8,6 +8,7 @@ import (
 
 	"ruoyi-go-vue-plus/internal/auth"
 	"ruoyi-go-vue-plus/internal/system"
+	"ruoyi-go-vue-plus/pkg/captcha"
 	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/database"
 	"ruoyi-go-vue-plus/pkg/encrypt"
@@ -27,6 +28,8 @@ func main() {
 
 	satoken.Init()
 	encrypt.Init()
+	// 依赖 redis(验证码存 Redis)，须在 redis.Init 之后。
+	captcha.Init()
 
 	// 单体引擎：全局中间件装配一次，auth/system 各自只注册本模块路由。
 	// standalone 部署保留 /auth、/system 前缀(与前端直连的网关路径一致)。

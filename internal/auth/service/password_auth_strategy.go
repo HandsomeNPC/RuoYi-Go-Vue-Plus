@@ -11,6 +11,7 @@ import (
 	systemvo "ruoyi-go-vue-plus/internal/system/model/vo"
 	systemservice "ruoyi-go-vue-plus/internal/system/service"
 	"ruoyi-go-vue-plus/pkg/bcrypt"
+	"ruoyi-go-vue-plus/pkg/captcha"
 	"ruoyi-go-vue-plus/pkg/enum"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/response"
@@ -28,7 +29,11 @@ func (s *passwordAuthStrategy) Login(req *http.Request, body []byte,
 	if err := binding.JSON.BindBody(body, &loginBody); err != nil {
 		return nil, errs.New(response.CodeBadRequest, "参数校验失败", err.Error())
 	}
-	// TODO: 验证码校验
+	// 验证码校验，对照 Java PasswordAuthStrategy.validateCaptcha。
+	// 开关判断在 captcha.Validate 内部，未启用直接放行。
+	if err := captcha.Validate(ctx, loginBody.UUID, loginBody.Code); err != nil {
+		return nil, err
+	}
 	user, err := systemservice.UserSvcApp.LoadUserByUsername(ctx, loginBody.Username)
 	if err != nil {
 		return nil, err

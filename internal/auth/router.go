@@ -27,6 +27,8 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	{
 		g.POST("/login", sagin.Ignore(), encrypt.ApiEncrypt(), handler.AuthApiApp.Login)
 		g.POST("/logout", sagin.Ignore(), handler.AuthApiApp.Logout)
+		// 验证码为 GET 且需匿名访问，不挂 ApiEncrypt（该注解只作用于 POST/PUT）。
+		g.GET("/code", sagin.Ignore(), handler.AuthApiApp.Code)
 		g.GET("/ping", sagin.Ignore(), func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"module": "auth", "message": "pong"})
 		})

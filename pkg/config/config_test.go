@@ -247,6 +247,35 @@ func TestSATokenValidate(t *testing.T) {
 	}
 }
 
+// TestCaptchaValidate 验证码配置校验。
+func TestCaptchaValidate(t *testing.T) {
+	valid := CaptchaConfig{Enable: true, Type: CaptchaTypeMath, NumberLength: 1, CharLength: 4}
+	if err := valid.validate(); err != nil {
+		t.Errorf("完整配置不应报错: %v", err)
+	}
+
+	// 关闭时其余项怎么填都放行。
+	off := CaptchaConfig{Enable: false, Type: "bogus", NumberLength: 0, CharLength: 0}
+	if err := off.validate(); err != nil {
+		t.Errorf("关闭时应放行: %v", err)
+	}
+
+	tests := map[string]func(*CaptchaConfig){
+		"非 math/char 类型":   func(c *CaptchaConfig) { c.Type = "bogus" },
+		"numberLength 为 0": func(c *CaptchaConfig) { c.NumberLength = 0 },
+		"charLength 为 0":   func(c *CaptchaConfig) { c.CharLength = 0 },
+	}
+	for name, breakIt := range tests {
+		t.Run(name, func(t *testing.T) {
+			c := valid
+			breakIt(&c)
+			if err := c.validate(); err == nil {
+				t.Error("want error, got nil")
+			}
+		})
+	}
+}
+
 func TestHelpers(t *testing.T) {
 	d := DatasourceConfig{ConnMaxLifetime: 3600}
 	if got, want := d.MaxLifetime().Hours(), 1.0; got != want {
@@ -338,6 +367,7 @@ func TestMiddlewareDefaultsMatchSetDefault(t *testing.T) {
 		{"RepeatableBody", cfg.RepeatableBody, DefaultRepeatableBody()},
 		{"I18n", cfg.I18n, DefaultI18n()},
 		{"APIEncrypt", cfg.APIEncrypt, DefaultAPIEncrypt()},
+		{"Captcha", cfg.Captcha, DefaultCaptcha()},
 	}
 	for _, c := range checks {
 		if !reflect.DeepEqual(c.got, c.want) {
@@ -361,6 +391,7 @@ func TestRealYAMLMatchesDefaults(t *testing.T) {
 		{"TraceID", cfg.TraceID, DefaultTraceID()},
 		{"RepeatableBody", cfg.RepeatableBody, DefaultRepeatableBody()},
 		{"I18n", cfg.I18n, DefaultI18n()},
+		{"Captcha", cfg.Captcha, DefaultCaptcha()},
 	}
 	for _, c := range checks {
 		if !reflect.DeepEqual(c.got, c.want) {

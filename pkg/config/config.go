@@ -22,6 +22,7 @@ type Config struct {
 	I18n           I18nConfig           `mapstructure:"i18n"`
 	APIEncrypt     APIEncryptConfig     `mapstructure:"apiEncrypt"`
 	User           UserConfig           `mapstructure:"user"`
+	Captcha        CaptchaConfig        `mapstructure:"captcha"`
 }
 
 // Load 按顺序读取并合并多个 yaml 配置文件，后者覆盖前者，随后写入包级实例。
@@ -42,6 +43,7 @@ func Load(paths ...string) {
 	DefaultAPIEncrypt().setDefaults(v)
 	DefaultSAToken().setDefaults(v)
 	DefaultUser().setDefaults(v)
+	DefaultCaptcha().setDefaults(v)
 
 	for i, path := range paths {
 		v.SetConfigFile(path)
@@ -100,6 +102,7 @@ func (c *Config) validate() error {
 		c.I18n.validate,
 		c.APIEncrypt.validate,
 		c.User.validate,
+		c.Captcha.validate,
 	}
 	for _, fn := range validators {
 		if err := fn(); err != nil {
