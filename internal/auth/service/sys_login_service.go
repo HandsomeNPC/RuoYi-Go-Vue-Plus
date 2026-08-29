@@ -8,6 +8,7 @@ import (
 	"time"
 
 	goredis "github.com/redis/go-redis/v9"
+	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 	"golang.org/x/sync/errgroup"
 
 	systemdto "ruoyi-go-vue-plus/internal/system/model/dto"
@@ -17,9 +18,11 @@ import (
 	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/enum"
 	"ruoyi-go-vue-plus/pkg/errs"
+	"ruoyi-go-vue-plus/pkg/i18n"
 	"ruoyi-go-vue-plus/pkg/ip"
 	authmodel "ruoyi-go-vue-plus/pkg/model"
 	"ruoyi-go-vue-plus/pkg/redis"
+	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 	"ruoyi-go-vue-plus/pkg/useragent"
 )
 
@@ -113,6 +116,34 @@ func (*SysLoginService) BuildLoginUser(req *http.Request, user *systemvo.SysUser
 		return nil, err
 	}
 	return loginUser, nil
+}
+
+// Logout 退出登录，对应 Java SysLoginService.logout。
+//
+// token 由 handler 从请求上下文取（sagin.GetTokenFromCtx），service 层不碰 *gin.Context。
+//
+// **不返回 error**：对照 Java 的 try/finally——取登录态与注销都把 NotLoginException 吞掉，
+// 退出接口对外恒为成功。这里同样只记日志：token 已失效/已登出时 LogoutByToken 会返回
+// ErrInvalidTokenData，等价于 Java 的 NotLoginException，不该让前端登出失败。
+//
+// 顺序要紧：必须先取 LoginUser 再注销。注销会删掉 token-session，之后就拿不到用户名了。
+func (s *SysLoginService) Logout(req *http.Request, token string) {
+	if token == "" {
+		// 未携带 token，等同 Java loginUser 为 null 直接 return。
+		return
+	}
+	if loginUser := loginhelper.GetLoginUserByToken(token); loginUser != nil {
+		ctx := context.Background()
+		if req != nil {
+			ctx = req.Context()
+		}
+		s.RecordLoginInfo(req, loginUser.Username, constant.ConstantLogout,
+			i18n.Msg(ctx, "user.logout.success"))
+	}
+	// 对照 Java finally 里的 StpUtil.logout()：删 token 信息、账号映射、token-session。
+	if err := sagin.LogoutByToken(token); err != nil {
+		log.Printf("[auth] 注销 token 失败(按已登出处理): %v", err)
+	}
 }
 
 // RecordLoginInfo 记录登录信息，对应 Java SysLoginService.recordLoginInfo。

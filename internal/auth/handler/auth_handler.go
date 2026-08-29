@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
+	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 
 	"ruoyi-go-vue-plus/internal/auth/model"
 	authservice "ruoyi-go-vue-plus/internal/auth/service"
@@ -62,10 +63,13 @@ func (a *AuthApi) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(vo))
 }
 
-// Logout 登出。
+// Logout 登出，对照 Java AuthController.logout。
+// 与 Java 一样恒返回成功：service 内部吞掉未登录/token 失效的情况，前端总能正常清态。
 func (a *AuthApi) Logout(c *gin.Context) {
-	// TODO(阶段 3): 登出逻辑待重建（原 AuthService.Logout 已删，待基于会话/在线记录重写）。
-	c.JSON(http.StatusOK, response.OkMsg("退出成功"))
+	// token 由组级 TokenInterceptor 解析后存入 ctx；service 层不碰 *gin.Context，故在此取出传入。
+	authservice.SysLoginSvcApp.Logout(c.Request, sagin.GetTokenFromCtx(c))
+
+	c.JSON(http.StatusOK, response.OkMsg(i18n.Msg(c.Request.Context(), "user.logout.success")))
 }
 
 // Code 获取图形验证码，对照 Java CaptchaController.getCode。
