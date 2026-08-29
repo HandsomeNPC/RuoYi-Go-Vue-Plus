@@ -126,10 +126,11 @@ redis:
   poolSize: %d
   minIdleConns: %d
   dialTimeoutMs: %d
-jwt:
-  secret: test-secret
-  expireMinutes: 720
-  header: Authorization
+satoken:
+  tokenName: Authorization
+  isConcurrent: true
+  isShare: false
+  jwtSecretKey: test-secret
 `,
 		cfg.Host, cfg.Port, strconv.Quote(cfg.Password), cfg.DB,
 		strconv.Quote(cfg.ClientName), cfg.PoolSize, cfg.MinIdleConns, cfg.DialTimeoutMs,
