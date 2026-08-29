@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
+	"github.com/sa-tokens/sa-token-go/stputil"
 
 	"ruoyi-go-vue-plus/pkg/constant"
 	authmodel "ruoyi-go-vue-plus/pkg/model"
@@ -27,7 +28,10 @@ func Login(loginUser *authmodel.LoginUser, device string) (string, error) {
 	}
 	loginUser.Token = token
 
-	sess, err := sagin.GetTokenSession(token)
+	// 必须用 OrCreate：sagin.Login 只签发 token、写登录态，不建 token-session。
+	// 只读的 GetTokenSession 在 session 不存在时返回 (nil, nil)——nil 却不报错，
+	// 后面 sess.Set 就会空指针。gin 集成层未导出 OrCreate，故直接走 stputil。
+	sess, err := stputil.GetTokenSessionOrCreate(token)
 	if err != nil {
 		return "", err
 	}
