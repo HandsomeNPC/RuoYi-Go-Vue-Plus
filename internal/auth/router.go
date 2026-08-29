@@ -2,6 +2,7 @@ package auth
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
@@ -9,6 +10,7 @@ import (
 	"ruoyi-go-vue-plus/internal/auth/handler"
 	"ruoyi-go-vue-plus/pkg/encrypt"
 	"ruoyi-go-vue-plus/pkg/middleware"
+	"ruoyi-go-vue-plus/pkg/ratelimiter"
 	"ruoyi-go-vue-plus/pkg/satoken"
 )
 
@@ -28,7 +30,13 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 		g.POST("/login", sagin.Ignore(), encrypt.ApiEncrypt(), handler.AuthApiApp.Login)
 		g.POST("/logout", sagin.Ignore(), handler.AuthApiApp.Logout)
 		// 验证码为 GET 且需匿名访问，不挂 ApiEncrypt（该注解只作用于 POST/PUT）。
-		g.GET("/code", sagin.Ignore(), handler.AuthApiApp.Code)
+		// 对照 Java @RateLimiter(time=60, count=10, limitType=IP)：同一 IP 每分钟最多取 10 次。
+		g.GET("/code", sagin.Ignore(),
+			ratelimiter.RateLimiter(
+				ratelimiter.WithTime(time.Minute),
+				ratelimiter.WithCount(10),
+				ratelimiter.WithLimitType(ratelimiter.LimitTypeIP)),
+			handler.AuthApiApp.Code)
 		g.GET("/ping", sagin.Ignore(), func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"module": "auth", "message": "pong"})
 		})

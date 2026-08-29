@@ -6,6 +6,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/database"
 	"ruoyi-go-vue-plus/pkg/encrypt"
+	"ruoyi-go-vue-plus/pkg/ratelimiter"
 	"ruoyi-go-vue-plus/pkg/redis"
 	"ruoyi-go-vue-plus/pkg/satoken"
 )
@@ -23,6 +24,8 @@ func main() {
 	encrypt.Init()
 	// 依赖 redis(验证码存 Redis)，须在 redis.Init 之后。
 	captcha.Init()
+	// 依赖 redis(限流计数存 Redis)，须在 redis.Init 之后。
+	ratelimiter.Init()
 
 	r := auth.InitRouter()
 	auth.InitServer(r)
