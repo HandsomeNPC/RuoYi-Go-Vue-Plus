@@ -1,9 +1,13 @@
 package model
 
+import (
+	"strings"
+
+	"ruoyi-go-vue-plus/pkg/constant"
+	"ruoyi-go-vue-plus/pkg/strutil"
+)
+
 // SysMenu 菜单权限表（sys_menu），对应 Java org.dromara.system.domain.SysMenu。
-//
-// 仅迁移实体字段；Java SysMenu 上的路由推导方法（getRouteName/getRouterPath/
-// getComponentInfo 等）依赖前端路由构建逻辑，后续迁移到 service/vo 层实现。
 type SysMenu struct {
 	MenuID     int64  `gorm:"column:menu_id;primaryKey" json:"menuId"`
 	ParentID   int64  `gorm:"column:parent_id" json:"parentId"`
@@ -39,4 +43,74 @@ type SysMenu struct {
 // TableName 显式指定表名。
 func (SysMenu) TableName() string {
 	return "sys_menu"
+}
+
+// innerLinkReplacer 内链地址转路由路径：剥协议头与 www.，再把 . : 换成 /。
+// 用 Replacer 而非多次 ReplaceAll，是为对齐 Java replaceEach 的单趟、不重叠替换语义
+// （多次 ReplaceAll 会让前一轮产出的字符再被后一轮匹配）。
+var innerLinkReplacer = strings.NewReplacer(
+	constant.ConstantHTTP, "",
+	constant.ConstantHTTPS, "",
+	constant.ConstantWWW, "",
+	".", "/",
+	":", "/",
+)
+
+// InnerLinkReplaceEach 内链域名特殊字符替换，对应 Java SysMenu.innerLinkReplaceEach。
+func InnerLinkReplaceEach(path string) string {
+	return innerLinkReplacer.Replace(path)
+}
+
+// RouteName 路由名称，对应 Java SysMenu.getRouteName。一级非外链菜单交由 path 直接兜底，故返回空。
+func (m *SysMenu) RouteName() string {
+	if m.IsMenuFrame() {
+		return ""
+	}
+	return strutil.Capitalize(m.Path)
+}
+
+// RouterPath 路由地址，对应 Java SysMenu.getRouterPath。
+func (m *SysMenu) RouterPath() string {
+	routerPath := m.Path
+	if m.ParentID != constant.ConstantTopParentID && m.IsInnerLink() {
+		routerPath = InnerLinkReplaceEach(routerPath)
+	}
+	switch {
+	case m.ParentID == constant.ConstantTopParentID &&
+		m.MenuType == constant.MenuTypeDir && m.IsFrame == constant.No:
+		routerPath = "/" + m.Path
+	case m.IsMenuFrame():
+		routerPath = "/"
+	}
+	return routerPath
+}
+
+// ComponentInfo 组件路径，对应 Java SysMenu.getComponentInfo。
+func (m *SysMenu) ComponentInfo() string {
+	switch {
+	case m.Component != "" && !m.IsMenuFrame():
+		return m.Component
+	case m.Component == "" && m.ParentID != constant.ConstantTopParentID && m.IsInnerLink():
+		return constant.ComponentInnerLink
+	case m.Component == "" && m.IsParentView():
+		return constant.ComponentParentView
+	default:
+		return constant.ComponentLayout
+	}
+}
+
+// IsMenuFrame 是否为一级非外链菜单（此类菜单在前端挂到根路由下）。
+func (m *SysMenu) IsMenuFrame() bool {
+	return m.ParentID == constant.ConstantTopParentID &&
+		m.MenuType == constant.MenuTypeMenu && m.IsFrame == constant.No
+}
+
+// IsInnerLink 是否为内链组件（非外链但 path 填的是 http 地址）。
+func (m *SysMenu) IsInnerLink() bool {
+	return m.IsFrame == constant.No && strutil.IsHTTP(m.Path)
+}
+
+// IsParentView 是否为 ParentView 组件（非一级目录）。
+func (m *SysMenu) IsParentView() bool {
+	return m.ParentID != constant.ConstantTopParentID && m.MenuType == constant.MenuTypeDir
 }

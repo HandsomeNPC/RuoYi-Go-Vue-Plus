@@ -6,6 +6,7 @@ import (
 
 	"gorm.io/gorm"
 
+	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/pkg/constant"
 )
 
@@ -80,4 +81,47 @@ func (r *MenuRepository) SelectMenuPermsByRoleIds(ctx context.Context, roleIDs [
 		return nil, fmt.Errorf("repository: 按角色 %v 查询菜单权限失败: %w", roleIDs, err)
 	}
 	return rows, nil
+}
+
+// SelectMenuTreeAll 查全部正常状态的目录和菜单（对应 Java SysMenuMapper#selectMenuTreeAll）。
+// 排序 parent_id, order_num 是构树前提：service 依赖同级节点已按 order_num 有序。
+func (r *MenuRepository) SelectMenuTreeAll(ctx context.Context) ([]*model.SysMenu, error) {
+	var menus []*model.SysMenu
+	err := r.db.WithContext(ctx).
+		Where("menu_type IN ?", []string{constant.MenuTypeDir, constant.MenuTypeMenu}).
+		Where("status = ?", constant.StatusNormal).
+		Order("parent_id").
+		Order("order_num").
+		Find(&menus).Error
+	if err != nil {
+		return nil, fmt.Errorf("repository: 查询全部菜单树失败: %w", err)
+	}
+	return menus, nil
+}
+
+// SelectMenuTreeByUserId 按用户ID查其可见的目录和菜单（对应 Java SysMenuMapper#selectMenuTreeByUserId）。
+func (r *MenuRepository) SelectMenuTreeByUserId(ctx context.Context, userID int64) ([]*model.SysMenu, error) {
+	if userID <= 0 {
+		return nil, nil
+	}
+
+	var menus []*model.SysMenu
+	err := r.db.WithContext(ctx).
+		Model(&model.SysMenu{}).
+		Distinct("sys_menu.*").
+		Joins("JOIN sys_role_menu srm ON srm.menu_id = sys_menu.menu_id").
+		Joins("JOIN sys_user_role sur ON sur.role_id = srm.role_id").
+		Joins("JOIN sys_role sr ON sr.role_id = srm.role_id").
+		Where("sur.user_id = ?", userID).
+		Where("sr.status = ?", constant.StatusNormal).
+		Where("sr.del_flag = ?", constant.StatusNormal).
+		Where("sys_menu.menu_type IN ?", []string{constant.MenuTypeDir, constant.MenuTypeMenu}).
+		Where("sys_menu.status = ?", constant.StatusNormal).
+		Order("sys_menu.parent_id").
+		Order("sys_menu.order_num").
+		Find(&menus).Error
+	if err != nil {
+		return nil, fmt.Errorf("repository: 查询用户 %d 菜单树失败: %w", userID, err)
+	}
+	return menus, nil
 }
