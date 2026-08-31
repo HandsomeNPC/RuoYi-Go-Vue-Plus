@@ -99,7 +99,7 @@ func TestAcquireDifferentKeysIndependent(t *testing.T) {
 	}
 }
 
-// TestHandlerRendersRejection 触发限流时走完整 gin 链路应返回 200 + code 500 + i18n 文案。
+// TestHandlerRendersRejection 触发限流时走完整 gin 链路应返回 200 + code 500 + 提示文案。
 // 对照 Java：HTTP 200 + {"code":500,"msg":"访问过于频繁，请稍候再试"}，而非 429。
 func TestHandlerRendersRejection(t *testing.T) {
 	l := setupRedis(t)
@@ -109,7 +109,7 @@ func TestHandlerRendersRejection(t *testing.T) {
 	r.Use(middleware.Recover())
 	r.GET("/auth/code", l.middleware(
 		nil, // 动态维度
-		[]Option{WithTime(time.Minute), WithCount(1), WithLimitType(LimitTypeIP)},
+		time.Minute, 1, LimitTypeIP, 0, "",
 	), func(c *gin.Context) {
 		c.JSON(200, gin.H{"ok": true})
 	})
@@ -132,7 +132,7 @@ func TestHandlerRendersRejection(t *testing.T) {
 		t.Errorf("限流 HTTP 码 = %d, want 200 (对齐 Java 非 429)", code)
 	}
 	if !strings.Contains(body, "访问过于频繁") {
-		t.Errorf("限流文案应为 i18n 中文, got %q", body)
+		t.Errorf("限流文案应为中文, got %q", body)
 	}
 	if !strings.Contains(body, "code") {
 		t.Errorf("响应应含 code 字段: %q", body)
@@ -140,8 +140,8 @@ func TestHandlerRendersRejection(t *testing.T) {
 }
 
 // middleware 包内测试用：把 run 包装成 gin.HandlerFunc。
-func (l *Limiter) middleware(fn func(*gin.Context) string, opts []Option) gin.HandlerFunc {
-	o := newOptions(opts...)
+func (l *Limiter) middleware(fn func(*gin.Context) string, window time.Duration, count int, limitType LimitType, timeout time.Duration, message string) gin.HandlerFunc {
+	o := newOptions(window, count, limitType, timeout, message)
 	if fn != nil {
 		o.keyFunc = fn
 	}
@@ -158,7 +158,7 @@ func TestRedisDownFailsOpen(t *testing.T) {
 
 	r := gin.New()
 	r.Use(middleware.Recover())
-	r.GET("/t", l.middleware(nil, []Option{WithCount(1)}), func(c *gin.Context) {
+	r.GET("/t", l.middleware(nil, 0, 1, 0, 0, ""), func(c *gin.Context) {
 		c.JSON(200, gin.H{"ok": true})
 	})
 

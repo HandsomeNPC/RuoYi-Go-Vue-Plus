@@ -21,9 +21,9 @@ func newCtx(path, remoteAddr string) *gin.Context {
 	return c
 }
 
-// TestDefaultOptions 默认值须对齐 Java @RateLimiter 的 default。
+// TestDefaultOptions 全为零值时应回落到默认值。
 func TestDefaultOptions(t *testing.T) {
-	o := newOptions()
+	o := newOptions(0, 0, 0, 0, "")
 
 	if got, want := o.window, 60*time.Second; got != want {
 		t.Errorf("默认窗口 = %v, want %v", got, want)
@@ -31,29 +31,23 @@ func TestDefaultOptions(t *testing.T) {
 	if got, want := o.count, 100; got != want {
 		t.Errorf("默认次数 = %d, want %d", got, want)
 	}
-	if got, want := o.limitType, LimitTypeDefault; got != want {
+	if got, want := o.limitType, LimitTypeGlobal; got != want {
 		t.Errorf("默认类型 = %v, want %v", got, want)
 	}
 	if got, want := o.timeout, 24*time.Hour; got != want {
 		t.Errorf("默认 timeout = %v, want %v", got, want)
 	}
-	if got, want := o.msgCode, "rate.limiter.message"; got != want {
-		t.Errorf("默认词条 = %q, want %q", got, want)
+	if got, want := o.message, defaultMessage; got != want {
+		t.Errorf("默认文案 = %q, want %q", got, want)
 	}
 	if o.keyFunc != nil {
 		t.Error("默认不应有 keyFunc")
 	}
 }
 
-// TestOptionsOverride 各 Option 应正确覆盖默认值。
-func TestOptionsOverride(t *testing.T) {
-	o := newOptions(
-		WithTime(10*time.Second),
-		WithCount(2),
-		WithLimitType(LimitTypeCluster),
-		WithTimeout(time.Hour),
-		WithMessage("custom.code"),
-	)
+// TestNewOptionsExplicit 显式传入的值应原样存入。
+func TestNewOptionsExplicit(t *testing.T) {
+	o := newOptions(10*time.Second, 2, LimitTypeCluster, time.Hour, "custom.code")
 
 	if got, want := o.window, 10*time.Second; got != want {
 		t.Errorf("窗口 = %v, want %v", got, want)
@@ -67,23 +61,22 @@ func TestOptionsOverride(t *testing.T) {
 	if got, want := o.timeout, time.Hour; got != want {
 		t.Errorf("timeout = %v, want %v", got, want)
 	}
-	if got, want := o.msgCode, "custom.code"; got != want {
+	if got, want := o.message, "custom.code"; got != want {
 		t.Errorf("词条 = %q, want %q", got, want)
 	}
 }
 
-// TestCombineKey 键格式必须对齐 Java RateLimiterAspect.getCombineKey：
-// global:rate_limit:<路径>:[<IP>:|<实例ID>:]<动态维度>
+// TestCombineKey 键格式：global:rate_limit:<路径>:[<IP>:|<实例ID>:]<动态维度>。
 func TestCombineKey(t *testing.T) {
 	l := &Limiter{instanceID: "inst-1"}
 
 	cases := []struct {
-		name string
-		path string
-		addr string
-		opts []Option
-		fn   func(*gin.Context) string
-		want string
+		name      string
+		path      string
+		addr      string
+		limitType LimitType
+		fn        func(*gin.Context) string
+		want      string
 	}{
 		{
 			name: "默认全局限流,空动态维度保留结尾冒号",
@@ -91,17 +84,17 @@ func TestCombineKey(t *testing.T) {
 			want: "global:rate_limit:/demo/rateLimiter/test:",
 		},
 		{
-			name: "IP 维度",
-			path: "/auth/code",
-			addr: "1.2.3.4:5678",
-			opts: []Option{WithLimitType(LimitTypeIP)},
-			want: "global:rate_limit:/auth/code:1.2.3.4:",
+			name:      "IP 维度",
+			path:      "/auth/code",
+			addr:      "1.2.3.4:5678",
+			limitType: LimitTypeIP,
+			want:      "global:rate_limit:/auth/code:1.2.3.4:",
 		},
 		{
-			name: "实例维度",
-			path: "/demo/testcluster",
-			opts: []Option{WithLimitType(LimitTypeCluster)},
-			want: "global:rate_limit:/demo/testcluster:inst-1:",
+			name:      "实例维度",
+			path:      "/demo/testcluster",
+			limitType: LimitTypeCluster,
+			want:      "global:rate_limit:/demo/testcluster:inst-1:",
 		},
 		{
 			name: "动态维度(对照 SpEL #phoneNumber)",
@@ -110,18 +103,18 @@ func TestCombineKey(t *testing.T) {
 			want: "global:rate_limit:/resource/sms/code:13800000000",
 		},
 		{
-			name: "IP + 动态维度",
-			path: "/demo/testObj",
-			addr: "9.9.9.9:1000",
-			opts: []Option{WithLimitType(LimitTypeIP)},
-			fn:   func(c *gin.Context) string { return c.Query("value") },
-			want: "global:rate_limit:/demo/testObj:9.9.9.9:v1",
+			name:      "IP + 动态维度",
+			path:      "/demo/testObj",
+			addr:      "9.9.9.9:1000",
+			limitType: LimitTypeIP,
+			fn:        func(c *gin.Context) string { return c.Query("value") },
+			want:      "global:rate_limit:/demo/testObj:9.9.9.9:v1",
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			o := newOptions(tc.opts...)
+			o := newOptions(0, 0, tc.limitType, 0, "")
 			o.keyFunc = tc.fn
 
 			path := tc.path
@@ -139,8 +132,8 @@ func TestCombineKey(t *testing.T) {
 // TestCombineKeyAlwaysUnderGlobalPrefix 限流键必须落在 global: 命名空间下。
 func TestCombineKeyAlwaysUnderGlobalPrefix(t *testing.T) {
 	l := &Limiter{instanceID: "x"}
-	for _, lt := range []LimitType{LimitTypeDefault, LimitTypeIP, LimitTypeCluster} {
-		key := l.combineKey(newCtx("/p", "1.1.1.1:1"), newOptions(WithLimitType(lt)))
+	for _, lt := range []LimitType{LimitTypeGlobal, LimitTypeIP, LimitTypeCluster} {
+		key := l.combineKey(newCtx("/p", "1.1.1.1:1"), newOptions(0, 0, lt, 0, ""))
 		if !strings.HasPrefix(key, "global:rate_limit:") {
 			t.Errorf("limitType=%v 的键前缀不对: %q", lt, key)
 		}
@@ -171,16 +164,6 @@ func TestNewMemberSuffixUnique(t *testing.T) {
 			t.Fatalf("成员后缀重复: %s", s)
 		}
 		seen[s] = true
-	}
-}
-
-// TestNewGeneratesInstanceID New("") 应自动生成实例 ID。
-func TestNewGeneratesInstanceID(t *testing.T) {
-	if got := New("").instanceID; got == "" {
-		t.Error("New(\"\") 应自动生成实例 ID")
-	}
-	if got, want := New("fixed").instanceID, "fixed"; got != want {
-		t.Errorf("New(%q).instanceID = %q, want %q", want, got, want)
 	}
 }
 
