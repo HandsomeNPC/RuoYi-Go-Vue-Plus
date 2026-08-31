@@ -24,6 +24,25 @@ func NewUserRepository(db *gorm.DB) *UserRepository {
 	return &UserRepository{db: db}
 }
 
+// SelectByUserID 按用户ID查用户，不存在时返回 ErrUserNotFound。
+func (r *UserRepository) SelectByUserID(ctx context.Context, userID int64) (*model.SysUser, error) {
+	if userID == 0 {
+		return nil, ErrUserNotFound
+	}
+
+	var user model.SysUser
+	err := r.db.WithContext(ctx).
+		Where("user_id = ?", userID).
+		First(&user).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrUserNotFound
+		}
+		return nil, fmt.Errorf("repository: 查询用户 %d 失败: %w", userID, err)
+	}
+	return &user, nil
+}
+
 // SelectByUserName 按用户账号查用户，不存在时返回 ErrUserNotFound。
 func (r *UserRepository) SelectByUserName(ctx context.Context, userName string) (*model.SysUser, error) {
 	if userName == "" {

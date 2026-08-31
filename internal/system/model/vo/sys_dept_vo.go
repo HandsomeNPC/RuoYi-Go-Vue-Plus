@@ -23,5 +23,5 @@ type SysDeptVo struct {
 	Status     string     `json:"status"`
 	CreateTime *time.Time `json:"createTime"`
 	// Children 子部门，由 service 层构建部门树时回填。
-	Children []SysDeptVo `json:"children"`
+	Children []*SysDeptVo `json:"children"`
 }

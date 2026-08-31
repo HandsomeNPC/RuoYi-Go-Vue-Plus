@@ -11,7 +11,11 @@ import (
 //   - ignoreMissing yes：无源对应字段（回填字段、DelFlag 等）留零。
 //   - skipCopySameType yes：*time.Time 等同类型直接拷贝，免深度转换报错。
 //   - autoMap BaseEntity：提升嵌入式审计字段，使 VO 的 CreateTime/UpdateTime 按名映射。
-//   - ignore Children（Dept/Menu）：[]*T↔[]T 指针不一致，旧手写不映射（service 构树回填）。
+//   - ignore Children（Dept/Menu）：源实体为扁平表无 Children 列，留零由 service 构树回填。
+//
+// 切片元素约定：
+// VO 包内凡元素为 VO 结构体（名以 Vo 结尾）的切片，一律用指针切片 []*XxxVo，
+// 与 goverter 生成的列表转换器返回类型对齐，杜绝 []*T↔[]T 转换样板代码。
 //
 // 命名 ConvertTo<Target>；列表加 List。
 //

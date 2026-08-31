@@ -85,7 +85,7 @@ apiEncrypt:
 
 # 验证码配置
 captcha:
-  enable: false             # 是否启用验证码校验
+  enable: true             # 是否启用验证码校验
   type: math                 # 验证码类型 math 算术计算 char 字符验证
   numberLength: 1            # 算术验证码每个操作数的位数
   charLength: 4             # 字符验证码的字符个数

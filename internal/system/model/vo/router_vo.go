@@ -12,5 +12,5 @@ type RouterVo struct {
 	AlwaysShow bool   `json:"alwaysShow,omitempty"`
 	Meta       MetaVo `json:"meta,omitempty"`
 	// Children 子路由，由 service 构建路由树时回填。
-	Children []RouterVo `json:"children,omitempty"`
+	Children []*RouterVo `json:"children,omitempty"`
 }

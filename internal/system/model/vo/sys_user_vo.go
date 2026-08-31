@@ -30,7 +30,7 @@ type SysUserVo struct {
 	// DeptName 部门名，由翻译层按 DEPT_ID_TO_NAME 从 DeptId 回填。
 	DeptName string `json:"deptName"`
 	// Roles 角色对象，由 service 层回填。
-	Roles []SysRoleVo `json:"roles"`
+	Roles []*SysRoleVo `json:"roles"`
 	// RoleIDs 角色组，由 service 层回填。
 	RoleIDs []int64 `json:"roleIds"`
 	// PostIDs 岗位组，由 service 层回填。

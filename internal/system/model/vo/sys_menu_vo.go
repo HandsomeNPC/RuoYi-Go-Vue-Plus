@@ -31,5 +31,5 @@ type SysMenuVo struct {
 	Remark     string     `json:"remark"`
 	CreateTime *time.Time `json:"createTime"`
 	// Children 子菜单，由 service 层构建菜单树时回填。
-	Children []SysMenuVo `json:"children"`
+	Children []*SysMenuVo `json:"children"`
 }
