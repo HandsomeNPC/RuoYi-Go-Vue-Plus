@@ -52,17 +52,17 @@ func setupRedis(t *testing.T) *Submitter {
 }
 
 // middleware 把实例方法包成中间件，供集成测试绕开包级实例。
-func (s *Submitter) middleware(opts ...Option) gin.HandlerFunc {
-	o := newOptions(opts...)
+func (s *Submitter) middleware(interval time.Duration) gin.HandlerFunc {
+	o := newOptions(interval, defaultMessage)
 	return func(c *gin.Context) { s.run(c, o) }
 }
 
 // newEngine 装配一条与生产一致的链路：Recover + RepeatableBody + 防重注解。
-func newEngine(s *Submitter, handler gin.HandlerFunc, opts ...Option) *gin.Engine {
+func newEngine(s *Submitter, handler gin.HandlerFunc, interval time.Duration) *gin.Engine {
 	r := gin.New()
 	r.Use(middleware.Recover())
 	r.Use(middleware.RepeatableBodyWithConfig(config.DefaultRepeatableBody()))
-	r.POST("/system/user", s.middleware(opts...), handler)
+	r.POST("/system/user", s.middleware(interval), handler)
 	return r
 }
 
@@ -88,7 +88,7 @@ func TestSuccessBlocksRepeat(t *testing.T) {
 	s := setupRedis(t)
 	r := newEngine(s, func(c *gin.Context) {
 		c.JSON(200, gin.H{"code": 200, "msg": "操作成功", "data": nil})
-	}, WithInterval(time.Second))
+	}, time.Second)
 
 	token := uniqueToken(t)
 
@@ -112,7 +112,7 @@ func TestFailureAllowsRetry(t *testing.T) {
 	s := setupRedis(t)
 	r := newEngine(s, func(c *gin.Context) {
 		c.JSON(200, gin.H{"code": 500, "msg": "操作失败", "data": nil})
-	}, WithInterval(time.Minute))
+	}, time.Minute)
 
 	token := uniqueToken(t)
 
@@ -137,7 +137,7 @@ func TestPanicAllowsRetry(t *testing.T) {
 	r := newEngine(s, func(c *gin.Context) {
 		hit++
 		panic("boom")
-	}, WithInterval(time.Minute))
+	}, time.Minute)
 
 	token := uniqueToken(t)
 
@@ -160,7 +160,7 @@ func TestDifferentParamsNotBlocked(t *testing.T) {
 	s := setupRedis(t)
 	r := newEngine(s, func(c *gin.Context) {
 		c.JSON(200, gin.H{"code": 200, "msg": "操作成功", "data": nil})
-	}, WithInterval(time.Minute))
+	}, time.Minute)
 
 	token := uniqueToken(t)
 
@@ -177,7 +177,7 @@ func TestDifferentTokensNotBlocked(t *testing.T) {
 	s := setupRedis(t)
 	r := newEngine(s, func(c *gin.Context) {
 		c.JSON(200, gin.H{"code": 200, "msg": "操作成功", "data": nil})
-	}, WithInterval(time.Minute))
+	}, time.Minute)
 
 	body := `{"name":"张三"}`
 	if _, got := post(r, uniqueToken(t)+"-a", body); strings.Contains(got, "不允许重复提交") {
@@ -193,7 +193,7 @@ func TestIntervalExpires(t *testing.T) {
 	s := setupRedis(t)
 	r := newEngine(s, func(c *gin.Context) {
 		c.JSON(200, gin.H{"code": 200, "msg": "操作成功", "data": nil})
-	}, WithInterval(time.Second))
+	}, time.Second)
 
 	token := uniqueToken(t)
 	body := `{"name":"张三"}`
@@ -226,7 +226,7 @@ func TestBodyReachesHandler(t *testing.T) {
 		}
 		seen = in.Name
 		c.JSON(200, gin.H{"code": 200, "msg": "操作成功", "data": nil})
-	}, WithInterval(time.Second))
+	}, time.Second)
 
 	if _, body := post(r, uniqueToken(t), `{"name":"张三"}`); !strings.Contains(body, `"code":200`) {
 		t.Fatalf("handler 应能绑定 body, got %q", body)
@@ -248,7 +248,7 @@ func TestRedisDownFailsOpen(t *testing.T) {
 	r := newEngine(s, func(c *gin.Context) {
 		hit++
 		c.JSON(200, gin.H{"code": 200, "msg": "操作成功", "data": nil})
-	}, WithInterval(time.Minute))
+	}, time.Minute)
 
 	if _, body := post(r, "tk", `{"name":"张三"}`); !strings.Contains(body, `"code":200`) {
 		t.Errorf("Redis 不可用应放行, got %q", body)

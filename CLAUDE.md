@@ -39,6 +39,9 @@ deploy/                  nginx.conf / Dockerfile / docker-compose.yaml
 5. **命名**：包名小写无下划线；文件名 `xxx_handler.go`/`xxx_service.go`/`xxx_repository.go`；实体对应表名（`SysUser` → 表
    `sys_user`）。
 6. **错误处理**：service 返回 `error`，由 handler 统一转成 `response.Fail`；全局异常兜底在 `pkg/middleware`。
+7. **注释克制**：只写代码读不出来的“为什么”（非显然的取舍、踩坑点、与惯常做法的有意差异），不写代码已自 解释的“是什么”。
+   **禁止**堆砌“对照 Java XxxAspect.doBefore / 对照 Xxx.yyy”这类方法级映射说明，也不在函数 上方写逐行重复实现步骤的流水账。包/函数
+   doc 一句话点明职责即可，复杂逻辑用一两句说清动机。
 
 ## 常用命令
 

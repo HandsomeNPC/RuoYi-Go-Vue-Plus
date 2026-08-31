@@ -27,30 +27,6 @@ func newCtx(method, path, body string) *gin.Context {
 	return c
 }
 
-// TestDefaultOptions 默认值须对齐 Java @RepeatSubmit 的 default。
-func TestDefaultOptions(t *testing.T) {
-	o := newOptions()
-
-	if got, want := o.interval, 5000*time.Millisecond; got != want {
-		t.Errorf("默认间隔 = %v, want %v", got, want)
-	}
-	if got, want := o.msgCode, "repeat.submit.message"; got != want {
-		t.Errorf("默认词条 = %q, want %q", got, want)
-	}
-}
-
-// TestOptionsOverride 各 Option 应正确覆盖默认值。
-func TestOptionsOverride(t *testing.T) {
-	o := newOptions(WithInterval(30*time.Second), WithMessage("custom.code"))
-
-	if got, want := o.interval, 30*time.Second; got != want {
-		t.Errorf("间隔 = %v, want %v", got, want)
-	}
-	if got, want := o.msgCode, "custom.code"; got != want {
-		t.Errorf("词条 = %q, want %q", got, want)
-	}
-}
-
 // TestIntervalBelowMinimumPanics 间隔小于 1 秒应在注册期 panic，
 // 对照 Java "重复提交间隔时间不能小于'1'秒"（Java 是运行期抛异常）。
 func TestIntervalBelowMinimumPanics(t *testing.T) {
@@ -63,24 +39,14 @@ func TestIntervalBelowMinimumPanics(t *testing.T) {
 			t.Errorf("panic 内容 = %v, 应提示间隔下限", r)
 		}
 	}()
-	newOptions(WithInterval(999 * time.Millisecond))
+	newOptions(999*time.Millisecond, defaultMessage)
 }
 
 // TestIntervalExactlyMinimumOK 恰好 1 秒应放行（边界是闭区间）。
 func TestIntervalExactlyMinimumOK(t *testing.T) {
-	o := newOptions(WithInterval(time.Second))
+	o := newOptions(time.Second, defaultMessage)
 	if got, want := o.interval, time.Second; got != want {
 		t.Errorf("间隔 = %v, want %v", got, want)
-	}
-}
-
-// TestNewDefaultsTokenName tokenName 为空时应回落到 Authorization。
-func TestNewDefaultsTokenName(t *testing.T) {
-	if got, want := New("").tokenName, defaultTokenName; got != want {
-		t.Errorf("tokenName = %q, want %q", got, want)
-	}
-	if got, want := New("my-token").tokenName, "my-token"; got != want {
-		t.Errorf("tokenName = %q, want %q", got, want)
 	}
 }
 
@@ -106,7 +72,7 @@ func TestGetPanicsBeforeInit(t *testing.T) {
 
 // TestCombineKeyPrefix 缓存键须以全局前缀 + 请求路径开头，对照 Java 的键拼装。
 func TestCombineKeyPrefix(t *testing.T) {
-	s := New("Authorization")
+	s := &Submitter{tokenName: "Authorization"}
 	key := s.combineKey(newCtx("POST", "/system/user", `{"a":1}`))
 
 	want := constant.RepeatSubmitKey + "/system/user"
@@ -121,7 +87,7 @@ func TestCombineKeyPrefix(t *testing.T) {
 
 // TestCombineKeySameInputSameKey 同 token 同路径同入参必须算出同一个键，否则防不住重复提交。
 func TestCombineKeySameInputSameKey(t *testing.T) {
-	s := New("Authorization")
+	s := &Submitter{tokenName: "Authorization"}
 
 	c1 := newCtx("POST", "/system/user", `{"a":1}`)
 	c1.Request.Header.Set("Authorization", "tk")
@@ -135,7 +101,7 @@ func TestCombineKeySameInputSameKey(t *testing.T) {
 
 // TestCombineKeyVaries 路径、入参、query、token 任一不同，键都应不同。
 func TestCombineKeyVaries(t *testing.T) {
-	s := New("Authorization")
+	s := &Submitter{tokenName: "Authorization"}
 
 	base := newCtx("POST", "/system/user", `{"a":1}`)
 	base.Request.Header.Set("Authorization", "tk")
@@ -232,7 +198,7 @@ func TestParseCode(t *testing.T) {
 
 // TestSucceeded 成功判定：c.Error / HTTP 非 2xx / 业务 code 非 200 都算失败。
 func TestSucceeded(t *testing.T) {
-	s := New("Authorization")
+	s := &Submitter{tokenName: "Authorization"}
 
 	t.Run("业务成功", func(t *testing.T) {
 		c := newCtx("POST", "/u", "")
