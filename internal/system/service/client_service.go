@@ -5,9 +5,12 @@ import (
 	"errors"
 	"strings"
 
+	"ruoyi-go-vue-plus/internal/system/model"
+	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	"ruoyi-go-vue-plus/internal/system/repository"
 	"ruoyi-go-vue-plus/pkg/database"
+	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
 // ErrClientNotFound 客户端不存在。
@@ -47,6 +50,27 @@ func (s *ClientService) QueryByID(ctx context.Context, id int64) (*vo.SysClientV
 	out := vo.Conv.ConvertToSysClientVo(client)
 	s.fillRuleFields(out)
 	return out, nil
+}
+
+// QueryPageList 按条件分页查客户端，返回填充好 *List 字段的 VO 分页结果。
+func (s *ClientService) QueryPageList(ctx context.Context, q bo.SysClientQueryBo,
+	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysClientVo], error) {
+
+	res, err := repository.NewClientRepository(database.DB()).SelectPageList(ctx, q, page)
+	if err != nil {
+		return pkgrepo.EmptyPage[*vo.SysClientVo](), err
+	}
+	// 两个 PageResult 泛型实例是不同类型，只能重建；Page 内的空切片兜底顺带保证序列化成 []。
+	return pkgrepo.Page(s.toVoList(res.Rows), res.Total), nil
+}
+
+// toVoList 批量转 VO 并回填规则字段。
+func (s *ClientService) toVoList(clients []*model.SysClient) []*vo.SysClientVo {
+	out := vo.Conv.ConvertToSysClientVoList(clients)
+	for _, c := range out {
+		s.fillRuleFields(c)
+	}
+	return out
 }
 
 // fillRuleFields 回填 VO 的扩展规则字段，便于前端直接展示/编辑

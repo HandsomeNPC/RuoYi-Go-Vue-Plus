@@ -25,6 +25,9 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 
 	menu := protected.Group("/menu")
 	menu.GET("/getRouters", sagin.CheckLogin(), handler.MenuApiApp.GetRouters)
+
+	client := protected.Group("/client")
+	client.GET("/list", satoken.CheckPermission("system:client:list"), handler.ClientApiApp.List)
 }
 
 // InitRouter 构建并返回 system 进程的 gin 引擎(独立部署用)。

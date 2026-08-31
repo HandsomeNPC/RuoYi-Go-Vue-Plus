@@ -42,7 +42,34 @@ func Login(loginUser *authmodel.LoginUser, device string) (string, error) {
 	if err := sess.Set(LoginUserKey, string(payload)); err != nil {
 		return "", err
 	}
+
+	// sa-token 的权限/角色校验只认 account session 的 permissions/roles 键，
+	// 与上面 token session 的 loginUser 是两套存储，不双写则任何权限码恒判否。
+	// 这里存原生 []string 而非 JSON 串：取回侧 Manager.toStringSlice 已处理 []any 分支。
+	if err := stputil.SetPermissions(loginID, toSaTokenPerms(loginUser.MenuPermission)); err != nil {
+		return "", err
+	}
+	if err := stputil.SetRoles(loginID, loginUser.RolePermission); err != nil {
+		return "", err
+	}
 	return token, nil
+}
+
+// toSaTokenPerms 把超管的 *:*:* 换成 sa-token 认得的 *，其余原样。
+//
+// sa-token-go 的 matchPermission 对 *:*:* 会先命中「以 :* 结尾」的前缀分支，
+// 去掉尾部 * 后拿 "*:*:" 去 HasPrefix 实际权限码——必然为假且提前返回，
+// 走不到后面按段比对的分支，于是超管反而处处被拒。而它对单个 * 是直接放行的。
+// 只在写入这一侧转换：LoginUser.MenuPermission 仍是 *:*:*，前端 hasPermi 按字面量比对。
+func toSaTokenPerms(perms []string) []string {
+	out := make([]string, 0, len(perms))
+	for _, p := range perms {
+		if p == constant.AllPermission {
+			p = "*"
+		}
+		out = append(out, p)
+	}
+	return out
 }
 
 // GetLoginUser 取当前请求的登录用户，未登录返回 nil。

@@ -76,10 +76,16 @@ func (q PageQuery) Paginate() func(*gorm.DB) *gorm.DB {
 	}
 }
 
+// HasOrder 是否指定了排序。两个参数缺任一即视为未指定，OrderBy 据此返回零值，
+// repository 据此决定是否补默认排序——判定只此一处，避免两侧漂移。
+func (q PageQuery) HasOrder() bool {
+	return strings.TrimSpace(q.OrderByColumn) != "" && strings.TrimSpace(q.IsAsc) != ""
+}
+
 // OrderBy 构建排序子句。无排序参数时返回零值（Columns 为空，调用方据此跳过）；
 // 参数非法（含 SQL 关键字、方向词拼错、列数与方向数不匹配）时返回 error。
 func (q PageQuery) OrderBy() (clause.OrderBy, error) {
-	if strings.TrimSpace(q.OrderByColumn) == "" || strings.TrimSpace(q.IsAsc) == "" {
+	if !q.HasOrder() {
 		return clause.OrderBy{}, nil
 	}
 	if !orderByPattern.MatchString(q.OrderByColumn) {

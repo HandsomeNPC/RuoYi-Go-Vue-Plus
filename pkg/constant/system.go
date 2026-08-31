@@ -16,6 +16,8 @@ const (
 	SuperAdminRoleKey         = "superadmin"
 	RootDeptAncestors         = "0"
 	DefaultDeptID       int64 = 1761000000000000100
+	// AllPermission 超管的全部权限标识，前端 hasPermi 指令按字面量比对，不可改动。
+	AllPermission = "*:*:*"
 )
 
 var ExcludeProperties = []string{"password", "oldPassword", "newPassword", "confirmPassword"}

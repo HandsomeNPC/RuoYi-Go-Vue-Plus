@@ -8,6 +8,8 @@ import (
 	"gorm.io/gorm"
 
 	"ruoyi-go-vue-plus/internal/system/model"
+	"ruoyi-go-vue-plus/internal/system/model/bo"
+	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
 // ErrClientNotFound 客户端不存在。
@@ -59,4 +61,34 @@ func (r *ClientRepository) SelectByID(ctx context.Context, id int64) (*model.Sys
 		return nil, fmt.Errorf("repository: 查询客户端 id=%d 失败: %w", id, err)
 	}
 	return &client, nil
+}
+
+// SelectPageList 按条件分页查客户端。条件均为空串不筛（对齐 Java eqIfText 语义）。
+//
+// 返回实体而非 VO：SysClientVo 的三个 *List 字段无对应列，GORM 会按字段名拼进 SELECT。
+func (r *ClientRepository) SelectPageList(ctx context.Context, q bo.SysClientQueryBo,
+	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysClient], error) {
+
+	// Model 不能省：del_flag 过滤由 LogicDelete 挂在字段类型上，须先解析出实体 schema 才生效。
+	db := r.db.WithContext(ctx).Model(&model.SysClient{})
+	if q.ClientID != "" {
+		db = db.Where("client_id = ?", q.ClientID)
+	}
+	if q.ClientKey != "" {
+		db = db.Where("client_key = ?", q.ClientKey)
+	}
+	if q.ClientSecret != "" {
+		db = db.Where("client_secret = ?", q.ClientSecret)
+	}
+	if q.Status != "" {
+		db = db.Where("status = ?", q.Status)
+	}
+	// 仅在调用方未指定排序时按主键升序兜底，保证翻页稳定。
+	// 不能无条件追加：GORM 合并排序子句时先注册的排在前，id 唯一会让后来的排序列失效。
+	if !page.HasOrder() {
+		db = db.Order("id")
+	}
+
+	var rows []*model.SysClient
+	return pkgrepo.SelectPage(db, page, &rows)
 }
