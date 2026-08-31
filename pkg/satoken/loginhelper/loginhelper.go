@@ -2,6 +2,7 @@
 package loginhelper
 
 import (
+	"encoding/json"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -28,14 +29,17 @@ func Login(loginUser *authmodel.LoginUser, device string) (string, error) {
 	}
 	loginUser.Token = token
 
-	// 必须用 OrCreate：sagin.Login 只签发 token、写登录态，不建 token-session。
-	// 只读的 GetTokenSession 在 session 不存在时返回 (nil, nil)——nil 却不报错，
-	// 后面 sess.Set 就会空指针。gin 集成层未导出 OrCreate，故直接走 stputil。
 	sess, err := stputil.GetTokenSessionOrCreate(token)
 	if err != nil {
 		return "", err
 	}
-	if err := sess.Set(LoginUserKey, loginUser); err != nil {
+	// 存 JSON 串而非结构体指针：Session.Data 是 map[string]any 整体 Marshal 进 Redis，
+	// 且库里没有类型注册表，直接存指针跨请求取回来是 map[string]any，断言必失败。
+	payload, err := json.Marshal(loginUser)
+	if err != nil {
+		return "", err
+	}
+	if err := sess.Set(LoginUserKey, string(payload)); err != nil {
 		return "", err
 	}
 	return token, nil
@@ -55,15 +59,15 @@ func GetLoginUserByToken(token string) *authmodel.LoginUser {
 	if err != nil || sess == nil {
 		return nil
 	}
-	v, ok := sess.Get(LoginUserKey)
-	if !ok {
+	v := sess.GetString(LoginUserKey)
+	if v == "" {
 		return nil
 	}
-	lu, ok := v.(*authmodel.LoginUser)
-	if !ok {
+	var lu authmodel.LoginUser
+	if err := json.Unmarshal([]byte(v), &lu); err != nil {
 		return nil
 	}
-	return lu
+	return &lu
 }
 
 // GetLoginID 取当前 token 的 loginID（形如 "sys_user:123"），未登录返回 ""。
