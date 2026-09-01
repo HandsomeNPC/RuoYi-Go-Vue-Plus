@@ -148,6 +148,24 @@ func (r *ClientRepository) UpdateStatusByClientID(ctx context.Context, clientID,
 	return res.RowsAffected, nil
 }
 
+// DeleteByIDs 按主键批量删除，返回受影响行数（0 表示这些主键都不存在或已被删除）。
+//
+// SysClient 嵌了 LogicDelete，Delete 会被改写成 UPDATE ... SET del_flag = '1'，
+// 并自动带上 del_flag = '0'，重复删除同一批主键第二次即返回 0。
+func (r *ClientRepository) DeleteByIDs(ctx context.Context, ids []int64) (int64, error) {
+	if len(ids) == 0 {
+		return 0, fmt.Errorf("repository: 客户端主键为空")
+	}
+
+	res := r.db.WithContext(ctx).
+		Where("id IN ?", ids).
+		Delete(&model.SysClient{})
+	if res.Error != nil {
+		return 0, fmt.Errorf("repository: 删除客户端 %v 失败: %w", ids, res.Error)
+	}
+	return res.RowsAffected, nil
+}
+
 // ExistsByClientKey 判断 client_key 是否已被占用，excludeID > 0 时排除该主键
 // （对齐 Java neIfPresent，供修改场景排除自身）。
 func (r *ClientRepository) ExistsByClientKey(ctx context.Context, clientKey string,

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -131,4 +132,40 @@ func (a *ClientApi) ChangeStatus(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, response.OkVoid())
+}
+
+// Remove 批量删除客户端。主键串以逗号分隔，与 Java 的 @PathVariable Long[] ids 同形。
+func (a *ClientApi) Remove(c *gin.Context) {
+	ids, err := parseIDs(c.Param("ids"))
+	if err != nil {
+		_ = c.Error(errs.New(response.CodeBadRequest, "主键不能为空", c.Param("ids")))
+		return
+	}
+
+	if err := systemservice.ClientSvcApp.DeleteWithValidByIDs(c.Request.Context(), ids); err != nil {
+		if errors.Is(err, systemservice.ErrClientNotFound) {
+			_ = c.Error(errs.New(response.CodeNotFound, "客户端不存在", ""))
+			return
+		}
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, response.OkVoid())
+}
+
+// parseIDs 切分逗号分隔的主键串。任一段非法即整体拒绝——静默丢弃会删成部分成功。
+func parseIDs(raw string) ([]int64, error) {
+	parts := strings.Split(raw, ",")
+	ids := make([]int64, 0, len(parts))
+	for _, p := range parts {
+		id, err := strconv.ParseInt(strings.TrimSpace(p), 10, 64)
+		if err != nil || id <= 0 {
+			return nil, fmt.Errorf("handler: 非法主键 %q", p)
+		}
+		ids = append(ids, id)
+	}
+	if len(ids) == 0 {
+		return nil, fmt.Errorf("handler: 主键为空")
+	}
+	return ids, nil
 }

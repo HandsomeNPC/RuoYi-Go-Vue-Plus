@@ -42,6 +42,8 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	// 且它幂等——重复提交同一状态无副作用。须注册在 PUT "" 之后，路径更具体。
 	client.PUT("/changeStatus", satoken.CheckPermission("system:client:edit"),
 		handler.ClientApiApp.ChangeStatus)
+	client.DELETE("/:ids", satoken.CheckPermission("system:client:remove"),
+		handler.ClientApiApp.Remove)
 }
 
 // InitRouter 构建并返回 system 进程的 gin 引擎(独立部署用)。

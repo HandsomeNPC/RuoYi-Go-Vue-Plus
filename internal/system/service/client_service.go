@@ -193,6 +193,23 @@ func (s *ClientService) UpdateClientStatus(ctx context.Context, clientID, status
 	return nil
 }
 
+// DeleteWithValidByIDs 批量删除客户端（对应 Java deleteWithValidByIds）。
+// 无一行命中时返回 ErrClientNotFound，对齐 Java deleteByIds() > 0 的失败口径。
+func (s *ClientService) DeleteWithValidByIDs(ctx context.Context, ids []int64) error {
+	if len(ids) == 0 {
+		return errors.New("service: 客户端主键不能为空")
+	}
+
+	affected, err := repository.NewClientRepository(database.DB()).DeleteByIDs(ctx, ids)
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return ErrClientNotFound
+	}
+	return nil
+}
+
 // newClientID 生成客户端标识 md5(clientKey + clientSecret)。
 // md5 由 Java SecureUtil.md5 对齐所迫；该值是客户端查找键，不是机密。
 func newClientID(clientKey, clientSecret string) string {

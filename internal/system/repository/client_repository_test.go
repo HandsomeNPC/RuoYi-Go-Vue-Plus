@@ -374,6 +374,91 @@ func TestUpdateStatusByClientIDSQL(t *testing.T) {
 	}
 }
 
+// captureDeleteSQL 执行删除并捕获其 SQL。
+// 钩子挂在 Delete 链上：逻辑删除虽把语句改写成 UPDATE，走的仍是 Delete processor。
+func captureDeleteSQL(t *testing.T, ids []int64) string {
+	t.Helper()
+	db := dryClientDB(t)
+	var sql string
+	if err := db.Callback().Delete().After("gorm:delete").
+		Register("test:capture_delete", func(tx *gorm.DB) {
+			sql = tx.Statement.SQL.String()
+		}); err != nil {
+		t.Fatalf("注册 callback 失败: %v", err)
+	}
+
+	if _, err := NewClientRepository(db).DeleteByIDs(t.Context(), ids); err != nil {
+		t.Fatalf("DeleteByIDs: %v", err)
+	}
+	if sql == "" {
+		t.Fatal("未捕获到 SQL")
+	}
+	return sql
+}
+
+// TestDeleteByIDsIsLogicDelete 删除须落成 UPDATE del_flag='1' 而非物理 DELETE，
+// 且带 del_flag='0' 过滤——重复删除同一批主键第二次应报 0 行。
+func TestDeleteByIDsIsLogicDelete(t *testing.T) {
+	got := captureDeleteSQL(t, []int64{1762000000000000001, 1762000000000000002})
+
+	for _, want := range []string{"UPDATE `sys_client`", "`del_flag`", "id IN (?,?)"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("SQL = %s\n应包含 %s", got, want)
+		}
+	}
+	if strings.Contains(got, "DELETE FROM") {
+		t.Errorf("SQL = %s\n不应物理删除", got)
+	}
+	// del_flag 既在 SET 也在 WHERE：SET 置 '1'，WHERE 过滤 '0'。
+	if strings.Count(got, "del_flag") < 2 {
+		t.Errorf("SQL = %s\ndel_flag 应同时出现在 SET 与 WHERE", got)
+	}
+}
+
+// TestDeleteByIDsSingleID 单个主键也走 IN，不因长度 1 退化。
+func TestDeleteByIDsSingleID(t *testing.T) {
+	got := captureDeleteSQL(t, []int64{1762000000000000001})
+
+	if !strings.Contains(got, "id IN (?)") {
+		t.Errorf("SQL = %s\n应包含 id IN (?)", got)
+	}
+}
+
+// TestDeleteByIDsEmpty 空主键须返回错误且不打库——否则 WHERE 落空会软删全表。
+func TestDeleteByIDsEmpty(t *testing.T) {
+	for _, name := range []string{"nil", "空切片"} {
+		t.Run(name, func(t *testing.T) {
+			var ids []int64
+			if name == "空切片" {
+				ids = []int64{}
+			}
+
+			db := dryClientDB(t)
+			touched := false
+			flag := func(*gorm.DB) { touched = true }
+			if err := db.Callback().Update().After("gorm:update").
+				Register("test:flag_u", flag); err != nil {
+				t.Fatalf("注册 callback 失败: %v", err)
+			}
+			if err := db.Callback().Delete().After("gorm:delete").
+				Register("test:flag_d", flag); err != nil {
+				t.Fatalf("注册 callback 失败: %v", err)
+			}
+
+			affected, err := NewClientRepository(db).DeleteByIDs(t.Context(), ids)
+			if err == nil {
+				t.Error("空主键应返回错误")
+			}
+			if affected != 0 {
+				t.Errorf("affected = %d, 期望 0", affected)
+			}
+			if touched {
+				t.Error("空主键不应打库")
+			}
+		})
+	}
+}
+
 // TestUpdateStatusByClientIDEmptyID 空标识须返回错误且不打库——否则 WHERE 落空会全表刷状态。
 func TestUpdateStatusByClientIDEmptyID(t *testing.T) {
 	db := dryClientDB(t)
