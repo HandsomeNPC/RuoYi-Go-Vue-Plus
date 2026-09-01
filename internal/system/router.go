@@ -36,6 +36,12 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	client.POST("", satoken.CheckPermission("system:client:add"),
 		repeatsubmit.RepeatSubmit(0, ""), handler.ClientApiApp.Add)
+	client.PUT("", satoken.CheckPermission("system:client:edit"),
+		repeatsubmit.RepeatSubmit(0, ""), handler.ClientApiApp.Edit)
+	// changeStatus 不挂防重：对齐 Java(仅 edit 带 @RepeatSubmit)，
+	// 且它幂等——重复提交同一状态无副作用。须注册在 PUT "" 之后，路径更具体。
+	client.PUT("/changeStatus", satoken.CheckPermission("system:client:edit"),
+		handler.ClientApiApp.ChangeStatus)
 }
 
 // InitRouter 构建并返回 system 进程的 gin 引擎(独立部署用)。

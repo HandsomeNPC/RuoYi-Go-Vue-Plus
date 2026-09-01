@@ -114,6 +114,85 @@ func (s *ClientService) InsertByBo(ctx context.Context, b *bo.SysClientBo) error
 	return nil
 }
 
+// UpdateByBo 修改客户端（对应 Java updateByBo）。
+// client_key 被别的客户端占用时返回 ErrClientKeyExists；主键不存在返回 ErrClientNotFound。
+func (s *ClientService) UpdateByBo(ctx context.Context, b *bo.SysClientBo) error {
+	if b == nil {
+		return errors.New("service: 客户端入参为空")
+	}
+	if b.ID <= 0 {
+		return errors.New("service: 客户端主键不能为空")
+	}
+
+	unique, err := s.CheckClientKeyUnique(ctx, b.ClientKey, b.ID) // 排除自身，改回原 key 不算冲突
+	if err != nil {
+		return err
+	}
+	if !unique {
+		return ErrClientKeyExists
+	}
+
+	// 一律写入，让前端能把访问路径/IP 白名单清空——这正是编辑表单的本意，
+	// 故不能用 Updates(struct)（它跳过零值，空串会被当成"未修改"而丢弃）。
+	columns := buildClientUpdateColumns(b)
+
+	affected, err := repository.NewClientRepository(database.DB()).UpdateByID(ctx, b.ID, columns)
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return ErrClientNotFound
+	}
+	return nil
+}
+
+// buildClientUpdateColumns 组装修改客户端的更新列。
+func buildClientUpdateColumns(b *bo.SysClientBo) map[string]any {
+	columns := map[string]any{
+		"client_key":    b.ClientKey,
+		"client_secret": b.ClientSecret,
+		"grant_type":    strings.Join(b.GrantTypeList, ","),
+		"device_type":   b.DeviceType,
+		"access_path":   resolveRuleValue(b.AccessPath, b.AccessPathList, normalizeAccessPath),
+		"ip_whitelist":  resolveRuleValue(b.IPWhitelist, b.IPWhitelistList, nil),
+		// client_id 跟着 key/secret 重算——与 Java updateByBo 的有意差异：
+		// 它沿用前端回填的 clientId，改了 key/secret 后该值即失真，
+		// 而 auth 登录正是按 client_id 查库，会静默查不到客户端。
+		"client_id": newClientID(b.ClientKey, b.ClientSecret),
+	}
+	// 状态与两个超时缺省即视为不改：漏传字段不该把线上 status 刷成空串、
+	// 或把超时刷成 0 令已签发的 token 立刻失效。等效于 Java 的 null 跳过。
+	if b.Status != "" {
+		columns["status"] = b.Status
+	}
+	if b.ActiveTimeout != 0 {
+		columns["active_timeout"] = b.ActiveTimeout
+	}
+	if b.Timeout != 0 {
+		columns["timeout"] = b.Timeout
+	}
+	return columns
+}
+
+// UpdateClientStatus 改客户端启停状态（对应 Java updateClientStatus，同为按 client_id 定位）。
+// 客户端不存在时返回 ErrClientNotFound。
+func (s *ClientService) UpdateClientStatus(ctx context.Context, clientID, status string) error {
+	if clientID == "" {
+		return errors.New("service: 客户端标识不能为空")
+	}
+
+	affected, err := repository.NewClientRepository(database.DB()).
+		UpdateStatusByClientID(ctx, clientID, status)
+	if err != nil {
+		return err
+	}
+	// 状态未变时 MySQL 也报 0 行；此处按 Java toAjax(0) 的口径一并当作失败回报。
+	if affected == 0 {
+		return ErrClientNotFound
+	}
+	return nil
+}
+
 // newClientID 生成客户端标识 md5(clientKey + clientSecret)。
 // md5 由 Java SecureUtil.md5 对齐所迫；该值是客户端查找键，不是机密。
 func newClientID(clientKey, clientSecret string) string {

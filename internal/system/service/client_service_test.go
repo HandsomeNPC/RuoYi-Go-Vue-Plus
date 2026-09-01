@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"ruoyi-go-vue-plus/internal/system/model"
+	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 )
 
@@ -160,4 +161,127 @@ func TestNewClientID(t *testing.T) {
 	}
 	// 注意 md5 作用于拼接后的整串，故 (ab,c) 与 (a,bc) 必然同值——
 	// 这是 Java 的既有行为，不是缺陷，此处不做区分性断言。
+}
+
+// TestBuildClientUpdateColumnsAlwaysWritten 六个可编辑列无条件写入，空串即清空。
+func TestBuildClientUpdateColumnsAlwaysWritten(t *testing.T) {
+	// 全部规则字段留空：模拟前端清空访问路径与 IP 白名单。
+	got := buildClientUpdateColumns(&bo.SysClientBo{
+		ID:           1762000000000000001,
+		ClientKey:    "pc",
+		ClientSecret: "pc123",
+	})
+
+	for _, col := range []string{"client_key", "client_secret", "grant_type",
+		"device_type", "access_path", "ip_whitelist", "client_id"} {
+		if _, ok := got[col]; !ok {
+			t.Errorf("列 %s 缺失，须无条件写入(否则清空操作会丢失)", col)
+		}
+	}
+	if got["access_path"] != "" || got["ip_whitelist"] != "" {
+		t.Errorf("access_path/ip_whitelist = %v/%v, 期望空串(清空语义)",
+			got["access_path"], got["ip_whitelist"])
+	}
+}
+
+// TestBuildClientUpdateColumnsSkipsUnset status 与两个超时缺省时不得进 SET，
+// 否则漏传字段会把线上 status 刷成空串、超时刷成 0 令 token 立刻失效。
+func TestBuildClientUpdateColumnsSkipsUnset(t *testing.T) {
+	got := buildClientUpdateColumns(&bo.SysClientBo{
+		ID: 1762000000000000001, ClientKey: "pc", ClientSecret: "pc123",
+	})
+
+	for _, col := range []string{"status", "active_timeout", "timeout"} {
+		if _, ok := got[col]; ok {
+			t.Errorf("列 %s 未提供时不应写入, got %v", col, got[col])
+		}
+	}
+}
+
+// TestBuildClientUpdateColumnsIncludesSet status 与超时给值时须落入 SET。
+func TestBuildClientUpdateColumnsIncludesSet(t *testing.T) {
+	got := buildClientUpdateColumns(&bo.SysClientBo{
+		ID: 1762000000000000001, ClientKey: "pc", ClientSecret: "pc123",
+		Status: "1", ActiveTimeout: 1800, Timeout: 604800,
+	})
+
+	if got["status"] != "1" {
+		t.Errorf("status = %v, 期望 \"1\"", got["status"])
+	}
+	if got["active_timeout"] != int64(1800) || got["timeout"] != int64(604800) {
+		t.Errorf("active_timeout/timeout = %v/%v, 期望 1800/604800",
+			got["active_timeout"], got["timeout"])
+	}
+	// status="0"(正常)是有效值，不能被当成缺省丢掉。
+	zero := buildClientUpdateColumns(&bo.SysClientBo{
+		ID: 1, ClientKey: "k", ClientSecret: "s", Status: "0",
+	})
+	if zero["status"] != "0" {
+		t.Errorf("status=\"0\" 应写入, got %v", zero["status"])
+	}
+}
+
+// TestBuildClientUpdateColumnsRecomputesClientID client_id 须按 key/secret 重算而非沿用入参。
+// 这是与 Java updateByBo 的有意差异：改了 key/secret 却留着旧 client_id，
+// auth 登录按 client_id 查库就会静默查空。
+func TestBuildClientUpdateColumnsRecomputesClientID(t *testing.T) {
+	got := buildClientUpdateColumns(&bo.SysClientBo{
+		ID: 1762000000000000001, ClientKey: "pc", ClientSecret: "pc123",
+		ClientID: "陈旧的值-不该被沿用",
+	})
+
+	// 与 TestNewClientID 同一已知取值。
+	if want := "2ce0a4f4bf6c4a854a97a5ddfd941ebb"; got["client_id"] != want {
+		t.Errorf("client_id = %v, 期望按 key/secret 重算为 %q", got["client_id"], want)
+	}
+}
+
+// TestBuildClientUpdateColumnsGrantTypeJoin 授权类型组只拼接，与新增路径一致。
+func TestBuildClientUpdateColumnsGrantTypeJoin(t *testing.T) {
+	got := buildClientUpdateColumns(&bo.SysClientBo{
+		ID: 1, ClientKey: "k", ClientSecret: "s",
+		GrantTypeList: []string{"password", "sms", "social"},
+	})
+
+	if want := "password,sms,social"; got["grant_type"] != want {
+		t.Errorf("grant_type = %v, 期望 %q", got["grant_type"], want)
+	}
+	// 清空授权类型须落成空串，而非从 SET 里消失。
+	empty := buildClientUpdateColumns(&bo.SysClientBo{ID: 1, ClientKey: "k", ClientSecret: "s"})
+	if empty["grant_type"] != "" {
+		t.Errorf("grant_type = %v, 期望空串", empty["grant_type"])
+	}
+}
+
+// TestBuildClientUpdateColumnsNormalizesAccessPath 访问路径入库前须补前导斜杠，
+// 与回读时的 fillRuleFields 归一化保持一致。
+func TestBuildClientUpdateColumnsNormalizesAccessPath(t *testing.T) {
+	got := buildClientUpdateColumns(&bo.SysClientBo{
+		ID: 1, ClientKey: "k", ClientSecret: "s",
+		AccessPathList:  []string{"app/**", "*"},
+		IPWhitelistList: []string{"10.0.0.0/8"},
+	})
+
+	if want := "/app/**,/**"; got["access_path"] != want {
+		t.Errorf("access_path = %v, 期望 %q", got["access_path"], want)
+	}
+	// IP 白名单不走路径归一化，不该被补斜杠。
+	if want := "10.0.0.0/8"; got["ip_whitelist"] != want {
+		t.Errorf("ip_whitelist = %v, 期望 %q(不补斜杠)", got["ip_whitelist"], want)
+	}
+}
+
+// TestBuildClientUpdateColumnsOmitsImmutable 主键与审计列不得出现在 SET 里：
+// id 是定位条件，update_by/update_time 由 pkg/repository 的回调补齐。
+func TestBuildClientUpdateColumnsOmitsImmutable(t *testing.T) {
+	got := buildClientUpdateColumns(&bo.SysClientBo{
+		ID: 1762000000000000001, ClientKey: "k", ClientSecret: "s",
+	})
+
+	for _, col := range []string{"id", "del_flag", "create_by", "create_time",
+		"create_dept", "update_by", "update_time"} {
+		if _, ok := got[col]; ok {
+			t.Errorf("列 %s 不该由 service 写入", col)
+		}
+	}
 }

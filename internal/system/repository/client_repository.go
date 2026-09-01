@@ -106,6 +106,48 @@ func (r *ClientRepository) Insert(ctx context.Context, client *model.SysClient) 
 	return nil
 }
 
+// UpdateByID 按主键更新指定列，返回受影响行数（0 表示主键不存在或已被逻辑删除）。
+//
+// 走 map 而非实体：Updates(struct) 跳过零值，会让「清空访问路径/IP 白名单」写不进库。
+// update_by/update_time 由 pkg/repository 的更新回调补齐，调用方不必带。
+func (r *ClientRepository) UpdateByID(ctx context.Context, id int64,
+	columns map[string]any) (int64, error) {
+
+	if id <= 0 {
+		return 0, fmt.Errorf("repository: 客户端主键无效: %d", id)
+	}
+	if len(columns) == 0 {
+		return 0, fmt.Errorf("repository: 客户端更新列为空")
+	}
+
+	res := r.db.WithContext(ctx).
+		Model(&model.SysClient{}).
+		Where("id = ?", id).
+		Updates(columns)
+	if res.Error != nil {
+		return 0, fmt.Errorf("repository: 更新客户端 id=%d 失败: %w", id, res.Error)
+	}
+	return res.RowsAffected, nil
+}
+
+// UpdateStatusByClientID 按客户端标识改状态，返回受影响行数（对齐 Java updateClientStatus 的按 client_id 定位）。
+func (r *ClientRepository) UpdateStatusByClientID(ctx context.Context, clientID,
+	status string) (int64, error) {
+
+	if clientID == "" {
+		return 0, fmt.Errorf("repository: 客户端标识为空")
+	}
+
+	res := r.db.WithContext(ctx).
+		Model(&model.SysClient{}).
+		Where("client_id = ?", clientID).
+		Update("status", status)
+	if res.Error != nil {
+		return 0, fmt.Errorf("repository: 更新客户端 %q 状态失败: %w", clientID, res.Error)
+	}
+	return res.RowsAffected, nil
+}
+
 // ExistsByClientKey 判断 client_key 是否已被占用，excludeID > 0 时排除该主键
 // （对齐 Java neIfPresent，供修改场景排除自身）。
 func (r *ClientRepository) ExistsByClientKey(ctx context.Context, clientKey string,

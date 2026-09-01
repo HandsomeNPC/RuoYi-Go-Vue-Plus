@@ -234,3 +234,163 @@ func TestInsertNilClient(t *testing.T) {
 		t.Error("nil 客户端应返回错误")
 	}
 }
+
+// captureUpdateSQL 执行更新并捕获其 SQL。
+func captureUpdateSQL(t *testing.T, run func(*ClientRepository) error) string {
+	t.Helper()
+	db := dryClientDB(t)
+	var sql string
+	if err := db.Callback().Update().After("gorm:update").
+		Register("test:capture_update", func(tx *gorm.DB) {
+			sql = tx.Statement.SQL.String()
+		}); err != nil {
+		t.Fatalf("注册 callback 失败: %v", err)
+	}
+
+	if err := run(NewClientRepository(db)); err != nil {
+		t.Fatalf("更新失败: %v", err)
+	}
+	if sql == "" {
+		t.Fatal("未捕获到 SQL")
+	}
+	return sql
+}
+
+// TestUpdateByIDSQL 更新须按主键定位并带 del_flag 过滤——已逻辑删除的行不该被改回来。
+func TestUpdateByIDSQL(t *testing.T) {
+	got := captureUpdateSQL(t, func(r *ClientRepository) error {
+		_, err := r.UpdateByID(t.Context(), 1762000000000000001, map[string]any{
+			"client_key":   "pc",
+			"access_path":  "",
+			"ip_whitelist": "",
+		})
+		return err
+	})
+
+	for _, want := range []string{"UPDATE `sys_client`", "`client_key`", "id = ?", "del_flag"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("SQL = %s\n应包含 %s", got, want)
+		}
+	}
+}
+
+// TestUpdateByIDWritesEmptyStrings 空串列必须进 SET 子句。
+// 这是走 map 而非 Updates(struct) 的全部理由：后者跳过零值，
+// 会让前端「清空访问路径/IP 白名单」的操作静默丢失。
+func TestUpdateByIDWritesEmptyStrings(t *testing.T) {
+	got := captureUpdateSQL(t, func(r *ClientRepository) error {
+		_, err := r.UpdateByID(t.Context(), 1762000000000000001, map[string]any{
+			"access_path":  "",
+			"ip_whitelist": "",
+		})
+		return err
+	})
+
+	for _, want := range []string{"`access_path`", "`ip_whitelist`"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("SQL = %s\n空串列 %s 也须写入(清空语义)", got, want)
+		}
+	}
+}
+
+// TestUpdateByIDFillsAuditColumns 审计列由 pkg/repository 的更新回调补齐，调用方不必带。
+func TestUpdateByIDFillsAuditColumns(t *testing.T) {
+	db := dryClientDB(t)
+	if err := pkgrepo.RegisterAuditCallbacks(db); err != nil {
+		t.Fatalf("注册审计回调失败: %v", err)
+	}
+	var sql string
+	if err := db.Callback().Update().After("gorm:update").
+		Register("test:capture_audit", func(tx *gorm.DB) {
+			sql = tx.Statement.SQL.String()
+		}); err != nil {
+		t.Fatalf("注册 callback 失败: %v", err)
+	}
+
+	if _, err := NewClientRepository(db).UpdateByID(t.Context(), 1762000000000000001,
+		map[string]any{"client_key": "pc"}); err != nil {
+		t.Fatalf("UpdateByID: %v", err)
+	}
+
+	for _, want := range []string{"`update_by`", "`update_time`"} {
+		if !strings.Contains(sql, want) {
+			t.Errorf("SQL = %s\n应由审计回调补上 %s", sql, want)
+		}
+	}
+}
+
+// TestUpdateByIDRejectsBadInput 主键无效或无列可更新时不打库。
+func TestUpdateByIDRejectsBadInput(t *testing.T) {
+	tests := []struct {
+		name    string
+		id      int64
+		columns map[string]any
+	}{
+		{"主键为 0", 0, map[string]any{"status": "1"}},
+		{"主键为负", -1, map[string]any{"status": "1"}},
+		{"列为空 map", 1, map[string]any{}},
+		{"列为 nil", 1, nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db := dryClientDB(t)
+			updated := false
+			if err := db.Callback().Update().After("gorm:update").
+				Register("test:flag", func(*gorm.DB) { updated = true }); err != nil {
+				t.Fatalf("注册 callback 失败: %v", err)
+			}
+
+			affected, err := NewClientRepository(db).UpdateByID(t.Context(), tt.id, tt.columns)
+			if err == nil {
+				t.Error("应返回错误")
+			}
+			if affected != 0 {
+				t.Errorf("affected = %d, 期望 0", affected)
+			}
+			if updated {
+				t.Error("入参非法时不应打库")
+			}
+		})
+	}
+}
+
+// TestUpdateStatusByClientIDSQL 改状态须按 client_id 定位(对齐 Java)，且只动 status。
+func TestUpdateStatusByClientIDSQL(t *testing.T) {
+	got := captureUpdateSQL(t, func(r *ClientRepository) error {
+		_, err := r.UpdateStatusByClientID(t.Context(), "e5cd7e4891bf95d1d19206ce24a7b32e", "1")
+		return err
+	})
+
+	for _, want := range []string{"UPDATE `sys_client`", "`status`", "client_id = ?", "del_flag"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("SQL = %s\n应包含 %s", got, want)
+		}
+	}
+	// 不得连带改动其他业务列。
+	for _, unwanted := range []string{"`client_key`", "`client_secret`", "`grant_type`"} {
+		if strings.Contains(got, unwanted) {
+			t.Errorf("SQL = %s\n改状态不应触及 %s", got, unwanted)
+		}
+	}
+}
+
+// TestUpdateStatusByClientIDEmptyID 空标识须返回错误且不打库——否则 WHERE 落空会全表刷状态。
+func TestUpdateStatusByClientIDEmptyID(t *testing.T) {
+	db := dryClientDB(t)
+	updated := false
+	if err := db.Callback().Update().After("gorm:update").
+		Register("test:flag", func(*gorm.DB) { updated = true }); err != nil {
+		t.Fatalf("注册 callback 失败: %v", err)
+	}
+
+	affected, err := NewClientRepository(db).UpdateStatusByClientID(t.Context(), "", "1")
+	if err == nil {
+		t.Error("空客户端标识应返回错误")
+	}
+	if affected != 0 {
+		t.Errorf("affected = %d, 期望 0", affected)
+	}
+	if updated {
+		t.Error("空客户端标识不应打库")
+	}
+}
