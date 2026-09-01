@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 
@@ -34,6 +36,27 @@ func (a *ClientApi) List(c *gin.Context) {
 
 	res, err := systemservice.ClientSvcApp.QueryPageList(c.Request.Context(), q, page)
 	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, response.Ok(res))
+}
+
+// GetInfo 按主键查客户端详情。
+// 主键走路径参数，超出 JS 安全整数的 ID 前端会以字符串下发，ParseInt 两种形态都吃得下。
+func (a *ClientApi) GetInfo(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		_ = c.Error(errs.New(response.CodeBadRequest, "主键不能为空", c.Param("id")))
+		return
+	}
+
+	res, err := systemservice.ClientSvcApp.QueryByID(c.Request.Context(), id)
+	if err != nil {
+		if errors.Is(err, systemservice.ErrClientNotFound) {
+			_ = c.Error(errs.New(response.CodeNotFound, "客户端不存在", ""))
+			return
+		}
 		_ = c.Error(err)
 		return
 	}
