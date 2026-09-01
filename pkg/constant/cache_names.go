@@ -26,7 +26,10 @@ const (
 
 // 缓存组过期时间。
 const (
-	CacheTTLDemoCache       = 60 * time.Second
+	CacheTTLDemoCache = 60 * time.Second
+	// CacheTTLSysConfig 参数配置不过期，对照 Java CacheNames.SYS_CONFIG 未带 #ttl 后缀。
+	// 参数值极少变动且写路径都带缓存维护（新增/修改回写、删除失效），无需靠 TTL 兜底。
+	CacheTTLSysConfig       = 0
 	CacheTTLSysClient       = 30 * 24 * time.Hour
 	CacheTTLSysUserName     = 30 * 24 * time.Hour
 	CacheTTLSysNickname     = 30 * 24 * time.Hour

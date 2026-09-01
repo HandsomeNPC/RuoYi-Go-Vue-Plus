@@ -11,6 +11,7 @@ require (
 	github.com/mssola/useragent v1.0.0
 	github.com/redis/go-redis/v9 v9.22.0
 	github.com/sa-tokens/sa-token-go/integrations/gin v0.2.4
+	github.com/sa-tokens/sa-token-go/storage/memory v0.2.4
 	github.com/sa-tokens/sa-token-go/storage/redis v0.2.4
 	github.com/sa-tokens/sa-token-go/stputil v0.2.4
 	github.com/spf13/viper v1.21.0

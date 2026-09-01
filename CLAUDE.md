@@ -2,6 +2,11 @@
 
 本文件指导 Claude Code 在本仓库中工作。这是 **RuoYi-Vue-Plus (Java/Spring Boot) 的 Go (Gin) 重写版**。
 
+> **写增删改查代码前，先读 [`docs/CRUD-SPEC.md`](docs/CRUD-SPEC.md)。**
+> 那里有六个文件的落地模板、注解/中间件对照表、以及踩过的坑（更新列取舍、
+> 存在性判定不能用受影响行数、中间件顺序、LIKE 转义等）。照模板写，
+> 不必再逐个翻 client/config 模块的源码。
+
 ## 项目定位
 
 - 参照 `E:\WorkSpace\RuoYi-Plus\RuoYi-Vue-Plus` 的功能，用 Go + Gin 重新实现。

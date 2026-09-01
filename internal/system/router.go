@@ -18,6 +18,9 @@ import (
 // clientLogTitle 客户端管理的操作日志模块名，对照 Java @Log(title = "客户端管理")。
 const clientLogTitle = "客户端管理"
 
+// configLogTitle 参数管理的操作日志模块名，对照 Java @Log(title = "参数管理")。
+const configLogTitle = "参数管理"
+
 func RegisterRoutes(r *gin.Engine, prefix string) {
 	plugin := sagin.NewPlugin(satoken.Manager())
 
@@ -59,6 +62,38 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	client.DELETE("/:ids", satoken.CheckPermission("system:client:remove"),
 		oplog.Log(clientLogTitle, enum.BusinessTypeDelete),
 		handler.ClientApiApp.Remove)
+
+	config := protected.Group("/config")
+	config.GET("/list", satoken.CheckPermission("system:config:list"), handler.ConfigApiApp.List)
+	// configKey 与 :configId 同层但静态段优先，gin 能区分二者，无需调整注册顺序。
+	// 与 Java 一致不校验权限码，仅需登录：前端多处要读参数却未必有配置管理权限。
+	config.GET("/configKey/:configKey", sagin.CheckLogin(), handler.ConfigApiApp.GetConfigKey)
+	config.GET("/:configId", satoken.CheckPermission("system:config:query"),
+		handler.ConfigApiApp.GetInfo)
+	// 导出走 POST 与 Java 一致：前端以 form 表单 POST 提交筛选条件。
+	config.POST("/export", satoken.CheckPermission("system:config:export"),
+		oplog.Log(configLogTitle, enum.BusinessTypeExport), handler.ConfigApiApp.Export)
+	// 路径用 "" 而非 "/"：后者会注册成 /config/。
+	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
+	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行，与 Java 侧
+	// RepeatSubmitAspect 抛异常后 LogAspect 记一条失败日志一致。
+	config.POST("", satoken.CheckPermission("system:config:add"),
+		oplog.Log(configLogTitle, enum.BusinessTypeInsert),
+		repeatsubmit.RepeatSubmit(0, ""), handler.ConfigApiApp.Add)
+	config.PUT("", satoken.CheckPermission("system:config:edit"),
+		oplog.Log(configLogTitle, enum.BusinessTypeUpdate),
+		repeatsubmit.RepeatSubmit(0, ""), handler.ConfigApiApp.Edit)
+	config.PUT("/updateByKey", satoken.CheckPermission("system:config:edit"),
+		oplog.Log(configLogTitle, enum.BusinessTypeUpdate),
+		repeatsubmit.RepeatSubmit(0, ""), handler.ConfigApiApp.UpdateByKey)
+	// refreshCache 与 :configIds 同层，静态段优先，无需调整注册顺序。
+	// 权限码用 remove 而非独立的 refresh：对照 Java @SaCheckPermission("system:config:remove")。
+	config.DELETE("/refreshCache", satoken.CheckPermission("system:config:remove"),
+		oplog.Log(configLogTitle, enum.BusinessTypeClean),
+		handler.ConfigApiApp.RefreshCache)
+	config.DELETE("/:configIds", satoken.CheckPermission("system:config:remove"),
+		oplog.Log(configLogTitle, enum.BusinessTypeDelete),
+		handler.ConfigApiApp.Remove)
 }
 
 // InitRouter 构建并返回 system 进程的 gin 引擎(独立部署用)。
