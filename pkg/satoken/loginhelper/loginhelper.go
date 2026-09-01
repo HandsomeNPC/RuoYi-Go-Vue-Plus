@@ -72,9 +72,26 @@ func toSaTokenPerms(perms []string) []string {
 	return out
 }
 
+// loginUserCacheKey gin.Context 中本请求登录用户快照的键。
+const loginUserCacheKey = "ruoyi:loginUser"
+
 // GetLoginUser 取当前请求的登录用户，未登录返回 nil。
+//
+// 结果按请求缓存进 gin.Context：每次都要解会话就是一次 Redis 往返，而一个请求里
+// 审计中间件、操作日志、handler 各自都要取一遍。Java 侧 StpUtil 的会话有 sa-token
+// 的请求级 holder 兜着，sa-token-go 没有，只能在这里自己存一层。
+// 未登录也缓存（存 nil），否则匿名请求每个调用点都白跑一次 Redis。
+//
+// 返回的是本请求内共享的同一个指针，调用方只读、不要改字段。
 func GetLoginUser(c *gin.Context) *authmodel.LoginUser {
-	return GetLoginUserByToken(sagin.GetTokenFromCtx(c))
+	if v, ok := c.Get(loginUserCacheKey); ok {
+		// 未登录时存的是 nil，断言失败正好落回 nil。
+		lu, _ := v.(*authmodel.LoginUser)
+		return lu
+	}
+	lu := GetLoginUserByToken(sagin.GetTokenFromCtx(c))
+	c.Set(loginUserCacheKey, lu)
+	return lu
 }
 
 // GetLoginUserByToken 按指定 token 取登录用户。

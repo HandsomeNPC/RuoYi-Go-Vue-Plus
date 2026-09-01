@@ -1,10 +1,14 @@
 package loginhelper
 
 import (
+	"net/http/httptest"
 	"reflect"
 	"testing"
 
+	"github.com/gin-gonic/gin"
+
 	"ruoyi-go-vue-plus/pkg/constant"
+	authmodel "ruoyi-go-vue-plus/pkg/model"
 )
 
 // TestToSaTokenPerms 超管的 *:*:* 必须换成 *，其余权限码原样透传。
@@ -39,5 +43,49 @@ func TestToSaTokenPerms(t *testing.T) {
 func TestAllPermissionLiteral(t *testing.T) {
 	if constant.AllPermission != "*:*:*" {
 		t.Errorf("AllPermission = %q, 前端契约要求 *:*:*", constant.AllPermission)
+	}
+}
+
+// newTestCtx 造一个带 request 的 gin.Context，不挂 TokenInterceptor（故取不到 token）。
+func newTestCtx() *gin.Context {
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest("GET", "/", nil)
+	return c
+}
+
+// TestGetLoginUserCachesHit 命中缓存时直接返回快照，不再解会话。
+//
+// 一个请求里 AuditContext、oplog、handler 各要取一次登录用户，不缓存就是三次 Redis 往返。
+// 这里预置缓存来断言「有缓存就不回源」——无 Redis 环境下回源必得 nil，故拿到非 nil 即证明走的是缓存。
+func TestGetLoginUserCachesHit(t *testing.T) {
+	c := newTestCtx()
+	want := &authmodel.LoginUser{UserID: 1, DeptID: 100}
+	c.Set(loginUserCacheKey, want)
+
+	if got := GetLoginUser(c); got != want {
+		t.Errorf("GetLoginUser() = %v, 期望复用缓存里的同一指针 %v", got, want)
+	}
+	// 派生的取值函数同样应吃到缓存。
+	if got := GetDeptID(c); got != 100 {
+		t.Errorf("GetDeptID() = %d, 期望 100", got)
+	}
+}
+
+// TestGetLoginUserCachesMiss 未登录也要落缓存，否则匿名请求每个调用点都白跑一次 Redis。
+func TestGetLoginUserCachesMiss(t *testing.T) {
+	c := newTestCtx()
+	if got := GetLoginUser(c); got != nil {
+		t.Fatalf("GetLoginUser() = %v, 无 token 时期望 nil", got)
+	}
+	v, ok := c.Get(loginUserCacheKey)
+	if !ok {
+		t.Fatal("未登录时也应写入缓存键，否则后续调用点会重复回源")
+	}
+	if lu, _ := v.(*authmodel.LoginUser); lu != nil {
+		t.Errorf("缓存值 = %v, 期望 nil", lu)
+	}
+	// 第二次仍返回 nil，且不 panic。
+	if got := GetLoginUser(c); got != nil {
+		t.Errorf("第二次 GetLoginUser() = %v, 期望 nil", got)
 	}
 }

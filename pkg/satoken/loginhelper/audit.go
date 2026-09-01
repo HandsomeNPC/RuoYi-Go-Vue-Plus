@@ -17,7 +17,6 @@ import (
 // 未登录时不写，由回调按 -1 兜底。
 func AuditContext() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 只调一次 GetLoginUser：它要读 Redis，用 GetUserID+GetDeptID 会变成两次往返。
 		if lu := GetLoginUser(c); lu != nil {
 			c.Request = c.Request.WithContext(
 				pkgrepo.WithAuditUser(c.Request.Context(), pkgrepo.AuditUser{
