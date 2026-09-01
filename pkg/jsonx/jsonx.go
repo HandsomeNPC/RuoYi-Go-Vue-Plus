@@ -108,3 +108,7 @@ func (codec) NewDecoder(reader io.Reader) ginjson.Decoder { return api.NewDecode
 // 直接用 encoding/json 会绕过上面注册的 int64 编码器，导致同一个 id
 // 在不同接口下形态不一致。
 func Marshal(v any) ([]byte, error) { return api.Marshal(v) }
+
+// Unmarshal 与 Marshal 对称，供需要与出参同构反序列化的场景使用（如从 Redis 还原缓存值）。
+// 使用同一 api 实例，int64 的字符串/数字双向解码均有效。
+func Unmarshal(data []byte, v any) error { return api.Unmarshal(data, v) }

@@ -163,7 +163,8 @@ func TestNewClientID(t *testing.T) {
 	// 这是 Java 的既有行为，不是缺陷，此处不做区分性断言。
 }
 
-// TestBuildClientUpdateColumnsAlwaysWritten 六个可编辑列无条件写入，空串即清空。
+// TestBuildClientUpdateColumnsAlwaysWritten 五个可编辑列无条件写入，空串即清空。
+// client_id 仅在前端回填非空时才落入 SET——对齐 Java updateByBo 对 null 字段的跳过语义。
 func TestBuildClientUpdateColumnsAlwaysWritten(t *testing.T) {
 	// 全部规则字段留空：模拟前端清空访问路径与 IP 白名单。
 	got := buildClientUpdateColumns(&bo.SysClientBo{
@@ -173,7 +174,7 @@ func TestBuildClientUpdateColumnsAlwaysWritten(t *testing.T) {
 	})
 
 	for _, col := range []string{"client_key", "client_secret", "grant_type",
-		"device_type", "access_path", "ip_whitelist", "client_id"} {
+		"device_type", "access_path", "ip_whitelist"} {
 		if _, ok := got[col]; !ok {
 			t.Errorf("列 %s 缺失，须无条件写入(否则清空操作会丢失)", col)
 		}
@@ -181,6 +182,10 @@ func TestBuildClientUpdateColumnsAlwaysWritten(t *testing.T) {
 	if got["access_path"] != "" || got["ip_whitelist"] != "" {
 		t.Errorf("access_path/ip_whitelist = %v/%v, 期望空串(清空语义)",
 			got["access_path"], got["ip_whitelist"])
+	}
+	// ClientID 未回填时不写 client_id，避免把既有值刷成空串。
+	if _, ok := got["client_id"]; ok {
+		t.Errorf("ClientID 为空时不应写入 client_id 列，got %v", got["client_id"])
 	}
 }
 
@@ -221,18 +226,25 @@ func TestBuildClientUpdateColumnsIncludesSet(t *testing.T) {
 	}
 }
 
-// TestBuildClientUpdateColumnsRecomputesClientID client_id 须按 key/secret 重算而非沿用入参。
-// 这是与 Java updateByBo 的有意差异：改了 key/secret 却留着旧 client_id，
-// auth 登录按 client_id 查库就会静默查空。
-func TestBuildClientUpdateColumnsRecomputesClientID(t *testing.T) {
+// TestBuildClientUpdateColumnsClientID client_id 直接采用前端回填值，对齐 Java updateByBo
+// @CacheEvict(key = "#bo.clientId") 的语义——evict 的是前端回传的那个 key，
+// 服务端不重算（前端在修改 key/secret 时自行更新 clientId 回传）。
+func TestBuildClientUpdateColumnsClientID(t *testing.T) {
+	// 前端回填了 clientId：原样落库。
 	got := buildClientUpdateColumns(&bo.SysClientBo{
 		ID: 1762000000000000001, ClientKey: "pc", ClientSecret: "pc123",
-		ClientID: "陈旧的值-不该被沿用",
+		ClientID: "2ce0a4f4bf6c4a854a97a5ddfd941ebb",
 	})
+	if got["client_id"] != "2ce0a4f4bf6c4a854a97a5ddfd941ebb" {
+		t.Errorf("client_id = %v, 期望原样落库前端回填值", got["client_id"])
+	}
 
-	// 与 TestNewClientID 同一已知取值。
-	if want := "2ce0a4f4bf6c4a854a97a5ddfd941ebb"; got["client_id"] != want {
-		t.Errorf("client_id = %v, 期望按 key/secret 重算为 %q", got["client_id"], want)
+	// 前端未回填 clientId（空串）：不写入，保留库里现有值。
+	empty := buildClientUpdateColumns(&bo.SysClientBo{
+		ID: 1762000000000000001, ClientKey: "pc", ClientSecret: "pc123",
+	})
+	if _, ok := empty["client_id"]; ok {
+		t.Errorf("ClientID 为空时不应写入 client_id 列，got %v", empty["client_id"])
 	}
 }
 

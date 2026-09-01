@@ -11,6 +11,8 @@ import (
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	"ruoyi-go-vue-plus/internal/system/repository"
+	"ruoyi-go-vue-plus/pkg/cache"
+	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/database"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 	"ruoyi-go-vue-plus/pkg/snowflake"
@@ -28,9 +30,14 @@ type ClientService struct{}
 // ClientSvcApp 包级实例。
 var ClientSvcApp = new(ClientService)
 
-// QueryByClientID 按客户端标识查客户端（对应 Java queryByClientId），
+// QueryByClientID 按客户端标识查客户端（对应 Java queryByClientId + @Cacheable）。
 // 不存在时返回 ErrClientNotFound，返回填充好 *List 字段的 VO。
 func (s *ClientService) QueryByClientID(ctx context.Context, clientID string) (*vo.SysClientVo, error) {
+	var out vo.SysClientVo
+	if hit, _ := cache.Get(ctx, constant.CacheSysClient, clientID, &out); hit {
+		return &out, nil
+	}
+
 	client, err := repository.NewClientRepository(database.DB()).SelectByClientID(ctx, clientID)
 	if err != nil {
 		if errors.Is(err, repository.ErrClientNotFound) {
@@ -38,9 +45,10 @@ func (s *ClientService) QueryByClientID(ctx context.Context, clientID string) (*
 		}
 		return nil, err
 	}
-	out := vo.Conv.ConvertToSysClientVo(client)
-	s.fillRuleFields(out)
-	return out, nil
+	ptr := vo.Conv.ConvertToSysClientVo(client)
+	s.fillRuleFields(ptr)
+	_ = cache.Put(ctx, constant.CacheSysClient, clientID, ptr, constant.CacheTTLSysClient)
+	return ptr, nil
 }
 
 // QueryByID 按主键查客户端（对应 Java queryById），
@@ -126,7 +134,7 @@ func (s *ClientService) InsertByBo(ctx context.Context, b *bo.SysClientBo) error
 	return nil
 }
 
-// UpdateByBo 修改客户端（对应 Java updateByBo）。
+// UpdateByBo 修改客户端（对应 Java updateByBo + @CacheEvict(key = "#bo.clientId")）。
 // client_key 被别的客户端占用时返回 ErrClientKeyExists；主键不存在返回 ErrClientNotFound。
 func (s *ClientService) UpdateByBo(ctx context.Context, b *bo.SysClientBo) error {
 	if b == nil {
@@ -155,6 +163,7 @@ func (s *ClientService) UpdateByBo(ctx context.Context, b *bo.SysClientBo) error
 	if affected == 0 {
 		return ErrClientNotFound
 	}
+	_ = cache.Evict(ctx, constant.CacheSysClient, b.ClientID)
 	return nil
 }
 
@@ -167,10 +176,12 @@ func buildClientUpdateColumns(b *bo.SysClientBo) map[string]any {
 		"device_type":   b.DeviceType,
 		"access_path":   resolveRuleValue(b.AccessPath, b.AccessPathList, normalizeAccessPath),
 		"ip_whitelist":  resolveRuleValue(b.IPWhitelist, b.IPWhitelistList, nil),
-		// client_id 跟着 key/secret 重算——与 Java updateByBo 的有意差异：
-		// 它沿用前端回填的 clientId，改了 key/secret 后该值即失真，
-		// 而 auth 登录正是按 client_id 查库，会静默查不到客户端。
-		"client_id": newClientID(b.ClientKey, b.ClientSecret),
+	}
+	// client_id 用前端回填值而非服务端重算——与 Java updateByBo 对齐：前端改动
+	// key/secret 后自行重算 clientId 回传，服务端直接落库；未回传则为空，跳过
+	// 不写（等效 Java updateById 对 null 字段的跳过），避免把既有 client_id 刷成空串。
+	if b.ClientID != "" {
+		columns["client_id"] = b.ClientID
 	}
 	// 状态与两个超时缺省即视为不改：漏传字段不该把线上 status 刷成空串、
 	// 或把超时刷成 0 令已签发的 token 立刻失效。等效于 Java 的 null 跳过。
@@ -186,7 +197,7 @@ func buildClientUpdateColumns(b *bo.SysClientBo) map[string]any {
 	return columns
 }
 
-// UpdateClientStatus 改客户端启停状态（对应 Java updateClientStatus，同为按 client_id 定位）。
+// UpdateClientStatus 改客户端启停状态（对应 Java updateClientStatus + @CacheEvict(key = "#clientId")）。
 // 客户端不存在时返回 ErrClientNotFound。
 func (s *ClientService) UpdateClientStatus(ctx context.Context, clientID, status string) error {
 	if clientID == "" {
@@ -202,10 +213,11 @@ func (s *ClientService) UpdateClientStatus(ctx context.Context, clientID, status
 	if affected == 0 {
 		return ErrClientNotFound
 	}
+	_ = cache.Evict(ctx, constant.CacheSysClient, clientID)
 	return nil
 }
 
-// DeleteWithValidByIDs 批量删除客户端（对应 Java deleteWithValidByIds）。
+// DeleteWithValidByIDs 批量删除客户端（对应 Java deleteWithValidByIds + @CacheEvict(allEntries = true)）。
 // 无一行命中时返回 ErrClientNotFound，对齐 Java deleteByIds() > 0 的失败口径。
 func (s *ClientService) DeleteWithValidByIDs(ctx context.Context, ids []int64) error {
 	if len(ids) == 0 {
@@ -219,6 +231,7 @@ func (s *ClientService) DeleteWithValidByIDs(ctx context.Context, ids []int64) e
 	if affected == 0 {
 		return ErrClientNotFound
 	}
+	_ = cache.EvictGroup(ctx, constant.CacheSysClient)
 	return nil
 }
 
