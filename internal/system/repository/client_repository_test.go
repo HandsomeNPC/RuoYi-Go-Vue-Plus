@@ -161,3 +161,76 @@ func TestSelectPageListRejectsInjectedOrder(t *testing.T) {
 		t.Errorf("失败时应返回空页, got %+v", res)
 	}
 }
+
+// captureCountSQL 执行唯一性校验并捕获其 COUNT 语句。
+func captureCountSQL(t *testing.T, clientKey string, excludeID int64) string {
+	t.Helper()
+	db := dryClientDB(t)
+	var sql string
+	if err := db.Callback().Query().After("gorm:query").
+		Register("test:capture_count", func(tx *gorm.DB) {
+			sql = tx.Statement.SQL.String()
+		}); err != nil {
+		t.Fatalf("注册 callback 失败: %v", err)
+	}
+
+	if _, err := NewClientRepository(db).ExistsByClientKey(t.Context(), clientKey, excludeID); err != nil {
+		t.Fatalf("ExistsByClientKey: %v", err)
+	}
+	if sql == "" {
+		t.Fatal("未捕获到 SQL")
+	}
+	return sql
+}
+
+// TestExistsByClientKeySQL 唯一性校验须带 del_flag 过滤——已逻辑删除的行不该占用 client_key。
+func TestExistsByClientKeySQL(t *testing.T) {
+	got := captureCountSQL(t, "pc", 0)
+
+	for _, want := range []string{"count(*)", "FROM `sys_client`", "client_key = ?", "del_flag"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("SQL = %s\n应包含 %s", got, want)
+		}
+	}
+	// 新增场景无自身可排除，不应出现 id <> ?。
+	if strings.Contains(got, "id <> ?") {
+		t.Errorf("SQL = %s\nexcludeID=0 时不应排除主键", got)
+	}
+}
+
+// TestExistsByClientKeyExcludeID excludeID > 0 时排除自身（供修改场景复用）。
+func TestExistsByClientKeyExcludeID(t *testing.T) {
+	got := captureCountSQL(t, "pc", 1762000000000000001)
+
+	if !strings.Contains(got, "id <> ?") {
+		t.Errorf("SQL = %s\n应包含 id <> ? 以排除自身", got)
+	}
+}
+
+// TestExistsByClientKeyEmptyKey 空 key 直接判为未占用，不打库。
+func TestExistsByClientKeyEmptyKey(t *testing.T) {
+	db := dryClientDB(t)
+	queried := false
+	if err := db.Callback().Query().After("gorm:query").
+		Register("test:flag", func(*gorm.DB) { queried = true }); err != nil {
+		t.Fatalf("注册 callback 失败: %v", err)
+	}
+
+	exists, err := NewClientRepository(db).ExistsByClientKey(t.Context(), "", 0)
+	if err != nil {
+		t.Fatalf("ExistsByClientKey: %v", err)
+	}
+	if exists {
+		t.Error("空 key 应判为未占用")
+	}
+	if queried {
+		t.Error("空 key 不应打库")
+	}
+}
+
+// TestInsertNilClient nil 入参须返回错误而非 panic。
+func TestInsertNilClient(t *testing.T) {
+	if err := NewClientRepository(dryClientDB(t)).Insert(t.Context(), nil); err == nil {
+		t.Error("nil 客户端应返回错误")
+	}
+}

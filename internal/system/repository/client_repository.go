@@ -92,3 +92,38 @@ func (r *ClientRepository) SelectPageList(ctx context.Context, q bo.SysClientQue
 	var rows []*model.SysClient
 	return pkgrepo.SelectPage(db, page, &rows)
 }
+
+// Insert 插入一条客户端。
+// id 无 auto_increment，主键须由调用方（service 层）预先填好；
+// 审计字段由 pkg/repository 的插入回调统一填充。
+func (r *ClientRepository) Insert(ctx context.Context, client *model.SysClient) error {
+	if client == nil {
+		return fmt.Errorf("repository: 客户端为空")
+	}
+	if err := r.db.WithContext(ctx).Create(client).Error; err != nil {
+		return fmt.Errorf("repository: 插入客户端失败: %w", err)
+	}
+	return nil
+}
+
+// ExistsByClientKey 判断 client_key 是否已被占用，excludeID > 0 时排除该主键
+// （对齐 Java neIfPresent，供修改场景排除自身）。
+func (r *ClientRepository) ExistsByClientKey(ctx context.Context, clientKey string,
+	excludeID int64) (bool, error) {
+
+	if clientKey == "" {
+		return false, nil
+	}
+
+	// Model 不能省：del_flag 过滤由 LogicDelete 挂在字段类型上，须先解析出实体 schema 才生效。
+	db := r.db.WithContext(ctx).Model(&model.SysClient{}).Where("client_key = ?", clientKey)
+	if excludeID > 0 {
+		db = db.Where("id <> ?", excludeID)
+	}
+
+	var count int64
+	if err := db.Count(&count).Error; err != nil {
+		return false, fmt.Errorf("repository: 校验客户端 key %q 失败: %w", clientKey, err)
+	}
+	return count > 0, nil
+}

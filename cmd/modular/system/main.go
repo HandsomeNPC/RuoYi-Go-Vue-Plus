@@ -8,6 +8,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/encrypt"
 	"ruoyi-go-vue-plus/pkg/jsonx"
 	"ruoyi-go-vue-plus/pkg/redis"
+	"ruoyi-go-vue-plus/pkg/repeatsubmit"
 	"ruoyi-go-vue-plus/pkg/satoken"
 	"ruoyi-go-vue-plus/pkg/snowflake"
 )
@@ -28,6 +29,8 @@ func main() {
 	encrypt.Init()
 	// 主键发号器，各业务表主键无 auto_increment，插入前必须就绪。
 	snowflake.Init()
+	// 依赖 redis(防重键存 Redis)，须在 redis.Init 之后。
+	repeatsubmit.Init()
 
 	r := system.InitRouter()
 	system.InitServer(r)

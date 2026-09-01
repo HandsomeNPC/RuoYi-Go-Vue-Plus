@@ -8,7 +8,9 @@ import (
 
 	"ruoyi-go-vue-plus/internal/system/handler"
 	"ruoyi-go-vue-plus/pkg/middleware"
+	"ruoyi-go-vue-plus/pkg/repeatsubmit"
 	"ruoyi-go-vue-plus/pkg/satoken"
+	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 )
 
 func RegisterRoutes(r *gin.Engine, prefix string) {
@@ -19,7 +21,8 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 		c.JSON(http.StatusOK, gin.H{"module": "system", "message": "pong"})
 	})
 	protected := r.Group(prefix)
-	protected.Use(plugin.TokenInterceptor())
+	// AuditContext 须排在 TokenInterceptor 之后：它取的登录态依赖后者解析出的 token。
+	protected.Use(plugin.TokenInterceptor(), loginhelper.AuditContext())
 	user := protected.Group("/user")
 	user.GET("/getInfo", sagin.CheckLogin(), handler.UserApiApp.GetInfo)
 
@@ -29,6 +32,10 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	client := protected.Group("/client")
 	client.GET("/list", satoken.CheckPermission("system:client:list"), handler.ClientApiApp.List)
 	client.GET("/:id", satoken.CheckPermission("system:client:query"), handler.ClientApiApp.GetInfo)
+	// 路径用 "" 而非 "/"：后者会注册成 /client/。
+	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
+	client.POST("", satoken.CheckPermission("system:client:add"),
+		repeatsubmit.RepeatSubmit(0, ""), handler.ClientApiApp.Add)
 }
 
 // InitRouter 构建并返回 system 进程的 gin 引擎(独立部署用)。

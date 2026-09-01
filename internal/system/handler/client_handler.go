@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -61,4 +62,24 @@ func (a *ClientApi) GetInfo(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, response.Ok(res))
+}
+
+// Add 新增客户端。
+func (a *ClientApi) Add(c *gin.Context) {
+	var b bo.SysClientBo
+	if err := c.ShouldBindJSON(&b); err != nil {
+		_ = c.Error(errs.New(response.CodeBadRequest, "参数校验失败", err.Error()))
+		return
+	}
+
+	if err := systemservice.ClientSvcApp.InsertByBo(c.Request.Context(), &b); err != nil {
+		if errors.Is(err, systemservice.ErrClientKeyExists) {
+			_ = c.Error(errs.New(response.CodeFail,
+				fmt.Sprintf("新增客户端'%s'失败，客户端key已存在", b.ClientKey), ""))
+			return
+		}
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, response.OkVoid())
 }

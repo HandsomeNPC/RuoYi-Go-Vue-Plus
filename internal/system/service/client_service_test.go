@@ -104,3 +104,60 @@ func TestToVoListNil(t *testing.T) {
 		t.Errorf("toVoList(nil) = %v, 期望 nil", got)
 	}
 }
+
+// TestResolveRuleValue raw 非空时切分 raw，否则用 list；list 元素只 trim 不再切分。
+func TestResolveRuleValue(t *testing.T) {
+	tests := []struct {
+		name      string
+		raw       string
+		list      []string
+		normalize func(string) string
+		want      string
+	}{
+		{"两者都空", "", nil, nil, ""},
+		{"raw 优先于 list", "a,b", []string{"ignored"}, nil, "a,b"},
+		{"raw 为空回落 list", "", []string{"a", "b"}, nil, "a,b"},
+		{"raw 多分隔符切分", "a;b\nc", nil, nil, "a,b,c"},
+		{"raw 去空段与空白", " a , , b ", nil, nil, "a,b"},
+		{"list 元素只 trim", "", []string{" a ", "b"}, nil, "a,b"},
+		{"list 丢弃空元素", "", []string{"a", "", "  "}, nil, "a"},
+		// 归一化器作用于单条规则，raw/list 两条路径都要过。
+		{"raw 走归一化", "app/**", nil, normalizeAccessPath, "/app/**"},
+		{"list 走归一化", "", []string{"app/**", "*"}, normalizeAccessPath, "/app/**,/**"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := resolveRuleValue(tt.raw, tt.list, tt.normalize); got != tt.want {
+				t.Errorf("resolveRuleValue(%q, %v) = %q, 期望 %q",
+					tt.raw, tt.list, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestResolveRuleValueRoundTrip 入库串再切回列表须与入参等价，保证 fillRuleFields 能还原。
+func TestResolveRuleValueRoundTrip(t *testing.T) {
+	stored := resolveRuleValue("", []string{"app/**", "*"}, normalizeAccessPath)
+
+	want := []string{"/app/**", "/**"}
+	if got := parseAccessPathList(stored); !reflect.DeepEqual(got, want) {
+		t.Errorf("落库 %q 回读 = %v, 期望 %v", stored, got, want)
+	}
+}
+
+// TestNewClientID client_id 取 md5(clientKey + clientSecret)，对齐 Java SecureUtil.md5。
+func TestNewClientID(t *testing.T) {
+	// 与 Java 同算法的已知取值，改动实现会在此暴露。
+	if got, want := newClientID("pc", "pc123"), "2ce0a4f4bf6c4a854a97a5ddfd941ebb"; got != want {
+		t.Errorf("newClientID(pc, pc123) = %q, 期望 %q", got, want)
+	}
+	if got, want := newClientID("app", "app123"), "819aaa7e32af91de5e7dcae60fb77e10"; got != want {
+		t.Errorf("newClientID(app, app123) = %q, 期望 %q", got, want)
+	}
+	// 32 位小写十六进制，前端按字符串比对。
+	if got := newClientID("k", "s"); len(got) != 32 {
+		t.Errorf("newClientID 长度 = %d, 期望 32", len(got))
+	}
+	// 注意 md5 作用于拼接后的整串，故 (ab,c) 与 (a,bc) 必然同值——
+	// 这是 Java 的既有行为，不是缺陷，此处不做区分性断言。
+}

@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm/schema"
 
 	"ruoyi-go-vue-plus/pkg/config"
+	"ruoyi-go-vue-plus/pkg/repository"
 )
 
 // New 按配置建立数据库连接并完成连接池设置。
@@ -34,6 +35,10 @@ func New(cfg config.DatasourceConfig) (*gorm.DB, error) {
 	}
 	if err := ping(db); err != nil {
 		return nil, err
+	}
+	// 放 New 而非 Init：两个入口都覆盖，任何 main 都无法漏掉审计字段填充。
+	if err := repository.RegisterAuditCallbacks(db); err != nil {
+		return nil, fmt.Errorf("database: 注册审计字段回调失败: %w", err)
 	}
 	return db, nil
 }

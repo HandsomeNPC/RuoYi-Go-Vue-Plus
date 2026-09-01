@@ -9,6 +9,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/jsonx"
 	"ruoyi-go-vue-plus/pkg/ratelimiter"
 	"ruoyi-go-vue-plus/pkg/redis"
+	"ruoyi-go-vue-plus/pkg/repeatsubmit"
 	"ruoyi-go-vue-plus/pkg/satoken"
 	"ruoyi-go-vue-plus/pkg/snowflake"
 )
@@ -33,6 +34,9 @@ func main() {
 	captcha.Init()
 	// 依赖 redis(限流计数存 Redis)，须在 redis.Init 之后。
 	ratelimiter.Init()
+	// 依赖 redis(防重键存 Redis)，须在 redis.Init 之后。
+	// auth 当前无 RepeatSubmit 路由，此处为与其他进程对称、避免将来漏初始化。
+	repeatsubmit.Init()
 
 	r := auth.InitRouter()
 	auth.InitServer(r)
