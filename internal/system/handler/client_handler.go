@@ -12,6 +12,7 @@ import (
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	systemservice "ruoyi-go-vue-plus/internal/system/service"
 	"ruoyi-go-vue-plus/pkg/errs"
+	"ruoyi-go-vue-plus/pkg/excel"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 	"ruoyi-go-vue-plus/pkg/response"
 )
@@ -42,6 +43,33 @@ func (a *ClientApi) List(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, response.Ok(res))
+}
+
+// Export 导出客户端列表为 xlsx 附件（对应 Java SysClientController.export）。
+// 与 Java 一致走 POST：前端 download() 与 commonExport 都以 form 表单 POST 提交筛选条件，
+// 故用 ShouldBind 同时吃 form body 与 query。
+//
+// 本项目唯一不返回 response.R 的 handler，响应体是二进制附件。
+// 多取一行用于判定超限，避免"先捞完百万行再拒绝"。
+func (a *ClientApi) Export(c *gin.Context) {
+	var q bo.SysClientQueryBo
+	if err := c.ShouldBind(&q); err != nil {
+		_ = c.Error(errs.New(response.CodeBadRequest, "参数校验失败", err.Error()))
+		return
+	}
+
+	rows, err := systemservice.ClientSvcApp.QueryList(c.Request.Context(), q, excel.MaxRows+1)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	// 工作簿在 excel.Export 内部先建满缓冲再落笔：
+	// middleware.Recover 只在 !Written() 时渲染错误，抢先写字节会让后续错误被静默吞掉。
+	if err := excel.Export(c, rows, "客户端管理"); err != nil {
+		_ = c.Error(err)
+		return
+	}
 }
 
 // GetInfo 按主键查客户端详情。

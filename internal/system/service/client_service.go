@@ -70,6 +70,18 @@ func (s *ClientService) QueryPageList(ctx context.Context, q bo.SysClientQueryBo
 	return pkgrepo.Page(s.toVoList(res.Rows), res.Total), nil
 }
 
+// QueryList 按条件不分页查客户端，返回填充好 *List 字段的 VO 列表，供导出等全量场景用。
+// limit <= 0 不限制行数；导出方应传 excel.MaxRows+1 以提前判定超限，见 pkg/excel 的说明。
+func (s *ClientService) QueryList(ctx context.Context, q bo.SysClientQueryBo,
+	limit int) ([]*vo.SysClientVo, error) {
+
+	clients, err := repository.NewClientRepository(database.DB()).SelectList(ctx, q, limit)
+	if err != nil {
+		return nil, err
+	}
+	return s.toVoList(clients), nil
+}
+
 // CheckClientKeyUnique 校验 client_key 是否可用（对齐 Java checkClickKeyUnique，同为「唯一即 true」）。
 // excludeID > 0 时排除该主键，供修改场景复用。
 func (s *ClientService) CheckClientKeyUnique(ctx context.Context, clientKey string,

@@ -47,6 +47,8 @@ cors:
   allowedHeaders: [ "*" ]           # 回显预检请求的头
   exposedHeaders: # 允许前端 JS 读取的响应头
     - X-Request-Id                # 给前端才能拿到 traceId 对账
+    - Content-Disposition        # 导出下载：前端解析文件名
+    - download-filename          # 导出下载：前端直接读附件名（对齐 Java 口径）
   maxAgeSeconds: 1800           # 预检结果缓存(秒)
 
 xss:

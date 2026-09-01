@@ -32,6 +32,10 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	client := protected.Group("/client")
 	client.GET("/list", satoken.CheckPermission("system:client:list"), handler.ClientApiApp.List)
 	client.GET("/:id", satoken.CheckPermission("system:client:query"), handler.ClientApiApp.GetInfo)
+	// 导出走 POST 与 Java 一致：前端以 form 表单 POST 提交筛选条件。
+	// 与 PUT ""/changeStatus 同理，路径更具体，须注册在 client.POST("") 之后。
+	client.POST("/export", satoken.CheckPermission("system:client:export"),
+		handler.ClientApiApp.Export)
 	// 路径用 "" 而非 "/"：后者会注册成 /client/。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	client.POST("", satoken.CheckPermission("system:client:add"),

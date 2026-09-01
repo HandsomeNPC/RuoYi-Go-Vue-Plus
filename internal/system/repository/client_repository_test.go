@@ -479,3 +479,113 @@ func TestUpdateStatusByClientIDEmptyID(t *testing.T) {
 		t.Error("空客户端标识不应打库")
 	}
 }
+
+// captureListSQL 执行不分页查询并捕获其 SELECT 语句。
+// 与 SelectPageList 不同，这里 Find 无 Count 前置，DryRun 也能拿到完整 SELECT。
+func captureListSQL(t *testing.T, q bo.SysClientQueryBo, limit int) string {
+	t.Helper()
+	db := dryClientDB(t)
+	var sql string
+	if err := db.Callback().Query().After("gorm:query").
+		Register("test:capture_list", func(tx *gorm.DB) {
+			sql = tx.Statement.SQL.String()
+		}); err != nil {
+		t.Fatalf("注册 callback 失败: %v", err)
+	}
+
+	if _, err := NewClientRepository(db).SelectList(t.Context(), q, limit); err != nil {
+		t.Fatalf("SelectList: %v", err)
+	}
+	if sql == "" {
+		t.Fatal("未捕获到 SQL")
+	}
+	return sql
+}
+
+// TestSelectListWhereConditions 四个过滤条件全传时都应落到 WHERE，且保留逻辑删除过滤。
+func TestSelectListWhereConditions(t *testing.T) {
+	q := bo.SysClientQueryBo{
+		ClientID:     "e5cd7e4891bf95d1d19206ce24a7b32e",
+		ClientKey:    "pc",
+		ClientSecret: "pc123",
+		Status:       "0",
+	}
+	got := captureListSQL(t, q, 0)
+
+	for _, want := range []string{
+		"FROM `sys_client`",
+		"client_id = ?",
+		"client_key = ?",
+		"client_secret = ?",
+		"status = ?",
+		"del_flag",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("SQL = %s\n应包含 %s", got, want)
+		}
+	}
+}
+
+// TestSelectListSkipsEmptyConditions 空串条件不参与筛选（eqIfText 语义）。
+func TestSelectListSkipsEmptyConditions(t *testing.T) {
+	got := captureListSQL(t, bo.SysClientQueryBo{}, 0)
+
+	for _, unwanted := range []string{"client_id = ?", "client_key = ?", "client_secret = ?", "status = ?"} {
+		if strings.Contains(got, unwanted) {
+			t.Errorf("SQL = %s\n不应包含 %s", got, unwanted)
+		}
+	}
+	// 逻辑删除条件与表名仍须在。
+	if !strings.Contains(got, "del_flag") || !strings.Contains(got, "FROM `sys_client`") {
+		t.Errorf("SQL = %s\n应保留 del_flag 与 sys_client", got)
+	}
+}
+
+// TestSelectListAppliesLimit limit>0 才拼 LIMIT，0 与 -1 表示不限制。
+func TestSelectListAppliesLimit(t *testing.T) {
+	if got := captureListSQL(t, bo.SysClientQueryBo{}, 100001); !strings.Contains(got, "LIMIT") {
+		t.Errorf("limit=100001 时应带 LIMIT, SQL = %s", got)
+	}
+	if got := captureListSQL(t, bo.SysClientQueryBo{}, 0); strings.Contains(got, "LIMIT") {
+		t.Errorf("limit=0 不应带 LIMIT, SQL = %s", got)
+	}
+	if got := captureListSQL(t, bo.SysClientQueryBo{}, -1); strings.Contains(got, "LIMIT") {
+		t.Errorf("limit=-1 不应带 LIMIT, SQL = %s", got)
+	}
+}
+
+// TestSelectListOrdersByID 不分页查询无调用方排序一说，固定按主键升序，输出顺序稳定。
+func TestSelectListOrdersByID(t *testing.T) {
+	got := captureListSQL(t, bo.SysClientQueryBo{}, 0)
+	if !strings.Contains(got, "ORDER BY") {
+		t.Errorf("SQL = %s\n应带 ORDER BY", got)
+	}
+	if !strings.Contains(got, "`id`") && !strings.Contains(got, "id") {
+		t.Errorf("SQL = %s\n应按 id 排序", got)
+	}
+}
+
+// TestApplyClientQuerySharedByBothPaths 分页与列表两条路径必须生成一致的 WHERE。
+// 这是 applyClientQuery 存在的全部理由：改过滤逻辑时只改一处，两条路径同步生效。
+func TestApplyClientQuerySharedByBothPaths(t *testing.T) {
+	q := bo.SysClientQueryBo{
+		ClientID:     "e5cd7e4891bf95d1d19206ce24a7b32e",
+		ClientKey:    "pc",
+		ClientSecret: "pc123",
+		Status:       "0",
+	}
+
+	// 列表路径的 SELECT；分页路径取 COUNT 语句。
+	listSQL := captureListSQL(t, q, 0)
+	pageSQL := captureSQL(t, q, pkgrepo.PageQuery{PageNum: 1, PageSize: 10})[0]
+
+	// 关键：四个条件的 WHERE 片段必须逐字出现在两条 SQL 里，不允许一边漏一个。
+	for _, want := range []string{"client_id = ?", "client_key = ?", "client_secret = ?", "status = ?"} {
+		if !strings.Contains(listSQL, want) {
+			t.Errorf("列表 SQL 缺少 %s: %s", want, listSQL)
+		}
+		if !strings.Contains(pageSQL, want) {
+			t.Errorf("分页 SQL 缺少 %s: %s", want, pageSQL)
+		}
+	}
+}

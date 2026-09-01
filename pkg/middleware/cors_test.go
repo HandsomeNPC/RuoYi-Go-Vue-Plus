@@ -374,3 +374,40 @@ func TestCORSHeadersSurvivePanic(t *testing.T) {
 		t.Errorf("HTTP 状态码 = %d, want %d", got, want)
 	}
 }
+
+// TestExportHeadersExposedByDefaultCORS 默认配置必须暴露附件名头。
+// 前端读不到 download-filename，导出文件名会回落成兜底值。
+func TestExportHeadersExposedByDefaultCORS(t *testing.T) {
+	cfg := config.DefaultCORS()
+	for _, want := range []string{"Content-Disposition", "download-filename"} {
+		found := false
+		for _, got := range cfg.ExposedHeaders {
+			if got == want {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("DefaultCORS().ExposedHeaders 缺少 %q (得到 %v)", want, cfg.ExposedHeaders)
+		}
+	}
+}
+
+// TestExportHeadersExposedInYAML 实际加载的 application.yaml 也要暴露附件名头。
+// 只改 pkg/config/cors.go 的默认值、忘了改 yaml，这里会直接挂——yaml 覆盖默认值。
+// 依赖本包 TestMain 里 config.Load("../../configs/application.yaml", ...) 的既有加载。
+func TestExportHeadersExposedInYAML(t *testing.T) {
+	cfg := config.Get().CORS
+	for _, want := range []string{"Content-Disposition", "download-filename"} {
+		found := false
+		for _, got := range cfg.ExposedHeaders {
+			if got == want {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("application.yaml 的 cors.exposedHeaders 缺少 %q (得到 %v)", want, cfg.ExposedHeaders)
+		}
+	}
+}

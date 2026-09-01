@@ -69,8 +69,42 @@ func (r *ClientRepository) SelectByID(ctx context.Context, id int64) (*model.Sys
 func (r *ClientRepository) SelectPageList(ctx context.Context, q bo.SysClientQueryBo,
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysClient], error) {
 
+	db := applyClientQuery(r.db.WithContext(ctx).Model(&model.SysClient{}), q)
+	// 仅在调用方未指定排序时按主键升序兜底，保证翻页稳定。
+	// 不能无条件追加：GORM 合并排序子句时先注册的排在前，id 唯一会让后来的排序列失效。
+	if !page.HasOrder() {
+		db = db.Order("id")
+	}
+
+	var rows []*model.SysClient
+	return pkgrepo.SelectPage(db, page, &rows)
+}
+
+// SelectList 按条件不分页查客户端，供导出等需要全量的场景用。
+// limit <= 0 表示不限制；超限由调用方通过多取一行来判定，避免先捞完再拒绝。
+//
+// 与 SelectPageList 共用 applyClientQuery，保证两种路径的过滤条件永不漂移。
+func (r *ClientRepository) SelectList(ctx context.Context, q bo.SysClientQueryBo,
+	limit int) ([]*model.SysClient, error) {
+
 	// Model 不能省：del_flag 过滤由 LogicDelete 挂在字段类型上，须先解析出实体 schema 才生效。
-	db := r.db.WithContext(ctx).Model(&model.SysClient{})
+	db := applyClientQuery(r.db.WithContext(ctx).Model(&model.SysClient{}), q)
+	// 导出不是翻页，没有"调用方另指定排序"一说，固定按主键升序，保证输出顺序稳定。
+	db = db.Order("id")
+	if limit > 0 {
+		db = db.Limit(limit)
+	}
+
+	var rows []*model.SysClient
+	if err := db.Find(&rows).Error; err != nil {
+		return nil, fmt.Errorf("repository: 查询客户端列表失败: %w", err)
+	}
+	return rows, nil
+}
+
+// applyClientQuery 应用客户端查询条件。条件均为空串不筛（对齐 Java eqIfText 语义）。
+// 分页与导出两条路径必须共用它，否则过滤逻辑改一处漏一处。
+func applyClientQuery(db *gorm.DB, q bo.SysClientQueryBo) *gorm.DB {
 	if q.ClientID != "" {
 		db = db.Where("client_id = ?", q.ClientID)
 	}
@@ -83,14 +117,7 @@ func (r *ClientRepository) SelectPageList(ctx context.Context, q bo.SysClientQue
 	if q.Status != "" {
 		db = db.Where("status = ?", q.Status)
 	}
-	// 仅在调用方未指定排序时按主键升序兜底，保证翻页稳定。
-	// 不能无条件追加：GORM 合并排序子句时先注册的排在前，id 唯一会让后来的排序列失效。
-	if !page.HasOrder() {
-		db = db.Order("id")
-	}
-
-	var rows []*model.SysClient
-	return pkgrepo.SelectPage(db, page, &rows)
+	return db
 }
 
 // Insert 插入一条客户端。

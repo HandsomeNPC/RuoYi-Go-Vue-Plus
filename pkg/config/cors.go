@@ -45,7 +45,7 @@ func DefaultCORS() CORSConfig {
 		AllowedOriginPatterns: []string{"*"},
 		AllowedMethods:        []string{"*"},
 		AllowedHeaders:        []string{"*"},
-		ExposedHeaders:        []string{TraceIDHeader},
+		ExposedHeaders:        []string{TraceIDHeader, "Content-Disposition", "download-filename"},
 		MaxAgeSeconds:         defaultCORSMaxAgeSeconds,
 	}
 }
