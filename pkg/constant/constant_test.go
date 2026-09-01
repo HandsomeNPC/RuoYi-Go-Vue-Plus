@@ -166,7 +166,10 @@ func TestCacheTTL(t *testing.T) {
 		got  time.Duration
 		want time.Duration
 	}{
-		"demo:cache":         {CacheTTLDemoCache, 60 * time.Second},
+		"demo:cache": {CacheTTLDemoCache, 60 * time.Second},
+		// 字典两组不过期，对照 Java CacheNames.SYS_DICT / SYS_DICT_TYPE 未带 #ttl 后缀。
+		"sys_dict":           {CacheTTLSysDict, 0},
+		"sys_dict_type":      {CacheTTLSysDictType, 0},
 		"sys_client":         {CacheTTLSysClient, 720 * time.Hour},
 		"sys_user_name":      {CacheTTLSysUserName, 720 * time.Hour},
 		"sys_nickname":       {CacheTTLSysNickname, 720 * time.Hour},

@@ -76,9 +76,46 @@ func TestRegisterRoutesDeptPaths(t *testing.T) {
 	}
 }
 
+// TestRegisterRoutesDictPaths 字典数据与字典类型的十三个接口都已按 Java
+// SysDictDataController / SysDictTypeController 的方法与路径注册到真实路由表上。
+func TestRegisterRoutesDictPaths(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	setupManager(t)
+	r := gin.New()
+	RegisterRoutes(r, "")
+
+	registered := make(map[string]bool)
+	for _, ri := range r.Routes() {
+		registered[ri.Method+" "+ri.Path] = true
+	}
+
+	for _, want := range []string{
+		"GET /dict/data/list",
+		"GET /dict/data/type/:dictType",
+		"GET /dict/data/:dictCode",
+		"POST /dict/data/export",
+		"POST /dict/data",
+		"PUT /dict/data",
+		"DELETE /dict/data/:dictCodes",
+		"GET /dict/type/list",
+		"GET /dict/type/optionselect",
+		"GET /dict/type/:dictId",
+		"POST /dict/type/export",
+		"POST /dict/type",
+		"PUT /dict/type",
+		"DELETE /dict/type/refreshCache",
+		"DELETE /dict/type/:dictIds",
+	} {
+		if !registered[want] {
+			t.Errorf("未注册路由 %s", want)
+		}
+	}
+}
+
 // TestGinStaticSegmentsBeatWildcards 钉住 RegisterRoutes 依赖的 gin 路由规则：
 // 同层的静态段优先于通配段，故 /config/configKey/...、/config/refreshCache
-// 与 /dept/optionselect 不会被邻居 /config/:configId、/dept/:deptId 抢走。
+// 与 /dept/optionselect 不会被邻居 /config/:configId、/dept/:deptId 抢走；
+// 并列静态子树（/dict/data 与 /dict/type）也互不串台。
 //
 // 这条规则一旦变化，DELETE /config/refreshCache 会被当成"删除主键为 refreshCache
 // 的配置"、GET /dept/optionselect 会被当成"查主键为 optionselect 的部门"而
@@ -108,6 +145,19 @@ func TestGinStaticSegmentsBeatWildcards(t *testing.T) {
 	d.GET("/optionselect", probe("optionselect"))
 	d.GET("/:deptId", probe("deptInfo"))
 
+	// 字典最易走错：/dict/data 与 /dict/type 是 /dict 下并列静态段，而
+	// /dict/data/type/:dictType 的第三段又叫 "type"——它不该被 /dict/type 的分支截走。
+	dd := r.Group("/dict/data")
+	dd.GET("/list", probe("dictDataList"))
+	dd.GET("/type/:dictType", probe("dictDataByType"))
+	dd.GET("/:dictCode", probe("dictDataInfo"))
+	dt := r.Group("/dict/type")
+	dt.GET("/list", probe("dictTypeList"))
+	dt.GET("/optionselect", probe("dictTypeOptionSelect"))
+	dt.GET("/:dictId", probe("dictTypeInfo"))
+	dt.DELETE("/refreshCache", probe("dictRefreshCache"))
+	dt.DELETE("/:dictIds", probe("dictTypeRemove"))
+
 	tests := []struct {
 		method, path, want string
 	}{
@@ -119,6 +169,15 @@ func TestGinStaticSegmentsBeatWildcards(t *testing.T) {
 		{"GET", "/dept/list/exclude/1761000000000000100", "excludeChild"},
 		{"GET", "/dept/optionselect", "optionselect"},
 		{"GET", "/dept/1761000000000000100", "deptInfo"},
+		// 关键一组：data 与 type 两棵子树互不串台。
+		{"GET", "/dict/data/type/sys_user_gender", "dictDataByType"},
+		{"GET", "/dict/data/1761600000000000001", "dictDataInfo"},
+		{"GET", "/dict/data/list", "dictDataList"},
+		{"GET", "/dict/type/list", "dictTypeList"},
+		{"GET", "/dict/type/optionselect", "dictTypeOptionSelect"},
+		{"GET", "/dict/type/1761500000000000001", "dictTypeInfo"},
+		{"DELETE", "/dict/type/refreshCache", "dictRefreshCache"},
+		{"DELETE", "/dict/type/1,2,3", "dictTypeRemove"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.method+" "+tt.path, func(t *testing.T) {

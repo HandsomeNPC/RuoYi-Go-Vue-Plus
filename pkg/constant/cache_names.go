@@ -29,7 +29,12 @@ const (
 	CacheTTLDemoCache = 60 * time.Second
 	// CacheTTLSysConfig 参数配置不过期，对照 Java CacheNames.SYS_CONFIG 未带 #ttl 后缀。
 	// 参数值极少变动且写路径都带缓存维护（新增/修改回写、删除失效），无需靠 TTL 兜底。
-	CacheTTLSysConfig       = 0
+	CacheTTLSysConfig = 0
+	// CacheTTLSysDict/CacheTTLSysDictType 字典不过期，对照 Java CacheNames.SYS_DICT
+	// 与 SYS_DICT_TYPE 均未带 #ttl 后缀。字典是全站高频读的静态数据，且写路径都带
+	// 缓存维护（新增/修改回写、删除失效、refreshCache 整组清），无需靠 TTL 兜底。
+	CacheTTLSysDict         = 0
+	CacheTTLSysDictType     = 0
 	CacheTTLSysClient       = 30 * 24 * time.Hour
 	CacheTTLSysUserName     = 30 * 24 * time.Hour
 	CacheTTLSysNickname     = 30 * 24 * time.Hour

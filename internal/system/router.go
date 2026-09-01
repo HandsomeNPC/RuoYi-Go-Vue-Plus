@@ -24,6 +24,12 @@ const configLogTitle = "参数管理"
 // deptLogTitle 部门管理的操作日志模块名，对照 Java @Log(title = "部门管理")。
 const deptLogTitle = "部门管理"
 
+// dictDataLogTitle 字典数据的操作日志模块名，对照 Java @Log(title = "字典数据")。
+const dictDataLogTitle = "字典数据"
+
+// dictTypeLogTitle 字典类型的操作日志模块名，对照 Java @Log(title = "字典类型")。
+const dictTypeLogTitle = "字典类型"
+
 func RegisterRoutes(r *gin.Engine, prefix string) {
 	plugin := sagin.NewPlugin(satoken.Manager())
 
@@ -120,6 +126,55 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	// 与 Java 一致只支持单删：部门有父子关系，批量删无法保证删除顺序。
 	dept.DELETE("/:deptId", satoken.CheckPermission("system:dept:remove"),
 		oplog.Log(deptLogTitle, enum.BusinessTypeDelete), handler.DeptApiApp.Remove)
+
+	// 字典数据与字典类型是 /dict 下两个并列静态段，各自独立注册。
+	// 权限码共用 system:dict:*（对照 Java 两个 Controller 的注解），非 dict:data/dict:type 分设。
+	dictData := protected.Group("/dict/data")
+	dictData.GET("/list", satoken.CheckPermission("system:dict:list"),
+		handler.DictDataApiApp.List)
+	// type/:dictType 与 :dictCode 同层但静态段优先，gin 能区分二者，无需调整注册顺序。
+	// 与 Java 一致不校验权限码，仅需登录：前端 DictTag 到处渲染字典标签却未必有字典管理权限。
+	dictData.GET("/type/:dictType", sagin.CheckLogin(), handler.DictDataApiApp.DictType)
+	dictData.GET("/:dictCode", satoken.CheckPermission("system:dict:query"),
+		handler.DictDataApiApp.GetInfo)
+	// 导出走 POST 与 Java 一致：前端 commonExport 以 form 表单提交筛选条件。
+	dictData.POST("/export", satoken.CheckPermission("system:dict:export"),
+		oplog.Log(dictDataLogTitle, enum.BusinessTypeExport), handler.DictDataApiApp.Export)
+	// 路径用 "" 而非 "/"：后者会注册成 /dict/data/。
+	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
+	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行，与 Java 侧
+	// RepeatSubmitAspect 抛异常后 LogAspect 记一条失败日志一致。
+	dictData.POST("", satoken.CheckPermission("system:dict:add"),
+		oplog.Log(dictDataLogTitle, enum.BusinessTypeInsert),
+		repeatsubmit.RepeatSubmit(0, ""), handler.DictDataApiApp.Add)
+	dictData.PUT("", satoken.CheckPermission("system:dict:edit"),
+		oplog.Log(dictDataLogTitle, enum.BusinessTypeUpdate),
+		repeatsubmit.RepeatSubmit(0, ""), handler.DictDataApiApp.Edit)
+	dictData.DELETE("/:dictCodes", satoken.CheckPermission("system:dict:remove"),
+		oplog.Log(dictDataLogTitle, enum.BusinessTypeDelete), handler.DictDataApiApp.Remove)
+
+	dictType := protected.Group("/dict/type")
+	dictType.GET("/list", satoken.CheckPermission("system:dict:list"),
+		handler.DictTypeApiApp.List)
+	// optionselect 与 :dictId 同层，静态段优先，无需调整注册顺序。
+	// 与 Java 一致不校验权限码，仅需登录：前端选字典时未必有字典管理权限。
+	dictType.GET("/optionselect", sagin.CheckLogin(), handler.DictTypeApiApp.OptionSelect)
+	dictType.GET("/:dictId", satoken.CheckPermission("system:dict:query"),
+		handler.DictTypeApiApp.GetInfo)
+	dictType.POST("/export", satoken.CheckPermission("system:dict:export"),
+		oplog.Log(dictTypeLogTitle, enum.BusinessTypeExport), handler.DictTypeApiApp.Export)
+	dictType.POST("", satoken.CheckPermission("system:dict:add"),
+		oplog.Log(dictTypeLogTitle, enum.BusinessTypeInsert),
+		repeatsubmit.RepeatSubmit(0, ""), handler.DictTypeApiApp.Add)
+	dictType.PUT("", satoken.CheckPermission("system:dict:edit"),
+		oplog.Log(dictTypeLogTitle, enum.BusinessTypeUpdate),
+		repeatsubmit.RepeatSubmit(0, ""), handler.DictTypeApiApp.Edit)
+	// refreshCache 与 :dictIds 同层，静态段优先，无需调整注册顺序。
+	// 权限码用 remove 而非独立的 refresh：对照 Java @SaCheckPermission("system:dict:remove")。
+	dictType.DELETE("/refreshCache", satoken.CheckPermission("system:dict:remove"),
+		oplog.Log(dictTypeLogTitle, enum.BusinessTypeClean), handler.DictTypeApiApp.RefreshCache)
+	dictType.DELETE("/:dictIds", satoken.CheckPermission("system:dict:remove"),
+		oplog.Log(dictTypeLogTitle, enum.BusinessTypeDelete), handler.DictTypeApiApp.Remove)
 }
 
 // InitRouter 构建并返回 system 进程的 gin 引擎(独立部署用)。
