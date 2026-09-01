@@ -9,6 +9,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/encrypt"
 	"ruoyi-go-vue-plus/pkg/jsonx"
 	"ruoyi-go-vue-plus/pkg/oplog"
+	"ruoyi-go-vue-plus/pkg/push"
 	"ruoyi-go-vue-plus/pkg/redis"
 	"ruoyi-go-vue-plus/pkg/repeatsubmit"
 	"ruoyi-go-vue-plus/pkg/satoken"
@@ -36,6 +37,9 @@ func main() {
 	// 操作日志落库实现反向注册给 pkg/oplog(pkg 不依赖 internal/service)，
 	// 依赖 database 与 snowflake。
 	oplog.Init(systemservice.OperLogSvcApp.RecordOper)
+	// 推送会话管理器，依赖 redis(跨实例分发走 Redis 订阅)，须在 redis.Init 之后。
+	push.Init()
+	defer push.Shutdown()
 
 	r := system.InitRouter()
 	system.InitServer(r)

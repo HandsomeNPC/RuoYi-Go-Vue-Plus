@@ -8,6 +8,8 @@ import (
 	"github.com/gin-gonic/gin"
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 	"github.com/sa-tokens/sa-token-go/storage/memory"
+
+	"ruoyi-go-vue-plus/pkg/config"
 )
 
 // setupManager 装一个内存态 sa-token Manager。
@@ -138,6 +140,68 @@ func TestRegisterRoutesMenuPaths(t *testing.T) {
 	} {
 		if !registered[want] {
 			t.Errorf("未注册路由 %s", want)
+		}
+	}
+}
+
+// TestRegisterRoutesNoticePaths 通知公告的五个接口都已按 Java SysNoticeController 的
+// 方法与路径注册到真实路由表上。Java 侧没有导出接口，故不该出现 /notice/export。
+func TestRegisterRoutesNoticePaths(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	setupManager(t)
+	r := gin.New()
+	RegisterRoutes(r, "")
+
+	registered := make(map[string]bool)
+	for _, ri := range r.Routes() {
+		registered[ri.Method+" "+ri.Path] = true
+	}
+
+	for _, want := range []string{
+		"GET /notice/list",
+		"GET /notice/:noticeId",
+		"POST /notice",
+		"PUT /notice",
+		"DELETE /notice/:noticeIds",
+	} {
+		if !registered[want] {
+			t.Errorf("未注册路由 %s", want)
+		}
+	}
+	if registered["POST /notice/export"] {
+		t.Error("Java 侧 notice 无导出接口，不应注册 POST /notice/export")
+	}
+}
+
+// TestRegisterResourceRoutes 消息盒子与推送端点注册在 /resource 下且不带模块前缀
+// （对齐 Java：SysMessageController 挂 /resource/message，推送端点挂 message.path）。
+//
+// 有意加载真实 configs/*.yaml：推送路径取自配置，一旦 yaml 里的 push.path
+// 被改坏，前端连不上而后端毫无报错——那种故障只能靠这条断言提前暴露。
+func TestRegisterResourceRoutes(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	setupManager(t)
+	config.Load("../../configs/application.yaml", "../../configs/system.yaml")
+
+	r := gin.New()
+	RegisterResourceRoutes(r)
+
+	registered := make(map[string]bool)
+	for _, ri := range r.Routes() {
+		registered[ri.Method+" "+ri.Path] = true
+	}
+
+	if !registered["GET /resource/message/box"] {
+		t.Error("未注册路由 GET /resource/message/box")
+	}
+
+	cfg := config.Get().Push
+	if !cfg.Enabled {
+		t.Skip("push.enabled=false，推送端点按设计不注册")
+	}
+	for _, want := range []string{"GET " + cfg.Path, "GET " + cfg.Path + "/close"} {
+		if !registered[want] {
+			t.Errorf("未注册推送路由 %s", want)
 		}
 	}
 }

@@ -81,6 +81,18 @@ func TestMatchAnyPath(t *testing.T) {
 	}
 }
 
+// TestAntPathMatchBothPrefixForms 同一路由在两种部署形态下都要命中排除规则：
+// /system/notice(standalone) 与 /notice(modular，nginx 剥前缀后)。仅命中其一
+// 会让富文本在另一种部署下被 XSS 中间件洗掉格式化标签。
+func TestAntPathMatchBothPrefixForms(t *testing.T) {
+	patterns := []string{"/system/notice", "/notice"}
+	for _, p := range []string{"/system/notice", "/notice"} {
+		if !MatchAnyPath(p, patterns) {
+			t.Errorf("%q 应命中排除规则", p)
+		}
+	}
+}
+
 // TestAntPathMatchNoExponentialBlowup 多个 ** 时不能退化成指数级。
 func TestAntPathMatchNoExponentialBlowup(t *testing.T) {
 	pattern := "/**/a/**/a/**/a/**/a/**/a/**/a/**/a/**/a/**/b"

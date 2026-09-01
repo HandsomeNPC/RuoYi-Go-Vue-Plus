@@ -1,14 +1,9 @@
 package dto
 
-import "time"
+import (
+	"time"
 
-// 推送消息类型默认值，对应 Java PushTypeEnum / PushSourceEnum 的标识串。
-// 此处仅枚举 PushPayloadDTO 构造时所需的默认值，完整枚举语义可后续迁至 pkg/enum。
-const (
-	// pushTypeMessage 通用消息。
-	pushTypeMessage = "message"
-	// pushSourceBackend 后端系统消息。
-	pushSourceBackend = "backend"
+	"ruoyi-go-vue-plus/pkg/constant"
 )
 
 // PushPayloadDTO 推送给前端的统一消息体，对应 Java
@@ -34,10 +29,10 @@ type PushPayloadDTO struct {
 // 对应 Java PushPayloadDTO.of(String, String, String, Object)。
 func NewPushPayload(typ, source, message string, data any) *PushPayloadDTO {
 	if typ == "" {
-		typ = pushTypeMessage
+		typ = constant.PushTypeMessage
 	}
 	if source == "" {
-		source = pushSourceBackend
+		source = constant.PushSourceBackend
 	}
 	return &PushPayloadDTO{
 		Type:      typ,

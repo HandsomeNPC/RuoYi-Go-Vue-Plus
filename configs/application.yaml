@@ -53,7 +53,8 @@ cors:
 
 xss:
   excludeUrls: # 跳过清洗的路径，Ant 风格(? 单字符 / * 单层 / ** 任意层)
-    - /system/notice              # 富文本公告，清洗会破坏内容
+    - /system/notice              # 富文本公告，清洗会破坏内容(standalone 带前缀)
+    - /notice                     # 同上，modular 部署经 nginx 剥前缀后无 /system
     - /warm-flow/save-json        # 流程定义 JSON，需原样存标签
   skipMethods: [ GET, DELETE ]      # REST 语义不携带落库内容
 
@@ -91,3 +92,15 @@ captcha:
   type: math                 # 验证码类型 math 算术计算 char 字符验证
   numberLength: 1            # 算术验证码每个操作数的位数
   charLength: 4             # 字符验证码的字符个数
+
+# 消息推送配置。对照原项目 message 段（本项目 sse / websocket 两种传输都已移植）。
+# 跨域统一由上面的 cors 段管，不另设 allowedOrigins 白名单。
+push:
+  enabled: true                 # 关闭则不注册推送路由，且发布消息直接跳过
+  transport: sse                # sse / websocket，取值非法时回落 sse
+  path: /resource/message       # 统一访问路径
+  sseTimeoutSeconds: 86400      # SSE 连接超时(秒)，到点由服务端结束、前端重连
+  heartbeatSeconds: 60          # 心跳间隔(秒)，同时用于剔除失效连接
+  sendBuffer: 32                # 单连接待发消息缓冲；写满即断开该慢客户端
+
+

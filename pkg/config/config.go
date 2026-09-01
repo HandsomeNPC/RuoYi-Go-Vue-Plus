@@ -24,6 +24,7 @@ type Config struct {
 	User           UserConfig           `mapstructure:"user"`
 	Captcha        CaptchaConfig        `mapstructure:"captcha"`
 	Snowflake      SnowflakeConfig      `mapstructure:"snowflake"`
+	Push           PushConfig           `mapstructure:"push"`
 }
 
 // Load 按顺序读取并合并多个 yaml 配置文件，后者覆盖前者，随后写入包级实例。
@@ -46,6 +47,7 @@ func Load(paths ...string) {
 	DefaultUser().setDefaults(v)
 	DefaultCaptcha().setDefaults(v)
 	DefaultSnowflake().setDefaults(v)
+	DefaultPush().setDefaults(v)
 
 	for i, path := range paths {
 		v.SetConfigFile(path)
@@ -106,6 +108,7 @@ func (c *Config) validate() error {
 		c.User.validate,
 		c.Captcha.validate,
 		c.Snowflake.validate,
+		c.Push.validate,
 	}
 	for _, fn := range validators {
 		if err := fn(); err != nil {
