@@ -4,8 +4,9 @@ package tree
 import (
 	"bytes"
 	"cmp"
-	"encoding/json"
 	"slices"
+
+	"ruoyi-go-vue-plus/pkg/jsonx"
 )
 
 // Tree 树节点，对应 hutool 的 Tree<T>。
@@ -43,6 +44,9 @@ func (t *Tree[K]) SetExtra(key string, val any) *Tree[K] {
 //     orderNum，前端也声明为必填 number，不存在缺失场景。
 //
 // children 为空时省略该键这条**必须**照搬 hutool：前端靠键的有无判断叶子节点。
+//
+// 内部走 pkg/jsonx 而非 encoding/json：ID/ParentID 是雪花值，用标准库会绕过
+// 全局注册的 int64 编码器，让树接口的 id 与其他接口形态不一致。
 func (t *Tree[K]) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	buf.WriteByte('{')
@@ -51,13 +55,13 @@ func (t *Tree[K]) MarshalJSON() ([]byte, error) {
 		if buf.Len() > 1 {
 			buf.WriteByte(',')
 		}
-		k, err := json.Marshal(key)
+		k, err := jsonx.Marshal(key)
 		if err != nil {
 			return err
 		}
 		buf.Write(k)
 		buf.WriteByte(':')
-		v, err := json.Marshal(val)
+		v, err := jsonx.Marshal(val)
 		if err != nil {
 			return err
 		}

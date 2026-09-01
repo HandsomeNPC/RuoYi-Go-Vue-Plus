@@ -5,6 +5,7 @@ go 1.26.5
 require (
 	github.com/gin-gonic/gin v1.12.0
 	github.com/google/uuid v1.6.0
+	github.com/json-iterator/go v1.1.12
 	github.com/lionsoul2014/ip2region/binding/golang v0.0.0-20260814054437-800d19424237
 	github.com/mojocn/base64Captcha v1.3.8
 	github.com/mssola/useragent v1.0.0
@@ -42,7 +43,6 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jmattheis/goverter v1.9.4 // indirect
-	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/mattn/go-isatty v0.0.22 // indirect

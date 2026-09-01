@@ -222,3 +222,35 @@ func ids[K comparable](nodes []*Tree[K]) []K {
 	}
 	return out
 }
+
+// TestMarshalJSONSnowflakeIDAsString 雪花 id 须与其他接口一样转成字符串。
+//
+// MarshalJSON 内部若用 encoding/json 就会绕过全局注册的 int64 编码器，
+// 使树接口的 id 是裸数字而列表接口是字符串——前端拿树节点 id 提交必丢精度。
+// 上面几个用例的 id 都是个位数，落在安全范围内，两种写法都能过，故单列此例守住。
+func TestMarshalJSONSnowflakeIDAsString(t *testing.T) {
+	// 父为根(0，安全范围内)，子为雪花值：同一份 JSON 里两种形态并存，与 Java 一致。
+	list := []dept{
+		{1761000000000000100, 0, "HQ", 1, false},
+		{1761000000000000101, 1761000000000000100, "RD", 2, false},
+	}
+	got, err := json.Marshal(Build(list, int64(0), parseDept))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, want := range []string{
+		`"id":"1761000000000000100"`,       // 雪花 id → 字符串
+		`"parentId":0`,                     // 根的 parentId 保持数字，前端按 !== 0 严格比较
+		`"id":"1761000000000000101"`,       // 子节点 id → 字符串
+		`"parentId":"1761000000000000100"`, // 子节点的父 id → 字符串
+	} {
+		if !strings.Contains(string(got), want) {
+			t.Errorf("JSON = %s\n应包含 %s", got, want)
+		}
+	}
+	// weight 是 int，不该被 int64 编码器波及。
+	if !strings.Contains(string(got), `"weight":1`) {
+		t.Errorf("JSON = %s\nweight 应保持数字", got)
+	}
+}
