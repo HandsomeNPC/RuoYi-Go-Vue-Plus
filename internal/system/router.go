@@ -7,11 +7,16 @@ import (
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 
 	"ruoyi-go-vue-plus/internal/system/handler"
+	"ruoyi-go-vue-plus/pkg/enum"
 	"ruoyi-go-vue-plus/pkg/middleware"
+	"ruoyi-go-vue-plus/pkg/oplog"
 	"ruoyi-go-vue-plus/pkg/repeatsubmit"
 	"ruoyi-go-vue-plus/pkg/satoken"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 )
+
+// clientLogTitle 客户端管理的操作日志模块名，对照 Java @Log(title = "客户端管理")。
+const clientLogTitle = "客户端管理"
 
 func RegisterRoutes(r *gin.Engine, prefix string) {
 	plugin := sagin.NewPlugin(satoken.Manager())
@@ -35,18 +40,24 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	// 导出走 POST 与 Java 一致：前端以 form 表单 POST 提交筛选条件。
 	// 与 PUT ""/changeStatus 同理，路径更具体，须注册在 client.POST("") 之后。
 	client.POST("/export", satoken.CheckPermission("system:client:export"),
-		handler.ClientApiApp.Export)
+		oplog.Log(clientLogTitle, enum.BusinessTypeExport), handler.ClientApiApp.Export)
 	// 路径用 "" 而非 "/"：后者会注册成 /client/。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
+	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行，与 Java 侧
+	// RepeatSubmitAspect 抛异常后 LogAspect 记一条失败日志一致。
 	client.POST("", satoken.CheckPermission("system:client:add"),
+		oplog.Log(clientLogTitle, enum.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.ClientApiApp.Add)
 	client.PUT("", satoken.CheckPermission("system:client:edit"),
+		oplog.Log(clientLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.ClientApiApp.Edit)
 	// changeStatus 不挂防重：对齐 Java(仅 edit 带 @RepeatSubmit)，
 	// 且它幂等——重复提交同一状态无副作用。须注册在 PUT "" 之后，路径更具体。
 	client.PUT("/changeStatus", satoken.CheckPermission("system:client:edit"),
+		oplog.Log(clientLogTitle, enum.BusinessTypeUpdate),
 		handler.ClientApiApp.ChangeStatus)
 	client.DELETE("/:ids", satoken.CheckPermission("system:client:remove"),
+		oplog.Log(clientLogTitle, enum.BusinessTypeDelete),
 		handler.ClientApiApp.Remove)
 }
 

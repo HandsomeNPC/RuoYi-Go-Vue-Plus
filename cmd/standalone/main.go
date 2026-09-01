@@ -8,12 +8,14 @@ import (
 
 	"ruoyi-go-vue-plus/internal/auth"
 	"ruoyi-go-vue-plus/internal/system"
+	systemservice "ruoyi-go-vue-plus/internal/system/service"
 	"ruoyi-go-vue-plus/pkg/captcha"
 	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/database"
 	"ruoyi-go-vue-plus/pkg/encrypt"
 	"ruoyi-go-vue-plus/pkg/jsonx"
 	"ruoyi-go-vue-plus/pkg/middleware"
+	"ruoyi-go-vue-plus/pkg/oplog"
 	"ruoyi-go-vue-plus/pkg/ratelimiter"
 	"ruoyi-go-vue-plus/pkg/redis"
 	"ruoyi-go-vue-plus/pkg/repeatsubmit"
@@ -43,6 +45,9 @@ func main() {
 	ratelimiter.Init()
 	// 依赖 redis(防重键存 Redis)，须在 redis.Init 之后。
 	repeatsubmit.Init()
+	// 操作日志落库实现反向注册给 pkg/oplog(pkg 不依赖 internal/service)，
+	// 依赖 database 与 snowflake。
+	oplog.Init(systemservice.OperLogSvcApp.RecordOper)
 
 	// 单体引擎：全局中间件装配一次，auth/system 各自只注册本模块路由。
 	// standalone 部署保留 /auth、/system 前缀(与前端直连的网关路径一致)。
