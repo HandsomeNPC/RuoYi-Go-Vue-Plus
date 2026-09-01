@@ -62,6 +62,23 @@ func (r *UserRepository) SelectByUserName(ctx context.Context, userName string) 
 	return &user, nil
 }
 
+// ExistsByDeptID 判断部门下是否已分配用户（对应 Java checkDeptExistUser）。
+func (r *UserRepository) ExistsByDeptID(ctx context.Context, deptID int64) (bool, error) {
+	if deptID <= 0 {
+		return false, nil
+	}
+
+	// Model 不能省：del_flag 过滤由 LogicDelete 挂在字段类型上，须先解析出实体 schema 才生效。
+	var count int64
+	err := r.db.WithContext(ctx).Model(&model.SysUser{}).
+		Where("dept_id = ?", deptID).
+		Count(&count).Error
+	if err != nil {
+		return false, fmt.Errorf("repository: 查询部门 %d 下的用户失败: %w", deptID, err)
+	}
+	return count > 0, nil
+}
+
 // UpdateLoginInfo 更新最后登录 IP 与时间。
 func (r *UserRepository) UpdateLoginInfo(ctx context.Context, userID int64, ip string) error {
 	if userID == 0 {

@@ -48,12 +48,41 @@ func TestRegisterRoutesConfigPaths(t *testing.T) {
 	}
 }
 
+// TestRegisterRoutesDeptPaths 部门的七个接口都已按 Java SysDeptController 的
+// 方法与路径注册到真实路由表上。
+func TestRegisterRoutesDeptPaths(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	setupManager(t)
+	r := gin.New()
+	RegisterRoutes(r, "")
+
+	registered := make(map[string]bool)
+	for _, ri := range r.Routes() {
+		registered[ri.Method+" "+ri.Path] = true
+	}
+
+	for _, want := range []string{
+		"GET /dept/list",
+		"GET /dept/list/exclude/:deptId",
+		"GET /dept/optionselect",
+		"GET /dept/:deptId",
+		"POST /dept",
+		"PUT /dept",
+		"DELETE /dept/:deptId",
+	} {
+		if !registered[want] {
+			t.Errorf("未注册路由 %s", want)
+		}
+	}
+}
+
 // TestGinStaticSegmentsBeatWildcards 钉住 RegisterRoutes 依赖的 gin 路由规则：
-// 同层的静态段优先于通配段，故 /config/configKey/... 与 /config/refreshCache
-// 不会被邻居 /config/:configId、/config/:configIds 抢走。
+// 同层的静态段优先于通配段，故 /config/configKey/...、/config/refreshCache
+// 与 /dept/optionselect 不会被邻居 /config/:configId、/dept/:deptId 抢走。
 //
 // 这条规则一旦变化，DELETE /config/refreshCache 会被当成"删除主键为 refreshCache
-// 的配置"而静默走错分支——不报错，只是行为错，值得单独钉一条。
+// 的配置"、GET /dept/optionselect 会被当成"查主键为 optionselect 的部门"而
+// 静默走错分支——不报错，只是行为错，值得单独钉一条。
 //
 // 用探针 engine 而非 RegisterRoutes：后者每条路由都挂了鉴权中间件，
 // 发真实请求会先撞上登录态与 Redis。真实注册的形状由
@@ -72,6 +101,13 @@ func TestGinStaticSegmentsBeatWildcards(t *testing.T) {
 	g.DELETE("/refreshCache", probe("refreshCache"))
 	g.DELETE("/:configIds", probe("remove"))
 
+	// 部门侧同理：/dept/optionselect 与 /dept/list/exclude/:deptId 都得躲开 /dept/:deptId。
+	d := r.Group("/dept")
+	d.GET("/list", probe("deptList"))
+	d.GET("/list/exclude/:deptId", probe("excludeChild"))
+	d.GET("/optionselect", probe("optionselect"))
+	d.GET("/:deptId", probe("deptInfo"))
+
 	tests := []struct {
 		method, path, want string
 	}{
@@ -79,6 +115,10 @@ func TestGinStaticSegmentsBeatWildcards(t *testing.T) {
 		{"GET", "/config/1761700000000000001", "getInfo"},
 		{"DELETE", "/config/refreshCache", "refreshCache"},
 		{"DELETE", "/config/1,2,3", "remove"},
+		{"GET", "/dept/list", "deptList"},
+		{"GET", "/dept/list/exclude/1761000000000000100", "excludeChild"},
+		{"GET", "/dept/optionselect", "optionselect"},
+		{"GET", "/dept/1761000000000000100", "deptInfo"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.method+" "+tt.path, func(t *testing.T) {

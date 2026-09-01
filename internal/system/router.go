@@ -21,6 +21,9 @@ const clientLogTitle = "客户端管理"
 // configLogTitle 参数管理的操作日志模块名，对照 Java @Log(title = "参数管理")。
 const configLogTitle = "参数管理"
 
+// deptLogTitle 部门管理的操作日志模块名，对照 Java @Log(title = "部门管理")。
+const deptLogTitle = "部门管理"
+
 func RegisterRoutes(r *gin.Engine, prefix string) {
 	plugin := sagin.NewPlugin(satoken.Manager())
 
@@ -94,6 +97,29 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	config.DELETE("/:configIds", satoken.CheckPermission("system:config:remove"),
 		oplog.Log(configLogTitle, enum.BusinessTypeDelete),
 		handler.ConfigApiApp.Remove)
+
+	dept := protected.Group("/dept")
+	// optionselect、list/exclude/:deptId 与 /:deptId 同层但前两者段更具体，
+	// gin 静态段优先，无需调整注册顺序。
+	dept.GET("/list", satoken.CheckPermission("system:dept:list"), handler.DeptApiApp.List)
+	dept.GET("/list/exclude/:deptId", satoken.CheckPermission("system:dept:list"),
+		handler.DeptApiApp.ExcludeChild)
+	dept.GET("/optionselect", satoken.CheckPermission("system:dept:query"),
+		handler.DeptApiApp.OptionSelect)
+	dept.GET("/:deptId", satoken.CheckPermission("system:dept:query"), handler.DeptApiApp.GetInfo)
+	// 路径用 "" 而非 "/"：后者会注册成 /dept/。
+	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
+	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行，与 Java 侧
+	// RepeatSubmitAspect 抛异常后 LogAspect 记一条失败日志一致。
+	dept.POST("", satoken.CheckPermission("system:dept:add"),
+		oplog.Log(deptLogTitle, enum.BusinessTypeInsert),
+		repeatsubmit.RepeatSubmit(0, ""), handler.DeptApiApp.Add)
+	dept.PUT("", satoken.CheckPermission("system:dept:edit"),
+		oplog.Log(deptLogTitle, enum.BusinessTypeUpdate),
+		repeatsubmit.RepeatSubmit(0, ""), handler.DeptApiApp.Edit)
+	// 与 Java 一致只支持单删：部门有父子关系，批量删无法保证删除顺序。
+	dept.DELETE("/:deptId", satoken.CheckPermission("system:dept:remove"),
+		oplog.Log(deptLogTitle, enum.BusinessTypeDelete), handler.DeptApiApp.Remove)
 }
 
 // InitRouter 构建并返回 system 进程的 gin 引擎(独立部署用)。
