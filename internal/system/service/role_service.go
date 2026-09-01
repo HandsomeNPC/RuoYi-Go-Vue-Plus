@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"ruoyi-go-vue-plus/internal/system/model"
@@ -9,6 +10,9 @@ import (
 	"ruoyi-go-vue-plus/internal/system/repository"
 	"ruoyi-go-vue-plus/pkg/database"
 )
+
+// ErrRoleNotFound 角色不存在。
+var ErrRoleNotFound = errors.New("service: 角色不存在")
 
 // RoleService 角色业务逻辑。
 type RoleService struct{}

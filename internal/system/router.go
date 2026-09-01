@@ -7,6 +7,7 @@ import (
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 
 	"ruoyi-go-vue-plus/internal/system/handler"
+	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/enum"
 	"ruoyi-go-vue-plus/pkg/middleware"
 	"ruoyi-go-vue-plus/pkg/oplog"
@@ -30,6 +31,9 @@ const dictDataLogTitle = "字典数据"
 // dictTypeLogTitle 字典类型的操作日志模块名，对照 Java @Log(title = "字典类型")。
 const dictTypeLogTitle = "字典类型"
 
+// menuLogTitle 菜单管理的操作日志模块名，对照 Java @Log(title = "菜单管理")。
+const menuLogTitle = "菜单管理"
+
 func RegisterRoutes(r *gin.Engine, prefix string) {
 	plugin := sagin.NewPlugin(satoken.Manager())
 
@@ -45,6 +49,39 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 
 	menu := protected.Group("/menu")
 	menu.GET("/getRouters", sagin.CheckLogin(), handler.MenuApiApp.GetRouters)
+	// 多个中间件串联即 AND：Java 侧 list/getInfo 同时挂了 @SaCheckRole(超管)
+	// 与 @SaCheckPermission，两道都得过。注意这与单个 CheckPermission 内部多值的
+	// OR 语义不同——那是"任一权限码命中放行"。
+	menu.GET("/list", satoken.CheckRole(constant.SuperAdminRoleKey),
+		satoken.CheckPermission("system:menu:list"), handler.MenuApiApp.List)
+	// treeselect 与 roleMenuTreeselect 只要 query 权限，不挂超管角色（对照 Java）：
+	// 角色授权界面要用它们，而分配角色的人未必是超管。
+	menu.GET("/treeselect", satoken.CheckPermission("system:menu:query"),
+		handler.MenuApiApp.TreeSelect)
+	menu.GET("/roleMenuTreeselect/:roleId", satoken.CheckPermission("system:menu:query"),
+		handler.MenuApiApp.RoleMenuTreeSelect)
+	// getRouters/treeselect 等静态段与 :menuId 同层但静态段优先，无需调整注册顺序。
+	menu.GET("/:menuId", satoken.CheckRole(constant.SuperAdminRoleKey),
+		satoken.CheckPermission("system:menu:query"), handler.MenuApiApp.GetInfo)
+	// 路径用 "" 而非 "/"：后者会注册成 /menu/。
+	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
+	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行，与 Java 侧
+	// RepeatSubmitAspect 抛异常后 LogAspect 记一条失败日志一致。
+	menu.POST("", satoken.CheckRole(constant.SuperAdminRoleKey),
+		satoken.CheckPermission("system:menu:add"),
+		oplog.Log(menuLogTitle, enum.BusinessTypeInsert),
+		repeatsubmit.RepeatSubmit(0, ""), handler.MenuApiApp.Add)
+	menu.PUT("", satoken.CheckRole(constant.SuperAdminRoleKey),
+		satoken.CheckPermission("system:menu:edit"),
+		oplog.Log(menuLogTitle, enum.BusinessTypeUpdate),
+		repeatsubmit.RepeatSubmit(0, ""), handler.MenuApiApp.Edit)
+	// cascade/:menuIds 段更具体，与 /:menuId 可共存，静态段优先。
+	menu.DELETE("/cascade/:menuIds", satoken.CheckRole(constant.SuperAdminRoleKey),
+		satoken.CheckPermission("system:menu:remove"),
+		oplog.Log(menuLogTitle, enum.BusinessTypeDelete), handler.MenuApiApp.CascadeRemove)
+	menu.DELETE("/:menuId", satoken.CheckRole(constant.SuperAdminRoleKey),
+		satoken.CheckPermission("system:menu:remove"),
+		oplog.Log(menuLogTitle, enum.BusinessTypeDelete), handler.MenuApiApp.Remove)
 
 	client := protected.Group("/client")
 	client.GET("/list", satoken.CheckPermission("system:client:list"), handler.ClientApiApp.List)

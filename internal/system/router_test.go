@@ -112,6 +112,36 @@ func TestRegisterRoutesDictPaths(t *testing.T) {
 	}
 }
 
+// TestRegisterRoutesMenuPaths 菜单的八个接口都已按 Java SysMenuController 的
+// 方法与路径注册到真实路由表上。
+func TestRegisterRoutesMenuPaths(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	setupManager(t)
+	r := gin.New()
+	RegisterRoutes(r, "")
+
+	registered := make(map[string]bool)
+	for _, ri := range r.Routes() {
+		registered[ri.Method+" "+ri.Path] = true
+	}
+
+	for _, want := range []string{
+		"GET /menu/getRouters",
+		"GET /menu/list",
+		"GET /menu/treeselect",
+		"GET /menu/roleMenuTreeselect/:roleId",
+		"GET /menu/:menuId",
+		"POST /menu",
+		"PUT /menu",
+		"DELETE /menu/cascade/:menuIds",
+		"DELETE /menu/:menuId",
+	} {
+		if !registered[want] {
+			t.Errorf("未注册路由 %s", want)
+		}
+	}
+}
+
 // TestGinStaticSegmentsBeatWildcards 钉住 RegisterRoutes 依赖的 gin 路由规则：
 // 同层的静态段优先于通配段，故 /config/configKey/...、/config/refreshCache
 // 与 /dept/optionselect 不会被邻居 /config/:configId、/dept/:deptId 抢走；
@@ -158,6 +188,16 @@ func TestGinStaticSegmentsBeatWildcards(t *testing.T) {
 	dt.DELETE("/refreshCache", probe("dictRefreshCache"))
 	dt.DELETE("/:dictIds", probe("dictTypeRemove"))
 
+	// 菜单：DELETE /menu/cascade/:menuIds 与 DELETE /menu/:menuId 同层，
+	// 前者段更具体。若被后者截走，级联删会退化成"删除主键为 cascade 的菜单"。
+	m := r.Group("/menu")
+	m.GET("/getRouters", probe("getRouters"))
+	m.GET("/treeselect", probe("menuTreeSelect"))
+	m.GET("/roleMenuTreeselect/:roleId", probe("roleMenuTreeSelect"))
+	m.GET("/:menuId", probe("menuInfo"))
+	m.DELETE("/cascade/:menuIds", probe("menuCascadeRemove"))
+	m.DELETE("/:menuId", probe("menuRemove"))
+
 	tests := []struct {
 		method, path, want string
 	}{
@@ -178,6 +218,12 @@ func TestGinStaticSegmentsBeatWildcards(t *testing.T) {
 		{"GET", "/dict/type/1761500000000000001", "dictTypeInfo"},
 		{"DELETE", "/dict/type/refreshCache", "dictRefreshCache"},
 		{"DELETE", "/dict/type/1,2,3", "dictTypeRemove"},
+		{"GET", "/menu/getRouters", "getRouters"},
+		{"GET", "/menu/treeselect", "menuTreeSelect"},
+		{"GET", "/menu/roleMenuTreeselect/1761300000000000001", "roleMenuTreeSelect"},
+		{"GET", "/menu/1761200000000000001", "menuInfo"},
+		{"DELETE", "/menu/cascade/1,2,3", "menuCascadeRemove"},
+		{"DELETE", "/menu/1761200000000000001", "menuRemove"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.method+" "+tt.path, func(t *testing.T) {
