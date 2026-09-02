@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"ruoyi-go-vue-plus/internal/auth"
+	"ruoyi-go-vue-plus/internal/monitor"
 	"ruoyi-go-vue-plus/internal/system"
 	systemservice "ruoyi-go-vue-plus/internal/system/service"
 	"ruoyi-go-vue-plus/pkg/captcha"
@@ -68,6 +69,8 @@ func main() {
 	system.RegisterRoutes(r, "/system")
 	// /resource/* 不带模块前缀(对齐 Java)，故在 /system 之外单独注册。
 	system.RegisterResourceRoutes(r)
+	// monitor 与 system/auth 同构：prefix 传模块名 /monitor，对外即 /monitor/cache。
+	monitor.RegisterRoutes(r, "/monitor")
 
 	cfg := config.Get()
 	log.Printf("[%s] 监听 %s (auth + system standalone)", cfg.Server.Name, cfg.Server.Addr)

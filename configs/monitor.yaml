@@ -1,0 +1,7 @@
+server:
+  name: monitor
+  addr: ":9202"
+
+# monitor 进程只读 Redis(缓存监控)，不落库、不发号、不写日志，故无需
+# database/snowflake/oplog。鉴权复用同一 Redis 中的 sa-token 会话，
+# 权限码 monitor:cache:list 仍在登录时由 auth 进程写入。
