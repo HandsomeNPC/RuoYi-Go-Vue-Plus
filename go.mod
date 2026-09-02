@@ -11,6 +11,7 @@ require (
 	github.com/mojocn/base64Captcha v1.3.8
 	github.com/mssola/useragent v1.0.0
 	github.com/redis/go-redis/v9 v9.22.0
+	github.com/sa-tokens/sa-token-go/core v0.2.4
 	github.com/sa-tokens/sa-token-go/integrations/gin v0.2.4
 	github.com/sa-tokens/sa-token-go/storage/memory v0.2.4
 	github.com/sa-tokens/sa-token-go/storage/redis v0.2.4
@@ -58,7 +59,6 @@ require (
 	github.com/quic-go/quic-go v0.59.1 // indirect
 	github.com/richardlehane/mscfb v1.0.4 // indirect
 	github.com/richardlehane/msoleps v1.0.4 // indirect
-	github.com/sa-tokens/sa-token-go/core v0.2.4 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect

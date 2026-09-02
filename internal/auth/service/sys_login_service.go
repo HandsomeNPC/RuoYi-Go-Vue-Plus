@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -116,6 +117,54 @@ func (*SysLoginService) BuildLoginUser(req *http.Request, user *systemvo.SysUser
 		return nil, err
 	}
 	return loginUser, nil
+}
+
+// RecordOnlineUser 把当前会话的在线摘要写入 Redis(online_tokens:<token>)，
+// 对应 Java UserLoginSuccessListener.handleLoginSuccess 写 UserOnlineDTO。
+//
+// 必须在 loginhelper.Login 返回后调：EventLogin 在 Login 内部即触发，彼时
+// token-session 尚未写入 LoginUser，监听器取不到终端信息，故写入只能落在 auth 层。
+// TTL 镜像 token 自身剩余 TTL：令牌失效即在线摘要失效，与 Java 按 loginParameter.timeout 设值等价。
+// 用 context.Background 而非请求 ctx：缓存写不该绑请求生命周期，与 Java 走 SpringUtils 事件一致。
+func (*SysLoginService) RecordOnlineUser(lu *authmodel.LoginUser, token string) {
+	if lu == nil || token == "" {
+		return
+	}
+	dto := systemdto.UserOnlineDTO{
+		TokenID:       token,
+		DeptName:      lu.DeptName,
+		UserName:      lu.Username,
+		ClientKey:     lu.ClientKey,
+		DeviceType:    lu.DeviceType,
+		IPAddr:        lu.IPAddr,
+		LoginLocation: lu.LoginLocation,
+		Browser:       lu.Browser,
+		OS:            lu.OS,
+		LoginTime:     time.Now().UnixMilli(),
+	}
+	payload, err := json.Marshal(dto)
+	if err != nil {
+		log.Printf("[auth] 序列化在线用户摘要失败: %v", err)
+		return
+	}
+	key := constant.OnlineTokenKeyPrefix + token
+	// 取 token 剩余 TTL 镜像设值：-1 永不过期则不设 TTL，-2/0 以下视为令牌已失效，不写。
+	ttl, err := sagin.GetManager().GetTokenTimeout(token)
+	if err != nil {
+		log.Printf("[auth] 读取 token TTL 失败(按不设 TTL 写入): %v", err)
+	}
+	var expiration time.Duration
+	switch {
+	case ttl > 0:
+		expiration = time.Duration(ttl) * time.Second
+	case ttl == -1:
+		// 永不过期
+	default:
+		return
+	}
+	if err := redis.Client().Set(context.Background(), key, payload, expiration).Err(); err != nil {
+		log.Printf("[auth] 写入在线用户摘要 %s 失败: %v", key, err)
+	}
 }
 
 // Logout 退出登录，对应 Java SysLoginService.logout。

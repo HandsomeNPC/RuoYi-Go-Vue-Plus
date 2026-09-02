@@ -21,6 +21,12 @@ const loginInfoLogTitle = "登录日志"
 // operLogLogTitle 操作日志的操作日志模块名，对照 Java @Log(title = "操作日志")。
 const operLogLogTitle = "操作日志"
 
+// userOnlineLogTitle 在线用户的操作日志模块名，对照 Java @Log(title = "在线用户")。
+const userOnlineLogTitle = "在线用户"
+
+// userDeviceLogTitle 在线设备的操作日志模块名，对照 Java @Log(title = "在线设备")。
+const userDeviceLogTitle = "在线设备"
+
 // RegisterRoutes 注册 monitor 路由。
 //
 // 与 system/auth 一致：内部路由 /cache、/loginInfo 不带模块名前缀，由调用方传 prefix。
@@ -65,6 +71,18 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 		oplog.Log(operLogLogTitle, enum.BusinessTypeClean), handler.OperLogApiApp.Clean)
 	operLog.DELETE("/:operIds", satoken.CheckPermission("monitor:operlog:remove"),
 		oplog.Log(operLogLogTitle, enum.BusinessTypeDelete), handler.OperLogApiApp.Remove)
+
+	// online 在线用户监控。getInfo/remove 只需登录(操作自身会话)，list/forceLogout 需权限码。
+	// /myself/:tokenId 与 /:tokenId 段数不同，gin 按深度区分，无路由冲突。
+	online := g.Group("/online")
+	online.GET("/list", satoken.CheckPermission("monitor:online:list"), handler.UserOnlineApiApp.List)
+	online.DELETE("/:tokenId", satoken.CheckPermission("monitor:online:forceLogout"),
+		oplog.Log(userOnlineLogTitle, enum.BusinessTypeForce),
+		repeatsubmit.RepeatSubmit(0, ""), handler.UserOnlineApiApp.ForceLogout)
+	online.GET("", handler.UserOnlineApiApp.GetInfo)
+	online.DELETE("/myself/:tokenId",
+		oplog.Log(userDeviceLogTitle, enum.BusinessTypeForce),
+		repeatsubmit.RepeatSubmit(0, ""), handler.UserOnlineApiApp.Remove)
 
 	// 探针，与 system/auth 对齐。
 	r.GET(prefix+"/ping", func(c *gin.Context) {

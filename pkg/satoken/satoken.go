@@ -2,12 +2,15 @@
 package satoken
 
 import (
+	"context"
 	"log"
 
+	"github.com/sa-tokens/sa-token-go/core/listener"
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 	"github.com/sa-tokens/sa-token-go/storage/redis"
 
 	"ruoyi-go-vue-plus/pkg/config"
+	"ruoyi-go-vue-plus/pkg/constant"
 	pkgredis "ruoyi-go-vue-plus/pkg/redis"
 )
 
@@ -30,8 +33,27 @@ func Init() {
 		Build()
 
 	sagin.SetManager(manager)
+	// 登出/被踢/被顶时清 online_tokens 摘要，对照 Java UserActionListener 三个回调删缓存。
+	// sa-token-go 在这些动作内部同步触发事件，故无需再于各调用点手删。
+	registerOnlineTokenCleanup(manager)
 	log.Printf("[%s] sa-token 已就绪: tokenName=%s",
 		c.Server.Name, cfg.TokenName)
+}
+
+// registerOnlineTokenCleanup 在会话终结事件上删 online_tokens:<token>。
+func registerOnlineTokenCleanup(mgr *sagin.Manager) {
+	del := func(data *listener.EventData) {
+		if data.Token == "" {
+			return
+		}
+		key := constant.OnlineTokenKeyPrefix + data.Token
+		if err := pkgredis.Client().Del(context.Background(), key).Err(); err != nil {
+			log.Printf("[satoken] 清理在线摘要 %s 失败: %v", key, err)
+		}
+	}
+	mgr.RegisterFunc(listener.EventLogout, del)
+	mgr.RegisterFunc(listener.EventKickout, del)
+	mgr.RegisterFunc(listener.EventReplaced, del)
 }
 
 // Manager 返回全局 Manager，未调用 Init 会由 sagin.GetManager 自身 panic。

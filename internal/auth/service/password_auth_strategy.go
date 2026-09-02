@@ -66,8 +66,9 @@ func (s *passwordAuthStrategy) Login(req *http.Request, body []byte,
 		return nil, err
 	}
 
-	// 对照 Java UserLoginSuccessListener.handleLoginSuccess 里的 recordLoginInfo。
-	// 该监听器还做在线会话/最近登录信息更新，待阶段 3 会话体系落地后再补。
+	// 对照 Java UserLoginSuccessListener.handleLoginSuccess：先写在线摘要再记登录日志。
+	// 在线摘要须在 loginhelper.Login 返回后写（见 RecordOnlineUser 注释）。
+	SysLoginSvcApp.RecordOnlineUser(loginUser, token)
 	SysLoginSvcApp.RecordLoginInfo(req, loginBody.Username,
 		constant.ConstantLoginSuccess, i18n.Msg(ctx, "user.login.success"))
 
