@@ -9,6 +9,7 @@ import (
 	"ruoyi-go-vue-plus/internal/system/handler"
 	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/constant"
+	"ruoyi-go-vue-plus/pkg/encrypt"
 	"ruoyi-go-vue-plus/pkg/enum"
 	"ruoyi-go-vue-plus/pkg/middleware"
 	"ruoyi-go-vue-plus/pkg/oplog"
@@ -39,6 +40,12 @@ const menuLogTitle = "菜单管理"
 // noticeLogTitle 通知公告的操作日志模块名，对照 Java @Log(title = "通知公告")。
 const noticeLogTitle = "通知公告"
 
+// postLogTitle 岗位管理的操作日志模块名，对照 Java @Log(title = "岗位管理")。
+const postLogTitle = "岗位管理"
+
+// profileLogTitle 个人信息的操作日志模块名，对照 Java @Log(title = "个人信息")。
+const profileLogTitle = "个人信息"
+
 func RegisterRoutes(r *gin.Engine, prefix string) {
 	plugin := sagin.NewPlugin(satoken.Manager())
 
@@ -51,6 +58,21 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	protected.Use(plugin.TokenInterceptor(), loginhelper.AuditContext())
 	user := protected.Group("/user")
 	user.GET("/getInfo", sagin.CheckLogin(), handler.UserApiApp.GetInfo)
+	// 个人信息：与 Java 一致不校验权限码，仅需登录——用户改自己的资料不该卡权限。
+	// profile/avatar 端点 Java 的 SysProfileController 未提供，前端的上传留待 OSS 落地后再补。
+	profile := user.Group("/profile")
+	profile.GET("", sagin.CheckLogin(), handler.ProfileApiApp.Profile)
+	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
+	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行，与 Java 侧
+	// RepeatSubmitAspect 抛异常后 LogAspect 记一条失败日志一致。
+	profile.PUT("", sagin.CheckLogin(),
+		oplog.Log(profileLogTitle, enum.BusinessTypeUpdate),
+		repeatsubmit.RepeatSubmit(0, ""), handler.ProfileApiApp.UpdateProfile)
+	// updatePwd 须排在 encrypt.ApiEncrypt() 之后：指纹要用解密后的明文，否则密文每次
+	// 随机密钥、同样入参算出不同指纹，防重直接失效。故顺序为 鉴权→解密→日志→防重→handler。
+	profile.PUT("/updatePwd", sagin.CheckLogin(), encrypt.ApiEncrypt(),
+		oplog.Log(profileLogTitle, enum.BusinessTypeUpdate),
+		repeatsubmit.RepeatSubmit(0, ""), handler.ProfileApiApp.UpdatePwd)
 
 	menu := protected.Group("/menu")
 	menu.GET("/getRouters", sagin.CheckLogin(), handler.MenuApiApp.GetRouters)
@@ -236,6 +258,32 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	// Java 侧 notice 没有导出接口，故不注册 /export。
 	notice.DELETE("/:noticeIds", satoken.CheckPermission("system:notice:remove"),
 		oplog.Log(noticeLogTitle, enum.BusinessTypeDelete), handler.NoticeApiApp.Remove)
+
+	post := protected.Group("/post")
+	post.GET("/list", satoken.CheckPermission("system:post:list"), handler.PostApiApp.List)
+	// optionselect、deptTree 与 :postId 同层但前两者段更具体，
+	// gin 静态段优先，无需调整注册顺序。
+	post.GET("/optionselect", satoken.CheckPermission("system:post:query"),
+		handler.PostApiApp.OptionSelect)
+	post.GET("/deptTree", satoken.CheckPermission("system:post:list"),
+		handler.PostApiApp.DeptTree)
+	post.GET("/:postId", satoken.CheckPermission("system:post:query"),
+		handler.PostApiApp.GetInfo)
+	// 导出走 POST 与 Java 一致：前端 commonExport 以 form 表单 POST 提交筛选条件。
+	post.POST("/export", satoken.CheckPermission("system:post:export"),
+		oplog.Log(postLogTitle, enum.BusinessTypeExport), handler.PostApiApp.Export)
+	// 路径用 "" 而非 "/"：后者会注册成 /post/。
+	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
+	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行，与 Java 侧
+	// RepeatSubmitAspect 抛异常后 LogAspect 记一条失败日志一致。
+	post.POST("", satoken.CheckPermission("system:post:add"),
+		oplog.Log(postLogTitle, enum.BusinessTypeInsert),
+		repeatsubmit.RepeatSubmit(0, ""), handler.PostApiApp.Add)
+	post.PUT("", satoken.CheckPermission("system:post:edit"),
+		oplog.Log(postLogTitle, enum.BusinessTypeUpdate),
+		repeatsubmit.RepeatSubmit(0, ""), handler.PostApiApp.Edit)
+	post.DELETE("/:postIds", satoken.CheckPermission("system:post:remove"),
+		oplog.Log(postLogTitle, enum.BusinessTypeDelete), handler.PostApiApp.Remove)
 }
 
 // RegisterResourceRoutes 注册消息盒子与推送连接端点。

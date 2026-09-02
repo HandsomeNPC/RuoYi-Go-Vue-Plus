@@ -144,6 +144,62 @@ func TestRegisterRoutesMenuPaths(t *testing.T) {
 	}
 }
 
+// TestRegisterRoutesPostPaths 岗位的八个接口都已按 Java SysPostController 的
+// 方法与路径注册到真实路由表上。
+func TestRegisterRoutesPostPaths(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	setupManager(t)
+	r := gin.New()
+	RegisterRoutes(r, "")
+
+	registered := make(map[string]bool)
+	for _, ri := range r.Routes() {
+		registered[ri.Method+" "+ri.Path] = true
+	}
+
+	for _, want := range []string{
+		"GET /post/list",
+		"GET /post/optionselect",
+		"GET /post/deptTree",
+		"GET /post/:postId",
+		"POST /post/export",
+		"POST /post",
+		"PUT /post",
+		"DELETE /post/:postIds",
+	} {
+		if !registered[want] {
+			t.Errorf("未注册路由 %s", want)
+		}
+	}
+}
+
+// TestRegisterRoutesProfilePaths 个人中心的三个接口都已按 Java SysProfileController
+// 的方法与路径注册到真实路由表上。avatar 端点 Java 的 SysProfileController 未提供，故不出现。
+func TestRegisterRoutesProfilePaths(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	setupManager(t)
+	r := gin.New()
+	RegisterRoutes(r, "")
+
+	registered := make(map[string]bool)
+	for _, ri := range r.Routes() {
+		registered[ri.Method+" "+ri.Path] = true
+	}
+
+	for _, want := range []string{
+		"GET /user/profile",
+		"PUT /user/profile",
+		"PUT /user/profile/updatePwd",
+	} {
+		if !registered[want] {
+			t.Errorf("未注册路由 %s", want)
+		}
+	}
+	if registered["POST /user/profile/avatar"] {
+		t.Error("Java 侧 SysProfileController 无 avatar 接口，不应注册 POST /user/profile/avatar")
+	}
+}
+
 // TestRegisterRoutesNoticePaths 通知公告的五个接口都已按 Java SysNoticeController 的
 // 方法与路径注册到真实路由表上。Java 侧没有导出接口，故不该出现 /notice/export。
 func TestRegisterRoutesNoticePaths(t *testing.T) {
@@ -262,6 +318,13 @@ func TestGinStaticSegmentsBeatWildcards(t *testing.T) {
 	m.DELETE("/cascade/:menuIds", probe("menuCascadeRemove"))
 	m.DELETE("/:menuId", probe("menuRemove"))
 
+	// 岗位：optionselect/deptTree/export 都是静态段，得躲开 /:postId 与 POST 根。
+	p := r.Group("/post")
+	p.GET("/list", probe("postList"))
+	p.GET("/optionselect", probe("postOptionSelect"))
+	p.GET("/deptTree", probe("postDeptTree"))
+	p.GET("/:postId", probe("postInfo"))
+
 	tests := []struct {
 		method, path, want string
 	}{
@@ -288,6 +351,10 @@ func TestGinStaticSegmentsBeatWildcards(t *testing.T) {
 		{"GET", "/menu/1761200000000000001", "menuInfo"},
 		{"DELETE", "/menu/cascade/1,2,3", "menuCascadeRemove"},
 		{"DELETE", "/menu/1761200000000000001", "menuRemove"},
+		{"GET", "/post/list", "postList"},
+		{"GET", "/post/optionselect", "postOptionSelect"},
+		{"GET", "/post/deptTree", "postDeptTree"},
+		{"GET", "/post/1761200000000000001", "postInfo"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.method+" "+tt.path, func(t *testing.T) {

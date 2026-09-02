@@ -132,3 +132,87 @@ func (r *UserRepository) UpdateLoginInfo(ctx context.Context, userID int64, ip s
 	}
 	return nil
 }
+
+// ExistsByPhone 判断手机号是否已被占用，excludeID > 0 时排除该主键
+// （对齐 Java checkPhoneUnique 的 neIfPresent，供个人中心改资料排除自身）。
+func (r *UserRepository) ExistsByPhone(ctx context.Context, phone string,
+	excludeID int64) (bool, error) {
+
+	if phone == "" {
+		return false, nil
+	}
+
+	db := r.db.WithContext(ctx).Model(&model.SysUser{}).Where("phone_number = ?", phone)
+	if excludeID > 0 {
+		db = db.Where("user_id <> ?", excludeID)
+	}
+
+	var count int64
+	if err := db.Count(&count).Error; err != nil {
+		return false, fmt.Errorf("repository: 校验手机号 %q 失败: %w", phone, err)
+	}
+	return count > 0, nil
+}
+
+// ExistsByEmail 判断邮箱是否已被占用，excludeID > 0 时排除该主键
+// （对齐 Java checkEmailUnique 的 neIfPresent，供个人中心改资料排除自身）。
+func (r *UserRepository) ExistsByEmail(ctx context.Context, email string,
+	excludeID int64) (bool, error) {
+
+	if email == "" {
+		return false, nil
+	}
+
+	db := r.db.WithContext(ctx).Model(&model.SysUser{}).Where("email = ?", email)
+	if excludeID > 0 {
+		db = db.Where("user_id <> ?", excludeID)
+	}
+
+	var count int64
+	if err := db.Count(&count).Error; err != nil {
+		return false, fmt.Errorf("repository: 校验邮箱 %q 失败: %w", email, err)
+	}
+	return count > 0, nil
+}
+
+// UpdateProfile 按主键更新个人资料（对应 Java updateUserProfile）。
+//
+// 走 map 且仅写非空字段——对齐 Java setIfPresent：个人资料表单字段全可选，
+// 漏传的字段不该把线上的昵称/邮箱刷成空串。update_by/update_time 由回调补齐。
+func (r *UserRepository) UpdateProfile(ctx context.Context, userID int64,
+	columns map[string]any) (int64, error) {
+
+	if userID == 0 {
+		return 0, errors.New("repository: userID 不能为 0")
+	}
+	if len(columns) == 0 {
+		return 0, errors.New("repository: 个人资料更新列为空")
+	}
+
+	res := r.db.WithContext(ctx).
+		Model(&model.SysUser{}).
+		Where("user_id = ?", userID).
+		Updates(columns)
+	if res.Error != nil {
+		return 0, fmt.Errorf("repository: 更新用户 %d 个人资料失败: %w", userID, res.Error)
+	}
+	return res.RowsAffected, nil
+}
+
+// UpdatePassword 按主键重置密码（对应 Java resetUserPwd）。
+func (r *UserRepository) UpdatePassword(ctx context.Context, userID int64,
+	password string) (int64, error) {
+
+	if userID == 0 {
+		return 0, errors.New("repository: userID 不能为 0")
+	}
+
+	res := r.db.WithContext(ctx).
+		Model(&model.SysUser{}).
+		Where("user_id = ?", userID).
+		Update("password", password)
+	if res.Error != nil {
+		return 0, fmt.Errorf("repository: 重置用户 %d 密码失败: %w", userID, res.Error)
+	}
+	return res.RowsAffected, nil
+}

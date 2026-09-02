@@ -88,6 +88,10 @@ type Converter interface {
 	ConvertToSysUserVo(u *systemmodel.SysUser) *SysUserVo
 	ConvertToSysUserVoList(in []*systemmodel.SysUser) []*SysUserVo
 
+	// ProfileUserVo 字段是 SysUser 的子集，DeptName/AvatarURL 无源对应字段由 ignoreMissing 留零，
+	// 由 service 按 DEPT_ID_TO_NAME 回填 DeptName（OSS_ID_TO_URL 的 AvatarURL 暂无 OSS 服务，留空）。
+	ConvertToProfileUserVo(u *systemmodel.SysUser) *ProfileUserVo
+
 	ConvertToSysUserExportVo(u *systemmodel.SysUser) *SysUserExportVo
 	ConvertToSysUserExportVoList(in []*systemmodel.SysUser) []*SysUserExportVo
 }

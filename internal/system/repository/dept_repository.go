@@ -111,6 +111,26 @@ func (r *DeptRepository) SelectNormalByIDs(ctx context.Context, ids []int64) ([]
 	return rows, nil
 }
 
+// SelectDeptAndChildIDs 取部门自身及其全部后代的ID集合
+// （对应 Java selectDeptAndChildById，供岗位按部门树搜索时 IN 过滤）。
+// 命中条件：自身 dept_id 命中，或祖先链 FIND_IN_SET 命中。
+func (r *DeptRepository) SelectDeptAndChildIDs(ctx context.Context,
+	deptID int64) ([]int64, error) {
+
+	if deptID <= 0 {
+		return nil, nil
+	}
+
+	var ids []int64
+	err := r.db.WithContext(ctx).Model(&model.SysDept{}).
+		Where("dept_id = ? OR FIND_IN_SET(?, ancestors) > 0", deptID, deptID).
+		Pluck("dept_id", &ids).Error
+	if err != nil {
+		return nil, fmt.Errorf("repository: 查询部门 %d 及子部门ID失败: %w", deptID, err)
+	}
+	return ids, nil
+}
+
 // SelectChildrenByAncestor 查祖先链包含 deptID 的全部后代
 // （对应 Java selectListByParentId 的 findInSet）。
 func (r *DeptRepository) SelectChildrenByAncestor(ctx context.Context,

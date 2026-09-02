@@ -7,6 +7,25 @@ import model "ruoyi-go-vue-plus/internal/system/model"
 
 type ConverterImpl struct{}
 
+func (c *ConverterImpl) ConvertToProfileUserVo(source *model.SysUser) *ProfileUserVo {
+	var pVoProfileUserVo *ProfileUserVo
+	if source != nil {
+		var voProfileUserVo ProfileUserVo
+		voProfileUserVo.UserID = (*source).UserID
+		voProfileUserVo.DeptID = (*source).DeptID
+		voProfileUserVo.UserName = (*source).UserName
+		voProfileUserVo.NickName = (*source).NickName
+		voProfileUserVo.UserType = (*source).UserType
+		voProfileUserVo.Email = (*source).Email
+		voProfileUserVo.PhoneNumber = (*source).PhoneNumber
+		voProfileUserVo.Gender = (*source).Gender
+		voProfileUserVo.Avatar = (*source).Avatar
+		voProfileUserVo.LoginIP = (*source).LoginIP
+		voProfileUserVo.LoginDate = (*source).LoginDate
+		pVoProfileUserVo = &voProfileUserVo
+	}
+	return pVoProfileUserVo
+}
 func (c *ConverterImpl) ConvertToSysClientVo(source *model.SysClient) *SysClientVo {
 	var pVoSysClientVo *SysClientVo
 	if source != nil {

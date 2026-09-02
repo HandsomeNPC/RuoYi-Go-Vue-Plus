@@ -16,6 +16,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/response"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 	"ruoyi-go-vue-plus/pkg/snowflake"
+	"ruoyi-go-vue-plus/pkg/tree"
 )
 
 // ErrDeptNotFound 部门不存在。
@@ -98,6 +99,29 @@ func (s *DeptService) QueryListExcludeChild(ctx context.Context,
 		out = append(out, d)
 	}
 	return out, nil
+}
+
+// SelectDeptTreeList 按条件查部门并组装成前端下拉树（对应 Java selectDeptTreeList
+// + buildDeptTreeSelect）。
+//
+// 走 tree.BuildMultiRoot 而非 Build：按条件过滤后祖先可能不在结果集内，悬空父级要当根挂接，
+// 与 Java TreeBuildUtils.buildMultiRoot 一致。disabled 按状态回填，前端据此灰掉停用部门。
+func (s *DeptService) SelectDeptTreeList(ctx context.Context,
+	q bo.SysDeptQueryBo) ([]*tree.Tree[int64], error) {
+
+	rows, err := s.QueryList(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	return tree.BuildMultiRoot(rows, func(d *vo.SysDeptVo) int64 { return d.DeptID },
+		func(d *vo.SysDeptVo) int64 { return d.ParentID },
+		func(d *vo.SysDeptVo, node *tree.Tree[int64]) {
+			node.ID = d.DeptID
+			node.ParentID = d.ParentID
+			node.Name = d.DeptName
+			node.Weight = d.OrderNum
+			node.SetExtra("disabled", d.Status == constant.StatusDisable)
+		}), nil
 }
 
 // QueryByIDs 查启用状态的部门供选择框用（对应 Java selectDeptByIds）。
