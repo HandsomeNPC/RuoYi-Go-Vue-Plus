@@ -14,6 +14,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/enum"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/i18n"
+	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
 // ErrUserPhoneExists 手机号已被占用。
@@ -282,4 +283,36 @@ func (*UserService) ChangeUserPassword(ctx context.Context, userID int64,
 		return ErrUserPasswordSame
 	}
 	return UserSvcApp.ResetUserPwd(ctx, userID, newPassword)
+}
+
+// SelectAllocatedList 分页查询已分配某角色的用户（对应 Java selectAllocatedList）。
+// roleId 由 q.RoleID 承载；空结果不报错。返回 VO，不回填部门名（DEPT_ID_TO_NAME
+// 翻译层尚未落地，与 SelectUserByID 一致留空）。
+func (*UserService) SelectAllocatedList(ctx context.Context, q bo.SysUserQueryBo,
+	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysUserVo], error) {
+
+	res, err := repository.NewUserRepository(database.DB()).
+		SelectAllocatedList(ctx, q, page)
+	if err != nil {
+		return pkgrepo.EmptyPage[*vo.SysUserVo](), err
+	}
+	return pkgrepo.Page(vo.Conv.ConvertToSysUserVoList(res.Rows), res.Total), nil
+}
+
+// SelectUnallocatedList 分页查询未分配某角色的用户（对应 Java selectUnallocatedList）。
+// 先取该角色已分配的用户集合，再 NOT IN 排除——与 Java 的两步一致。
+func (*UserService) SelectUnallocatedList(ctx context.Context, q bo.SysUserQueryBo,
+	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysUserVo], error) {
+
+	excludeUserIDs, err := repository.NewRoleRepository(database.DB()).
+		SelectUserIDsByRoleID(ctx, q.RoleID)
+	if err != nil {
+		return pkgrepo.EmptyPage[*vo.SysUserVo](), err
+	}
+	res, err := repository.NewUserRepository(database.DB()).
+		SelectUnallocatedList(ctx, q, excludeUserIDs, page)
+	if err != nil {
+		return pkgrepo.EmptyPage[*vo.SysUserVo](), err
+	}
+	return pkgrepo.Page(vo.Conv.ConvertToSysUserVoList(res.Rows), res.Total), nil
 }

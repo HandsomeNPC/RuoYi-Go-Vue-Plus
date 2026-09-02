@@ -9,6 +9,8 @@ import (
 	"gorm.io/gorm"
 
 	"ruoyi-go-vue-plus/internal/system/model"
+	"ruoyi-go-vue-plus/internal/system/model/bo"
+	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
 // ErrUserNotFound 用户不存在。
@@ -215,4 +217,68 @@ func (r *UserRepository) UpdatePassword(ctx context.Context, userID int64,
 		return 0, fmt.Errorf("repository: 重置用户 %d 密码失败: %w", userID, res.Error)
 	}
 	return res.RowsAffected, nil
+}
+
+// SelectAllocatedList 分页查询已分配某角色的用户（对应 Java selectAllocatedList）。
+//
+// 联 sys_user_role 取授权关系，按 sur.role_id 过滤；一个用户对一个角色仅一行 sur，
+// 故无需 DISTINCT——避免 GORM 的 Count 不识别 DISTINCT、把去重后的行数错算成去重前
+// （联表会因用户的多角色把同一用户拉成多行）。userName/status/phoneNumber 走共用过滤。
+// Java 此处带 @DataPermission 注入部门/创建人隔离条件，Go 侧数据权限尚未落地，
+// 此处只按业务条件查——等数据权限落地后挂上过滤，调用点不必改。
+func (r *UserRepository) SelectAllocatedList(ctx context.Context, q bo.SysUserQueryBo,
+	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysUser], error) {
+
+	db := r.applyUserAuthQuery(r.db.WithContext(ctx).Model(&model.SysUser{}), q)
+	if q.RoleID > 0 {
+		db = db.
+			Joins("JOIN sys_user_role sur ON sur.user_id = sys_user.user_id").
+			Where("sur.role_id = ?", q.RoleID)
+	}
+	if !page.HasOrder() {
+		// 对齐 Java orderByAsc("u", SysUser::getUserId)。
+		db = db.Order("sys_user.user_id")
+	}
+
+	var rows []*model.SysUser
+	return pkgrepo.SelectPage(db, page, &rows)
+}
+
+// SelectUnallocatedList 分页查询未分配某角色的用户（对应 Java selectUnallocatedList）。
+// excludeUserIDs 是已分配该角色的用户集合（由 service 先取一次），NOT IN 排除之。
+//
+// 不联 sys_user_role：联表会让多角色用户拉成多行，而 GORM 的 Count 不识别 DISTINCT
+// 会把总数错算成去重前。直接 NOT IN 主键集合即可——每用户一行，Count 与 Find 一致。
+// 与 Java 的 LEFT JOIN sur 行为一致：没有任何角色授权的用户也会出现在未分配列表里。
+func (r *UserRepository) SelectUnallocatedList(ctx context.Context, q bo.SysUserQueryBo,
+	excludeUserIDs []int64, page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysUser], error) {
+
+	db := r.applyUserAuthQuery(r.db.WithContext(ctx).Model(&model.SysUser{}), q)
+	if len(excludeUserIDs) > 0 {
+		db = db.Where("sys_user.user_id NOT IN ?", excludeUserIDs)
+	}
+	if !page.HasOrder() {
+		db = db.Order("sys_user.user_id")
+	}
+
+	var rows []*model.SysUser
+	return pkgrepo.SelectPage(db, page, &rows)
+}
+
+// applyUserAuthQuery 应用 allocated/unallocated 共用的用户过滤条件
+// （对应 Java buildUserRoleJoinWrapper 的 likeIfText/eqIfText 部分）。
+// 基表是 sys_user（无别名），条件均以 sys_user 前缀限定，避免与联表同名列冲突。
+// 不在此处加 JOIN：两条路径的联表结构不同（allocated 联 sur、unallocated 不联），
+// 各自在调用方补，共用此函数只承载过滤条件。
+func (r *UserRepository) applyUserAuthQuery(db *gorm.DB, q bo.SysUserQueryBo) *gorm.DB {
+	if q.UserName != "" {
+		db = db.Where("sys_user.user_name LIKE ?", "%"+escapeLike(q.UserName)+"%")
+	}
+	if q.Status != "" {
+		db = db.Where("sys_user.status = ?", q.Status)
+	}
+	if q.PhoneNumber != "" {
+		db = db.Where("sys_user.phone_number LIKE ?", "%"+escapeLike(q.PhoneNumber)+"%")
+	}
+	return db
 }

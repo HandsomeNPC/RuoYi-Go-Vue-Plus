@@ -43,6 +43,9 @@ const noticeLogTitle = "通知公告"
 // postLogTitle 岗位管理的操作日志模块名，对照 Java @Log(title = "岗位管理")。
 const postLogTitle = "岗位管理"
 
+// roleLogTitle 角色管理的操作日志模块名，对照 Java @Log(title = "角色管理")。
+const roleLogTitle = "角色管理"
+
 // profileLogTitle 个人信息的操作日志模块名，对照 Java @Log(title = "个人信息")。
 const profileLogTitle = "个人信息"
 
@@ -284,6 +287,59 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 		repeatsubmit.RepeatSubmit(0, ""), handler.PostApiApp.Edit)
 	post.DELETE("/:postIds", satoken.CheckPermission("system:post:remove"),
 		oplog.Log(postLogTitle, enum.BusinessTypeDelete), handler.PostApiApp.Remove)
+
+	// social 与 Java 一致不校验权限码，仅需登录：用户查自己的社会化绑定关系不该卡权限。
+	social := protected.Group("/social")
+	social.GET("/list", sagin.CheckLogin(), handler.SocialApiApp.List)
+
+	// roleLogTitle 角色管理的操作日志模块名，对照 Java @Log(title = "角色管理")。
+	role := protected.Group("/role")
+	role.GET("/list", satoken.CheckPermission("system:role:list"), handler.RoleApiApp.List)
+	// optionselect、authUser/*、deptTree/:roleId 与 :roleId 同层但前两者段更具体，
+	// gin 静态段优先，无需调整注册顺序。
+	role.GET("/optionselect", satoken.CheckPermission("system:role:query"),
+		handler.RoleApiApp.OptionSelect)
+	role.GET("/authUser/allocatedList", satoken.CheckPermission("system:role:list"),
+		handler.RoleApiApp.AllocatedList)
+	role.GET("/authUser/unallocatedList", satoken.CheckPermission("system:role:list"),
+		handler.RoleApiApp.UnallocatedList)
+	// deptTree/:roleId 取角色部门勾选 + 部门下拉树，对照 Java roleDeptTreeselect。
+	role.GET("/deptTree/:roleId", satoken.CheckPermission("system:role:list"),
+		handler.RoleApiApp.DeptTreeSelect)
+	// 导出走 POST 与 Java 一致：前端以 form 表单 POST 提交筛选条件。
+	role.POST("/export", satoken.CheckPermission("system:role:export"),
+		oplog.Log(roleLogTitle, enum.BusinessTypeExport), handler.RoleApiApp.Export)
+	// 路径用 "" 而非 "/"：后者会注册成 /role/。
+	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
+	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行，与 Java 侧
+	// RepeatSubmitAspect 抛异常后 LogAspect 记一条失败日志一致。
+	role.POST("", satoken.CheckPermission("system:role:add"),
+		oplog.Log(roleLogTitle, enum.BusinessTypeInsert),
+		repeatsubmit.RepeatSubmit(0, ""), handler.RoleApiApp.Add)
+	role.PUT("", satoken.CheckPermission("system:role:edit"),
+		oplog.Log(roleLogTitle, enum.BusinessTypeUpdate),
+		repeatsubmit.RepeatSubmit(0, ""), handler.RoleApiApp.Edit)
+	// permission、changeStatus 路径更具体，须注册在 PUT "" 之后。
+	role.PUT("/permission", satoken.CheckPermission("system:role:edit"),
+		oplog.Log(roleLogTitle, enum.BusinessTypeUpdate),
+		repeatsubmit.RepeatSubmit(0, ""), handler.RoleApiApp.EditPermission)
+	role.PUT("/changeStatus", satoken.CheckPermission("system:role:edit"),
+		oplog.Log(roleLogTitle, enum.BusinessTypeUpdate),
+		repeatsubmit.RepeatSubmit(0, ""), handler.RoleApiApp.ChangeStatus)
+	// authUser/cancel、cancelAll、selectAll 是授权操作，businessType=GRANT。
+	role.PUT("/authUser/cancel", satoken.CheckPermission("system:role:edit"),
+		oplog.Log(roleLogTitle, enum.BusinessTypeGrant),
+		repeatsubmit.RepeatSubmit(0, ""), handler.RoleApiApp.CancelAuthUser)
+	role.PUT("/authUser/cancelAll", satoken.CheckPermission("system:role:edit"),
+		oplog.Log(roleLogTitle, enum.BusinessTypeGrant),
+		repeatsubmit.RepeatSubmit(0, ""), handler.RoleApiApp.CancelAuthUserAll)
+	role.PUT("/authUser/selectAll", satoken.CheckPermission("system:role:edit"),
+		oplog.Log(roleLogTitle, enum.BusinessTypeGrant),
+		repeatsubmit.RepeatSubmit(0, ""), handler.RoleApiApp.SelectAuthUserAll)
+	role.GET("/:roleId", satoken.CheckPermission("system:role:query"),
+		handler.RoleApiApp.GetInfo)
+	role.DELETE("/:roleIds", satoken.CheckPermission("system:role:remove"),
+		oplog.Log(roleLogTitle, enum.BusinessTypeDelete), handler.RoleApiApp.Remove)
 }
 
 // RegisterResourceRoutes 注册消息盒子与推送连接端点。

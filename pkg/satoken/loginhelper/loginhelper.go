@@ -3,6 +3,7 @@ package loginhelper
 
 import (
 	"encoding/json"
+	"log"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -10,6 +11,7 @@ import (
 	"github.com/sa-tokens/sa-token-go/stputil"
 
 	"ruoyi-go-vue-plus/pkg/constant"
+	"ruoyi-go-vue-plus/pkg/enum"
 	authmodel "ruoyi-go-vue-plus/pkg/model"
 )
 
@@ -197,4 +199,31 @@ func IsCurrentSuperAdmin(c *gin.Context) bool {
 func IsLogin(c *gin.Context) bool {
 	token := sagin.GetTokenFromCtx(c)
 	return token != "" && sagin.IsLogin(token)
+}
+
+// LogoutUser 注销指定用户的会话（对应 Java StpUtil.logoutByLoginId(loginID)，
+// 即 OnlineUserCleanEvent 的最终动作：角色/授权变动后让受影响在线用户下次请求即失效）。
+//
+// 只注销 default 设备的会话：sa-token-go 的 account→token 映射按 (loginID, device) 分桶，
+// 没有现成的"枚举该用户全部设备"接口，多端登录的其余会话不会被一并清掉。这是与
+// Java searchTokenValue 全量扫描的有意差距——单端覆盖已能让权限变更在下次登录生效，
+// 多端场景留待 sa-token-go 提供枚举能力后再补。
+//
+// 失败只记日志：注销失败不该阻断写库流程，与 Java 的 try/catch ignored 一致。
+func LogoutUser(userID int64) {
+	if userID <= 0 {
+		return
+	}
+	loginID := enum.UserTypeSys.Code + ":" + strconv.FormatInt(userID, 10)
+	if err := sagin.Logout(loginID); err != nil {
+		log.Printf("[satoken] 注销用户 %d 会话失败: %v", userID, err)
+	}
+}
+
+// LogoutUsers 批量注销用户会话，逐个调用 LogoutUser。
+// 不做去重：sys_user_role 不会给同一用户重复行，调用方传入的集合语义上也无重复预期。
+func LogoutUsers(userIDs []int64) {
+	for _, id := range userIDs {
+		LogoutUser(id)
+	}
 }

@@ -262,6 +262,59 @@ func TestRegisterResourceRoutes(t *testing.T) {
 	}
 }
 
+// TestRegisterRoutesRolePaths 角色的十五个接口都已按 Java SysRoleController 的
+// 方法与路径注册到真实路由表上。
+func TestRegisterRoutesRolePaths(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	setupManager(t)
+	r := gin.New()
+	RegisterRoutes(r, "")
+
+	registered := make(map[string]bool)
+	for _, ri := range r.Routes() {
+		registered[ri.Method+" "+ri.Path] = true
+	}
+
+	for _, want := range []string{
+		"GET /role/list",
+		"GET /role/optionselect",
+		"GET /role/authUser/allocatedList",
+		"GET /role/authUser/unallocatedList",
+		"GET /role/deptTree/:roleId",
+		"GET /role/:roleId",
+		"POST /role/export",
+		"POST /role",
+		"PUT /role",
+		"PUT /role/permission",
+		"PUT /role/changeStatus",
+		"PUT /role/authUser/cancel",
+		"PUT /role/authUser/cancelAll",
+		"PUT /role/authUser/selectAll",
+		"DELETE /role/:roleIds",
+	} {
+		if !registered[want] {
+			t.Errorf("未注册路由 %s", want)
+		}
+	}
+}
+
+// TestRegisterRoutesSocialPaths 社会化关系的一个接口已按 Java SysSocialController
+// 的方法与路径注册到真实路由表上。
+func TestRegisterRoutesSocialPaths(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	setupManager(t)
+	r := gin.New()
+	RegisterRoutes(r, "")
+
+	registered := make(map[string]bool)
+	for _, ri := range r.Routes() {
+		registered[ri.Method+" "+ri.Path] = true
+	}
+	if !registered["GET /social/list"] {
+		t.Error("未注册路由 GET /social/list")
+	}
+}
+
 // TestGinStaticSegmentsBeatWildcards 钉住 RegisterRoutes 依赖的 gin 路由规则：
 // 同层的静态段优先于通配段，故 /config/configKey/...、/config/refreshCache
 // 与 /dept/optionselect 不会被邻居 /config/:configId、/dept/:deptId 抢走；
@@ -325,6 +378,16 @@ func TestGinStaticSegmentsBeatWildcards(t *testing.T) {
 	p.GET("/deptTree", probe("postDeptTree"))
 	p.GET("/:postId", probe("postInfo"))
 
+	// 角色：optionselect、authUser/allocatedList、deptTree/:roleId 与 :roleId 同层或跨层，
+	// 前者段更具体。若被后者截走，GET /role/optionselect 会退化成"查主键为 optionselect 的角色"。
+	ro := r.Group("/role")
+	ro.GET("/list", probe("roleList"))
+	ro.GET("/optionselect", probe("roleOptionSelect"))
+	ro.GET("/authUser/allocatedList", probe("roleAllocated"))
+	ro.GET("/authUser/unallocatedList", probe("roleUnallocated"))
+	ro.GET("/deptTree/:roleId", probe("roleDeptTree"))
+	ro.GET("/:roleId", probe("roleInfo"))
+
 	tests := []struct {
 		method, path, want string
 	}{
@@ -355,6 +418,12 @@ func TestGinStaticSegmentsBeatWildcards(t *testing.T) {
 		{"GET", "/post/optionselect", "postOptionSelect"},
 		{"GET", "/post/deptTree", "postDeptTree"},
 		{"GET", "/post/1761200000000000001", "postInfo"},
+		// 角色：optionselect 躲开 :roleId；deptTree/:roleId 跨层不被 :roleId 截。
+		{"GET", "/role/optionselect", "roleOptionSelect"},
+		{"GET", "/role/authUser/allocatedList", "roleAllocated"},
+		{"GET", "/role/authUser/unallocatedList", "roleUnallocated"},
+		{"GET", "/role/deptTree/1761300000000000001", "roleDeptTree"},
+		{"GET", "/role/1761300000000000001", "roleInfo"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.method+" "+tt.path, func(t *testing.T) {
