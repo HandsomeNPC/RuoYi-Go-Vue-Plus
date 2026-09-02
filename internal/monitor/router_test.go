@@ -43,3 +43,29 @@ func TestRegisterRoutesLoginInfoPaths(t *testing.T) {
 		}
 	}
 }
+
+// TestRegisterRoutesOperLogPaths 操作日志的四个接口都已按 Java SysOperlogController
+// 的方法与路径注册到真实路由表上。重点钉住 DELETE /operlog/clean 与
+// DELETE /operlog/:operIds 同层共存——gin 静态段优先，clean 不会被当成主键。
+func TestRegisterRoutesOperLogPaths(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	setupManager(t)
+	r := gin.New()
+	RegisterRoutes(r, "")
+
+	registered := make(map[string]bool)
+	for _, ri := range r.Routes() {
+		registered[ri.Method+" "+ri.Path] = true
+	}
+
+	for _, want := range []string{
+		"GET /operlog/list",
+		"POST /operlog/export",
+		"DELETE /operlog/clean",
+		"DELETE /operlog/:operIds",
+	} {
+		if !registered[want] {
+			t.Errorf("未注册路由 %s", want)
+		}
+	}
+}

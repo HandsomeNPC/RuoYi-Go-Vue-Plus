@@ -18,6 +18,9 @@ import (
 // loginInfoLogTitle 登录日志的操作日志模块名，对照 Java @Log(title = "登录日志")。
 const loginInfoLogTitle = "登录日志"
 
+// operLogLogTitle 操作日志的操作日志模块名，对照 Java @Log(title = "操作日志")。
+const operLogLogTitle = "操作日志"
+
 // RegisterRoutes 注册 monitor 路由。
 //
 // 与 system/auth 一致：内部路由 /cache、/loginInfo 不带模块名前缀，由调用方传 prefix。
@@ -51,6 +54,17 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	loginInfo.GET("/unlock/:userName", satoken.CheckPermission("monitor:logininfo:unlock"),
 		oplog.Log(loginInfoLogTitle, enum.BusinessTypeOther),
 		repeatsubmit.RepeatSubmit(0, ""), handler.LoginInfoApiApp.Unlock)
+
+	operLog := g.Group("/operlog")
+	operLog.GET("/list", satoken.CheckPermission("monitor:operlog:list"), handler.OperLogApiApp.List)
+	operLog.POST("/export", satoken.CheckPermission("monitor:operlog:export"),
+		oplog.Log(operLogLogTitle, enum.BusinessTypeExport), handler.OperLogApiApp.Export)
+	// clean 与 :operIds 同层，静态段优先，gin 能区分二者，无需调整注册顺序（与 loginInfo 同理）。
+	// 权限码用 remove：对照 Java @SaCheckPermission("monitor:operlog:remove") 两处复用。
+	operLog.DELETE("/clean", satoken.CheckPermission("monitor:operlog:remove"),
+		oplog.Log(operLogLogTitle, enum.BusinessTypeClean), handler.OperLogApiApp.Clean)
+	operLog.DELETE("/:operIds", satoken.CheckPermission("monitor:operlog:remove"),
+		oplog.Log(operLogLogTitle, enum.BusinessTypeDelete), handler.OperLogApiApp.Remove)
 
 	// 探针，与 system/auth 对齐。
 	r.GET(prefix+"/ping", func(c *gin.Context) {
