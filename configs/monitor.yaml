@@ -2,6 +2,7 @@ server:
   name: monitor
   addr: ":9202"
 
-# monitor 进程只读 Redis(缓存监控)，不落库、不发号、不写日志，故无需
-# database/snowflake/oplog。鉴权复用同一 Redis 中的 sa-token 会话，
-# 权限码 monitor:cache:list 仍在登录时由 auth 进程写入。
+# monitor 进程既读 Redis（缓存监控、解锁删 pwd_err_cnt 锁定键），又落库读 MySQL
+# （登录日志列表/删除/清空）。故需 database/snowflake/oplog/repeatsubmit：
+# snowflake 供 oplog 落 sys_oper_log 发号，repeatsubmit 给 unlock 防重。
+# 鉴权复用同一 Redis 中的 sa-token 会话，权限码 monitor:* 仍在登录时由 auth 进程写入。
