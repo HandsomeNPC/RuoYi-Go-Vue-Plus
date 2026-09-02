@@ -279,3 +279,18 @@ func (s *PostService) resolveDeptIDs(ctx context.Context, q *bo.SysPostQueryBo) 
 	q.DeptIDs = ids
 	return nil
 }
+
+// SelectPostListByUserId 按用户ID取已授权岗位ID列表（对应 Java selectPostListByUserId）。
+func (s *PostService) SelectPostListByUserId(ctx context.Context, userID int64) ([]int64, error) {
+	posts, err := repository.NewPostRepository(database.DB()).SelectPostsByUserId(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]int64, 0, len(posts))
+	for _, p := range posts {
+		if p != nil {
+			out = append(out, p.PostID)
+		}
+	}
+	return out, nil
+}

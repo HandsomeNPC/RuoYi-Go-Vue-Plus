@@ -173,8 +173,48 @@ func TestRegisterRoutesPostPaths(t *testing.T) {
 	}
 }
 
-// TestRegisterRoutesProfilePaths 个人中心的三个接口都已按 Java SysProfileController
-// 的方法与路径注册到真实路由表上。avatar 端点 Java 的 SysProfileController 未提供，故不出现。
+// TestRegisterRoutesUserPaths 用户管理的接口都已按 Java SysUserController 的
+// 方法与路径注册到真实路由表上。根路径 "" 与 /:userId 复用 GetInfoByID；
+// 静态段（list/deptTree/optionselect/authRole/unlock/export/importData/importTemplate
+// /resetPwd/changeStatus）与同层 /:userId 共存，gin 静态段优先。
+func TestRegisterRoutesUserPaths(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	setupManager(t)
+	r := gin.New()
+	RegisterRoutes(r, "")
+
+	registered := make(map[string]bool)
+	for _, ri := range r.Routes() {
+		registered[ri.Method+" "+ri.Path] = true
+	}
+
+	for _, want := range []string{
+		"GET /user/getInfo",
+		"GET /user/list",
+		"GET /user/list/dept/:deptId",
+		"GET /user/deptTree",
+		"GET /user/optionselect",
+		"GET /user/authRole/:userId",
+		"GET /user/unlock/:userId",
+		"GET /user",
+		"GET /user/:userId",
+		"POST /user/export",
+		"POST /user/importData",
+		"POST /user/importTemplate",
+		"POST /user",
+		"PUT /user",
+		"PUT /user/resetPwd",
+		"PUT /user/changeStatus",
+		"PUT /user/authRole",
+		"DELETE /user/:userIds",
+	} {
+		if !registered[want] {
+			t.Errorf("未注册路由 %s", want)
+		}
+	}
+}
+
+// TestRegisterRoutesProfilePaths 个人中心的三个接口都已按 Java SysProfileController// 的方法与路径注册到真实路由表上。avatar 端点 Java 的 SysProfileController 未提供，故不出现。
 func TestRegisterRoutesProfilePaths(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupManager(t)

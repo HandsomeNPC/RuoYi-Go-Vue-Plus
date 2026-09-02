@@ -288,3 +288,22 @@ func (r *PostRepository) CountUserPostByID(ctx context.Context, postID int64) (i
 	}
 	return count, nil
 }
+
+// CountByIDs 按主键集合统计存在的岗位数（对应 Java selectPostCount）。
+//
+// Java 此方法带 @DataPermission，非超管账号下注入岗位数据隔离条件，
+// 使"我能看到的岗位"与传入数量不等时抛"没有权限访问岗位的数据"。Go 侧数据权限尚未落地，
+// 此处只按主键计数——等数据权限落地后挂上过滤，调用点不必改。
+func (r *PostRepository) CountByIDs(ctx context.Context, postIDs []int64) (int64, error) {
+	if len(postIDs) == 0 {
+		return 0, nil
+	}
+	// Model 不能省：del_flag 过滤由 LogicDelete 挂在字段类型上，须先解析出实体 schema 才生效。
+	var count int64
+	if err := r.db.WithContext(ctx).Model(&model.SysPost{}).
+		Where("post_id IN ?", postIDs).
+		Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("repository: 统计岗位 %v 失败: %w", postIDs, err)
+	}
+	return count, nil
+}

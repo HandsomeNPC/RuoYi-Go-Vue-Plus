@@ -650,3 +650,67 @@ func loginhelperFromCtx(ctx context.Context) int64 {
 	}
 	return au.UserID
 }
+
+// SelectRoleList 按条件查角色列表（对应 Java selectRoleList），供角色选择框/用户授权页取可授权角色用。
+// 不分页，limit <= 0 不限制。
+func (s *RoleService) SelectRoleList(ctx context.Context,
+	q bo.SysRoleQueryBo) ([]*vo.SysRoleVo, error) {
+
+	rows, err := repository.NewRoleRepository(database.DB()).SelectList(ctx, q, 0)
+	if err != nil {
+		return nil, err
+	}
+	return vo.Conv.ConvertToSysRoleVoList(rows), nil
+}
+
+// SelectRoleAll 查全部角色（对应 Java selectRoleAll）。
+func (s *RoleService) SelectRoleAll(ctx context.Context) ([]*vo.SysRoleVo, error) {
+	return s.SelectRoleList(ctx, bo.SysRoleQueryBo{})
+}
+
+// SelectRoleListByUserId 按用户ID取已授权角色ID列表（对应 Java selectRoleListByUserId）。
+func (s *RoleService) SelectRoleListByUserId(ctx context.Context,
+	userID int64) ([]int64, error) {
+
+	roles, err := repository.NewRoleRepository(database.DB()).SelectRolesByUserId(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]int64, 0, len(roles))
+	for _, r := range roles {
+		if r != nil {
+			out = append(out, r.RoleID)
+		}
+	}
+	return out, nil
+}
+
+// SelectRolesAuthByUserId 按用户ID取可授权角色并标记已授权（对应 Java selectRolesAuthByUserId）。
+// 取全部角色，把用户已有角色的 Flag 置 true，供前端授权树回显勾选。
+func (s *RoleService) SelectRolesAuthByUserId(ctx context.Context,
+	userID int64) ([]*vo.SysRoleVo, error) {
+
+	userRoles, err := repository.NewRoleRepository(database.DB()).SelectRolesByUserId(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	roles, err := s.SelectRoleAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	owned := make(map[int64]struct{}, len(userRoles))
+	for _, r := range userRoles {
+		if r != nil {
+			owned[r.RoleID] = struct{}{}
+		}
+	}
+	for _, r := range roles {
+		if r == nil {
+			continue
+		}
+		if _, ok := owned[r.RoleID]; ok {
+			r.Flag = true
+		}
+	}
+	return roles, nil
+}

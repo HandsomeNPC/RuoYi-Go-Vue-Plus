@@ -49,6 +49,9 @@ const roleLogTitle = "角色管理"
 // profileLogTitle 个人信息的操作日志模块名，对照 Java @Log(title = "个人信息")。
 const profileLogTitle = "个人信息"
 
+// userLogTitle 用户管理的操作日志模块名，对照 Java @Log(title = "用户管理")。
+const userLogTitle = "用户管理"
+
 func RegisterRoutes(r *gin.Engine, prefix string) {
 	plugin := sagin.NewPlugin(satoken.Manager())
 
@@ -76,6 +79,56 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	profile.PUT("/updatePwd", sagin.CheckLogin(), encrypt.ApiEncrypt(),
 		oplog.Log(profileLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.ProfileApiApp.UpdatePwd)
+
+	// 用户管理：静态段（list/deptTree/optionselect/authRole/unlock/export/importData/importTemplate
+	// /resetPwd/changeStatus）与同层 /:userId 共存，gin 静态段优先，无需调整注册顺序。
+	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
+	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行，与 Java 侧
+	// RepeatSubmitAspect 抛异常后 LogAspect 记一条失败日志一致。
+	user.GET("/list", satoken.CheckPermission("system:user:list"), handler.UserApiApp.List)
+	user.GET("/list/dept/:deptId", satoken.CheckPermission("system:user:list"),
+		handler.UserApiApp.ListByDept)
+	user.GET("/deptTree", satoken.CheckPermission("system:user:list"),
+		handler.UserApiApp.DeptTree)
+	user.GET("/optionselect", satoken.CheckPermission("system:user:query"),
+		handler.UserApiApp.OptionSelect)
+	user.GET("/authRole/:userId", satoken.CheckPermission("system:user:query"),
+		handler.UserApiApp.AuthRole)
+	user.GET("/unlock/:userId", satoken.CheckPermission("system:user:edit"),
+		oplog.Log(userLogTitle, enum.BusinessTypeOther),
+		repeatsubmit.RepeatSubmit(0, ""), handler.UserApiApp.Unlock)
+	user.POST("/export", satoken.CheckPermission("system:user:export"),
+		oplog.Log(userLogTitle, enum.BusinessTypeExport), handler.UserApiApp.Export)
+	user.POST("/importData", satoken.CheckPermission("system:user:import"),
+		oplog.Log(userLogTitle, enum.BusinessTypeImport), handler.UserApiApp.ImportData)
+	// importTemplate 与 Java 一致不校验权限码，仅需登录：下载模板不该卡权限。
+	user.POST("/importTemplate", sagin.CheckLogin(), handler.UserApiApp.ImportTemplate)
+	// 路径用 "" 而非 "/"：后者会注册成 /user/。
+	user.POST("", satoken.CheckPermission("system:user:add"),
+		oplog.Log(userLogTitle, enum.BusinessTypeInsert),
+		repeatsubmit.RepeatSubmit(0, ""), handler.UserApiApp.Add)
+	user.PUT("", satoken.CheckPermission("system:user:edit"),
+		oplog.Log(userLogTitle, enum.BusinessTypeUpdate),
+		repeatsubmit.RepeatSubmit(0, ""), handler.UserApiApp.Edit)
+	// resetPwd 须排在 encrypt.ApiEncrypt() 之后：指纹要用解密后的明文，否则密文每次
+	// 随机密钥、同样入参算出不同指纹，防重直接失效。故顺序为 鉴权→解密→日志→防重→handler。
+	user.PUT("/resetPwd", satoken.CheckPermission("system:user:resetPwd"), encrypt.ApiEncrypt(),
+		oplog.Log(userLogTitle, enum.BusinessTypeUpdate),
+		repeatsubmit.RepeatSubmit(0, ""), handler.UserApiApp.ResetPwd)
+	user.PUT("/changeStatus", satoken.CheckPermission("system:user:edit"),
+		oplog.Log(userLogTitle, enum.BusinessTypeUpdate),
+		repeatsubmit.RepeatSubmit(0, ""), handler.UserApiApp.ChangeStatus)
+	// authRole 是授权操作，businessType=GRANT。
+	user.PUT("/authRole", satoken.CheckPermission("system:user:edit"),
+		oplog.Log(userLogTitle, enum.BusinessTypeGrant),
+		repeatsubmit.RepeatSubmit(0, ""), handler.UserApiApp.InsertAuthRole)
+	// 根路径 "" 与 /:userId 复用 GetInfoByID：Java 的 @GetMapping({"/","/{userId}"}) 同一方法。
+	// 须注册在各静态段之后，静态段优先与 /:userId 共存。
+	user.GET("", satoken.CheckPermission("system:user:query"), handler.UserApiApp.GetInfoByID)
+	user.GET("/:userId", satoken.CheckPermission("system:user:query"),
+		handler.UserApiApp.GetInfoByID)
+	user.DELETE("/:userIds", satoken.CheckPermission("system:user:remove"),
+		oplog.Log(userLogTitle, enum.BusinessTypeDelete), handler.UserApiApp.Remove)
 
 	menu := protected.Group("/menu")
 	menu.GET("/getRouters", sagin.CheckLogin(), handler.MenuApiApp.GetRouters)
