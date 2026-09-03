@@ -51,12 +51,16 @@ binary、独立进程启动，nginx 按路径前缀路由并对热点模块做�
 
 ```bash
 go build ./...
-go run ./cmd/modular/system  # :9201/ping
-go run ./cmd/modular/auth    # :9210/ping
 go run ./cmd/standalone      # :8080/auth/ping、:8080/system/ping（单体）
 
-# Docker 一键(经 nginx)
-docker compose -f deploy/docker-compose.yaml up --build
+# modular 各模块统一监听 :8080（为容器化对齐），本机同时起多个需临时改
+# configs/<module>.yaml 的 addr，否则抢端口。
+go run ./cmd/modular/system  # :8080/ping
+
+# Docker：上下文必须是仓库根目录
+docker build -f cmd/standalone/Dockerfile -t ruoyi-go:standalone .
+docker build -f cmd/modular/Dockerfile --build-arg MODULE=system -t ruoyi-go:system .
+docker build -f cmd/modular/Dockerfile --build-arg MODULE=resource -t ruoyi-go:resource .
 ```
 
 ## 移植待办

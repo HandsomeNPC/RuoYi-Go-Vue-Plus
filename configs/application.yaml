@@ -98,7 +98,11 @@ captcha:
 push:
   enabled: true                 # 关闭则不注册推送路由，且发布消息直接跳过
   transport: sse                # sse / websocket，取值非法时回落 sse
-  path: /resource/message       # 统一访问路径
+  # 相对部分，注册时拼 prefix（对齐 Java：微服务版 nacos 把 message.path 覆盖成 /message）。
+  # modular(prefix="") → /message，nginx 剥 /resource 后匹配；
+  # standalone(prefix="/resource") → /resource/message，直连。
+  # 前端两种部署都打 /resource/message。
+  path: /message
   sseTimeoutSeconds: 86400      # SSE 连接超时(秒)，到点由服务端结束、前端重连
   heartbeatSeconds: 60          # 心跳间隔(秒)，同时用于剔除失效连接
   sendBuffer: 32                # 单连接待发消息缓冲；写满即断开该慢客户端

@@ -59,12 +59,16 @@ deploy/                  nginx.conf / Dockerfile / docker-compose.yaml
 ```bash
 go build ./...              # 全量编译（提交前必过）
 go vet ./...                # 静态检查（提交前必过）
-go run ./cmd/modular/system  # 启动 system 进程 :9201
-go run ./cmd/modular/auth    # 启动 auth 进程   :9210
-go run ./cmd/standalone      # 单体进程 auth+system :8080
+go run ./cmd/standalone      # 单体进程 auth+system+monitor+resource :8080
 go mod tidy                 # 引入新依赖后整理
 
-docker compose -f deploy/docker-compose.yaml up --build   # 一键起全套(经 nginx)
+# modular 各模块统一监听 :8080（为容器化对齐），故本机同时起多个需临时改
+# configs/<module>.yaml 的 addr，否则抢端口。
+go run ./cmd/modular/system  # 启动 system 进程 :8080
+
+# 容器构建：上下文必须是仓库根目录
+docker build -f cmd/standalone/Dockerfile -t ruoyi-go:standalone .
+docker build -f cmd/modular/Dockerfile --build-arg MODULE=system -t ruoyi-go:system .
 ```
 
 新增业务代码引入 GORM/redis/viper 等依赖后，务必 `go mod tidy` 并确认 `go build ./...` 通过。

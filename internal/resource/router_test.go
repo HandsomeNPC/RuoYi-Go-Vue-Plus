@@ -36,8 +36,9 @@ func registeredRoutes(t *testing.T, prefix string) map[string]bool {
 
 // TestRegisterRoutesOssPaths OSS 的五个接口按 Java SysOssController 的方法与路径
 // 注册到真实路由表上（而非另建一份探针，那只能验 gin 的规则、验不到本文件的注册）。
+// Java 侧裸路径 /oss，这里传 /resource 验 standalone 形态。
 func TestRegisterRoutesOssPaths(t *testing.T) {
-	registered := registeredRoutes(t, RoutePrefix)
+	registered := registeredRoutes(t, "/resource")
 
 	for _, want := range []string{
 		"GET /resource/oss/list",
@@ -58,7 +59,7 @@ func TestRegisterRoutesOssPaths(t *testing.T) {
 
 // TestRegisterRoutesOssConfigPaths 对象存储配置的六个接口都已注册。
 func TestRegisterRoutesOssConfigPaths(t *testing.T) {
-	registered := registeredRoutes(t, RoutePrefix)
+	registered := registeredRoutes(t, "/resource")
 
 	for _, want := range []string{
 		"GET /resource/oss/config/list",
@@ -83,7 +84,7 @@ func TestRegisterRoutesOssConfigPaths(t *testing.T) {
 // 这条一旦破，DELETE /resource/oss/config/1 会被当成"删除 ossIds=config"而
 // 静默走错分支——把配置删除请求变成文件删除请求，且不报任何错。
 func TestOssConfigAndOssIDsCoexist(t *testing.T) {
-	registered := registeredRoutes(t, RoutePrefix)
+	registered := registeredRoutes(t, "/resource")
 
 	if !registered["DELETE /resource/oss/config/:ossConfigIds"] {
 		t.Fatal("DELETE /resource/oss/config/:ossConfigIds 未注册，配置删除会落到 /oss/:ossIds")
@@ -97,10 +98,11 @@ func TestOssConfigAndOssIDsCoexist(t *testing.T) {
 	}
 }
 
-// TestRegisterRoutesMessageBox 消息盒子随 /resource 一起归本模块
-// （Java 的 SysMessageController 挂 /resource/message，与 OSS 同前缀）。
+// TestRegisterRoutesMessageBox 消息盒子随 prefix 一起注册
+// （Java 的 SysMessageController 挂 /message/box，裸路径无模块前缀；
+// 这里传 /resource 验 standalone 形态，modular 形态由 nginx 剥前缀补回）。
 func TestRegisterRoutesMessageBox(t *testing.T) {
-	registered := registeredRoutes(t, RoutePrefix)
+	registered := registeredRoutes(t, "/resource")
 
 	if !registered["GET /resource/message/box"] {
 		t.Error("未注册路由 GET /resource/message/box")
@@ -111,11 +113,13 @@ func TestRegisterRoutesMessageBox(t *testing.T) {
 }
 
 // TestRegisterRoutesCaptchaPaths 短信与邮箱验证码端点已注册
-// （对齐 Java CaptchaController 的 /resource/sms/code 与 /resource/email/code）。
+// （对齐 Java SysSmsController/SysEmailController 的 /sms/code 与 /email/code，
+// Controller 裸路径无前缀；这里传 /resource 验 standalone 形态，前端实际经
+// 网关打 /resource/sms/code）。
 //
 // 图形验证码 /auth/code 归 auth 模块，不该在本模块出现。
 func TestRegisterRoutesCaptchaPaths(t *testing.T) {
-	registered := registeredRoutes(t, RoutePrefix)
+	registered := registeredRoutes(t, "/resource")
 
 	for _, want := range []string{
 		"GET /resource/sms/code",
@@ -141,7 +145,7 @@ func TestRegisterRoutesPrefixApplied(t *testing.T) {
 		t.Error("prefix 传空时不该出现 /resource 段，说明前缀被写死在路由里")
 	}
 
-	prefixed := registeredRoutes(t, RoutePrefix)
+	prefixed := registeredRoutes(t, "/resource")
 	if !prefixed["GET /resource/oss/list"] {
 		t.Error("prefix 传 /resource 时应注册 GET /resource/oss/list")
 	}
@@ -150,17 +154,19 @@ func TestRegisterRoutesPrefixApplied(t *testing.T) {
 	}
 }
 
-// TestRegisterPushRoutes 推送端点按配置路径注册。
+// TestRegisterPushRoutes 推送端点按 prefix + push.path 注册。
 //
 // 有意加载真实 configs/*.yaml：推送路径取自配置，一旦 yaml 里的 push.path
 // 被改坏，前端连不上而后端毫无报错——那种故障只能靠这条断言提前暴露。
+// 这里传空前缀验 modular 形态（/message）；standalone 形态（/resource/message）
+// 由 prefix 拼，覆盖在 prefix 相关的测试里。
 func TestRegisterPushRoutes(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupManager(t)
 	config.Load("../../configs/application.yaml", "../../configs/resource.yaml")
 
 	r := gin.New()
-	RegisterPushRoutes(r)
+	RegisterPushRoutes(r, "")
 
 	registered := make(map[string]bool)
 	for _, ri := range r.Routes() {
@@ -171,6 +177,7 @@ func TestRegisterPushRoutes(t *testing.T) {
 	if !cfg.Enabled {
 		t.Skip("push.enabled=false，推送端点按设计不注册")
 	}
+	// prefix 传空时注册的裸路径即 cfg.Path（/message）。
 	for _, want := range []string{"GET " + cfg.Path, "GET " + cfg.Path + "/close"} {
 		if !registered[want] {
 			t.Errorf("未注册推送路由 %s", want)

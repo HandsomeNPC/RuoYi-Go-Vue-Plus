@@ -1,6 +1,8 @@
 server:
   name: monitor
-  addr: ":9202"
+  # 各模块统一 8080：容器间网络命名空间隔离，端口由 nginx / compose 侧区分。
+  # 代价是本机 go run 起多个 modular 进程会抢端口，本地多进程调试需临时改这里。
+  addr: ":8080"
 
 # monitor 进程既读 Redis（缓存监控、解锁删 pwd_err_cnt 锁定键），又落库读 MySQL
 # （登录日志列表/删除/清空）。故需 database/snowflake/oplog/repeatsubmit：

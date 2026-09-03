@@ -19,7 +19,7 @@ const (
 func TestLoadMergesInOrder(t *testing.T) {
 	cfg := mustLoad(t, commonYAML, systemYAML)
 
-	if got, want := cfg.Server.Addr, ":9201"; got != want {
+	if got, want := cfg.Server.Addr, ":8080"; got != want {
 		t.Errorf("Server.Addr = %q, want %q", got, want)
 	}
 	if got, want := cfg.Server.Name, "system"; got != want {
@@ -44,7 +44,7 @@ func TestLoadMergesInOrder(t *testing.T) {
 
 func TestLoadAuthDiffersOnlyByServer(t *testing.T) {
 	cfg := mustLoad(t, commonYAML, authYAML)
-	if got, want := cfg.Server.Addr, ":9210"; got != want {
+	if got, want := cfg.Server.Addr, ":8080"; got != want {
 		t.Errorf("Server.Addr = %q, want %q", got, want)
 	}
 	if got, want := cfg.Server.Name, "auth"; got != want {
@@ -155,7 +155,7 @@ func TestLoadPanicsOnError(t *testing.T) {
 
 func TestLoadSucceedsWithoutPanic(t *testing.T) {
 	Load(commonYAML, systemYAML)
-	if got, want := Get().Server.Addr, ":9201"; got != want {
+	if got, want := Get().Server.Addr, ":8080"; got != want {
 		t.Errorf("Get().Server.Addr = %q, want %q", got, want)
 	}
 }
@@ -541,7 +541,7 @@ const testRSAPrivateKey = "MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBAO8QO
 // TestGetReturnsLoadedConfig Load 成功后 Get() 应返回刚加载的那份配置。
 func TestGetReturnsLoadedConfig(t *testing.T) {
 	mustLoad(t, commonYAML, systemYAML)
-	if got, want := Get().Server.Addr, ":9201"; got != want {
+	if got, want := Get().Server.Addr, ":8080"; got != want {
 		t.Errorf("Get().Server.Addr = %q, want %q", got, want)
 	}
 

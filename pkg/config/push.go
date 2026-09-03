@@ -15,12 +15,16 @@ const (
 	PushTransportWebSocket = "websocket"
 )
 
-// defaultPushPath 默认连接路径，与 Java MessageProperties.path 一致。
+// defaultPushPath 推送端点路径的相对部分，注册时由调用方拼上 prefix。
 //
-// 注意：仓库内自带的前端 apps/web-antd/src/utils/message.ts 连的是
-// /resource/sse 与 /resource/websocket，与本默认值对不上——Java 侧同样如此，
-// 靠改配置对齐。要让自带前端直接连通，把 push.path 改成对应路径即可。
-const defaultPushPath = "/resource/message"
+// 对齐 Java：微服务版 nacos 把 message.path 覆盖成 /message，网关对 /resource/**
+// 做 StripPrefix=1 剥前缀，故后端只注册裸 /message。单体/直连场景由 prefix
+// （standalone 传 /resource）拼成完整 /resource/message。
+//
+// 仓库自带前端 apps/web-antd/src/utils/message.ts 连的是 /resource/sse 与
+// /resource/websocket，与默认值对不上——Java 侧同样如此，靠改配置对齐。
+// 要让自带前端直接连通，把 push.path 改成对应路径（sse / websocket）即可。
+const defaultPushPath = "/message"
 
 // PushConfig 消息推送配置，对应 yaml 的 push 段（对照 Java MessageProperties）。
 //

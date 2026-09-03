@@ -85,9 +85,10 @@ func main() {
 
 	auth.RegisterRoutes(r, "/auth")
 	system.RegisterRoutes(r, "/system")
-	// resource 与其它模块同构，prefix 传模块名；对外即 /resource/oss、/resource/message/box。
-	resource.RegisterRoutes(r, resource.RoutePrefix)
-	resource.RegisterPushRoutes(r)
+	// resource：standalone 无网关，进程内自带 /resource 前缀（对齐 Java gateway StripPrefix=1 后的等价效果）。
+	// 推送端点靠 prefix 拼 push.path（/message），故这里也得传 /resource → /resource/message。
+	resource.RegisterRoutes(r, "/resource")
+	resource.RegisterPushRoutes(r, "/resource")
 	// monitor 与 system/auth 同构：prefix 传模块名 /monitor，对外即 /monitor/cache。
 	monitor.RegisterRoutes(r, "/monitor")
 

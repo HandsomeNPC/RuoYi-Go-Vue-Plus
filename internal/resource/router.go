@@ -28,19 +28,13 @@ const ossConfigLogTitle = "对象存储配置"
 // ossConfigStatusLogTitle 状态修改单独一个标题，对照 Java @Log(title = "对象存储状态修改")。
 const ossConfigStatusLogTitle = "对象存储状态修改"
 
-// RoutePrefix 本模块对外的路径前缀，对齐 Java 的 @RequestMapping("/resource/...")。
-//
-// 两种部署都用它（不像 system 那样 modular 传空由 nginx 剥）：
-// 推送端点走 push.path 这个绝对路径，剥前缀会让它失配。
-const RoutePrefix = "/resource"
-
 // RegisterRoutes 注册 resource 路由。
 //
-// 与 system/auth/monitor 一致：内部路由 /oss、/message 不带模块名前缀，由调用方传 prefix。
-// 但两种部署都传 "/resource"，而非 modular 传空——推送端点的路径取自 push.path
-// （绝对路径 /resource/message，注册在根引擎上，见 RegisterPushRoutes），
-// nginx 若剥掉 /resource 前缀，推送端点就会失配，故本模块的 location 不剥前缀，
-// 进程内自带完整路径。
+// 内部路由 /oss、/message 不带模块名前缀，由调用方传 prefix：
+//   - modular（InitRouter）传 ""，前端打 /resource/oss，由 nginx 剥前缀后转 /oss（对齐 Java gateway StripPrefix=1）；
+//   - standalone 传 "/resource"，无网关，进程内自带完整路径。
+//
+// 推送端点同理（见 RegisterPushRoutes），同样靠 prefix 拼，故 nginx 对 /resource/ 一视同仁地剥前缀即可。
 func RegisterRoutes(r *gin.Engine, prefix string) {
 	plugin := sagin.NewPlugin(satoken.Manager())
 
@@ -118,9 +112,12 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 
 // RegisterPushRoutes 注册推送连接端点。
 //
-// 与业务路由分开：推送路径取自配置（push.path，默认 /resource/message），
-// 是个完整绝对路径，不能套 prefix，也不属于 protected 组的中间件链。
-func RegisterPushRoutes(r *gin.Engine) {
+// 推送路径取自配置（push.path，相对部分，默认 /message），注册时拼上 prefix：
+// 与业务路由同前缀策略——modular 传 "" 得 /message（nginx 剥 /resource 后匹配），
+// standalone 传 "/resource" 得 /resource/message（直连）。对齐 Java：微服务版
+// nacos 把 message.path 覆盖成 /message，网关 StripPrefix=1 剥 /resource。
+// 不属于 protected 组的中间件链，单独注册在根引擎上。
+func RegisterPushRoutes(r *gin.Engine, prefix string) {
 	// 推送端点按 push.transport 决定走 SSE 还是 WebSocket，路径取配置值。
 	// 未启用推送时不注册，避免前端连上一个只会报错的端点。
 	cfg := config.Get().Push
@@ -129,19 +126,20 @@ func RegisterPushRoutes(r *gin.Engine) {
 	}
 
 	plugin := sagin.NewPlugin(satoken.Manager())
+	path := prefix + cfg.Path
 	// NormalizeQueryToken 须排在 TokenInterceptor 之前：EventSource/WebSocket
 	// 不能自定义请求头，token 只能走 query，形如 ?Authorization=Bearer xxx，
 	// 而 sa-token-go 的 query 分支不剥 Bearer 前缀，不规范化会一律 401。
-	r.GET(cfg.Path, push.NormalizeQueryToken(), plugin.TokenInterceptor(),
+	r.GET(path, push.NormalizeQueryToken(), plugin.TokenInterceptor(),
 		sagin.CheckLogin(), push.Handler())
 	// close 对齐 Java SseController.close：前端主动断开时清掉服务端会话，
 	// 不必等心跳超时才回收。
-	r.GET(cfg.Path+"/close", push.NormalizeQueryToken(), plugin.TokenInterceptor(),
+	r.GET(path+"/close", push.NormalizeQueryToken(), plugin.TokenInterceptor(),
 		sagin.CheckLogin(), push.CloseHandler())
 }
 
 // InitRouter 构建并返回 resource 进程的 gin 引擎(独立部署用)。
-// 传 /resource 前缀，nginx 转发时不剥（推送端点的绝对路径依赖它，见 RegisterRoutes）。
+// prefix 传空：modular 部署经 nginx 剥 /resource，进程内只注册裸路径。
 func InitRouter() *gin.Engine {
 	r := gin.New()
 
@@ -153,8 +151,8 @@ func InitRouter() *gin.Engine {
 	r.Use(middleware.XSS())
 	r.Use(middleware.I18n())
 
-	RegisterRoutes(r, RoutePrefix)
-	RegisterPushRoutes(r)
+	RegisterRoutes(r, "")
+	RegisterPushRoutes(r, "")
 
 	return r
 }

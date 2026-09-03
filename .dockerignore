@@ -1,0 +1,30 @@
+# 构建上下文瘦身。注意 configs/ 不能排除 —— 两个 Dockerfile 都要 COPY 它。
+.git
+.gitignore
+.idea
+.vscode
+.claude
+
+# 编译产物
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+dist/
+
+# 测试与覆盖率
+*.test
+*.out
+coverage.*
+
+# 文档与建表脚本，镜像里用不到
+docs/
+script/
+README.md
+CLAUDE.md
+
+# 系统文件
+.DS_Store
+Thumbs.db

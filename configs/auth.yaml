@@ -1,6 +1,8 @@
 server:
   name: auth
-  addr: ":9210"
+  # 各模块统一 8080：容器间网络命名空间隔离，端口由 nginx / compose 侧区分。
+  # 代价是本机 go run 起多个 modular 进程会抢端口，本地多进程调试需临时改这里。
+  addr: ":8080"
 
 # 各进程共用同一个库，workerId 必须互不相同，否则雪花主键会撞号。
 # 分配：auth=1 system=2 standalone=0
