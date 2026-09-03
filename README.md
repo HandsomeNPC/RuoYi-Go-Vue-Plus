@@ -1,5 +1,8 @@
 # RuoYi-Go-Vue-Plus
 
+- **GitHub 地址**：<https://github.com/HandsomeNPC/RuoYi-Go-Vue-Plus>
+- **Gitee 地址**：<https://gitee.com/handsome-npc/RuoYi-Go-Vue-Plus>
+
 <p align="center">
   <img src="docs/ruoyi-go-vue-plus-banner.png" alt="RuoYi-Go-Vue-Plus Banner"/>
 </p>
