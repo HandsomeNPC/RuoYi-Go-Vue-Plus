@@ -10,8 +10,8 @@ import (
 //   - nil→nil：Pointer 构建器默认守卫，无需设置。
 //   - ignoreMissing yes：无源对应字段（BaseEntity 审计子字段、DelFlag 等）留零。
 //   - skipCopySameType yes：同类型直接拷贝，免 time.Time 未导出字段报错。
-//   - map . BaseEntity（3 特例）：整个 BO 作为源填嵌入式 BaseEntity，按名写
-//     CreateBy/UpdateBy（SysUser）、CreateBy（SysOss）、CreateDept（SysDictData）。
+//   - map . BaseEntity（2 特例）：整个 BO 作为源填嵌入式 BaseEntity，按名写
+//     CreateBy/UpdateBy（SysUser）、CreateDept（SysDictData）。
 //
 // 命名 ConvertTo<Target>；列表加 List；profile 用 FromProfile 消歧。
 //
@@ -49,13 +49,6 @@ type Converter interface {
 
 	ConvertToSysOperLog(b *SysOperLogBo) *systemmodel.SysOperLog
 	ConvertToSysOperLogList(in []*SysOperLogBo) []*systemmodel.SysOperLog
-
-	//goverter:map . BaseEntity
-	ConvertToSysOss(b *SysOssBo) *systemmodel.SysOss
-	ConvertToSysOssList(in []*SysOssBo) []*systemmodel.SysOss
-
-	ConvertToSysOssConfig(b *SysOssConfigBo) *systemmodel.SysOssConfig
-	ConvertToSysOssConfigList(in []*SysOssConfigBo) []*systemmodel.SysOssConfig
 
 	ConvertToSysPost(b *SysPostBo) *systemmodel.SysPost
 	ConvertToSysPostList(in []*SysPostBo) []*systemmodel.SysPost

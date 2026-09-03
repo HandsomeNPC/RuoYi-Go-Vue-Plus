@@ -2,12 +2,15 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/gin-gonic/gin"
 
 	"ruoyi-go-vue-plus/internal/auth"
 	"ruoyi-go-vue-plus/internal/monitor"
+	"ruoyi-go-vue-plus/internal/resource"
+	resourceservice "ruoyi-go-vue-plus/internal/resource/service"
 	"ruoyi-go-vue-plus/internal/system"
 	systemservice "ruoyi-go-vue-plus/internal/system/service"
 	"ruoyi-go-vue-plus/pkg/captcha"
@@ -54,6 +57,13 @@ func main() {
 	push.Init()
 	defer push.Shutdown()
 
+	// OSS 配置预热：把库里的配置写进缓存并确定默认配置键。
+	// 不预热的话首次上传会因取不到默认配置而失败。依赖 database 与 redis。
+	if err := resourceservice.OssConfigSvcApp.InitCache(context.Background()); err != nil {
+		// 不 fatal：配置表为空或库暂时不可用时，配置管理接口仍应能用来补配置。
+		log.Printf("[standalone] OSS 配置预热失败，上传功能暂不可用: %v", err)
+	}
+
 	// 单体引擎：全局中间件装配一次，auth/system 各自只注册本模块路由。
 	// standalone 部署保留 /auth、/system 前缀(与前端直连的网关路径一致)。
 	r := gin.New()
@@ -67,8 +77,9 @@ func main() {
 
 	auth.RegisterRoutes(r, "/auth")
 	system.RegisterRoutes(r, "/system")
-	// /resource/* 不带模块前缀(对齐 Java)，故在 /system 之外单独注册。
-	system.RegisterResourceRoutes(r)
+	// resource 与其它模块同构，prefix 传模块名；对外即 /resource/oss、/resource/message/box。
+	resource.RegisterRoutes(r, resource.RoutePrefix)
+	resource.RegisterPushRoutes(r)
 	// monitor 与 system/auth 同构：prefix 传模块名 /monitor，对外即 /monitor/cache。
 	monitor.RegisterRoutes(r, "/monitor")
 

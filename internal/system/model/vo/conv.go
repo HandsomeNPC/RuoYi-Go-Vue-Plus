@@ -66,13 +66,6 @@ type Converter interface {
 	ConvertToSysOperLogVoList(in []*systemmodel.SysOperLog) []*SysOperLogVo
 
 	//goverter:autoMap BaseEntity
-	ConvertToSysOssVo(o *systemmodel.SysOss) *SysOssVo
-	ConvertToSysOssVoList(in []*systemmodel.SysOss) []*SysOssVo
-
-	ConvertToSysOssConfigVo(c *systemmodel.SysOssConfig) *SysOssConfigVo
-	ConvertToSysOssConfigVoList(in []*systemmodel.SysOssConfig) []*SysOssConfigVo
-
-	//goverter:autoMap BaseEntity
 	ConvertToSysPostVo(p *systemmodel.SysPost) *SysPostVo
 	ConvertToSysPostVoList(in []*systemmodel.SysPost) []*SysPostVo
 

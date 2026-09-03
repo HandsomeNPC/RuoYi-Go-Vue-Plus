@@ -9,7 +9,9 @@ type SysOss struct {
 	FileSuffix   string `gorm:"column:file_suffix" json:"fileSuffix"`
 	URL          string `gorm:"column:url" json:"url"`
 	Ext1         string `gorm:"column:ext1" json:"ext1"`
-	Service      string `gorm:"column:service" json:"service"`
+	// Service 上传时所用配置的 config_key（非厂商名）。
+	// 下载与删除据此回查配置，默认配置切换后老文件仍走原配置。
+	Service string `gorm:"column:service" json:"service"`
 
 	BaseEntity
 }

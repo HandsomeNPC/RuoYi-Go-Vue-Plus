@@ -320,65 +320,6 @@ func (c *ConverterImpl) ConvertToSysOperLogVoList(source []*model.SysOperLog) []
 	}
 	return pVoSysOperLogVoList
 }
-func (c *ConverterImpl) ConvertToSysOssConfigVo(source *model.SysOssConfig) *SysOssConfigVo {
-	var pVoSysOssConfigVo *SysOssConfigVo
-	if source != nil {
-		var voSysOssConfigVo SysOssConfigVo
-		voSysOssConfigVo.OssConfigID = (*source).OssConfigID
-		voSysOssConfigVo.ConfigKey = (*source).ConfigKey
-		voSysOssConfigVo.AccessKey = (*source).AccessKey
-		voSysOssConfigVo.SecretKey = (*source).SecretKey
-		voSysOssConfigVo.BucketName = (*source).BucketName
-		voSysOssConfigVo.Prefix = (*source).Prefix
-		voSysOssConfigVo.Endpoint = (*source).Endpoint
-		voSysOssConfigVo.DomainURL = (*source).DomainURL
-		voSysOssConfigVo.IsHttps = (*source).IsHttps
-		voSysOssConfigVo.Region = (*source).Region
-		voSysOssConfigVo.Status = (*source).Status
-		voSysOssConfigVo.Ext1 = (*source).Ext1
-		voSysOssConfigVo.Remark = (*source).Remark
-		voSysOssConfigVo.AccessPolicy = (*source).AccessPolicy
-		pVoSysOssConfigVo = &voSysOssConfigVo
-	}
-	return pVoSysOssConfigVo
-}
-func (c *ConverterImpl) ConvertToSysOssConfigVoList(source []*model.SysOssConfig) []*SysOssConfigVo {
-	var pVoSysOssConfigVoList []*SysOssConfigVo
-	if source != nil {
-		pVoSysOssConfigVoList = make([]*SysOssConfigVo, len(source))
-		for i := 0; i < len(source); i++ {
-			pVoSysOssConfigVoList[i] = c.ConvertToSysOssConfigVo(source[i])
-		}
-	}
-	return pVoSysOssConfigVoList
-}
-func (c *ConverterImpl) ConvertToSysOssVo(source *model.SysOss) *SysOssVo {
-	var pVoSysOssVo *SysOssVo
-	if source != nil {
-		var voSysOssVo SysOssVo
-		voSysOssVo.OssID = (*source).OssID
-		voSysOssVo.FileName = (*source).FileName
-		voSysOssVo.OriginalName = (*source).OriginalName
-		voSysOssVo.FileSuffix = (*source).FileSuffix
-		voSysOssVo.URL = (*source).URL
-		voSysOssVo.Ext1 = (*source).Ext1
-		voSysOssVo.CreateTime = (*source).BaseEntity.CreateTime
-		voSysOssVo.CreateBy = (*source).BaseEntity.CreateBy
-		voSysOssVo.Service = (*source).Service
-		pVoSysOssVo = &voSysOssVo
-	}
-	return pVoSysOssVo
-}
-func (c *ConverterImpl) ConvertToSysOssVoList(source []*model.SysOss) []*SysOssVo {
-	var pVoSysOssVoList []*SysOssVo
-	if source != nil {
-		pVoSysOssVoList = make([]*SysOssVo, len(source))
-		for i := 0; i < len(source); i++ {
-			pVoSysOssVoList[i] = c.ConvertToSysOssVo(source[i])
-		}
-	}
-	return pVoSysOssVoList
-}
 func (c *ConverterImpl) ConvertToSysPostVo(source *model.SysPost) *SysPostVo {
 	var pVoSysPostVo *SysPostVo
 	if source != nil {

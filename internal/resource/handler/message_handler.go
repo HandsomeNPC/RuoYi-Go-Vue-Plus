@@ -12,6 +12,10 @@ import (
 )
 
 // MessageApi 消息记录接口（对应 Java SysMessageController）。
+//
+// 挂在 resource 模块只因 Java 把它放在 /resource/message 下；
+// 业务逻辑仍归 system 的 MessageService——公告新增时也要发消息，
+// 那条路径在 system 进程内，服务层搬过来反而要跨模块回调。
 type MessageApi struct{}
 
 // MessageApiApp 包级实例。

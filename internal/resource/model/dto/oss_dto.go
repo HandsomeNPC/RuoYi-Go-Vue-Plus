@@ -1,6 +1,7 @@
 package dto
 
 // OssDTO OSS 文件简要信息对象，对应 Java org.dromara.system.api.domain.OssDTO。
+// 供跨模块取文件 URL（如用户头像）用，不含审计字段。
 type OssDTO struct {
 	// OssID 对象存储主键。
 	OssID int64 `json:"ossId"`

@@ -16,4 +16,8 @@ const (
 
 	// SocialAuthCodeKey 三方认证 state，后接 state 值。
 	SocialAuthCodeKey = GlobalRedisKey + "social_auth_codes:"
+
+	// OssDefaultConfigKey 当前生效的对象存储配置键，值是 sys_oss_config.config_key。
+	// 与 CacheSysOssConfig 缓存组分工：那边存各配置的完整 JSON，这里只记用哪一个。
+	OssDefaultConfigKey = GlobalRedisKey + "sys_oss:default_config"
 )

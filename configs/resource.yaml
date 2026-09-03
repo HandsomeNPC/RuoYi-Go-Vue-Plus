@@ -1,0 +1,9 @@
+server:
+  name: resource
+  addr: ":9203"
+
+# 各进程共用同一个库，workerId 必须互不相同，否则雪花主键会撞号。
+# 分配：auth=1 system=2 resource=3 standalone=0
+snowflake:
+  workerId: 3
+  datacenterId: 0

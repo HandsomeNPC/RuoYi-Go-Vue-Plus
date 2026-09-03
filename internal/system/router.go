@@ -7,13 +7,11 @@ import (
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 
 	"ruoyi-go-vue-plus/internal/system/handler"
-	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/encrypt"
 	"ruoyi-go-vue-plus/pkg/enum"
 	"ruoyi-go-vue-plus/pkg/middleware"
 	"ruoyi-go-vue-plus/pkg/oplog"
-	"ruoyi-go-vue-plus/pkg/push"
 	"ruoyi-go-vue-plus/pkg/repeatsubmit"
 	"ruoyi-go-vue-plus/pkg/satoken"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
@@ -395,41 +393,11 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 		oplog.Log(roleLogTitle, enum.BusinessTypeDelete), handler.RoleApiApp.Remove)
 }
 
-// RegisterResourceRoutes 注册消息盒子与推送连接端点。
-//
-// 单独成函数而非并入 RegisterRoutes：这些路由在 Java 侧挂在 /resource/* 下，
-// 不带 /system 前缀。standalone 部署要把它们注册在 /system 之外，
-// 而 modular 部署下 system 进程本身无前缀、由 nginx 另配 location 转发，
-// 两种部署对前缀的要求不同，只能由调用方各自决定。
-func RegisterResourceRoutes(r *gin.Engine) {
-	plugin := sagin.NewPlugin(satoken.Manager())
-
-	resource := r.Group("/resource")
-	// AuditContext 须排在 TokenInterceptor 之后：它取的登录态依赖后者解析出的 token。
-	resource.Use(plugin.TokenInterceptor(), loginhelper.AuditContext())
-
-	// 与 Java 一致不校验权限码，仅需登录：消息盒子只返回当前用户自己的消息。
-	resource.GET("/message/box", sagin.CheckLogin(), handler.MessageApiApp.GetBox)
-
-	// 推送端点按 push.transport 决定走 SSE 还是 WebSocket，路径取配置值。
-	// 未启用推送时不注册，避免前端连上一个只会报错的端点。
-	cfg := config.Get().Push
-	if !cfg.Enabled {
-		return
-	}
-	// NormalizeQueryToken 须排在 TokenInterceptor 之前：EventSource/WebSocket
-	// 不能自定义请求头，token 只能走 query，形如 ?Authorization=Bearer xxx，
-	// 而 sa-token-go 的 query 分支不剥 Bearer 前缀，不规范化会一律 401。
-	r.GET(cfg.Path, push.NormalizeQueryToken(), plugin.TokenInterceptor(),
-		sagin.CheckLogin(), push.Handler())
-	// close 对齐 Java SseController.close：前端主动断开时清掉服务端会话，
-	// 不必等心跳超时才回收。
-	r.GET(cfg.Path+"/close", push.NormalizeQueryToken(), plugin.TokenInterceptor(),
-		sagin.CheckLogin(), push.CloseHandler())
-}
-
 // InitRouter 构建并返回 system 进程的 gin 引擎(独立部署用)。
 // 独立部署不带 /system 前缀，交给 nginx 代理时剥离。
+//
+// /resource/* 的路由（消息盒子、推送端点）归 internal/resource——
+// 那批接口在 Java 侧同属 /resource 前缀，与 OSS 一起由 resource 进程承载。
 func InitRouter() *gin.Engine {
 	r := gin.New()
 
@@ -442,9 +410,6 @@ func InitRouter() *gin.Engine {
 	r.Use(middleware.I18n())
 
 	RegisterRoutes(r, "")
-	// /resource/* 本就不带模块前缀，与业务路由同层注册即可；
-	// nginx 侧需另配 location /resource/ 转到本进程。
-	RegisterResourceRoutes(r)
 
 	return r
 }

@@ -218,11 +218,14 @@ func (s *ConfigService) UpdateConfigByKey(ctx context.Context, b *bo.SysConfigUp
 	// 更新失败时缓存宁可空着走一次 DB，也不能留着与库不一致的旧值。
 	_ = cache.Evict(ctx, constant.CacheSysConfig, b.ConfigKey)
 
+	// 在此处收成 string，不把 LooseString 带进 repository 与缓存：
+	// 那个宽容类型只为兼容入参形态而存在，落库与缓存都该是普通字符串。
+	configValue := b.ConfigValue.String()
 	if _, err := repo.UpdateByKey(ctx, b.ConfigKey,
-		map[string]any{"config_value": b.ConfigValue}); err != nil {
+		map[string]any{"config_value": configValue}); err != nil {
 		return err
 	}
-	_ = cache.Put(ctx, constant.CacheSysConfig, b.ConfigKey, b.ConfigValue,
+	_ = cache.Put(ctx, constant.CacheSysConfig, b.ConfigKey, configValue,
 		constant.CacheTTLSysConfig)
 	return nil
 }
