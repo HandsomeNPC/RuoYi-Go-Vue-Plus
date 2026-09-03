@@ -266,4 +266,13 @@ docs/CRUD-SPEC.md             增删改查落地模板与踩坑点（写 CRUD �
 分层依赖单向：`handler → service → repository → model`，禁止反向依赖、禁止 handler 直连 repository。`pkg` 不能 import
 `internal`（注解层落库等场景用 Recorder 回调让 internal 反向注册）。
 
+## 开源协议
+
+本项目基于 [MIT License](LICENSE) 开源，转载 / 二次开发请注明原作者与出处。
+
+## 联系方式
+
+- 邮箱：<401030526@qq.com>
+- QQ：401030526
+
 
