@@ -79,6 +79,63 @@ func (*UserService) LoadUserByUsername(ctx context.Context, username string) (*v
 	return user, nil
 }
 
+// LoadUserByPhone 按手机号加载可登录用户，并校验是否存在或被停用
+// （对应 Java SmsAuthStrategy#loadUserByPhoneNumber）。
+func (*UserService) LoadUserByPhone(ctx context.Context, phone string) (*vo.SysUserVo, error) {
+	entity, err := repository.NewUserRepository(database.DB()).SelectByPhone(ctx, phone)
+	if err != nil {
+		if errors.Is(err, repository.ErrUserNotFound) {
+			log.Printf("[auth] 登录用户: %s 不存在", phone)
+			return nil, errs.New(0, i18n.Msg(ctx, "user.not.exists", phone), "")
+		}
+		return nil, err
+	}
+	user := vo.Conv.ConvertToSysUserVo(entity)
+	if user.Status == enum.UserStatusDisable.Code {
+		log.Printf("[auth] 登录用户: %s 已被停用", phone)
+		return nil, errs.New(0, i18n.Msg(ctx, "user.blocked", phone), "")
+	}
+	return user, nil
+}
+
+// LoadUserByEmail 按邮箱加载可登录用户，并校验是否存在或被停用
+// （对应 Java EmailAuthStrategy#loadUserByEmail）。
+func (*UserService) LoadUserByEmail(ctx context.Context, email string) (*vo.SysUserVo, error) {
+	entity, err := repository.NewUserRepository(database.DB()).SelectByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, repository.ErrUserNotFound) {
+			log.Printf("[auth] 登录用户: %s 不存在", email)
+			return nil, errs.New(0, i18n.Msg(ctx, "user.not.exists", email), "")
+		}
+		return nil, err
+	}
+	user := vo.Conv.ConvertToSysUserVo(entity)
+	if user.Status == enum.UserStatusDisable.Code {
+		log.Printf("[auth] 登录用户: %s 已被停用", email)
+		return nil, errs.New(0, i18n.Msg(ctx, "user.blocked", email), "")
+	}
+	return user, nil
+}
+
+// LoadUserByID 按用户ID加载可登录用户，并校验是否存在或被停用
+// （对应 Java SocialAuthStrategy#loadUser）。供三方登录按绑定关系回查系统用户。
+func (*UserService) LoadUserByID(ctx context.Context, userID int64) (*vo.SysUserVo, error) {
+	entity, err := repository.NewUserRepository(database.DB()).SelectByUserID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, repository.ErrUserNotFound) {
+			log.Printf("[auth] 登录用户: %d 不存在", userID)
+			return nil, errs.New(0, i18n.Msg(ctx, "user.not.exists", ""), "")
+		}
+		return nil, err
+	}
+	user := vo.Conv.ConvertToSysUserVo(entity)
+	if user.Status == enum.UserStatusDisable.Code {
+		log.Printf("[auth] 登录用户: %d 已被停用", userID)
+		return nil, errs.New(0, i18n.Msg(ctx, "user.blocked", ""), "")
+	}
+	return user, nil
+}
+
 // SelectUserByID 按用户ID查用户并回填角色（对应 Java ISysUserService#selectUserById）。
 // Java 原用 DataPermissionHelper.ignore 跳过数据权限隔离；Go 侧数据权限尚未落地，
 // 此处直接查库。用户不存在返回 (nil, nil)，由 handler 转成"没有权限访问用户数据"。

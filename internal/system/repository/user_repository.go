@@ -66,6 +66,44 @@ func (r *UserRepository) SelectByUserName(ctx context.Context, userName string) 
 	return &user, nil
 }
 
+// SelectByPhone 按手机号查用户，不存在时返回 ErrUserNotFound。
+func (r *UserRepository) SelectByPhone(ctx context.Context, phone string) (*model.SysUser, error) {
+	if phone == "" {
+		return nil, ErrUserNotFound
+	}
+
+	var user model.SysUser
+	err := r.db.WithContext(ctx).
+		Where("phone_number = ?", phone).
+		First(&user).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrUserNotFound
+		}
+		return nil, fmt.Errorf("repository: 按手机号查询用户 %q 失败: %w", phone, err)
+	}
+	return &user, nil
+}
+
+// SelectByEmail 按邮箱查用户，不存在时返回 ErrUserNotFound。
+func (r *UserRepository) SelectByEmail(ctx context.Context, email string) (*model.SysUser, error) {
+	if email == "" {
+		return nil, ErrUserNotFound
+	}
+
+	var user model.SysUser
+	err := r.db.WithContext(ctx).
+		Where("email = ?", email).
+		First(&user).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrUserNotFound
+		}
+		return nil, fmt.Errorf("repository: 按邮箱查询用户 %q 失败: %w", email, err)
+	}
+	return &user, nil
+}
+
 // SelectUserNamesByIDs 按用户ID批量取账号，返回 id → user_name 映射
 // （对应 Java selectUserNameById 的批量形态，供 USER_ID_TO_NAME 翻译用）。
 //

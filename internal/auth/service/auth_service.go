@@ -24,6 +24,9 @@ type AuthStrategy interface {
 // authStrategies 按 grantType 分派授权策略
 var authStrategies = map[string]AuthStrategy{
 	enum.LoginTypePassword.Code: &passwordAuthStrategy{},
+	enum.LoginTypeSms.Code:      &smsAuthStrategy{},
+	enum.LoginTypeEmail.Code:    &emailAuthStrategy{},
+	enum.LoginTypeSocial.Code:   &socialAuthStrategy{},
 }
 
 // Login 登录
