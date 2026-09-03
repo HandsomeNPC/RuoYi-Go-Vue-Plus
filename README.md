@@ -1,5 +1,9 @@
 # RuoYi-Go-Vue-Plus
 
+<p align="center">
+  <img src="docs/ruoyi-go-vue-plus-banner.png" alt="RuoYi-Go-Vue-Plus Banner"/>
+</p>
+
 > 本仓库基于RuoYi-Go-Vue-Plus 6.X的 Go (Gin) 重写版，致敬原项目作者「疯狂的狮子Li」及若依开源社区。前端项目适配RuoYi-Plus-UI-6.X
 
 ## 项目介绍
@@ -7,15 +11,8 @@
 - **原作者 (Java版 6.X)**：[RuoYi-Vue-Plus](https://gitee.com/dromara/RuoYi-Vue-Plus)（Java 版，dromara / 若依团队）。
 - **UI地址 (适配原项目UI 6.X)**: [https://gitee.com/JavaLionLi/plus-ui](https://gitee.com/JavaLionLi/plus-ui)
 - **语言 / 框架**：Go 1.26+ 、Gin、GORM、go-redis。
-- **数据库 / 缓存**：MySQL（所有进程共用同一个库 `ry-cloud`）+ Redis（会话 / 缓存 / 分布式锁 / 验证码 / 推送分发）。
-- **认证鉴权**：复刻 Java 版 sa-token，改用 `sa-token-go`（JWT + Redis 存会话），权限码校验落在 `pkg/middleware` 鉴权中间件。
-- **架构形态**：
-    - **单体（standalone）**：`cmd/standalone` 一个进程装配 auth + system + monitor + resource，监听 `:8080`，路由带 `/auth`、
-      `/system`、`/resource`、`/monitor` 前缀。
-    - **多模块（modular）**：`cmd/modular/<module>` 每模块一进程，各进程路由以空前缀注册、统一监听 `:8080`，由 nginx 按路径前缀分流并
-      `StripPrefix` 剥前缀。
-- **业务模块**：`auth`（登录 / 验证码 / 三方绑定）、`system`（用户 / 角色 / 菜单 / 部门 / 字典 / 参数 / 公告 / 客户端 /
-  社交账号）、`monitor`（在线用户 / 登录日志 / 操作日志 / 缓存监控）、`resource`（OSS 对象存储 / 消息推送 / 短信 / 邮箱验证码）。
+- **数据库 / 缓存**：MySQL+ Redis
+- **主要优势**: golang启动更快 (毫秒级),占用资源更少
 
 ## 环境准备
 
