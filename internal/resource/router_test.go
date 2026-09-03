@@ -110,6 +110,26 @@ func TestRegisterRoutesMessageBox(t *testing.T) {
 	}
 }
 
+// TestRegisterRoutesCaptchaPaths 短信与邮箱验证码端点已注册
+// （对齐 Java CaptchaController 的 /resource/sms/code 与 /resource/email/code）。
+//
+// 图形验证码 /auth/code 归 auth 模块，不该在本模块出现。
+func TestRegisterRoutesCaptchaPaths(t *testing.T) {
+	registered := registeredRoutes(t, RoutePrefix)
+
+	for _, want := range []string{
+		"GET /resource/sms/code",
+		"GET /resource/email/code",
+	} {
+		if !registered[want] {
+			t.Errorf("未注册路由 %s", want)
+		}
+	}
+	if registered["GET /resource/auth/code"] || registered["GET /resource/code"] {
+		t.Error("图形验证码属 auth 模块，不应在 resource 注册")
+	}
+}
+
 // TestRegisterRoutesPrefixApplied 前缀由调用方传入，不写死在路由里。
 // 传空即得到裸路径，传 /resource 才有模块段——这条保证 prefix 参数真的生效。
 func TestRegisterRoutesPrefixApplied(t *testing.T) {

@@ -30,6 +30,11 @@ const (
 
 	// RegexStatus 通用状态（0 正常，1 停用）。
 	RegexStatus = `^[01]$`
+
+	// RegexEmail 邮箱地址，对照 hutool Validator.isEmail 所用的模式。
+	// 本地部分放行常见的点/加号/连字符等，域名部分要求至少两级且顶级域为字母。
+	RegexEmail = `^[\w!#$%&'*+/=?^_` + "`" + `{|}~-]+(?:\.[\w!#$%&'*+/=?^_` + "`" +
+		`{|}~-]+)*@(?:[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?\.)+[A-Za-z]{2,}$`
 )
 
 var (
@@ -41,6 +46,7 @@ var (
 	PatternPostalCode       = regexp.MustCompile(RegexPostalCode)
 	PatternAccount          = regexp.MustCompile(RegexAccount)
 	PatternStatus           = regexp.MustCompile(RegexStatus)
+	PatternEmail            = regexp.MustCompile(RegexEmail)
 )
 
 // 密码校验参数。

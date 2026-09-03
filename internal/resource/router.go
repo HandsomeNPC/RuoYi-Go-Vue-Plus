@@ -2,6 +2,7 @@ package resource
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
@@ -12,6 +13,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/middleware"
 	"ruoyi-go-vue-plus/pkg/oplog"
 	"ruoyi-go-vue-plus/pkg/push"
+	"ruoyi-go-vue-plus/pkg/ratelimiter"
 	"ruoyi-go-vue-plus/pkg/repeatsubmit"
 	"ruoyi-go-vue-plus/pkg/satoken"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
@@ -53,6 +55,22 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 
 	// 与 Java 一致不校验权限码，仅需登录：消息盒子只返回当前用户自己的消息。
 	protected.GET("/message/box", sagin.CheckLogin(), handler.MessageApiApp.GetBox)
+
+	// 短信/邮箱验证码：登录前就要调，必须免鉴权。Java 侧整个 CaptchaController
+	// 挂 @SaIgnore，而这两个端点落在带 TokenInterceptor 的组内，故显式 Ignore 放行。
+	//
+	// 限流对照 Java @RateLimiter(key="#phoneNumber", time=60, count=1)：同一手机号
+	// /邮箱 60 秒 1 次。Java 把 emailCode/emailCodeImpl 拆两层使开关关闭时不触发限流，
+	// Go 侧限流是 handler 之前的中间件，做不到同样的拆分——后果仅是邮箱功能关闭时
+	// 重复请求也占额度，接口本就返回失败，不值得为此把限流下沉进 handler。
+	protected.GET("/sms/code", sagin.Ignore(),
+		ratelimiter.RateLimiterWithKeyFunc(time.Minute, 1,
+			func(c *gin.Context) string { return c.Query("phoneNumber") }, 0, ""),
+		handler.CaptchaApiApp.SmsCode)
+	protected.GET("/email/code", sagin.Ignore(),
+		ratelimiter.RateLimiterWithKeyFunc(time.Minute, 1,
+			func(c *gin.Context) string { return c.Query("email") }, 0, ""),
+		handler.CaptchaApiApp.EmailCode)
 
 	// /oss/config 必须先于 /oss 注册组：两组的静态段虽然 gin 能区分，
 	// 但先注册更具体的路径可避免 DELETE /oss/config/:ids 被 /oss/:ossIds 吃掉。
