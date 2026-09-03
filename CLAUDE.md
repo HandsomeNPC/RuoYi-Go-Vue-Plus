@@ -10,27 +10,41 @@
 ## 项目定位
 
 - 参照 `E:\WorkSpace\RuoYi-Plus\RuoYi-Vue-Plus` 的功能，用 Go + Gin 重新实现。
-- 架构： **多模块拆进程 + nginx 负载均衡**。每个业务模块编译成独立 binary、独立进程启动。
-- 数据库： **MySQL + GORM**，所有进程共用同一个库。Redis 做会话/缓存/分布式锁。
+- 架构： **多模块拆进程 + nginx 负载均衡**。每个业务模块编译成独立 binary、独立进程启动；另提供 `standalone`
+  单体入口，四模块同进程，便于本地调试。
+- 四个业务模块：`auth`（登录 / 验证码 / 三方绑定）、`system`（用户 / 角色 / 菜单 / 部门 / 字典 / 参数 / 公告 / 客户端 /
+  社交账号）、`monitor`（在线用户 / 登录日志 / 操作日志 / 缓存监控）、`resource`（OSS 对象存储 / 消息推送 / 短信 / 邮箱验证码）。
+- 数据库： **MySQL + GORM**，所有进程共用同一个库（`ry-cloud`）。Redis 做会话 / 缓存 / 分布式锁 / 验证码 / 推送分发。
 
 ## 目录结构与分层
 
 标准 Go 布局，`internal` 按模块组织，严格三层：
 
 ```
-cmd/<module>/main.go     进程入口，一个目录 = 一个进程
+cmd/
+  standalone/main.go        单体入口：auth+system+monitor+resource 同进程 :8080
+  modular/
+    <module>/main.go        多模块入口，每模块一进程（auth/system/monitor/resource）
+    Dockerfile              多模块通用镜像（--build-arg MODULE 选入口）
+  standalone/Dockerfile     单体镜像
 internal/<module>/
-  router.go              路由注册 RegisterRoutes(r, deps)
-  handler/               HTTP 层：绑定参数、调 service、返回 response.R
-  service/               业务逻辑；system 的 service 导出供 auth 复用
-  repository/            数据访问，只有这一层碰 GORM/DB
-  model/                 entity(表) / dto(入参) / vo(出参)
-pkg/                     可复用公共库(response/config/database/redis/middleware/auth/constant)
-configs/                 application.yaml(公共) + <module>.yaml(各进程端口)
-deploy/                  nginx.conf / Dockerfile / docker-compose.yaml
+  router.go                 路由注册 RegisterRoutes(r, prefix)
+  handler/                  HTTP 层：绑定参数、调 service、返回 response.R
+  service/                  业务逻辑；system 的 service 导出供 auth 复用
+  repository/               数据访问，只有这一层碰 GORM/DB
+  model/                    entity(表) / dto(入参) / vo(出参)
+pkg/                        可复用公共库（response/config/database/redis/
+                            middleware/satoken/constant/oplog/excel/oss/push...）
+configs/                    application.yaml(公共) + <module>.yaml(各进程端口/雪花ID)
+script/sql/                 ry_vue.sql 建表 SQL（复用原项目表结构）
+docs/                       CRUD-SPEC.md（写 CRUD 前先读）
 ```
 
-**分层依赖是单向的**：`handler → service → repository → model`。禁止反向依赖，禁止 handler 直连 repository。
+> nginx 负载均衡 / 前缀剥离的配置不在仓库内（各 modular 进程路由以空前缀注册，由上游网关 StripPrefix=1 剥前缀），需要时自行补
+> `deploy/` 目录。
+
+**分层依赖是单向的**：`handler → service → repository → model`。禁止反向依赖，禁止 handler 直连 repository。`pkg` 不能
+import `internal`（注解层落库等场景用 Recorder 回调让 internal 反向注册）。
 
 ## 关键约定（务必遵守）
 
@@ -96,4 +110,4 @@ docker build -f cmd/modular/Dockerfile --build-arg MODULE=system -t ruoyi-go:sys
 ## 参考
 
 - 原项目：`E:\WorkSpace\RuoYi-Plus\RuoYi-Vue-Plus`（Java 源码，迁移时对照它的业务逻辑）
-- 建表 SQL：原项目 `script/sql/` 目录，表结构直接复用
+- 建表 SQL：本仓库 `script/sql/ry_vue.sql`（表结构直接复用原项目）
