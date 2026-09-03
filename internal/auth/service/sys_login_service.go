@@ -12,6 +12,7 @@ import (
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 	"golang.org/x/sync/errgroup"
 
+	systembo "ruoyi-go-vue-plus/internal/system/model/bo"
 	systemdto "ruoyi-go-vue-plus/internal/system/model/dto"
 	systemvo "ruoyi-go-vue-plus/internal/system/model/vo"
 	systemservice "ruoyi-go-vue-plus/internal/system/service"
@@ -24,6 +25,7 @@ import (
 	authmodel "ruoyi-go-vue-plus/pkg/model"
 	"ruoyi-go-vue-plus/pkg/redis"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
+	"ruoyi-go-vue-plus/pkg/social"
 	"ruoyi-go-vue-plus/pkg/useragent"
 )
 
@@ -119,8 +121,42 @@ func (*SysLoginService) BuildLoginUser(req *http.Request, user *systemvo.SysUser
 	return loginUser, nil
 }
 
-// RecordOnlineUser 把当前会话的在线摘要写入 Redis(online_tokens:<token>)，
-// 对应 Java UserLoginSuccessListener.handleLoginSuccess 写 UserOnlineDTO。
+// SocialRegister 把三方账号绑定到指定用户，对应 Java SysLoginService.socialRegister。
+//
+// authId = source + 平台内唯一 id，是「这个三方账号」的全局标识；
+// 查重与续绑的判定都在 system 的 service 层（连同 Java @Lock4j 的替代锁），
+// 此处只负责把 social.AuthUser 摊平成 SysSocialBo。
+func (*SysLoginService) SocialRegister(ctx context.Context, userID int64,
+	au *social.AuthUser) error {
+
+	if au == nil {
+		return errs.New(0, "三方登录信息为空", "")
+	}
+
+	b := &systembo.SysSocialBo{
+		UserID:   userID,
+		AuthID:   au.Source + au.UUID,
+		Source:   au.Source,
+		OpenID:   au.UUID,
+		UserName: au.Username,
+		NickName: au.Nickname,
+		Email:    au.Email,
+		Avatar:   au.Avatar,
+
+		AccessToken:  au.Token.AccessToken,
+		ExpireIn:     au.Token.ExpireIn,
+		RefreshToken: au.Token.RefreshToken,
+		AccessCode:   au.Token.AccessCode,
+		UnionID:      au.Token.UnionID,
+		Scope:        au.Token.Scope,
+		TokenType:    au.Token.TokenType,
+		IDToken:      au.Token.IDToken,
+		Code:         au.Token.Code,
+	}
+	return systemservice.SocialSvcApp.SaveOrUpdate(ctx, b)
+}
+
+// RecordOnlineUser 把当前会话的在线摘要写入 Redis(online_tokens:<token>)，// 对应 Java UserLoginSuccessListener.handleLoginSuccess 写 UserOnlineDTO。
 //
 // 必须在 loginhelper.Login 返回后调：EventLogin 在 Login 内部即触发，彼时
 // token-session 尚未写入 LoginUser，监听器取不到终端信息，故写入只能落在 auth 层。

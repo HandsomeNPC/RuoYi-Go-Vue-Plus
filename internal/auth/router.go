@@ -28,6 +28,11 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 		g.GET("/code", sagin.Ignore(),
 			ratelimiter.RateLimiter(time.Minute, 10, ratelimiter.LimitTypeIP, 0, ""),
 			handler.AuthApiApp.Code)
+		// 三方绑定三件套。binding 公开：登录页未登录时点三方登录也要拿得到跳转地址。
+		// 另两个对照 Java 方法体内的 StpUtil.checkLogin()——绑定/解绑都是给当前登录用户操作的。
+		g.GET("/binding/:source", sagin.Ignore(), handler.AuthApiApp.Binding)
+		g.POST("/social/callback", sagin.CheckLogin(), handler.AuthApiApp.SocialCallback)
+		g.DELETE("/unlock/:socialId", sagin.CheckLogin(), handler.AuthApiApp.UnlockSocial)
 		g.GET("/ping", sagin.Ignore(), func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"module": "auth", "message": "pong"})
 		})

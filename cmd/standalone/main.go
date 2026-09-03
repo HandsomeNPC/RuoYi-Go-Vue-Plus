@@ -28,6 +28,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/satoken"
 	"ruoyi-go-vue-plus/pkg/sms"
 	"ruoyi-go-vue-plus/pkg/snowflake"
+	"ruoyi-go-vue-plus/pkg/social"
 )
 
 func main() {
@@ -55,6 +56,8 @@ func main() {
 	// 验证码的两个发送通道，只依赖 config。未配置时接口返回提示而非报错。
 	mail.Init()
 	sms.Init()
+	// 三方登录，依赖 redis(state 存 Redis)，须在 redis.Init 之后。
+	social.Init()
 	// 操作日志落库实现反向注册给 pkg/oplog(pkg 不依赖 internal/service)，
 	// 依赖 database 与 snowflake。
 	oplog.Init(systemservice.OperLogSvcApp.RecordOper)

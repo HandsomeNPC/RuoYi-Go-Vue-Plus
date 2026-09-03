@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"slices"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -17,6 +19,8 @@ import (
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/i18n"
 	"ruoyi-go-vue-plus/pkg/response"
+	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
+	"ruoyi-go-vue-plus/pkg/social"
 )
 
 // AuthApi 认证接口。
@@ -81,4 +85,101 @@ func (a *AuthApi) Code(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response.Ok(vo))
+}
+
+// Binding 获取三方授权跳转地址，对照 Java AuthController.authBinding。
+//
+// 公开接口：登录页未登录时点三方登录也要拿得到地址。
+func (a *AuthApi) Binding(c *gin.Context) {
+	source := c.Param("source")
+	url, err := social.GetAuthorizeURL(c.Request.Context(), source)
+	if err != nil {
+		if errors.Is(err, social.ErrUnsupportedSource) {
+			// 对齐 Java 取不到平台配置时的 R.fail(source + "平台账号暂不支持")。
+			_ = c.Error(errs.New(0, source+"平台账号暂不支持", ""))
+			return
+		}
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, response.Ok(url))
+}
+
+// SocialCallback 三方回调后绑定账号，对照 Java AuthController.socialCallback。
+func (a *AuthApi) SocialCallback(c *gin.Context) {
+	var body model.SocialLoginBody
+	if err := c.ShouldBindJSON(&body); err != nil {
+		_ = c.Error(errs.New(response.CodeBadRequest, "参数校验失败", err.Error()))
+		return
+	}
+
+	ctx := c.Request.Context()
+	authUser, err := social.LoginAuth(ctx, body.Source, body.SocialCode, body.SocialState)
+	if err != nil {
+		if errors.Is(err, social.ErrUnsupportedSource) {
+			_ = c.Error(errs.New(0, body.Source+"平台账号暂不支持", ""))
+			return
+		}
+		if errors.Is(err, social.ErrIllegalState) {
+			// 对齐 Java AuthChecker.checkState 抛的 ILLEGAL_STATUS，
+			// 由 controller 转成 R.fail(response.getMsg())。
+			_ = c.Error(errs.New(0, "三方登录状态已失效，请重新授权", err.Error()))
+			return
+		}
+		_ = c.Error(err)
+		return
+	}
+
+	if err := authservice.SysLoginSvcApp.SocialRegister(ctx,
+		loginhelper.GetUserID(c), authUser); err != nil {
+		if errors.Is(err, systemservice.ErrSocialAlreadyBound) {
+			_ = c.Error(errs.New(0, "此三方账号已经被绑定!", ""))
+			return
+		}
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, response.OkVoid())
+}
+
+// UnlockSocial 取消三方账号授权，对照 Java AuthController.unlockSocial。
+func (a *AuthApi) UnlockSocial(c *gin.Context) {
+	raw := c.Param("socialId")
+	// 主键走路径参数，超出 JS 安全整数的 ID 前端会以字符串下发，ParseInt 两种形态都吃得下。
+	socialID, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || socialID <= 0 {
+		_ = c.Error(errs.New(response.CodeBadRequest, "主键不能为空", raw))
+		return
+	}
+
+	ctx := c.Request.Context()
+	// 校验归属，这是与 Java 的有意差异：Java 的 deleteWithValidById 只按主键删，
+	// 任何登录用户都能解绑他人的账号，而那行里存着三方 access_token。
+	owner, err := systemservice.SocialSvcApp.FindOwnerUserID(ctx, socialID)
+	if err != nil {
+		if errors.Is(err, systemservice.ErrSocialNotFound) {
+			_ = c.Error(errs.New(0, "取消授权失败", ""))
+			return
+		}
+		_ = c.Error(err)
+		return
+	}
+	if owner != loginhelper.GetUserID(c) {
+		_ = c.Error(errs.New(0, "取消授权失败", "社会化绑定不属于当前用户"))
+		return
+	}
+
+	ok, err := systemservice.SocialSvcApp.DeleteWithValidById(ctx, socialID)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	if !ok {
+		_ = c.Error(errs.New(0, "取消授权失败", ""))
+		return
+	}
+
+	c.JSON(http.StatusOK, response.OkVoid())
 }

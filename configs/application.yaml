@@ -126,4 +126,31 @@ sms:
   endpoint: dysmsapi.aliyuncs.com
   regionId: cn-hangzhou
 
+# 三方登录配置。对照原项目 justauth 段。
+# 未填 clientId/clientSecret 的平台一律视为未启用，/auth/binding/{source}
+# 返回「xx平台账号暂不支持」（与原项目 AuthChecker.isSupportedAuth 同口径）。
+# redirectUri 指向前端回调页，须与平台控制台登记的地址完全一致。
+social:
+  type:
+    gitee:
+      clientId: ""
+      clientSecret: ""
+      redirectUri: http://localhost:80/social-callback?source=gitee
+    github:
+      clientId: ""
+      clientSecret: ""
+      redirectUri: http://localhost:80/social-callback?source=github
+    # maxkey / topiam 为私有化部署，端点由 serverUrl 拼出，故必须填。
+    maxkey:
+      serverUrl: http://sso.maxkey.top
+      clientId: ""
+      clientSecret: ""
+      redirectUri: http://localhost:80/social-callback?source=maxkey
+    topiam:
+      serverUrl: ""
+      clientId: ""
+      clientSecret: ""
+      redirectUri: http://localhost:80/social-callback?source=topiam
+      scopes: [ openid, profile, email ]
+
 

@@ -14,6 +14,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/repeatsubmit"
 	"ruoyi-go-vue-plus/pkg/satoken"
 	"ruoyi-go-vue-plus/pkg/snowflake"
+	"ruoyi-go-vue-plus/pkg/social"
 )
 
 func main() {
@@ -39,6 +40,8 @@ func main() {
 	// 依赖 redis(防重键存 Redis)，须在 redis.Init 之后。
 	// auth 当前无 RepeatSubmit 路由，此处为与其他进程对称、避免将来漏初始化。
 	repeatsubmit.Init()
+	// 三方登录，依赖 redis(state 存 Redis)，须在 redis.Init 之后。
+	social.Init()
 	// 同理：auth 当前无 @Log 路由，但漏注册时 pkg/oplog 只打一行日志就丢弃事件，
 	// 不会报错——保持对称比事后排查静默丢日志省事。
 	oplog.Init(systemservice.OperLogSvcApp.RecordOper)

@@ -27,6 +27,7 @@ type Config struct {
 	Push           PushConfig           `mapstructure:"push"`
 	Mail           MailConfig           `mapstructure:"mail"`
 	SMS            SMSConfig            `mapstructure:"sms"`
+	Social         SocialConfig         `mapstructure:"social"`
 }
 
 // Load 按顺序读取并合并多个 yaml 配置文件，后者覆盖前者，随后写入包级实例。
@@ -52,6 +53,7 @@ func Load(paths ...string) {
 	DefaultPush().setDefaults(v)
 	DefaultMail().setDefaults(v)
 	DefaultSMS().setDefaults(v)
+	DefaultSocial().setDefaults(v)
 
 	for i, path := range paths {
 		v.SetConfigFile(path)
@@ -115,6 +117,7 @@ func (c *Config) validate() error {
 		c.Push.validate,
 		c.Mail.validate,
 		c.SMS.validate,
+		c.Social.validate,
 	}
 	for _, fn := range validators {
 		if err := fn(); err != nil {
