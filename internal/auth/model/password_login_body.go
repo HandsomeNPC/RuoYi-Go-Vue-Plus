@@ -1,6 +1,6 @@
 package model
 
-// PasswordLoginBody 密码登录对象（对应 Java PasswordLoginBody），内嵌 LoginBody。
+// PasswordLoginBody 密码登录对象，内嵌 LoginBody。
 type PasswordLoginBody struct {
 	LoginBody
 	Username string `json:"username" binding:"required,min=2,max=30"`

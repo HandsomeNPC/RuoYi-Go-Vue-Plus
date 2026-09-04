@@ -15,16 +15,12 @@ import (
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 )
 
-// loginInfoLogTitle 登录日志的操作日志模块名，对照 Java @Log(title = "登录日志")。
 const loginInfoLogTitle = "登录日志"
 
-// operLogLogTitle 操作日志的操作日志模块名，对照 Java @Log(title = "操作日志")。
 const operLogLogTitle = "操作日志"
 
-// userOnlineLogTitle 在线用户的操作日志模块名，对照 Java @Log(title = "在线用户")。
 const userOnlineLogTitle = "在线用户"
 
-// userDeviceLogTitle 在线设备的操作日志模块名，对照 Java @Log(title = "在线设备")。
 const userDeviceLogTitle = "在线设备"
 
 // RegisterRoutes 注册 monitor 路由。
@@ -50,12 +46,12 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	loginInfo.POST("/export", satoken.CheckPermission("monitor:logininfo:export"),
 		oplog.Log(loginInfoLogTitle, enum.BusinessTypeExport), handler.LoginInfoApiApp.Export)
 	// clean 与 :infoIds 同层，静态段优先，gin 能区分二者，无需调整注册顺序。
-	// 权限码用 remove：对照 Java @SaCheckPermission("monitor:logininfo:remove") 两处复用。
+	// 权限码用 remove，两处复用。
 	loginInfo.DELETE("/clean", satoken.CheckPermission("monitor:logininfo:remove"),
 		oplog.Log(loginInfoLogTitle, enum.BusinessTypeClean), handler.LoginInfoApiApp.Clean)
 	loginInfo.DELETE("/:infoIds", satoken.CheckPermission("monitor:logininfo:remove"),
 		oplog.Log(loginInfoLogTitle, enum.BusinessTypeDelete), handler.LoginInfoApiApp.Remove)
-	// unlock 需登录即可（Java @SaCheckPermission("monitor:logininfo:unlock")）；
+	// unlock 需登录即可；
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	loginInfo.GET("/unlock/:userName", satoken.CheckPermission("monitor:logininfo:unlock"),
 		oplog.Log(loginInfoLogTitle, enum.BusinessTypeOther),
@@ -66,7 +62,7 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	operLog.POST("/export", satoken.CheckPermission("monitor:operlog:export"),
 		oplog.Log(operLogLogTitle, enum.BusinessTypeExport), handler.OperLogApiApp.Export)
 	// clean 与 :operIds 同层，静态段优先，gin 能区分二者，无需调整注册顺序（与 loginInfo 同理）。
-	// 权限码用 remove：对照 Java @SaCheckPermission("monitor:operlog:remove") 两处复用。
+	// 权限码用 remove，两处复用。
 	operLog.DELETE("/clean", satoken.CheckPermission("monitor:operlog:remove"),
 		oplog.Log(operLogLogTitle, enum.BusinessTypeClean), handler.OperLogApiApp.Clean)
 	operLog.DELETE("/:operIds", satoken.CheckPermission("monitor:operlog:remove"),

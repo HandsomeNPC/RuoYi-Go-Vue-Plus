@@ -79,7 +79,7 @@ func TestSortByWeight(t *testing.T) {
 	}
 }
 
-// TestSortStable weight 相同时保持插入序，对齐 hutool 基于 LinkedHashMap 的稳定排序。
+// TestSortStable weight 相同时保持插入序。
 //
 // 规模和 weight 分布是刻意选的：Go 的 pdqsort 对小切片走插入排序，全等元素也不会乱序，
 // 用三五个节点测不出稳定性差异。要让不稳定排序真的搬动元素，需要 16+ 个节点、
@@ -229,7 +229,7 @@ func ids[K comparable](nodes []*Tree[K]) []K {
 // 使树接口的 id 是裸数字而列表接口是字符串——前端拿树节点 id 提交必丢精度。
 // 上面几个用例的 id 都是个位数，落在安全范围内，两种写法都能过，故单列此例守住。
 func TestMarshalJSONSnowflakeIDAsString(t *testing.T) {
-	// 父为根(0，安全范围内)，子为雪花值：同一份 JSON 里两种形态并存，与 Java 一致。
+	// 父为根(0，安全范围内)，子为雪花值：同一份 JSON 里两种形态并存。
 	list := []dept{
 		{1761000000000000100, 0, "HQ", 1, false},
 		{1761000000000000101, 1761000000000000100, "RD", 2, false},

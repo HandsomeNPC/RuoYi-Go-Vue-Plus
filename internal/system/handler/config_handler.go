@@ -16,10 +16,9 @@ import (
 	"ruoyi-go-vue-plus/pkg/response"
 )
 
-// ConfigApi 参数配置接口（对应 Java SysConfigController）。
+// ConfigApi 参数配置接口。
 type ConfigApi struct{}
 
-// ConfigApiApp 包级实例。
 var ConfigApiApp = new(ConfigApi)
 
 // List 分页查询参数配置列表。
@@ -44,8 +43,8 @@ func (a *ConfigApi) List(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(res))
 }
 
-// Export 导出参数配置列表为 xlsx 附件（对应 Java SysConfigController.export）。
-// 与 Java 一致走 POST：前端 commonExport 以 form 表单 POST 提交筛选条件，
+// Export 导出参数配置列表为 xlsx 附件。
+// 走 POST：前端 commonExport 以 form 表单 POST 提交筛选条件，
 // 故用 ShouldBind 同时吃 form body 与 query。
 //
 // 响应体是二进制附件，不返回 response.R——见 pkg/excel 的说明。
@@ -92,9 +91,9 @@ func (a *ConfigApi) GetInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(res))
 }
 
-// GetConfigKey 按参数键名查参数值（对应 Java getConfigKey）。
+// GetConfigKey 按参数键名查参数值。
 //
-// 与 Java 一致不校验权限码，仅需登录：前端多处要读参数（如初始密码提示）却未必有配置管理权限。
+// 不校验权限码，仅需登录：前端多处要读参数（如初始密码提示）却未必有配置管理权限。
 // 键不存在时同样返回 200 + 空串（service 已按空串兜底），前端据此走默认值分支。
 func (a *ConfigApi) GetConfigKey(c *gin.Context) {
 	configKey := c.Param("configKey")
@@ -160,7 +159,7 @@ func (a *ConfigApi) Edit(c *gin.Context) {
 	c.JSON(http.StatusOK, response.OkVoid())
 }
 
-// UpdateByKey 按参数键名修改参数值（对应 Java updateByKey）。
+// UpdateByKey 按参数键名修改参数值。
 func (a *ConfigApi) UpdateByKey(c *gin.Context) {
 	var b bo.SysConfigUpdateByKeyBo
 	if err := c.ShouldBindJSON(&b); err != nil {
@@ -179,7 +178,7 @@ func (a *ConfigApi) UpdateByKey(c *gin.Context) {
 	c.JSON(http.StatusOK, response.OkVoid())
 }
 
-// Remove 批量删除参数配置。主键串以逗号分隔，与 Java 的 @PathVariable Long[] configIds 同形。
+// Remove 批量删除参数配置。主键串以逗号分隔。
 func (a *ConfigApi) Remove(c *gin.Context) {
 	ids, err := parseIDs(c.Param("configIds"))
 	if err != nil {

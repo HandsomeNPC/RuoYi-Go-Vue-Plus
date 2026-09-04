@@ -1,6 +1,6 @@
 package model
 
-// SysNotice 通知公告表（sys_notice），对应 Java org.dromara.system.domain.SysNotice。
+// SysNotice 通知公告表（sys_notice）。
 type SysNotice struct {
 	NoticeID    int64  `gorm:"column:notice_id;primaryKey" json:"noticeId"`
 	NoticeTitle string `gorm:"column:notice_title" json:"noticeTitle"`

@@ -1,6 +1,6 @@
 package bo
 
-// SysUserProfileBo 个人信息业务对象（入参），对应 Java SysUserProfileBo。
+// SysUserProfileBo 个人信息业务对象（入参）。
 type SysUserProfileBo struct {
 	NickName    string `json:"nickName" binding:"omitempty,max=30"`
 	Email       string `json:"email" binding:"omitempty,email,max=50"`

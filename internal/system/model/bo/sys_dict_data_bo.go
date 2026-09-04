@@ -1,6 +1,6 @@
 package bo
 
-// SysDictDataBo 字典数据业务对象（入参），对应 Java SysDictDataBo。
+// SysDictDataBo 字典数据业务对象（入参）。
 type SysDictDataBo struct {
 	DictCode  int64  `json:"dictCode"`
 	DictSort  int    `json:"dictSort"`

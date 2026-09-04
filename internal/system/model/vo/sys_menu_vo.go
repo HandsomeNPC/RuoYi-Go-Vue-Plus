@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// SysMenuVo 菜单权限视图对象，对应 Java SysMenuVo。
+// SysMenuVo 菜单权限视图对象。
 type SysMenuVo struct {
 	MenuID     int64  `json:"menuId"`
 	MenuName   string `json:"menuName"`

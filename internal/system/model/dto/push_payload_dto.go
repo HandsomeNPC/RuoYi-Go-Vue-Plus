@@ -6,8 +6,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/constant"
 )
 
-// PushPayloadDTO 推送给前端的统一消息体，对应 Java
-// org.dromara.system.api.domain.PushPayloadDTO。
+// PushPayloadDTO 推送给前端的统一消息体。
 type PushPayloadDTO struct {
 	// MessageID 消息记录ID。
 	MessageID int64 `json:"messageId"`
@@ -25,8 +24,7 @@ type PushPayloadDTO struct {
 	Timestamp int64 `json:"timestamp"`
 }
 
-// NewPushPayload 构建推送消息体，缺省消息类型与来源时使用系统默认值，
-// 对应 Java PushPayloadDTO.of(String, String, String, Object)。
+// NewPushPayload 构建推送消息体，缺省消息类型与来源时使用系统默认值。
 func NewPushPayload(typ, source, message string, data any) *PushPayloadDTO {
 	if typ == "" {
 		typ = constant.PushTypeMessage
@@ -43,9 +41,8 @@ func NewPushPayload(typ, source, message string, data any) *PushPayloadDTO {
 	}
 }
 
-// NewPushPayloadWithPath 构建带前端跳转路径的推送消息体，
-// 对应 Java PushPayloadDTO.of(PushTypeEnum, PushSourceEnum, String, Object, String)。
-// typ 与 source 传入空串即取系统默认值，等价于 Java 传 null。
+// NewPushPayloadWithPath 构建带前端跳转路径的推送消息体。
+// typ 与 source 传入空串即取系统默认值。
 func NewPushPayloadWithPath(typ, source, message string, data any, path string) *PushPayloadDTO {
 	payload := NewPushPayload(typ, source, message, data)
 	payload.Path = path

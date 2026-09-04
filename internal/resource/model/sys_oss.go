@@ -1,6 +1,6 @@
 package model
 
-// SysOss OSS 对象存储表（sys_oss），对应 Java org.dromara.system.domain.SysOss。
+// SysOss OSS 对象存储表（sys_oss）。
 // ext1 列存 SysOssExt 序列化后的 JSON（见 sys_oss_ext.go）。
 type SysOss struct {
 	OssID        int64  `gorm:"column:oss_id;primaryKey" json:"ossId"`

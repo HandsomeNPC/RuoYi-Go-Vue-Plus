@@ -15,19 +15,16 @@ import (
 	"ruoyi-go-vue-plus/pkg/useragent"
 )
 
-// LoginInfoService 系统访问记录业务逻辑，对应 Java SysLoginInfoServiceImpl。
+// LoginInfoService 系统访问记录业务逻辑。
 type LoginInfoService struct{}
 
-// LoginInfoSvcApp 包级实例。
 var LoginInfoSvcApp = new(LoginInfoService)
 
-// RecordLoginInfo 记录登录信息，对应 Java SysLoginInfoServiceImpl.recordLoginInfo
-// （@Async @EventListener）。
+// RecordLoginInfo 记录登录信息。
 //
 // **异步**：解析 UA、反查客户端、IP 归属地、落库全在后台 goroutine 里做，调用方不等待、
-// 拿不到错误——登录成败不应受日志写入影响，这与 Java @Async 的语义一致。因此 ctx 必须
-// 是脱离请求生命周期的（调用方传 context.WithoutCancel(...)），否则请求一结束
-// ctx 就被取消，落库会失败。
+// 拿不到错误——登录成败不应受日志写入影响。因此 ctx 必须是脱离请求生命周期的
+// （调用方传 context.WithoutCancel(...)），否则请求一结束 ctx 就被取消，落库会失败。
 func (s *LoginInfoService) RecordLoginInfo(ctx context.Context, evt *dto.LoginInfoEvent) {
 	if evt == nil {
 		return
@@ -56,7 +53,7 @@ func (s *LoginInfoService) recordLoginInfo(ctx context.Context, evt *dto.LoginIn
 	}
 	b.Browser, b.OS = useragent.Parse(evt.UserAgent)
 
-	// 客户端信息：查不到不算失败，日志照记（对照 Java client 为 null 时跳过赋值）。
+	// 客户端信息：查不到不算失败，日志照记。
 	if evt.ClientID != "" {
 		client, err := ClientSvcApp.QueryByClientID(ctx, evt.ClientID)
 		if err != nil {
@@ -67,14 +64,14 @@ func (s *LoginInfoService) recordLoginInfo(ctx context.Context, evt *dto.LoginIn
 		}
 	}
 
-	// 对照 Java log.info(getBlock(ip) + address + ...) 的方括号格式。
+	// 方括号格式与历史日志保持一致，便于 grep。
 	log.Printf("[system] 登录日志 [%s][%s][%s][%s][%s]",
 		b.IPAddr, b.LoginLocation, b.UserName, evt.Status, b.Msg)
 
 	return s.InsertLoginInfo(ctx, b)
 }
 
-// InsertLoginInfo 新增系统登录日志，对应 Java insertLoginInfo。
+// InsertLoginInfo 新增系统登录日志。
 // 落库时间取当前时刻，主键由雪花发号（info_id 无 auto_increment）。
 func (s *LoginInfoService) InsertLoginInfo(ctx context.Context, b *bo.SysLoginInfoBo) error {
 	info := bo.Conv.ConvertToSysLoginInfo(b)
@@ -84,9 +81,9 @@ func (s *LoginInfoService) InsertLoginInfo(ctx context.Context, b *bo.SysLoginIn
 	return repository.NewLoginInfoRepository(database.DB()).Insert(ctx, info)
 }
 
-// mapLoginStatus 把事件里的操作类型映射成 sys_login_info.status 的落表值，
-// 对照 Java：LOGIN_SUCCESS / LOGOUT / REGISTER → SUCCESS("0")，LOGIN_FAIL → FAIL("1")。
-// 未识别的取值返回空串，与 Java 两个分支都不命中时 status 留 null 的行为一致。
+// mapLoginStatus 把事件里的操作类型映射成 sys_login_info.status 的落表值：
+// LOGIN_SUCCESS / LOGOUT / REGISTER → SUCCESS("0")，LOGIN_FAIL → FAIL("1")。
+// 未识别的取值返回空串，与 status 留 null 的行为一致。
 func mapLoginStatus(status string) string {
 	switch status {
 	case constant.ConstantLoginSuccess, constant.ConstantLogout, constant.ConstantRegister:

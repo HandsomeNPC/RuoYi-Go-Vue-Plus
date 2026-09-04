@@ -14,25 +14,17 @@ import (
 // ErrInvalidOrderBy 排序参数非法，用 ServiceError 以便中间件渲染成 400。
 var ErrInvalidOrderBy = errs.New(response.CodeBadRequest, "排序参数有误", "orderByColumn/isAsc 不合法")
 
-// 分页默认值，对齐 Java 端 PageQuery。
 const (
 	DefaultPageNum  = 1   // 默认页码
-	DefaultPageSize = 10  // 默认每页条数（Java 端是 Integer.MAX_VALUE，这里收敛成 10 当 LIMIT 下发）
+	DefaultPageSize = 10  // 默认每页条数，这里收敛成 10 当 LIMIT 下发
 	MaxPageSize     = 500 // 每页条数上限，防止前端传天文数字拖垮数据库
 )
 
-// orderByPattern 排序列名白名单，与 Java 端 SqlUtil.SQL_PATTERN 一致。
+// orderByPattern 排序列名白名单，防排序注入。
 // 列名无法参数化只能拼进 SQL，这里是防注入的唯一防线。
 var orderByPattern = regexp.MustCompile(`^[a-zA-Z0-9_ ,.]+$`)
 
 // PageQuery 分页查询入参，由 handler 用 ShouldBindQuery 绑定。
-//
-// 排序用法（与 Java 端一致）：
-//
-//	{isAsc:"asc",  orderByColumn:"id"}                => ORDER BY id ASC
-//	{isAsc:"asc",  orderByColumn:"id,createTime"}     => ORDER BY id ASC, create_time ASC
-//	{isAsc:"desc", orderByColumn:"id,createTime"}     => ORDER BY id DESC, create_time DESC
-//	{isAsc:"asc,desc", orderByColumn:"id,createTime"}  => ORDER BY id ASC, create_time DESC
 type PageQuery struct {
 	PageNum       int    `form:"pageNum" json:"pageNum"`             // 当前页码，从 1 开始
 	PageSize      int    `form:"pageSize" json:"pageSize"`           // 每页条数
@@ -64,7 +56,7 @@ func (q PageQuery) Size() int {
 	return q.PageSize
 }
 
-// Offset 当前页起始行号，对应 Java 端 getFirstNum。
+// Offset 当前页起始行号。
 func (q PageQuery) Offset() int {
 	return (q.Num() - 1) * q.Size()
 }

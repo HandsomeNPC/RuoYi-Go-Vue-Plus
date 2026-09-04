@@ -17,10 +17,9 @@ import (
 	"ruoyi-go-vue-plus/pkg/response"
 )
 
-// PostApi 岗位信息接口（对应 Java SysPostController）。
+// PostApi 岗位信息接口。
 type PostApi struct{}
 
-// PostApiApp 包级实例。
 var PostApiApp = new(PostApi)
 
 // List 分页查询岗位列表。
@@ -45,8 +44,8 @@ func (a *PostApi) List(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(res))
 }
 
-// Export 导出岗位列表为 xlsx 附件（对应 Java SysPostController.export）。
-// 与 Java 一致走 POST：前端 commonExport 以 form 表单 POST 提交筛选条件，
+// Export 导出岗位列表为 xlsx 附件。
+// 走 POST：前端 commonExport 以 form 表单 POST 提交筛选条件，
 // 故用 ShouldBind 同时吃 form body 与 query。
 //
 // 响应体是二进制附件，不返回 response.R——见 pkg/excel 的说明。
@@ -156,7 +155,7 @@ func (a *PostApi) Edit(c *gin.Context) {
 	c.JSON(http.StatusOK, response.OkVoid())
 }
 
-// Remove 批量删除岗位。主键串以逗号分隔，与 Java 的 @PathVariable Long[] postIds 同形。
+// Remove 批量删除岗位。主键串以逗号分隔。
 func (a *PostApi) Remove(c *gin.Context) {
 	ids, err := parseIDs(c.Param("postIds"))
 	if err != nil {
@@ -172,14 +171,14 @@ func (a *PostApi) Remove(c *gin.Context) {
 	c.JSON(http.StatusOK, response.OkVoid())
 }
 
-// OptionSelect 获取岗位选择框列表（对应 Java optionselect）。
+// OptionSelect 获取岗位选择框列表。
 // deptId 与 postIds 均可缺省：传 deptId 返回该部门下全部岗位，
 // 传 postIds 返回启用岗位，都不传返回全部启用岗位。
 func (a *PostApi) OptionSelect(c *gin.Context) {
 	deptID, _ := strconv.ParseInt(c.Query("deptId"), 10, 64)
 
 	var postIDs []int64
-	// 与 Java 的 @RequestParam(required = false) Long[] 同形：数组既可能以
+	// 数组既可能以
 	// postIds=1&postIds=2 下发，也可能是 postIds=1,2，两种都要吃下。
 	if raw := strings.Join(c.QueryArray("postIds"), ","); strings.Trim(raw, ",") != "" {
 		parsed, err := parseIDs(raw)
@@ -198,7 +197,7 @@ func (a *PostApi) OptionSelect(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(res))
 }
 
-// DeptTree 获取岗位筛选用的部门树（对应 Java deptTree）。
+// DeptTree 获取岗位筛选用的部门树。
 func (a *PostApi) DeptTree(c *gin.Context) {
 	var q bo.SysDeptQueryBo
 	if err := c.ShouldBindQuery(&q); err != nil {

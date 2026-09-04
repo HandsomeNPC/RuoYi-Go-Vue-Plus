@@ -4,9 +4,9 @@ import (
 	"time"
 )
 
-// SysOssVo OSS 对象存储视图对象，对应 Java SysOssVo。
+// SysOssVo OSS 对象存储视图对象。
 //
-// 无 excel tag：Java 的 SysOssVo 未标 @ExcelProperty，两侧均无导出接口。
+// 无 excel tag：无导出接口。
 type SysOssVo struct {
 	OssID        int64      `json:"ossId"`
 	FileName     string     `json:"fileName"`

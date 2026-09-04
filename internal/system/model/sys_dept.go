@@ -2,7 +2,7 @@ package model
 
 import "ruoyi-go-vue-plus/pkg/repository"
 
-// SysDept 部门表（sys_dept），对应 Java org.dromara.system.domain.SysDept。
+// SysDept 部门表（sys_dept）。
 type SysDept struct {
 	DeptID       int64  `gorm:"column:dept_id;primaryKey" json:"deptId"`
 	ParentID     int64  `gorm:"column:parent_id" json:"parentId"`

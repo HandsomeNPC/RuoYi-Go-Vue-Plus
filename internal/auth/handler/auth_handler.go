@@ -26,7 +26,6 @@ import (
 // AuthApi 认证接口。
 type AuthApi struct{}
 
-// AuthApiApp 包级实例。
 var AuthApiApp = new(AuthApi)
 
 // Login 登录。
@@ -67,8 +66,8 @@ func (a *AuthApi) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(vo))
 }
 
-// Logout 登出，对照 Java AuthController.logout。
-// 与 Java 一样恒返回成功：service 内部吞掉未登录/token 失效的情况，前端总能正常清态。
+// Logout 登出。
+// 恒返回成功：service 内部吞掉未登录/token 失效的情况，前端总能正常清态。
 func (a *AuthApi) Logout(c *gin.Context) {
 	// token 由组级 TokenInterceptor 解析后存入 ctx；service 层不碰 *gin.Context，故在此取出传入。
 	authservice.SysLoginSvcApp.Logout(c.Request, sagin.GetTokenFromCtx(c))
@@ -76,7 +75,7 @@ func (a *AuthApi) Logout(c *gin.Context) {
 	c.JSON(http.StatusOK, response.OkMsg(i18n.Msg(c.Request.Context(), "user.logout.success")))
 }
 
-// Code 获取图形验证码，对照 Java CaptchaController.getCode。
+// Code 获取图形验证码。
 func (a *AuthApi) Code(c *gin.Context) {
 	vo, err := captcha.Generate(c.Request.Context())
 	if err != nil {
@@ -87,7 +86,7 @@ func (a *AuthApi) Code(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(vo))
 }
 
-// Binding 获取三方授权跳转地址，对照 Java AuthController.authBinding。
+// Binding 获取三方授权跳转地址。
 //
 // 公开接口：登录页未登录时点三方登录也要拿得到地址。
 func (a *AuthApi) Binding(c *gin.Context) {
@@ -95,7 +94,6 @@ func (a *AuthApi) Binding(c *gin.Context) {
 	url, err := social.GetAuthorizeURL(c.Request.Context(), source)
 	if err != nil {
 		if errors.Is(err, social.ErrUnsupportedSource) {
-			// 对齐 Java 取不到平台配置时的 R.fail(source + "平台账号暂不支持")。
 			_ = c.Error(errs.New(0, source+"平台账号暂不支持", ""))
 			return
 		}
@@ -106,7 +104,7 @@ func (a *AuthApi) Binding(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(url))
 }
 
-// SocialCallback 三方回调后绑定账号，对照 Java AuthController.socialCallback。
+// SocialCallback 三方回调后绑定账号。
 func (a *AuthApi) SocialCallback(c *gin.Context) {
 	var body model.SocialLoginBody
 	if err := c.ShouldBindJSON(&body); err != nil {
@@ -122,8 +120,6 @@ func (a *AuthApi) SocialCallback(c *gin.Context) {
 			return
 		}
 		if errors.Is(err, social.ErrIllegalState) {
-			// 对齐 Java AuthChecker.checkState 抛的 ILLEGAL_STATUS，
-			// 由 controller 转成 R.fail(response.getMsg())。
 			_ = c.Error(errs.New(0, "三方登录状态已失效，请重新授权", err.Error()))
 			return
 		}
@@ -144,7 +140,7 @@ func (a *AuthApi) SocialCallback(c *gin.Context) {
 	c.JSON(http.StatusOK, response.OkVoid())
 }
 
-// UnlockSocial 取消三方账号授权，对照 Java AuthController.unlockSocial。
+// UnlockSocial 取消三方账号授权。
 func (a *AuthApi) UnlockSocial(c *gin.Context) {
 	raw := c.Param("socialId")
 	// 主键走路径参数，超出 JS 安全整数的 ID 前端会以字符串下发，ParseInt 两种形态都吃得下。
@@ -155,8 +151,7 @@ func (a *AuthApi) UnlockSocial(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	// 校验归属，这是与 Java 的有意差异：Java 的 deleteWithValidById 只按主键删，
-	// 任何登录用户都能解绑他人的账号，而那行里存着三方 access_token。
+	// 校验归属：原实现只按主键删，任何登录用户都能解绑他人账号，而那行里存着三方 access_token。
 	owner, err := systemservice.SocialSvcApp.FindOwnerUserID(ctx, socialID)
 	if err != nil {
 		if errors.Is(err, systemservice.ErrSocialNotFound) {

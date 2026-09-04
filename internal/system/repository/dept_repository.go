@@ -12,7 +12,6 @@ import (
 	"ruoyi-go-vue-plus/pkg/constant"
 )
 
-// ErrDeptNotFound 部门不存在。
 var ErrDeptNotFound = errors.New("repository: 部门不存在")
 
 // DeptRepository sys_dept 数据访问。
@@ -25,7 +24,7 @@ func NewDeptRepository(db *gorm.DB) *DeptRepository {
 	return &DeptRepository{db: db}
 }
 
-// SelectByID 按主键查部门（对应 Java SysDeptMapper#selectVoById），不存在时返回 ErrDeptNotFound。
+// SelectByID 按主键查部门，不存在时返回 ErrDeptNotFound。
 // 仅取实体本身；父部门名等扩展字段由 service 层按需回填，buildLoginUser 只读 DeptName/DeptCategory。
 func (r *DeptRepository) SelectByID(ctx context.Context, deptID int64) (*model.SysDept, error) {
 	if deptID <= 0 {
@@ -45,7 +44,7 @@ func (r *DeptRepository) SelectByID(ctx context.Context, deptID int64) (*model.S
 	return &dept, nil
 }
 
-// SelectList 按条件查部门列表（对应 Java SysDeptMapper#selectDeptList）。
+// SelectList 按条件查部门列表。
 // 部门总量有限（前端按树整体渲染、无分页），故不分页也不限行数。
 func (r *DeptRepository) SelectList(ctx context.Context, q bo.SysDeptQueryBo) ([]*model.SysDept, error) {
 	// Model 不能省：del_flag 过滤由 LogicDelete 挂在字段类型上，须先解析出实体 schema 才生效。
@@ -60,7 +59,7 @@ func (r *DeptRepository) SelectList(ctx context.Context, q bo.SysDeptQueryBo) ([
 	return rows, nil
 }
 
-// applyDeptQuery 应用部门查询条件（对齐 Java buildQueryWrapper）：
+// applyDeptQuery 应用部门查询条件：
 // 名称/类别编码走 LIKE，主键/父级/状态走 =，创建时间走闭区间。
 func applyDeptQuery(db *gorm.DB, q bo.SysDeptQueryBo) *gorm.DB {
 	if q.DeptID > 0 {
@@ -78,15 +77,15 @@ func applyDeptQuery(db *gorm.DB, q bo.SysDeptQueryBo) *gorm.DB {
 	if q.Status != "" {
 		db = db.Where("status = ?", q.Status)
 	}
-	// 两端须同时给出（对齐 Java betweenParams 的 begin != null && end != null）：
+	// 两端须同时给出：
 	// 只给一端就筛会让前端清空半个日期框时结果突变。
 	if q.BeginTime != "" && q.EndTime != "" {
 		db = db.Where("create_time BETWEEN ? AND ?", q.BeginTime, q.EndTime)
 	}
 	// 部门树搜索：命中该部门自身及其全部后代。
 	//
-	// Java 先查一趟 selectDeptAndChildById 再 IN 结果集，这里直接展开成
-	// 「自身 OR 祖先链包含它」——语义等价而少一次往返，且不必把子部门主键搬进 SQL 参数。
+	// 直接展开成「自身 OR 祖先链包含它」——语义等价于先查子部门主键再 IN，
+	// 但少一次往返，且不必把子部门主键搬进 SQL 参数。
 	if q.BelongDeptID > 0 {
 		db = db.Where("(dept_id = ? OR FIND_IN_SET(?, ancestors) > 0)", q.BelongDeptID, q.BelongDeptID)
 	}
@@ -94,14 +93,14 @@ func applyDeptQuery(db *gorm.DB, q bo.SysDeptQueryBo) *gorm.DB {
 }
 
 // SelectNormalByIDs 查启用状态的部门，ids 非空时按主键过滤
-// （对应 Java selectDeptByIds：ids 为空即不加 IN 条件，退化成查全部启用部门）。
+// （ids 为空即不加 IN 条件，退化成查全部启用部门）。
 func (r *DeptRepository) SelectNormalByIDs(ctx context.Context, ids []int64) ([]*model.SysDept, error) {
 	db := r.db.WithContext(ctx).Model(&model.SysDept{}).
 		Where("status = ?", constant.StatusNormal)
 	if len(ids) > 0 {
 		db = db.Where("dept_id IN ?", ids)
 	}
-	// Java 未指定排序，这里固定按主键升序：下拉框的选项顺序不该随 MySQL 的返回顺序漂移。
+	// 固定按主键升序：下拉框的选项顺序不该随 MySQL 的返回顺序漂移。
 	db = db.Order("dept_id")
 
 	var rows []*model.SysDept
@@ -112,7 +111,7 @@ func (r *DeptRepository) SelectNormalByIDs(ctx context.Context, ids []int64) ([]
 }
 
 // SelectDeptAndChildIDs 取部门自身及其全部后代的ID集合
-// （对应 Java selectDeptAndChildById，供岗位按部门树搜索时 IN 过滤）。
+// （供岗位按部门树搜索时 IN 过滤）。
 // 命中条件：自身 dept_id 命中，或祖先链 FIND_IN_SET 命中。
 func (r *DeptRepository) SelectDeptAndChildIDs(ctx context.Context,
 	deptID int64) ([]int64, error) {
@@ -131,8 +130,7 @@ func (r *DeptRepository) SelectDeptAndChildIDs(ctx context.Context,
 	return ids, nil
 }
 
-// SelectChildrenByAncestor 查祖先链包含 deptID 的全部后代
-// （对应 Java selectListByParentId 的 findInSet）。
+// SelectChildrenByAncestor 查祖先链包含 deptID 的全部后代。
 func (r *DeptRepository) SelectChildrenByAncestor(ctx context.Context,
 	deptID int64) ([]*model.SysDept, error) {
 
@@ -150,8 +148,7 @@ func (r *DeptRepository) SelectChildrenByAncestor(ctx context.Context,
 	return rows, nil
 }
 
-// CountNormalChildren 统计 deptID 名下处于启用状态的后代数量
-// （对应 Java selectNormalChildrenDeptById）。
+// CountNormalChildren 统计 deptID 名下处于启用状态的后代数量。
 func (r *DeptRepository) CountNormalChildren(ctx context.Context, deptID int64) (int64, error) {
 	if deptID <= 0 {
 		return 0, nil
@@ -168,7 +165,7 @@ func (r *DeptRepository) CountNormalChildren(ctx context.Context, deptID int64) 
 	return count, nil
 }
 
-// ExistsByParentID 判断是否存在以 deptID 为直接上级的部门（对应 Java hasChildByDeptId）。
+// ExistsByParentID 判断是否存在以 deptID 为直接上级的部门。
 func (r *DeptRepository) ExistsByParentID(ctx context.Context, deptID int64) (bool, error) {
 	if deptID <= 0 {
 		return false, nil
@@ -185,7 +182,7 @@ func (r *DeptRepository) ExistsByParentID(ctx context.Context, deptID int64) (bo
 }
 
 // ExistsByDeptName 判断同一上级下的部门名称是否已被占用，excludeID > 0 时排除该主键
-// （对齐 Java checkDeptNameUnique：名称 + 父级两列共同判重，供修改场景排除自身）。
+// （名称 + 父级两列共同判重，供修改场景排除自身）。
 func (r *DeptRepository) ExistsByDeptName(ctx context.Context, deptName string,
 	parentID, excludeID int64) (bool, error) {
 
@@ -244,7 +241,7 @@ func (r *DeptRepository) UpdateByID(ctx context.Context, deptID int64,
 	return res.RowsAffected, nil
 }
 
-// UpdateStatusNormalByIDs 把指定部门批量置为启用（对应 Java updateParentDeptStatusNormal）。
+// UpdateStatusNormalByIDs 把指定部门批量置为启用。
 func (r *DeptRepository) UpdateStatusNormalByIDs(ctx context.Context, ids []int64) (int64, error) {
 	if len(ids) == 0 {
 		return 0, nil

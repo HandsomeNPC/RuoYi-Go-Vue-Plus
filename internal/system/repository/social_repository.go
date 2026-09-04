@@ -10,7 +10,6 @@ import (
 	"ruoyi-go-vue-plus/internal/system/model"
 )
 
-// ErrSocialNotFound 社会化关系不存在。
 var ErrSocialNotFound = errors.New("repository: 社会化关系不存在")
 
 // SocialRepository sys_social 数据访问。
@@ -23,7 +22,7 @@ func NewSocialRepository(db *gorm.DB) *SocialRepository {
 	return &SocialRepository{db: db}
 }
 
-// SelectByUserID 按用户ID查其绑定的社会化授权列表（对应 Java SysSocialMapper#queryListByUserId）。
+// SelectByUserID 按用户ID查其绑定的社会化授权列表。
 // sys_social 未映射 del_flag，这里直接物理查询。
 func (r *SocialRepository) SelectByUserID(ctx context.Context,
 	userID int64) ([]*model.SysSocial, error) {
@@ -59,9 +58,9 @@ func (r *SocialRepository) SelectByID(ctx context.Context, id int64) (*model.Sys
 	return &row, nil
 }
 
-// SelectByAuthID 按 auth_id 查绑定关系（对应 Java SysSocialMapper 的 selectByAuthId）。
+// SelectByAuthID 按 auth_id 查绑定关系。
 //
-// 返回 slice 而非单条：对齐 Java voList() 的形状，调用方按「非空即已被绑定」判定。
+// 返回 slice 而非单条：调用方按「非空即已被绑定」判定。
 func (r *SocialRepository) SelectByAuthID(ctx context.Context,
 	authID string) ([]*model.SysSocial, error) {
 
@@ -79,8 +78,7 @@ func (r *SocialRepository) SelectByAuthID(ctx context.Context,
 	return rows, nil
 }
 
-// SelectByUserIDAndSource 查某用户在某平台的绑定关系
-// （对应 Java queryList 传 userId + source 的分支）。
+// SelectByUserIDAndSource 查某用户在某平台的绑定关系。
 func (r *SocialRepository) SelectByUserIDAndSource(ctx context.Context, userID int64,
 	source string) ([]*model.SysSocial, error) {
 
@@ -137,7 +135,7 @@ func (r *SocialRepository) UpdateByID(ctx context.Context, id int64,
 
 // DeleteByID 按主键删除，返回受影响行数。
 //
-// 物理删除：SysSocial 未嵌 repository.LogicDelete，与 Java 侧一致
+// 物理删除：SysSocial 未嵌 repository.LogicDelete
 // （SysSocial 上没有 @TableLogic，只有 SysUser/SysRole/SysDept 等才有）。
 func (r *SocialRepository) DeleteByID(ctx context.Context, id int64) (int64, error) {
 	if id <= 0 {

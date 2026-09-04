@@ -18,7 +18,7 @@ func setupManager(t *testing.T) {
 	sagin.SetManager(sagin.NewBuilder().Storage(memory.NewStorage()).Build())
 }
 
-// TestRegisterRoutesConfigPaths 参数配置的九个接口都已按 Java SysConfigController 的
+// TestRegisterRoutesConfigPaths 参数配置的九个接口都已按预期的
 // 方法与路径注册到真实路由表上（而非另建一份探针，那只能验 gin 的规则、验不到本文件的注册）。
 func TestRegisterRoutesConfigPaths(t *testing.T) {
 	gin.SetMode(gin.TestMode)
@@ -48,7 +48,7 @@ func TestRegisterRoutesConfigPaths(t *testing.T) {
 	}
 }
 
-// TestRegisterRoutesDeptPaths 部门的七个接口都已按 Java SysDeptController 的
+// TestRegisterRoutesDeptPaths 部门的七个接口都已按预期的
 // 方法与路径注册到真实路由表上。
 func TestRegisterRoutesDeptPaths(t *testing.T) {
 	gin.SetMode(gin.TestMode)
@@ -76,8 +76,8 @@ func TestRegisterRoutesDeptPaths(t *testing.T) {
 	}
 }
 
-// TestRegisterRoutesDictPaths 字典数据与字典类型的十三个接口都已按 Java
-// SysDictDataController / SysDictTypeController 的方法与路径注册到真实路由表上。
+// TestRegisterRoutesDictPaths 字典数据与字典类型的十三个接口都已按预期的
+// 方法与路径注册到真实路由表上。
 func TestRegisterRoutesDictPaths(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupManager(t)
@@ -112,7 +112,7 @@ func TestRegisterRoutesDictPaths(t *testing.T) {
 	}
 }
 
-// TestRegisterRoutesMenuPaths 菜单的八个接口都已按 Java SysMenuController 的
+// TestRegisterRoutesMenuPaths 菜单的八个接口都已按预期的
 // 方法与路径注册到真实路由表上。
 func TestRegisterRoutesMenuPaths(t *testing.T) {
 	gin.SetMode(gin.TestMode)
@@ -142,7 +142,7 @@ func TestRegisterRoutesMenuPaths(t *testing.T) {
 	}
 }
 
-// TestRegisterRoutesPostPaths 岗位的八个接口都已按 Java SysPostController 的
+// TestRegisterRoutesPostPaths 岗位的八个接口都已按预期的
 // 方法与路径注册到真实路由表上。
 func TestRegisterRoutesPostPaths(t *testing.T) {
 	gin.SetMode(gin.TestMode)
@@ -171,7 +171,7 @@ func TestRegisterRoutesPostPaths(t *testing.T) {
 	}
 }
 
-// TestRegisterRoutesUserPaths 用户管理的接口都已按 Java SysUserController 的
+// TestRegisterRoutesUserPaths 用户管理的接口都已按预期的
 // 方法与路径注册到真实路由表上。根路径 "" 与 /:userId 复用 GetInfoByID；
 // 静态段（list/deptTree/optionselect/authRole/unlock/export/importData/importTemplate
 // /resetPwd/changeStatus）与同层 /:userId 共存，gin 静态段优先。
@@ -212,7 +212,8 @@ func TestRegisterRoutesUserPaths(t *testing.T) {
 	}
 }
 
-// TestRegisterRoutesProfilePaths 个人中心的三个接口都已按 Java SysProfileController// 的方法与路径注册到真实路由表上。avatar 端点 Java 的 SysProfileController 未提供，故不出现。
+// TestRegisterRoutesProfilePaths 个人中心的三个接口都已按预期的
+// 方法与路径注册到真实路由表上。avatar 端点未提供，故不出现。
 func TestRegisterRoutesProfilePaths(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupManager(t)
@@ -234,12 +235,12 @@ func TestRegisterRoutesProfilePaths(t *testing.T) {
 		}
 	}
 	if registered["POST /user/profile/avatar"] {
-		t.Error("Java 侧 SysProfileController 无 avatar 接口，不应注册 POST /user/profile/avatar")
+		t.Error("SysProfileController 无 avatar 接口，不应注册 POST /user/profile/avatar")
 	}
 }
 
-// TestRegisterRoutesNoticePaths 通知公告的五个接口都已按 Java SysNoticeController 的
-// 方法与路径注册到真实路由表上。Java 侧没有导出接口，故不该出现 /notice/export。
+// TestRegisterRoutesNoticePaths 通知公告的五个接口都已按预期的
+// 方法与路径注册到真实路由表上。没有导出接口，故不该出现 /notice/export。
 func TestRegisterRoutesNoticePaths(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupManager(t)
@@ -263,11 +264,11 @@ func TestRegisterRoutesNoticePaths(t *testing.T) {
 		}
 	}
 	if registered["POST /notice/export"] {
-		t.Error("Java 侧 notice 无导出接口，不应注册 POST /notice/export")
+		t.Error("notice 无导出接口，不应注册 POST /notice/export")
 	}
 }
 
-// TestRegisterRoutesRolePaths 角色的十五个接口都已按 Java SysRoleController 的
+// TestRegisterRoutesRolePaths 角色的十五个接口都已按预期的
 // 方法与路径注册到真实路由表上。
 func TestRegisterRoutesRolePaths(t *testing.T) {
 	gin.SetMode(gin.TestMode)
@@ -303,8 +304,8 @@ func TestRegisterRoutesRolePaths(t *testing.T) {
 	}
 }
 
-// TestRegisterRoutesSocialPaths 社会化关系的一个接口已按 Java SysSocialController
-// 的方法与路径注册到真实路由表上。
+// TestRegisterRoutesSocialPaths 社会化关系的一个接口已按预期的
+// 方法与路径注册到真实路由表上。
 func TestRegisterRoutesSocialPaths(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupManager(t)

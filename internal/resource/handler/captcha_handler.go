@@ -17,24 +17,23 @@ import (
 	"ruoyi-go-vue-plus/pkg/sms"
 )
 
-// codeExpiration 验证码有效期，对照 Java Duration.ofMinutes(Constants.CAPTCHA_EXPIRATION)。
+// codeExpiration 验证码有效期。
 const codeExpiration = time.Duration(constant.ConstantCaptchaExpiration) * time.Minute
 
-// mailSubject 验证码邮件主题，逐字对齐 Java。
+// mailSubject 验证码邮件主题。
 const mailSubject = "登录验证码"
 
-// CaptchaApi 短信与邮箱验证码接口（对应 Java CaptchaController 的两个 /resource 端点）。
+// CaptchaApi 短信与邮箱验证码接口。
 //
 // 图形验证码（/auth/code）不在此处：它属于 auth 模块，见 internal/auth/handler。
 type CaptchaApi struct{}
 
-// CaptchaApiApp 包级实例。
 var CaptchaApiApp = new(CaptchaApi)
 
-// SmsCode 发送短信验证码（对应 Java smsCode）。
+// SmsCode 发送短信验证码。
 //
-// 出参用 response.Fail 而非 c.Error：Java 这里返回的是 R.fail(...)——
-// 一个 code=500 的正常响应体，不是抛异常走全局兜底。
+// 出参用 response.Fail 而非 c.Error：返回的是 code=500 的正常响应体，
+// 不是抛异常走全局兜底。
 func (a *CaptchaApi) SmsCode(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -69,7 +68,7 @@ func (a *CaptchaApi) SmsCode(c *gin.Context) {
 	c.JSON(http.StatusOK, response.OkVoid())
 }
 
-// EmailCode 发送邮箱验证码（对应 Java emailCode）。
+// EmailCode 发送邮箱验证码。
 func (a *CaptchaApi) EmailCode(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -78,7 +77,7 @@ func (a *CaptchaApi) EmailCode(c *gin.Context) {
 		c.JSON(http.StatusOK, response.Fail(i18n.Msg(ctx, "user.email.not.blank")))
 		return
 	}
-	// 开关判断排在格式校验之前，与 Java 一致：功能没开就没必要挑参数的错。
+	// 开关判断排在格式校验之前：功能没开就没必要挑参数的错。
 	if !mail.Enabled() {
 		c.JSON(http.StatusOK, response.Fail("当前系统没有开启邮箱功能！"))
 		return
@@ -89,7 +88,6 @@ func (a *CaptchaApi) EmailCode(c *gin.Context) {
 	}
 
 	code := randomCode()
-	// 正文逐字对齐 Java，含"有效性为N分钟"里的分钟数。
 	body := fmt.Sprintf("您本次验证码为：%s，有效性为%d分钟，请尽快填写。",
 		code, constant.ConstantCaptchaExpiration)
 	if err := mail.Send(ctx, email, mailSubject, body); err != nil {
@@ -118,7 +116,7 @@ func storeCode(c *gin.Context, account, code string) error {
 		Err()
 }
 
-// randomCode 生成 4 位数字验证码，对照 Java RandomUtil.randomNumbers(4)。
+// randomCode 生成 4 位数字验证码。
 // 前导零要保留，故按字符串格式化而非直接转数字。
 func randomCode() string {
 	return fmt.Sprintf("%04d", rand.IntN(10000))

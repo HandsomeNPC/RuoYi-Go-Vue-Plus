@@ -27,8 +27,7 @@ func newCtx(method, path, body string) *gin.Context {
 	return c
 }
 
-// TestIntervalBelowMinimumPanics 间隔小于 1 秒应在注册期 panic，
-// 对照 Java "重复提交间隔时间不能小于'1'秒"（Java 是运行期抛异常）。
+// TestIntervalBelowMinimumPanics 间隔小于 1 秒应在注册期 panic。
 func TestIntervalBelowMinimumPanics(t *testing.T) {
 	defer func() {
 		r := recover()
@@ -70,7 +69,7 @@ func TestGetPanicsBeforeInit(t *testing.T) {
 	get()
 }
 
-// TestCombineKeyPrefix 缓存键须以全局前缀 + 请求路径开头，对照 Java 的键拼装。
+// TestCombineKeyPrefix 缓存键须以全局前缀 + 请求路径开头。
 func TestCombineKeyPrefix(t *testing.T) {
 	s := &Submitter{tokenName: "Authorization"}
 	key := s.combineKey(newCtx("POST", "/system/user", `{"a":1}`))
@@ -145,7 +144,7 @@ func TestRequestBodyRestored(t *testing.T) {
 	}
 }
 
-// TestRequestParams 入参拼装：body 与 query 都有时用空格分隔，对照 Java StringJoiner(" ")。
+// TestRequestParams 入参拼装：body 与 query 都有时用空格分隔。
 func TestRequestParams(t *testing.T) {
 	cases := []struct {
 		name string

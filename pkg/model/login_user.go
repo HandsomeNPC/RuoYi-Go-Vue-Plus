@@ -56,7 +56,6 @@ type LoginUser struct {
 	DeviceType string `json:"deviceType"`
 }
 
-// 对应 Java getLoginId() 抛出的 IllegalArgumentException 两种入参校验失败。
 var (
 	// ErrUserTypeEmpty 用户类型为空。
 	ErrUserTypeEmpty = errors.New("用户类型不能为空")

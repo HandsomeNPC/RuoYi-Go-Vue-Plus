@@ -15,7 +15,6 @@ import (
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
-// ErrUserNotFound 用户不存在。
 var ErrUserNotFound = errors.New("repository: 用户不存在")
 
 // UserRepository sys_user 数据访问。
@@ -104,8 +103,7 @@ func (r *UserRepository) SelectByEmail(ctx context.Context, email string) (*mode
 	return &user, nil
 }
 
-// SelectUserNamesByIDs 按用户ID批量取账号，返回 id → user_name 映射
-// （对应 Java selectUserNameById 的批量形态，供 USER_ID_TO_NAME 翻译用）。
+// SelectUserNamesByIDs 按用户ID批量取账号，返回 id → user_name 映射，供 USER_ID_TO_NAME 翻译用。
 //
 // 一次 IN 查询而非逐个查：列表页每行都要翻译创建人，单查会打出 N+1。
 // 缺失的 ID 不出现在结果里，由调用方按空串兜底。
@@ -136,7 +134,7 @@ func (r *UserRepository) SelectUserNamesByIDs(ctx context.Context,
 	return names, nil
 }
 
-// ExistsByDeptID 判断部门下是否已分配用户（对应 Java checkDeptExistUser）。
+// ExistsByDeptID 判断部门下是否已分配用户。
 func (r *UserRepository) ExistsByDeptID(ctx context.Context, deptID int64) (bool, error) {
 	if deptID <= 0 {
 		return false, nil
@@ -176,7 +174,7 @@ func (r *UserRepository) UpdateLoginInfo(ctx context.Context, userID int64, ip s
 }
 
 // ExistsByPhone 判断手机号是否已被占用，excludeID > 0 时排除该主键
-// （对齐 Java checkPhoneUnique 的 neIfPresent，供个人中心改资料排除自身）。
+// （供个人中心改资料排除自身）。
 func (r *UserRepository) ExistsByPhone(ctx context.Context, phone string,
 	excludeID int64) (bool, error) {
 
@@ -197,7 +195,7 @@ func (r *UserRepository) ExistsByPhone(ctx context.Context, phone string,
 }
 
 // ExistsByEmail 判断邮箱是否已被占用，excludeID > 0 时排除该主键
-// （对齐 Java checkEmailUnique 的 neIfPresent，供个人中心改资料排除自身）。
+// （供个人中心改资料排除自身）。
 func (r *UserRepository) ExistsByEmail(ctx context.Context, email string,
 	excludeID int64) (bool, error) {
 
@@ -217,9 +215,9 @@ func (r *UserRepository) ExistsByEmail(ctx context.Context, email string,
 	return count > 0, nil
 }
 
-// UpdateProfile 按主键更新个人资料（对应 Java updateUserProfile）。
+// UpdateProfile 按主键更新个人资料。
 //
-// 走 map 且仅写非空字段——对齐 Java setIfPresent：个人资料表单字段全可选，
+// 走 map 且仅写非空字段：个人资料表单字段全可选，
 // 漏传的字段不该把线上的昵称/邮箱刷成空串。update_by/update_time 由回调补齐。
 func (r *UserRepository) UpdateProfile(ctx context.Context, userID int64,
 	columns map[string]any) (int64, error) {
@@ -241,7 +239,7 @@ func (r *UserRepository) UpdateProfile(ctx context.Context, userID int64,
 	return res.RowsAffected, nil
 }
 
-// UpdatePassword 按主键重置密码（对应 Java resetUserPwd）。
+// UpdatePassword 按主键重置密码。
 func (r *UserRepository) UpdatePassword(ctx context.Context, userID int64,
 	password string) (int64, error) {
 
@@ -259,13 +257,13 @@ func (r *UserRepository) UpdatePassword(ctx context.Context, userID int64,
 	return res.RowsAffected, nil
 }
 
-// SelectAllocatedList 分页查询已分配某角色的用户（对应 Java selectAllocatedList）。
+// SelectAllocatedList 分页查询已分配某角色的用户。
 //
 // 联 sys_user_role 取授权关系，按 sur.role_id 过滤；一个用户对一个角色仅一行 sur，
 // 故无需 DISTINCT——避免 GORM 的 Count 不识别 DISTINCT、把去重后的行数错算成去重前
 // （联表会因用户的多角色把同一用户拉成多行）。userName/status/phoneNumber 走共用过滤。
-// Java 此处带 @DataPermission 注入部门/创建人隔离条件，Go 侧数据权限尚未落地，
-// 此处只按业务条件查——等数据权限落地后挂上过滤，调用点不必改。
+// 数据权限的部门/创建人隔离条件尚未落地，此处只按业务条件查——
+// 等数据权限落地后挂上过滤，调用点不必改。
 func (r *UserRepository) SelectAllocatedList(ctx context.Context, q bo.SysUserQueryBo,
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysUser], error) {
 
@@ -276,7 +274,6 @@ func (r *UserRepository) SelectAllocatedList(ctx context.Context, q bo.SysUserQu
 			Where("sur.role_id = ?", q.RoleID)
 	}
 	if !page.HasOrder() {
-		// 对齐 Java orderByAsc("u", SysUser::getUserId)。
 		db = db.Order("sys_user.user_id")
 	}
 
@@ -284,12 +281,12 @@ func (r *UserRepository) SelectAllocatedList(ctx context.Context, q bo.SysUserQu
 	return pkgrepo.SelectPage(db, page, &rows)
 }
 
-// SelectUnallocatedList 分页查询未分配某角色的用户（对应 Java selectUnallocatedList）。
+// SelectUnallocatedList 分页查询未分配某角色的用户。
 // excludeUserIDs 是已分配该角色的用户集合（由 service 先取一次），NOT IN 排除之。
 //
 // 不联 sys_user_role：联表会让多角色用户拉成多行，而 GORM 的 Count 不识别 DISTINCT
 // 会把总数错算成去重前。直接 NOT IN 主键集合即可——每用户一行，Count 与 Find 一致。
-// 与 Java 的 LEFT JOIN sur 行为一致：没有任何角色授权的用户也会出现在未分配列表里。
+// 与 LEFT JOIN sur 行为一致：没有任何角色授权的用户也会出现在未分配列表里。
 func (r *UserRepository) SelectUnallocatedList(ctx context.Context, q bo.SysUserQueryBo,
 	excludeUserIDs []int64, page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysUser], error) {
 
@@ -305,8 +302,7 @@ func (r *UserRepository) SelectUnallocatedList(ctx context.Context, q bo.SysUser
 	return pkgrepo.SelectPage(db, page, &rows)
 }
 
-// applyUserAuthQuery 应用 allocated/unallocated 共用的用户过滤条件
-// （对应 Java buildUserRoleJoinWrapper 的 likeIfText/eqIfText 部分）。
+// applyUserAuthQuery 应用 allocated/unallocated 共用的用户过滤条件。
 // 基表是 sys_user（无别名），条件均以 sys_user 前缀限定，避免与联表同名列冲突。
 // 不在此处加 JOIN：两条路径的联表结构不同（allocated 联 sur、unallocated 不联），
 // 各自在调用方补，共用此函数只承载过滤条件。
@@ -324,8 +320,7 @@ func (r *UserRepository) applyUserAuthQuery(db *gorm.DB, q bo.SysUserQueryBo) *g
 }
 
 // splitInt64s 拆分逗号分隔的 ID 串为 int64 切片，丢弃空白与非法段
-// （对应 Java StringUtils.splitTo(s, Convert::toLong)：解析失败整段作废，
-// 这里与 controller 的 parseIDs 同口径，保持 list 过滤的主键集合口径一致）。
+// （解析失败整段作废，这里与 controller 的 parseIDs 同口径，保持 list 过滤的主键集合口径一致）。
 func splitInt64s(s string) []int64 {
 	if s == "" {
 		return nil
@@ -346,8 +341,7 @@ func splitInt64s(s string) []int64 {
 	return out
 }
 
-// applyUserListQuery 应用用户管理列表/导出共用的过滤条件
-// （对应 Java SysUserServiceImpl.buildQueryWrapper）。
+// applyUserListQuery 应用用户管理列表/导出共用的过滤条件。
 // userName/nickName/phoneNumber 走 LIKE，status 走 =，userId 走 =，
 // userIds/excludeUserIds 走 IN/NOT IN（解析逗号串），createTime 走闭区间，
 // deptIds 走 IN（由 service 按 DeptID 解析成「自身+子部门」后填入）。
@@ -355,19 +349,19 @@ func splitInt64s(s string) []int64 {
 // 与 applyUserAuthQuery 分开：列表过滤更全且基表不联 sur，授权页过滤是其子集。
 // 分页与导出两条路径必须共用本函数，否则过滤逻辑改一处漏一处。
 func (r *UserRepository) applyUserListQuery(db *gorm.DB, q bo.SysUserQueryBo) *gorm.DB {
-	if q.UserName != "" { // likeIfText：空串不筛
+	if q.UserName != "" { // 空串不筛
 		db = db.Where("sys_user.user_name LIKE ?", "%"+escapeLike(q.UserName)+"%")
 	}
 	if q.NickName != "" {
 		db = db.Where("sys_user.nick_name LIKE ?", "%"+escapeLike(q.NickName)+"%")
 	}
-	if q.Status != "" { // eqIfText：空串不筛
+	if q.Status != "" { // 空串不筛
 		db = db.Where("sys_user.status = ?", q.Status)
 	}
 	if q.PhoneNumber != "" {
 		db = db.Where("sys_user.phone_number LIKE ?", "%"+escapeLike(q.PhoneNumber)+"%")
 	}
-	if q.UserID > 0 { // eqIfPresent：0 不筛
+	if q.UserID > 0 { // 0 不筛
 		db = db.Where("sys_user.user_id = ?", q.UserID)
 	}
 	if ids := splitInt64s(q.UserIDs); len(ids) > 0 {
@@ -376,7 +370,7 @@ func (r *UserRepository) applyUserListQuery(db *gorm.DB, q bo.SysUserQueryBo) *g
 	if ids := splitInt64s(q.ExcludeUserIDs); len(ids) > 0 {
 		db = db.Where("sys_user.user_id NOT IN ?", ids)
 	}
-	// 两端须同时给出（对齐 Java betweenParams 的 begin != null && end != null）：
+	// 两端须同时给出：
 	// 只给一端就筛会让前端清空半个日期框时结果突变。
 	if q.BeginTime != "" && q.EndTime != "" {
 		db = db.Where("sys_user.create_time BETWEEN ? AND ?", q.BeginTime, q.EndTime)
@@ -388,16 +382,15 @@ func (r *UserRepository) applyUserListQuery(db *gorm.DB, q bo.SysUserQueryBo) *g
 	return db
 }
 
-// SelectPageList 分页查询用户管理列表（对应 Java selectPageUserList）。
+// SelectPageList 分页查询用户管理列表。
 //
-// Java 此处带 @DataPermission 注入部门/角色数据隔离条件，Go 侧数据权限尚未落地，
-// 此处只按业务条件查——等数据权限落地后挂上过滤，调用点不必改。
+// 数据权限的部门/角色数据隔离条件尚未落地，此处只按业务条件查——
+// 等数据权限落地后挂上过滤，调用点不必改。
 func (r *UserRepository) SelectPageList(ctx context.Context, q bo.SysUserQueryBo,
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysUser], error) {
 
 	db := r.applyUserListQuery(r.db.WithContext(ctx).Model(&model.SysUser{}), q)
 	if !page.HasOrder() {
-		// 对齐 Java orderByAsc(SysUser::getUserId)。
 		db = db.Order("sys_user.user_id")
 	}
 	var rows []*model.SysUser
@@ -422,7 +415,7 @@ func (r *UserRepository) SelectExportList(ctx context.Context, q bo.SysUserQuery
 	return rows, nil
 }
 
-// SelectByIDs 按用户ID串/部门取基础信息（对应 Java selectUserByIds）。
+// SelectByIDs 按用户ID串/部门取基础信息。
 // 仅取 user_id/user_name/nick_name 三列，固定 status='0'（启用），
 // userIds 非空时按 IN 过滤、deptID > 0 时按部门精确过滤。两者皆空则返回全部启用用户。
 func (r *UserRepository) SelectByIDs(ctx context.Context, userIds []int64,
@@ -448,7 +441,7 @@ func (r *UserRepository) SelectByIDs(ctx context.Context, userIds []int64,
 }
 
 // ExistsByUserName 判断用户账号是否已被占用，excludeID > 0 时排除该主键
-// （对齐 Java checkUserNameUnique 的 neIfPresent，供修改场景排除自身）。
+// （供修改场景排除自身）。
 func (r *UserRepository) ExistsByUserName(ctx context.Context, userName string,
 	excludeID int64) (bool, error) {
 
@@ -466,13 +459,12 @@ func (r *UserRepository) ExistsByUserName(ctx context.Context, userName string,
 	return count > 0, nil
 }
 
-// CountByUserID 按主键统计存在的用户数（对应 Java countUserById）。
+// CountByUserID 按主键统计存在的用户数。
 // 用于数据权限校验：可见数与传入数不等即越权。
 //
-// Java 此方法带 @DataPermission，非超管账号下注入隔离条件，使"我能看到的用户"与
-// 传入主键不等时抛"没有权限访问用户数据"。Go 侧数据权限尚未落地，此处只按主键计数——
-// 超管在 service 层短路，非超管传入的 userId 都是前端可见的，count 不等只能说明主键不存在。
-// 等数据权限落地后给这次 count 挂上过滤即可，调用点不必改。
+// 数据权限的隔离条件尚未落地：超管在 service 层短路，非超管传入的 userId
+// 都是前端可见的，count 不等只能说明主键不存在。等数据权限落地后给这次 count
+// 挂上过滤即可，调用点不必改。
 func (r *UserRepository) CountByUserID(ctx context.Context, userID int64) (int64, error) {
 	if userID <= 0 {
 		return 0, nil
@@ -486,7 +478,7 @@ func (r *UserRepository) CountByUserID(ctx context.Context, userID int64) (int64
 	return count, nil
 }
 
-// SelectListByDept 按部门取全部用户（对应 Java selectUserListByDept）。
+// SelectListByDept 按部门取全部用户。
 func (r *UserRepository) SelectListByDept(ctx context.Context,
 	deptID int64) ([]*model.SysUser, error) {
 
@@ -539,7 +531,7 @@ func (r *UserRepository) UpdateByID(ctx context.Context, userID int64,
 	return res.RowsAffected, nil
 }
 
-// UpdateStatus 按主键更新账号状态（对应 Java updateUserStatus）。
+// UpdateStatus 按主键更新账号状态。
 func (r *UserRepository) UpdateStatus(ctx context.Context, userID int64,
 	status string) (int64, error) {
 
@@ -561,7 +553,7 @@ func (r *UserRepository) DeleteByIDs(ctx context.Context, ids []int64) (int64, e
 	return res.RowsAffected, nil
 }
 
-// InsertUserRoles 批量写入用户-角色关联（对应 Java insertUserRole 的批量形态）。
+// InsertUserRoles 批量写入用户-角色关联。
 // 空 list 直接返回：不勾任何角色走不到这里（service 已校验非空），保留幂等。
 func (r *UserRepository) InsertUserRoles(ctx context.Context, userID int64,
 	roleIDs []int64) error {
@@ -579,7 +571,7 @@ func (r *UserRepository) InsertUserRoles(ctx context.Context, userID int64,
 	return nil
 }
 
-// DeleteUserRolesByUserID 清理用户的全部角色关联（对应 Java updateUser 的清旧分支）。
+// DeleteUserRolesByUserID 清理用户的全部角色关联。
 // sys_user_role 无 del_flag，物理删除。
 func (r *UserRepository) DeleteUserRolesByUserID(ctx context.Context,
 	userID int64) (int64, error) {
@@ -596,7 +588,7 @@ func (r *UserRepository) DeleteUserRolesByUserID(ctx context.Context,
 	return res.RowsAffected, nil
 }
 
-// InsertUserPosts 批量写入用户-岗位关联（对应 Java insertUserPost 的批量形态）。
+// InsertUserPosts 批量写入用户-岗位关联。
 func (r *UserRepository) InsertUserPosts(ctx context.Context, userID int64,
 	postIDs []int64) error {
 
@@ -613,7 +605,7 @@ func (r *UserRepository) InsertUserPosts(ctx context.Context, userID int64,
 	return nil
 }
 
-// DeleteUserPostsByUserID 清理用户的全部岗位关联（对应 Java updateUser 的清旧分支）。
+// DeleteUserPostsByUserID 清理用户的全部岗位关联。
 // sys_user_post 无 del_flag，物理删除。
 func (r *UserRepository) DeleteUserPostsByUserID(ctx context.Context,
 	userID int64) (int64, error) {
@@ -630,7 +622,7 @@ func (r *UserRepository) DeleteUserPostsByUserID(ctx context.Context,
 	return res.RowsAffected, nil
 }
 
-// DeleteUserRolesByUserIDs 批量清理给定用户的角色关联（对应 Java deleteUserByIds 的清旧分支）。
+// DeleteUserRolesByUserIDs 批量清理给定用户的角色关联。
 func (r *UserRepository) DeleteUserRolesByUserIDs(ctx context.Context,
 	userIDs []int64) (int64, error) {
 
@@ -646,7 +638,7 @@ func (r *UserRepository) DeleteUserRolesByUserIDs(ctx context.Context,
 	return res.RowsAffected, nil
 }
 
-// DeleteUserPostsByUserIDs 批量清理给定用户的岗位关联（对应 Java deleteUserByIds 的清旧分支）。
+// DeleteUserPostsByUserIDs 批量清理给定用户的岗位关联。
 func (r *UserRepository) DeleteUserPostsByUserIDs(ctx context.Context,
 	userIDs []int64) (int64, error) {
 

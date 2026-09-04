@@ -10,7 +10,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/response"
 )
 
-// 鉴权失败提示，与 Java SaTokenExceptionHandler 的两类文案一致。
+// 鉴权失败的两类提示文案。
 const (
 	msgNotPermission = "没有访问权限，请联系管理员授权"
 	msgNotLogin      = "登录状态异常，请重新登录"

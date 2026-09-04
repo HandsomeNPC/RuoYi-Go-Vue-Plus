@@ -38,7 +38,7 @@ func (r *OperLogRepository) SelectPageList(ctx context.Context, q bo.SysOperLogQ
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysOperLog], error) {
 
 	db := applyOperLogQuery(r.db.WithContext(ctx).Model(&model.SysOperLog{}), q)
-	// 仅在调用方未指定排序时按主键降序兜底（对齐 Java orderByDesc(SysOperLog::getOperId)）。
+	// 仅在调用方未指定排序时按主键降序兜底。
 	if !page.HasOrder() {
 		db = db.Order("oper_id DESC")
 	}
@@ -68,7 +68,7 @@ func (r *OperLogRepository) SelectList(ctx context.Context, q bo.SysOperLogQuery
 	return rows, nil
 }
 
-// applyOperLogQuery 应用操作日志查询条件（对齐 Java buildQueryWrapper）：
+// applyOperLogQuery 应用操作日志查询条件：
 // operIp/title/operName/browser/os 走 like，businessType/status/userId/deptId/clientKey/deviceType
 // 走 eq，businessTypes 走 in，oper_time 走闭区间；空串/零值一概不筛。
 // escapeLike 复用 config_repository.go 同包定义。
@@ -79,7 +79,7 @@ func applyOperLogQuery(db *gorm.DB, q bo.SysOperLogQueryBo) *gorm.DB {
 	if q.Title != "" {
 		db = db.Where("title LIKE ?", "%"+escapeLike(q.Title)+"%")
 	}
-	// 对齐 Java businessType > 0：0=其他 不参与单值过滤，要按"其他"筛走 BusinessTypes。
+	// 0=其他 不参与单值过滤，要按"其他"筛走 BusinessTypes。
 	if q.BusinessType > 0 {
 		db = db.Where("business_type = ?", q.BusinessType)
 	}
@@ -110,7 +110,7 @@ func applyOperLogQuery(db *gorm.DB, q bo.SysOperLogQueryBo) *gorm.DB {
 	if q.OS != "" {
 		db = db.Where("os LIKE ?", "%"+escapeLike(q.OS)+"%")
 	}
-	// 两端须同时给出（对齐 Java betweenParams 的 begin != null && end != null）：
+	// 两端须同时给出：
 	// 只给一端就筛会让前端清空半个日期框时结果突变。
 	if q.BeginTime != "" && q.EndTime != "" {
 		db = db.Where("oper_time BETWEEN ? AND ?", q.BeginTime, q.EndTime)
@@ -119,7 +119,7 @@ func applyOperLogQuery(db *gorm.DB, q bo.SysOperLogQueryBo) *gorm.DB {
 }
 
 // DeleteByIDs 按主键批量删除，返回受影响行数。
-// sys_oper_log 无 del_flag，这是物理删除（对齐 Java deleteOperLogByIds）。
+// sys_oper_log 无 del_flag，这是物理删除。
 func (r *OperLogRepository) DeleteByIDs(ctx context.Context, ids []int64) (int64, error) {
 	if len(ids) == 0 {
 		return 0, fmt.Errorf("repository: 操作日志主键为空")
@@ -134,7 +134,7 @@ func (r *OperLogRepository) DeleteByIDs(ctx context.Context, ids []int64) (int64
 	return res.RowsAffected, nil
 }
 
-// Clean 清空全部操作日志（对应 Java cleanOperLog 的 lambda().delete()）。
+// Clean 清空全部操作日志。
 func (r *OperLogRepository) Clean(ctx context.Context) error {
 	if err := r.db.WithContext(ctx).Where("1 = 1").Delete(&model.SysOperLog{}).Error; err != nil {
 		return fmt.Errorf("repository: 清空操作日志失败: %w", err)

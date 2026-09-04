@@ -19,13 +19,11 @@ import (
 	"ruoyi-go-vue-plus/pkg/snowflake"
 )
 
-// ErrOssConfigNotFound 对象存储配置不存在。
 var ErrOssConfigNotFound = errors.New("service: 对象存储配置不存在")
 
-// ErrOssConfigKeyExists 配置键已被占用。
 var ErrOssConfigKeyExists = errors.New("service: 对象存储配置键已存在")
 
-// systemConfigIDs 系统内置配置主键，不允许删除（对齐 Java OssConstant.SYSTEM_DATA_IDS）。
+// systemConfigIDs 系统内置配置主键，不允许删除。
 // 只含前四条（minio/qiniu/aliyun/qcloud）；seed 里的 image 配置有意不在其中，可删。
 var systemConfigIDs = map[int64]struct{}{
 	1761900000000000001: {},
@@ -37,10 +35,9 @@ var systemConfigIDs = map[int64]struct{}{
 // OssConfigService 对象存储配置业务逻辑。
 type OssConfigService struct{}
 
-// OssConfigSvcApp 包级实例。
 var OssConfigSvcApp = new(OssConfigService)
 
-// InitCache 启动时把全部配置写进缓存，并确定默认配置键（对应 Java init()）。
+// InitCache 启动时把全部配置写进缓存，并确定默认配置键。
 //
 // 必须在进程启动时跑一次：上传走 oss.InstanceDefault，它只认缓存与
 // OssDefaultConfigKey，不预热的话第一次上传直接失败。
@@ -177,8 +174,7 @@ func (s *OssConfigService) UpdateConfig(ctx context.Context, b *bo.SysOssConfigB
 // buildOssConfigUpdateColumns 组装更新列。
 //
 // 取舍依据是「该字段被清空是否为用户的合法意图」：
-// 前缀/自定义域名/区域/扩展/备注是可选项，一律写入才能让编辑表单把它们清空
-// （Java 侧专门用 .set(isNull, ..., "") 达成同样效果）；
+// 前缀/自定义域名/区域/扩展/备注是可选项，一律写入才能让编辑表单把它们清空；
 // 状态/桶权限/https 是控制字段，缺省即视为不改——漏传不该把默认配置刷成非默认。
 func buildOssConfigUpdateColumns(b *bo.SysOssConfigBo) map[string]any {
 	columns := map[string]any{
@@ -261,9 +257,9 @@ func (s *OssConfigService) DeleteConfigs(ctx context.Context, ids []int64) error
 	return nil
 }
 
-// UpdateConfigStatus 切换默认配置（对应 Java updateOssConfigStatus）。
+// UpdateConfigStatus 切换默认配置。
 //
-// 与 Java 一致地把全表刷成非默认再置目标行，故传 status=N 会导致一个默认都没有，
+// 把全表刷成非默认再置目标行，故传 status=N 会导致一个默认都没有，
 // 此后上传都会失败——这是前端只在"设为默认"时调用本接口的既有约定。
 func (s *OssConfigService) UpdateConfigStatus(ctx context.Context,
 	b *bo.SysOssConfigStatusBo) error {

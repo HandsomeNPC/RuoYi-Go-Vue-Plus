@@ -2,7 +2,7 @@ package model
 
 import "ruoyi-go-vue-plus/pkg/repository"
 
-// SysRole 角色表（sys_role），对应 Java org.dromara.system.domain.SysRole。
+// SysRole 角色表（sys_role）。
 type SysRole struct {
 	RoleID   int64  `gorm:"column:role_id;primaryKey" json:"roleId"`
 	RoleName string `gorm:"column:role_name" json:"roleName"`

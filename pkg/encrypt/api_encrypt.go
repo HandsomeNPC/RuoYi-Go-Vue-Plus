@@ -1,5 +1,5 @@
 // api_encrypt.go 接口加解密的注解（装饰器）层，对照 sa-token-go 的注解形式
-// （sagin.CheckPermission）与 Java @ApiEncrypt + CryptoFilter。
+// （sagin.CheckPermission）。
 // 初始化对照 redis.Init：encrypt.Init() 无参，自读 config.Get().APIEncrypt，
 // 解析密钥并设包级全局；路由用包级 encrypt.ApiEncrypt() / ApiEncryptWithResponse()。
 package encrypt
@@ -96,12 +96,12 @@ func ApiEncrypt() gin.HandlerFunc {
 	return func(c *gin.Context) { getCrypto().run(c, false) }
 }
 
-// ApiEncryptWithResponse 请求解密 + 响应加密注解（对照 Java @ApiEncrypt(response = true)）。
+// ApiEncryptWithResponse 请求解密 + 响应加密注解。
 func ApiEncryptWithResponse() gin.HandlerFunc {
 	return func(c *gin.Context) { getCrypto().run(c, true) }
 }
 
-// run 执行加解密，对照 Java CryptoFilter.doFilter。
+// run 执行加解密。
 func (e *Crypto) run(c *gin.Context, withResponse bool) {
 	if e.priv == nil {
 		// 未启用（!Enabled）：注解直通，不做任何加解密。
@@ -129,7 +129,7 @@ func (e *Crypto) run(c *gin.Context, withResponse bool) {
 	e.encryptResponse(c)
 }
 
-// decryptRequest 解密请求体并换回明文 body，对照 Java DecryptRequestBodyWrapper。
+// decryptRequest 解密请求体并换回明文 body。
 func (e *Crypto) decryptRequest(c *gin.Context, headerValue string) bool {
 	if c.Request.ContentLength > e.maxSize {
 		e.fail(c, "请求体超限")
@@ -176,7 +176,7 @@ func (e *Crypto) decryptRequest(c *gin.Context, headerValue string) bool {
 	return true
 }
 
-// encryptResponse 缓冲响应体，结束后整体加密再写出，对照 Java EncryptResponseBodyWrapper。
+// encryptResponse 缓冲响应体，结束后整体加密再写出。
 func (e *Crypto) encryptResponse(c *gin.Context) {
 	if e.pub == nil {
 		log.Printf("[encrypt] %s 配置了响应加密但未提供公钥", c.Request.URL.Path)
@@ -224,7 +224,7 @@ func (e *Crypto) encryptResponse(c *gin.Context) {
 //
 // 前端 axios 把加密后的 base64 串当 JSON body 发（Content-Type 是 application/json），
 // transformRequest 会 JSON.stringify 一次，于是上线的 body 是 "abc123=="——带引号。
-// Java 端能直接解是因为 hutool 的 base64 解码器会静默跳过非字母表字符（引号被忽略），
+// 原实现用 hutool 的 base64 解码器会静默跳过非字母表字符（引号被忽略），
 // 而 Go 标准库 base64 严格报错(illegal base64 data at input byte 0)，故须显式剥离。
 func unwrapJSONString(b []byte) string {
 	if len(b) >= 2 && b[0] == '"' && b[len(b)-1] == '"' {

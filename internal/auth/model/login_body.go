@@ -1,6 +1,6 @@
 package model
 
-// LoginBody 通用登录请求对象（对应 Java LoginBody）。只含公共字段，各登录方式各自扩展。
+// LoginBody 通用登录请求对象。只含公共字段，各登录方式各自扩展。
 type LoginBody struct {
 	ClientID  string `json:"clientId" binding:"required"`
 	GrantType string `json:"grantType" binding:"required"`

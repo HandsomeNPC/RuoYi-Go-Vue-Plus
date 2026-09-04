@@ -163,8 +163,7 @@ func TestLogRecordsPanic(t *testing.T) {
 	}
 }
 
-// TestLogRecordsPathParams 路径参数须入库：Java 侧 joinPoint.getArgs() 含
-// @PathVariable，删了哪几个客户端是审计最需要的信息。
+// TestLogRecordsPathParams 路径参数须入库：删了哪几个客户端是审计最需要的信息。
 func TestLogRecordsPathParams(t *testing.T) {
 	get := capture(t)
 	r := newEngine(func(c *gin.Context) {
@@ -212,7 +211,7 @@ func TestLogExcludesSensitiveParams(t *testing.T) {
 }
 
 // TestLogSkipsBinaryResponse 导出接口响应体是 xlsx 二进制，
-// 不该落进 json_result（对照 Java export 返回 void，jsonResult 为 null）。
+// 不该落进 json_result。
 func TestLogSkipsBinaryResponse(t *testing.T) {
 	get := capture(t)
 	r := newEngine(func(c *gin.Context) {
@@ -330,8 +329,7 @@ func TestLogWithoutRecorder(t *testing.T) {
 	}
 }
 
-// TestLogRecordsNoLoginUser 未登录时用户字段留零，不 panic
-// （对照 Java loginUser 为 null 的分支）。
+// TestLogRecordsNoLoginUser 未登录时用户字段留零，不 panic。
 func TestLogRecordsNoLoginUser(t *testing.T) {
 	get := capture(t)
 	r := newEngine(func(c *gin.Context) {

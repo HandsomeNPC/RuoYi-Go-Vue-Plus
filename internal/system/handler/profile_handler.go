@@ -14,14 +14,13 @@ import (
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 )
 
-// ProfileApi 个人信息接口（对应 Java SysProfileController）。
+// ProfileApi 个人信息接口。
 type ProfileApi struct{}
 
-// ProfileApiApp 包级实例。
 var ProfileApiApp = new(ProfileApi)
 
-// Profile 获取当前登录用户的个人中心信息（对照 Java SysProfileController.profile）。
-// 与 Java 一致：不校验权限码，仅需登录；user 查不到时返回失败。
+// Profile 获取当前登录用户的个人中心信息。
+// 不校验权限码，仅需登录；user 查不到时返回失败。
 func (a *ProfileApi) Profile(c *gin.Context) {
 	userID := loginhelper.GetUserID(c)
 	if userID == 0 {
@@ -40,7 +39,7 @@ func (a *ProfileApi) Profile(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(res))
 }
 
-// UpdateProfile 修改当前登录用户的个人资料（对照 Java updateProfile）。
+// UpdateProfile 修改当前登录用户的个人资料。
 func (a *ProfileApi) UpdateProfile(c *gin.Context) {
 	userID := loginhelper.GetUserID(c)
 	if userID == 0 {
@@ -72,7 +71,7 @@ func (a *ProfileApi) UpdateProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, response.OkVoid())
 }
 
-// UpdatePwd 重置密码（对照 Java updatePwd）。
+// UpdatePwd 重置密码。
 // 走 encrypt.ApiEncrypt()：前端以 RSA 加密请求体，中间件解密后 handler 拿到明文。
 func (a *ProfileApi) UpdatePwd(c *gin.Context) {
 	userID := loginhelper.GetUserID(c)

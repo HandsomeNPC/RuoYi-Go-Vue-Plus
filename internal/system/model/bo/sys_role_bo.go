@@ -1,6 +1,6 @@
 package bo
 
-// SysRoleBo 角色业务对象（入参），对应 Java SysRoleBo。
+// SysRoleBo 角色业务对象（入参）。
 type SysRoleBo struct {
 	RoleID   int64  `json:"roleId"`
 	RoleName string `json:"roleName" binding:"required,max=30"`

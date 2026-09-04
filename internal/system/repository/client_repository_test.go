@@ -354,7 +354,7 @@ func TestUpdateByIDRejectsBadInput(t *testing.T) {
 	}
 }
 
-// TestUpdateStatusByClientIDSQL 改状态须按 client_id 定位(对齐 Java)，且只动 status。
+// TestUpdateStatusByClientIDSQL 改状态须按 client_id 定位，且只动 status。
 func TestUpdateStatusByClientIDSQL(t *testing.T) {
 	got := captureUpdateSQL(t, func(r *ClientRepository) error {
 		_, err := r.UpdateStatusByClientID(t.Context(), "e5cd7e4891bf95d1d19206ce24a7b32e", "1")

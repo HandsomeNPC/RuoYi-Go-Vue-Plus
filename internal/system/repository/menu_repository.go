@@ -12,7 +12,6 @@ import (
 	"ruoyi-go-vue-plus/pkg/constant"
 )
 
-// ErrMenuNotFound 菜单不存在。
 var ErrMenuNotFound = errors.New("repository: 菜单不存在")
 
 // MenuRepository sys_menu 数据访问。
@@ -25,14 +24,14 @@ func NewMenuRepository(db *gorm.DB) *MenuRepository {
 	return &MenuRepository{db: db}
 }
 
-// RoleMenuPerm 角色-菜单权限投影行，对应 Java selectMenuPermsByRoleIds 的 (roleId, perms)。
+// RoleMenuPerm 角色-菜单权限投影行。
 // 非表实体，仅用于联表查询结果承载。
 type RoleMenuPerm struct {
 	RoleID int64  `gorm:"column:role_id"`
 	Perms  string `gorm:"column:perms"`
 }
 
-// SelectMenuPermsByUserId 按用户ID查菜单权限标识（对应 Java SysMenuMapper#selectMenuPermsByUserId）。
+// SelectMenuPermsByUserId 按用户ID查菜单权限标识。
 // 路径：sys_menu m ← sys_role_menu srm ← sys_user_role sur（sur.role_id=srm.role_id）→ sys_role sr。
 // 仅取正常角色（status=0、未删除）且 perms 非空的去重标识。
 func (r *MenuRepository) SelectMenuPermsByUserId(ctx context.Context, userID int64) ([]string, error) {
@@ -63,7 +62,7 @@ func (r *MenuRepository) SelectMenuPermsByUserId(ctx context.Context, userID int
 	return out, nil
 }
 
-// SelectMenuPermsByRoleIds 按角色ID集合批量查权限（对应 Java SysMenuMapper#selectMenuPermsByRoleIds）。
+// SelectMenuPermsByRoleIds 按角色ID集合批量查权限。
 // 返回 (roleId, perms) 行序列，由 service 汇总成 map[roleId][]perms。
 func (r *MenuRepository) SelectMenuPermsByRoleIds(ctx context.Context, roleIDs []int64) ([]RoleMenuPerm, error) {
 	if len(roleIDs) == 0 {
@@ -88,7 +87,7 @@ func (r *MenuRepository) SelectMenuPermsByRoleIds(ctx context.Context, roleIDs [
 	return rows, nil
 }
 
-// SelectMenuTreeAll 查全部正常状态的目录和菜单（对应 Java SysMenuMapper#selectMenuTreeAll）。
+// SelectMenuTreeAll 查全部正常状态的目录和菜单。
 // 排序 parent_id, order_num 是构树前提：service 依赖同级节点已按 order_num 有序。
 func (r *MenuRepository) SelectMenuTreeAll(ctx context.Context) ([]*model.SysMenu, error) {
 	var menus []*model.SysMenu
@@ -104,7 +103,7 @@ func (r *MenuRepository) SelectMenuTreeAll(ctx context.Context) ([]*model.SysMen
 	return menus, nil
 }
 
-// SelectMenuTreeByUserId 按用户ID查其可见的目录和菜单（对应 Java SysMenuMapper#selectMenuTreeByUserId）。
+// SelectMenuTreeByUserId 按用户ID查其可见的目录和菜单。
 func (r *MenuRepository) SelectMenuTreeByUserId(ctx context.Context, userID int64) ([]*model.SysMenu, error) {
 	if userID <= 0 {
 		return nil, nil
@@ -150,7 +149,7 @@ func (r *MenuRepository) SelectByID(ctx context.Context, menuID int64) (*model.S
 	return &menu, nil
 }
 
-// SelectList 按条件查全部菜单（对应 Java selectMenuList 的超管分支）。
+// SelectList 按条件查全部菜单。
 // 菜单总量有限（前端按树整体渲染、无分页），故不分页也不限行数。
 func (r *MenuRepository) SelectList(ctx context.Context, q bo.SysMenuQueryBo) ([]*model.SysMenu, error) {
 	db := applyMenuQuery(r.db.WithContext(ctx).Model(&model.SysMenu{}), q)
@@ -164,7 +163,7 @@ func (r *MenuRepository) SelectList(ctx context.Context, q bo.SysMenuQueryBo) ([
 	return menus, nil
 }
 
-// SelectListByUserId 按条件查用户可见的菜单（对应 Java SysMenuMapper#selectMenuListByUserId）。
+// SelectListByUserId 按条件查用户可见的菜单。
 // 经 sys_role_menu / sys_user_role 关联，仅取正常状态角色下的菜单。
 func (r *MenuRepository) SelectListByUserId(ctx context.Context, q bo.SysMenuQueryBo,
 	userID int64) ([]*model.SysMenu, error) {
@@ -196,7 +195,7 @@ func applyMenuQuery(db *gorm.DB, q bo.SysMenuQueryBo) *gorm.DB {
 	return applyMenuQueryWithAlias(db, q, "")
 }
 
-// applyMenuQueryWithAlias 应用菜单查询条件（对齐 Java buildQueryWrapper）：
+// applyMenuQueryWithAlias 应用菜单查询条件：
 // 名称走 LIKE，其余走 =；空值一概不筛。
 //
 // prefix 是列名前缀（联表时传 "sys_menu."）：超管与普通用户两条路径必须共用本函数，
@@ -220,7 +219,7 @@ func applyMenuQueryWithAlias(db *gorm.DB, q bo.SysMenuQueryBo, prefix string) *g
 	return db
 }
 
-// SelectMenuIDsByRoleID 按角色查其选中的菜单主键（对应 Java selectMenuListByRoleId）。
+// SelectMenuIDsByRoleID 按角色查其选中的菜单主键。
 //
 // menuCheckStrictly 为 true 时剔除"同时又是别的选中项之父"的节点：前端树组件
 // 在父子联动模式下，父节点勾选态由子节点推导，回传父节点会让它显示成全选。
@@ -308,7 +307,7 @@ func (r *MenuRepository) UpdateByID(ctx context.Context, menuID int64,
 }
 
 // DeleteByIDs 按主键批量删除，返回受影响行数。
-// sys_menu 无 del_flag，这是物理删除（对齐 Java 侧该表未开逻辑删除）。
+// sys_menu 无 del_flag，这是物理删除。
 func (r *MenuRepository) DeleteByIDs(ctx context.Context, ids []int64) (int64, error) {
 	if len(ids) == 0 {
 		return 0, fmt.Errorf("repository: 菜单主键为空")
@@ -323,10 +322,10 @@ func (r *MenuRepository) DeleteByIDs(ctx context.Context, ids []int64) (int64, e
 	return res.RowsAffected, nil
 }
 
-// ExistsByParentIDs 判断这批菜单之外是否还有以它们为父的菜单（对应 Java hasChildByMenuId）。
+// ExistsByParentIDs 判断这批菜单之外是否还有以它们为父的菜单。
 //
 // 排除 ids 自身：级联删除时父子可能同批提交，此时子菜单会随父一起删掉，不该算"存在子菜单"。
-// 传单个 id 时 NOT IN 自身恒真，退化成 Java 的单参重载。
+// 传单个 id 时 NOT IN 自身恒真，退化成单参重载。
 func (r *MenuRepository) ExistsByParentIDs(ctx context.Context, ids []int64) (bool, error) {
 	if len(ids) == 0 {
 		return false, nil
@@ -344,7 +343,7 @@ func (r *MenuRepository) ExistsByParentIDs(ctx context.Context, ids []int64) (bo
 }
 
 // ExistsByMenuName 判断同一上级下的菜单名称是否已被占用，excludeID > 0 时排除该主键
-// （对齐 Java checkMenuNameUnique：名称 + 父级两列共同判重，供修改场景排除自身）。
+// （名称 + 父级两列共同判重，供修改场景排除自身）。
 func (r *MenuRepository) ExistsByMenuName(ctx context.Context, menuName string,
 	parentID, excludeID int64) (bool, error) {
 
@@ -366,8 +365,7 @@ func (r *MenuRepository) ExistsByMenuName(ctx context.Context, menuName string,
 	return count > 0, nil
 }
 
-// SelectRouteConflictCandidates 查 path 或 route_name 命中给定两值的目录/菜单
-// （对应 Java checkRouteConfigUnique 里那趟 in(TYPE_DIR, TYPE_MENU) + (path = ? or path = ?)）。
+// SelectRouteConflictCandidates 查 path 或 route_name 命中给定两值的目录/菜单。
 //
 // 只捞候选、不在 SQL 里判冲突：冲突规则要比对 parent_id 与 menu_type 的多种组合，
 // 放 service 里逐条判定比拼一个大 WHERE 可读得多。

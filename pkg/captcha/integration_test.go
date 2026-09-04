@@ -79,7 +79,7 @@ func TestGenerateWritesAnswerToRedis(t *testing.T) {
 	if !vo.CaptchaEnabled || vo.UUID == "" || vo.Img == "" {
 		t.Fatalf("启用时应返回完整 Vo, got %+v", vo)
 	}
-	// 对照 Java IdUtil.simpleUUID()：32 位无连字符。
+	// 32 位无连字符。
 	if len(vo.UUID) != 32 {
 		t.Errorf("uuid 应为 32 位无连字符, got %q", vo.UUID)
 	}
@@ -108,5 +108,5 @@ func TestGenerateWritesAnswerToRedis(t *testing.T) {
 
 // TestValidateSuccess / WrongAnswer / Expired / CharIgnoreCase 已随校验逻辑迁至
 // internal/auth/service/captcha_integration_test.go —— 校验(取值→删除→判空→比对)
-// 现在在认证策略的 validateCaptcha 里，对照 Java PasswordAuthStrategy。
+// 现在在认证策略的 validateCaptcha 里。
 // 本包只保留生成侧用例。

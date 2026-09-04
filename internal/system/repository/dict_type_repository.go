@@ -12,7 +12,6 @@ import (
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
-// ErrDictTypeNotFound 字典类型不存在。
 var ErrDictTypeNotFound = errors.New("repository: 字典类型不存在")
 
 // DictTypeRepository sys_dict_type 数据访问。
@@ -82,7 +81,7 @@ func (r *DictTypeRepository) SelectPageList(ctx context.Context, q bo.SysDictTyp
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysDictType], error) {
 
 	db := applyDictTypeQuery(r.db.WithContext(ctx).Model(&model.SysDictType{}), q)
-	// 仅在调用方未指定排序时按主键升序兜底（对齐 Java orderByAsc(SysDictType::getDictId)）。
+	// 仅在调用方未指定排序时按主键升序兜底。
 	// 不能无条件追加：GORM 合并排序子句时先注册的排在前，主键唯一会让后来的排序列失效。
 	if !page.HasOrder() {
 		db = db.Order("dict_id")
@@ -113,7 +112,7 @@ func (r *DictTypeRepository) SelectList(ctx context.Context, q bo.SysDictTypeQue
 	return rows, nil
 }
 
-// applyDictTypeQuery 应用字典类型查询条件（对齐 Java buildQueryWrapper）：
+// applyDictTypeQuery 应用字典类型查询条件：
 // 名称与类型均走 LIKE，空串一概不筛。
 // 分页与导出两条路径必须共用它，否则过滤逻辑改一处漏一处。
 func applyDictTypeQuery(db *gorm.DB, q bo.SysDictTypeQueryBo) *gorm.DB {
@@ -164,7 +163,7 @@ func (r *DictTypeRepository) UpdateByID(ctx context.Context, dictID int64,
 }
 
 // DeleteByIDs 按主键批量删除，返回受影响行数。
-// sys_dict_type 无 del_flag，这是物理删除（对齐 Java 侧该表未开逻辑删除）。
+// sys_dict_type 无 del_flag，这是物理删除。
 func (r *DictTypeRepository) DeleteByIDs(ctx context.Context, ids []int64) (int64, error) {
 	if len(ids) == 0 {
 		return 0, fmt.Errorf("repository: 字典类型主键为空")
@@ -180,7 +179,7 @@ func (r *DictTypeRepository) DeleteByIDs(ctx context.Context, ids []int64) (int6
 }
 
 // ExistsByDictType 判断 dict_type 是否已被占用，excludeID > 0 时排除该主键
-// （对齐 Java neIfPresent，供修改场景排除自身）。
+// （供修改场景排除自身）。
 func (r *DictTypeRepository) ExistsByDictType(ctx context.Context, dictType string,
 	excludeID int64) (bool, error) {
 

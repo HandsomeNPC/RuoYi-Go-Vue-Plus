@@ -154,7 +154,7 @@ func TestContainsAncestor(t *testing.T) {
 	}
 }
 
-// TestDeptCacheKey 缓存 key 是裸十进制主键，与 Java @Cacheable(key = "#deptId") 同形。
+// TestDeptCacheKey 缓存 key 是裸十进制主键。
 func TestDeptCacheKey(t *testing.T) {
 	if got, want := deptCacheKey(1761000000000000100), "1761000000000000100"; got != want {
 		t.Errorf("deptCacheKey = %q, 期望 %q", got, want)

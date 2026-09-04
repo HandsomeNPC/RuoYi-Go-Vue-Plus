@@ -19,14 +19,13 @@ import (
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 )
 
-// UserApi 用户信息接口（对应 Java SysUserController）。
+// UserApi 用户信息接口。
 type UserApi struct{}
 
-// UserApiApp 包级实例。
 var UserApiApp = new(UserApi)
 
-// GetInfo 获取当前登录用户信息、角色与权限集合（对照 Java SysUserController.getInfo）。
-// 与 Java 一致：不校验权限码，仅需登录；user 查不到时返回失败。
+// GetInfo 获取当前登录用户信息、角色与权限集合。
+// 不校验权限码，仅需登录；user 查不到时返回失败。
 func (a *UserApi) GetInfo(c *gin.Context) {
 	loginUser := loginhelper.GetLoginUser(c)
 	if loginUser == nil || loginUser.UserID == 0 {
@@ -50,7 +49,7 @@ func (a *UserApi) GetInfo(c *gin.Context) {
 	}))
 }
 
-// List 分页查询用户列表（对照 Java list）。
+// List 分页查询用户列表。
 // 筛选条件与分页参数同在 query 上，分两次绑定同一份 URL 参数——query 绑定不消费 body，可重复调用。
 func (a *UserApi) List(c *gin.Context) {
 	var q bo.SysUserQueryBo
@@ -71,7 +70,7 @@ func (a *UserApi) List(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(res))
 }
 
-// Export 导出用户列表为 xlsx 附件（对照 Java export）。
+// Export 导出用户列表为 xlsx 附件。
 // 走 POST：前端 commonExport 以 form 表单提交筛选条件，用 ShouldBind 同时吃 form body 与 query。
 // 业务 handler 中唯一不返回 response.R 的接口，响应体是二进制附件。
 // 多取一行用于判定超限，避免"先捞完百万行再拒绝"。
@@ -94,7 +93,7 @@ func (a *UserApi) Export(c *gin.Context) {
 	}
 }
 
-// ImportData 导入用户（对照 Java importData）。
+// ImportData 导入用户。
 // 走 multipart：file 字段为 xlsx，updateSupport 为是否更新已存在用户。
 // 返回导入分析文案（成功/失败汇总），失败行不中断整体解析。
 func (a *UserApi) ImportData(c *gin.Context) {
@@ -121,7 +120,7 @@ func (a *UserApi) ImportData(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(msg))
 }
 
-// ImportTemplate 导出用户导入模板（对照 Java importTemplate）。
+// ImportTemplate 导出用户导入模板。
 // 空切片输出表头列定义，供前端下载后填写再上传。
 func (a *UserApi) ImportTemplate(c *gin.Context) {
 	if err := excel.Export(c, []systemvo.SysUserImportVo{}, "用户数据"); err != nil {
@@ -130,7 +129,7 @@ func (a *UserApi) ImportTemplate(c *gin.Context) {
 	}
 }
 
-// GetInfoByID 按用户编号获取详情 + 角色ID + 岗位 + 可授权角色（对照 Java getInfo(userId)）。
+// GetInfoByID 按用户编号获取详情 + 角色ID + 岗位 + 可授权角色。
 // 根路径（/system/user）不带 userId，仅返回可授权角色列表；/:userId 带编号时回填用户详情。
 func (a *UserApi) GetInfoByID(c *gin.Context) {
 	var userID int64
@@ -151,8 +150,8 @@ func (a *UserApi) GetInfoByID(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(res))
 }
 
-// Add 新增用户（对照 Java add）。
-// 唯一冲突由 service 返回哨兵错误，handler 翻译为 Java 同款文案。
+// Add 新增用户。
+// 唯一冲突由 service 返回哨兵错误，handler 翻译为同款文案。
 func (a *UserApi) Add(c *gin.Context) {
 	var b bo.SysUserBo
 	if err := c.ShouldBindJSON(&b); err != nil {
@@ -166,7 +165,7 @@ func (a *UserApi) Add(c *gin.Context) {
 	c.JSON(http.StatusOK, response.OkVoid())
 }
 
-// Edit 修改用户（对照 Java edit）。主键校验单独做：SysUserBo 与新增共用，加 binding:required 会卡住新增。
+// Edit 修改用户。主键校验单独做：SysUserBo 与新增共用，加 binding:required 会卡住新增。
 func (a *UserApi) Edit(c *gin.Context) {
 	var b bo.SysUserBo
 	if err := c.ShouldBindJSON(&b); err != nil {
@@ -184,7 +183,7 @@ func (a *UserApi) Edit(c *gin.Context) {
 	c.JSON(http.StatusOK, response.OkVoid())
 }
 
-// Remove 删除用户（对照 Java remove）。当前登录用户不得在删除集合内。
+// Remove 删除用户。当前登录用户不得在删除集合内。
 func (a *UserApi) Remove(c *gin.Context) {
 	ids, err := parseIDs(c.Param("userIds"))
 	if err != nil {
@@ -199,7 +198,7 @@ func (a *UserApi) Remove(c *gin.Context) {
 	c.JSON(http.StatusOK, response.OkVoid())
 }
 
-// OptionSelect 按用户ID串/部门取基础信息（对照 Java optionselect）。
+// OptionSelect 按用户ID串/部门取基础信息。
 // userIds 为空时返回全部启用用户；deptID > 0 时按部门过滤。
 func (a *UserApi) OptionSelect(c *gin.Context) {
 	var userIds []int64
@@ -228,7 +227,7 @@ func (a *UserApi) OptionSelect(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(res))
 }
 
-// ResetPwd 重置密码（对照 Java resetPwd）。请求体经 ApiEncrypt 解密后到达此处。
+// ResetPwd 重置密码。请求体经 ApiEncrypt 解密后到达此处。
 func (a *UserApi) ResetPwd(c *gin.Context) {
 	var b bo.SysUserBo
 	if err := c.ShouldBindJSON(&b); err != nil {
@@ -246,7 +245,7 @@ func (a *UserApi) ResetPwd(c *gin.Context) {
 	c.JSON(http.StatusOK, response.OkVoid())
 }
 
-// ChangeStatus 修改用户状态（对照 Java changeStatus）。
+// ChangeStatus 修改用户状态。
 func (a *UserApi) ChangeStatus(c *gin.Context) {
 	var b bo.SysUserBo
 	if err := c.ShouldBindJSON(&b); err != nil {
@@ -264,7 +263,7 @@ func (a *UserApi) ChangeStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, response.OkVoid())
 }
 
-// Unlock 解锁用户（对照 Java unlock）。
+// Unlock 解锁用户。
 func (a *UserApi) Unlock(c *gin.Context) {
 	userID, err := strconv.ParseInt(c.Param("userId"), 10, 64)
 	if err != nil || userID <= 0 {
@@ -278,7 +277,7 @@ func (a *UserApi) Unlock(c *gin.Context) {
 	c.JSON(http.StatusOK, response.OkVoid())
 }
 
-// AuthRole 按用户编号获取授权角色（对照 Java authRole）。
+// AuthRole 按用户编号获取授权角色。
 func (a *UserApi) AuthRole(c *gin.Context) {
 	userID, err := strconv.ParseInt(c.Param("userId"), 10, 64)
 	if err != nil || userID <= 0 {
@@ -293,8 +292,8 @@ func (a *UserApi) AuthRole(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(res))
 }
 
-// InsertAuthRole 用户授权角色（对照 Java insertAuthRole）。
-// userId、roleIds 走表单字段（Java 无 @RequestBody）；roleIds 兼容重复键与逗号串两种形态。
+// InsertAuthRole 用户授权角色。
+// userId、roleIds 走表单字段；roleIds 兼容重复键与逗号串两种形态。
 func (a *UserApi) InsertAuthRole(c *gin.Context) {
 	userID, err := strconv.ParseInt(c.PostForm("userId"), 10, 64)
 	if err != nil || userID <= 0 {
@@ -317,7 +316,7 @@ func (a *UserApi) InsertAuthRole(c *gin.Context) {
 	c.JSON(http.StatusOK, response.OkVoid())
 }
 
-// DeptTree 获取用户筛选用的部门树（对照 Java deptTree）。
+// DeptTree 获取用户筛选用的部门树。
 func (a *UserApi) DeptTree(c *gin.Context) {
 	var q bo.SysDeptQueryBo
 	if err := c.ShouldBindQuery(&q); err != nil {
@@ -332,7 +331,7 @@ func (a *UserApi) DeptTree(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(res))
 }
 
-// ListByDept 获取指定部门下的全部用户（对照 Java listByDept）。
+// ListByDept 获取指定部门下的全部用户。
 func (a *UserApi) ListByDept(c *gin.Context) {
 	deptID, err := strconv.ParseInt(c.Param("deptId"), 10, 64)
 	if err != nil || deptID <= 0 {
@@ -369,7 +368,7 @@ func parseFormIDArray(c *gin.Context, field string) ([]int64, error) {
 	return out, nil
 }
 
-// translateUserWriteErr 翻译新增/修改用户的哨兵错误为 Java 同款文案。
+// translateUserWriteErr 翻译新增/修改用户的哨兵错误为同款文案。
 // 其余错误原样上抛由 middleware.Recover 兜底。
 func translateUserWriteErr(c *gin.Context, err error, op, userName string) {
 	switch {

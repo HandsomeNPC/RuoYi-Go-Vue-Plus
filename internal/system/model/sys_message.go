@@ -1,6 +1,6 @@
 package model
 
-// SysMessage 消息记录表（sys_message），对应 Java org.dromara.system.domain.SysMessage。
+// SysMessage 消息记录表（sys_message）。
 type SysMessage struct {
 	MessageID int64  `gorm:"column:message_id;primaryKey" json:"messageId"`
 	Category  string `gorm:"column:category" json:"category"`

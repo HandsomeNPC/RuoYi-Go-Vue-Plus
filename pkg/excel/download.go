@@ -14,7 +14,7 @@ import (
 const contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 // HeaderDownloadFilename 附件名响应头。
-// 前端读它拿文件名，比解析 Content-Disposition 省事（对齐 Java download-filename）。
+// 前端读它拿文件名，比解析 Content-Disposition 省事。
 // 跨域下须在 cors.exposedHeaders 里放行，否则前端读不到。
 const HeaderDownloadFilename = "download-filename"
 
@@ -50,14 +50,14 @@ func Export[T any](c *gin.Context, rows []T, sheetName string) error {
 // attachment 拼 Content-Disposition。
 // 同时给 filename 与 filename*：前者是纯 ASCII 兜底给老客户端，后者带 UTF-8 原名，
 // 现代浏览器优先认后者。此处按 RFC 6266 写规范形态，
-// 与 Java（filename 也塞百分号编码值、且 ; 后无空格）的有意差异——
+// 而非 filename 也塞百分号编码值、且 ; 后无空格——
 // 那种写法非规范，只是靠 filename* 生效而侥幸能用。
 func attachment(ascii, encoded string) string {
 	return fmt.Sprintf("attachment; filename=%q; filename*=UTF-8''%s", ascii, encoded)
 }
 
 // attachmentName 生成下载文件名，返回 ASCII 兜底名与百分号编码名。
-// uuid 前缀对齐 Java，避免同名文件在下载目录里互相覆盖。
+// uuid 前缀避免同名文件在下载目录里互相覆盖。
 func attachmentName(sheetName string) (ascii, encoded string) {
 	id := strings.ReplaceAll(uuid.NewString(), "-", "")
 	if sheetName == "" {
@@ -70,9 +70,8 @@ func attachmentName(sheetName string) (ascii, encoded string) {
 
 // percentEncode 百分号编码文件名，只放过 RFC 3986 的 unreserved 字符。
 //
-// 不用 url.QueryEscape（空格编成 +，而文件名里的 + 是字面加号，浏览器不会还原成空格，
-// Java 为此专门补了一次 + → %20 替换），也不用 url.PathEscape
-// （它放过 = 和 @，二者都不是 RFC 5987 允许的 attr-char，会把 filename* 的值截断）。
+// 不用 url.QueryEscape（空格编成 +，而文件名里的 + 是字面加号，浏览器不会还原成空格），
+// 也不用 url.PathEscape（它放过 = 和 @，二者都不是 RFC 5987 允许的 attr-char，会把 filename* 的值截断）。
 func percentEncode(s string) string {
 	var b strings.Builder
 	for i := 0; i < len(s); i++ {

@@ -13,10 +13,9 @@ import (
 // AuthService 认证业务逻辑。
 type AuthService struct{}
 
-// AuthSvcApp 包级实例。
 var AuthSvcApp = new(AuthService)
 
-// AuthStrategy 授权策略（对应 Java IAuthStrategy）。
+// AuthStrategy 授权策略。
 type AuthStrategy interface {
 	Login(req *http.Request, body []byte, client *systemvo.SysClientVo) (*authvo.LoginVo, error)
 }

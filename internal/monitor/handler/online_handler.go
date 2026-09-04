@@ -13,10 +13,9 @@ import (
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 )
 
-// UserOnlineApi 在线用户监控接口（对应 Java SysUserOnlineController）。
+// UserOnlineApi 在线用户监控接口。
 type UserOnlineApi struct{}
 
-// UserOnlineApiApp 包级实例。
 var UserOnlineApiApp = new(UserOnlineApi)
 
 // List 获取在线用户监控列表，按 IP 或用户名过滤当前有效会话。

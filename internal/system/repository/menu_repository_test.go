@@ -43,7 +43,7 @@ func captureMenuSQL(t *testing.T, q bo.SysMenuQueryBo, byUser bool) (string, []a
 }
 
 // TestMenuQueryConditions 五个条件全传时都应落到 WHERE：
-// 名称走 LIKE，其余走 =（对齐 Java likeIfText/eqIfText/eqIfPresent）。
+// 名称走 LIKE，其余走 =。
 func TestMenuQueryConditions(t *testing.T) {
 	sql, vars := captureMenuSQL(t, bo.SysMenuQueryBo{
 		MenuName: "用户",

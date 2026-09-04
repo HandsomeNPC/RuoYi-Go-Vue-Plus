@@ -1,6 +1,6 @@
 package bo
 
-// SysUserBo 用户信息业务对象（入参），对应 Java SysUserBo。
+// SysUserBo 用户信息业务对象（入参）。
 type SysUserBo struct {
 	UserID      int64  `json:"userId"`
 	DeptID      int64  `json:"deptId"`

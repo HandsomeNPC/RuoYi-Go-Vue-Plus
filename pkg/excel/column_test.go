@@ -135,7 +135,7 @@ func TestParseDict(t *testing.T) {
 		{"空表达式", "", nil, false},
 		{"两项", "0=正常,1=停用", []dictPair{{"0", "正常"}, {"1", "停用"}}, false},
 		{"单项", "0=正常", []dictPair{{"0", "正常"}}, false},
-		// 标签自己含 =，按首个 = 切分（对齐 Java split("=", 2)）。
+		// 标签自己含 =，按首个 = 切分。
 		{"标签含等号", "0=a=b", []dictPair{{"0", "a=b"}}, false},
 		{"缺等号", "正常", nil, true},
 		{"某项缺等号", "0=正常,停用", nil, true},

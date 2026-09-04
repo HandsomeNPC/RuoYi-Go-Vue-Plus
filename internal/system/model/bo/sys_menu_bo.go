@@ -1,6 +1,6 @@
 package bo
 
-// SysMenuBo 菜单权限业务对象（入参），对应 Java SysMenuBo。
+// SysMenuBo 菜单权限业务对象（入参）。
 type SysMenuBo struct {
 	MenuID     int64  `json:"menuId"`
 	ParentID   int64  `json:"parentId"`

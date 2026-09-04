@@ -12,7 +12,6 @@ import (
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
-// ErrNoticeNotFound 通知公告不存在。
 var ErrNoticeNotFound = errors.New("repository: 通知公告不存在")
 
 // NoticeRepository sys_notice 数据访问。
@@ -50,7 +49,7 @@ func (r *NoticeRepository) SelectPageList(ctx context.Context, q bo.SysNoticeQue
 	createBy int64, page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysNotice], error) {
 
 	db := applyNoticeQuery(r.db.WithContext(ctx).Model(&model.SysNotice{}), q, createBy)
-	// 仅在调用方未指定排序时按主键升序兜底（对齐 Java orderByAsc(SysNotice::getNoticeId)）。
+	// 仅在调用方未指定排序时按主键升序兜底。
 	// 不能无条件追加：GORM 合并排序子句时先注册的排在前，主键唯一会让后来的排序列失效。
 	if !page.HasOrder() {
 		db = db.Order("notice_id")
@@ -79,7 +78,7 @@ func (r *NoticeRepository) SelectList(ctx context.Context, q bo.SysNoticeQueryBo
 	return rows, nil
 }
 
-// applyNoticeQuery 应用通知公告查询条件（对齐 Java buildQueryWrapper）：
+// applyNoticeQuery 应用通知公告查询条件：
 // 标题走 like，类型与创建者走 eq；空值一概不筛。
 // 分页与列表两条路径必须共用它，否则过滤逻辑改一处漏一处。
 func applyNoticeQuery(db *gorm.DB, q bo.SysNoticeQueryBo, createBy int64) *gorm.DB {
@@ -135,7 +134,7 @@ func (r *NoticeRepository) UpdateByID(ctx context.Context, noticeID int64,
 }
 
 // DeleteByIDs 按主键批量删除，返回受影响行数。
-// sys_notice 无 del_flag，这是物理删除（对齐 Java 侧该表未开逻辑删除）。
+// sys_notice 无 del_flag，这是物理删除。
 func (r *NoticeRepository) DeleteByIDs(ctx context.Context, ids []int64) (int64, error) {
 	if len(ids) == 0 {
 		return 0, fmt.Errorf("repository: 通知公告主键为空")

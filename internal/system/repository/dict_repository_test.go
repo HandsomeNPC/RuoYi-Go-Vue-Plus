@@ -39,7 +39,7 @@ func captureDictDataSQL(t *testing.T, q bo.SysDictDataQueryBo,
 }
 
 // TestDictDataQueryConditions 三个条件全传时都应落到 WHERE：
-// 排序号/类型走 =，标签走 LIKE（对齐 Java eqIfPresent/eqIfText/likeIfText）。
+// 排序号/类型走 =，标签走 LIKE。
 func TestDictDataQueryConditions(t *testing.T) {
 	sql, vars := captureDictDataSQL(t, bo.SysDictDataQueryBo{
 		DictSort:  3,
@@ -93,8 +93,7 @@ func TestDictDataQueryEscapesLike(t *testing.T) {
 	}
 }
 
-// TestDictDataDefaultOrder 导出路径固定按 dict_sort, dict_code 排序
-// （对齐 Java orderByAsc(dictSort, dictCode)）。
+// TestDictDataDefaultOrder 导出路径固定按 dict_sort, dict_code 排序。
 //
 // 用 SelectList 而非 SelectPageList 验排序：DryRun 下 Count 返回 0 会让 SelectPage
 // 提前返回，只捕获得到不带 ORDER BY 的 COUNT 语句。
@@ -171,7 +170,7 @@ func captureDictTypeSQL(t *testing.T, q bo.SysDictTypeQueryBo,
 	return sql, vars
 }
 
-// TestDictTypeQueryConditions 名称与类型都走 LIKE（对齐 Java 两个 likeIfText）。
+// TestDictTypeQueryConditions 名称与类型都走 LIKE。
 func TestDictTypeQueryConditions(t *testing.T) {
 	sql, vars := captureDictTypeSQL(t, bo.SysDictTypeQueryBo{
 		DictName: "用户",
@@ -206,7 +205,7 @@ func TestDictTypeQueryEmptyConditions(t *testing.T) {
 	}
 }
 
-// TestDictTypeDefaultOrder 导出路径固定按主键升序（对齐 Java orderByAsc(dictId)）。
+// TestDictTypeDefaultOrder 导出路径固定按主键升序。
 // 用 SelectList 而非 SelectPageList：见 TestDictDataDefaultOrder 的说明。
 func TestDictTypeDefaultOrder(t *testing.T) {
 	db := dryClientDB(t)

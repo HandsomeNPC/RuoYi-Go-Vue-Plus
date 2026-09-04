@@ -1,13 +1,12 @@
-// Package oplog 提供操作日志注解（装饰器），对照 Java @Log + LogAspect。
+// Package oplog 提供操作日志注解（装饰器）。
 //
 // 落库实现不在本包：pkg 不依赖 internal 的 service/repository，故这里只组装
 // Event，由 internal/system 在进程启动时经 Init 反向注册 Recorder 消费。
-// 这正是 Java 侧 LogAspect 发 OperLogEvent、SysOperLogServiceImpl
-// @Async @EventListener 落库那套解耦的等价物。
+// 落库由 internal/system 在启动时反向注册 Recorder 消费 Event，与业务包解耦。
 //
-// 与 Java 的有意差异：
-//   - Method 取 gin 的 HandlerName（Go 无 AOP 切点，拿不到"类名.方法名"）；
-//   - OperParam 在 handler 之前采集而非之后——Java 从线程绑定的 request 取，
+// 与原实现的差异：
+//   - Method 取 gin 的 HandlerName（无 AOP 切点，拿不到"类名.方法名"）；
+//   - OperParam 在 handler 之前采集而非之后——原实现从线程绑定的 request 取，
 //     Go 的 body 是一次性流，handler 消费后再读就晚了；
 //   - 响应体边写边抄一份（不拦截后补发），故 panic 时半截响应的行为与不挂本
 //     中间件时一致，无需 repeatsubmit 那样规避 Written() 与 Recover 的冲突。
@@ -36,10 +35,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 )
 
-// 各字段的落库长度上限，对照 Java LogAspect 的三个 MAX_* 常量，
-// 与 sys_oper_log 的列宽对应。maxNameLength / maxIPLength 是 Java 侧没有的：
-// 那边这些字段直接落库不截断，靠 MySQL 非严格模式静默截；本项目补上，
-// 严格模式下超长会让整条日志插入失败。
+// 各字段的落库长度上限，与 sys_oper_log 列宽对应。maxNameLength/maxIPLength 是补的：严格模式下超长会让整条日志插入失败。
 const (
 	maxURLLength       = 255 // oper_url varchar(255)
 	maxClientKeyLength = 32  // client_key / device_type varchar(32)
@@ -55,7 +51,7 @@ const (
 // 由 Recover 记录，这里只需标记本次操作失败。
 const msgPanic = "系统异常"
 
-// Event 操作日志事件，对照 Java OperLogEvent。
+// Event 操作日志事件。
 // OperLocation 留空由 Recorder 侧补（反查 IP 归属地要走地址库，不该占住请求线程）。
 type Event struct {
 	Title         string
@@ -110,7 +106,7 @@ func get() Recorder {
 	return r
 }
 
-// options @Log 注解的可选项，对照 Java Log 注解除 title/businessType 外的字段。
+// options @Log 注解的可选项。
 type options struct {
 	operatorType     enum.OperatorType
 	saveRequestData  bool
@@ -121,22 +117,22 @@ type options struct {
 // Option 配置项。
 type Option func(*options)
 
-// WithOperatorType 指定操作人类别，默认 OperatorTypeManage（对照 Java 默认 MANAGE）。
+// WithOperatorType 指定操作人类别，默认 OperatorTypeManage。
 func WithOperatorType(t enum.OperatorType) Option {
 	return func(o *options) { o.operatorType = t }
 }
 
-// WithoutRequestData 不记录请求参数，对照 Java isSaveRequestData = false。
+// WithoutRequestData 不记录请求参数。
 func WithoutRequestData() Option {
 	return func(o *options) { o.saveRequestData = false }
 }
 
-// WithoutResponseData 不记录响应参数，对照 Java isSaveResponseData = false。
+// WithoutResponseData 不记录响应参数。
 func WithoutResponseData() Option {
 	return func(o *options) { o.saveResponseData = false }
 }
 
-// WithExcludeParams 追加不记录的请求参数名，对照 Java excludeParamNames。
+// WithExcludeParams 追加不记录的请求参数名。
 // constant.ExcludeProperties 里的密码类字段无需在此重复。
 func WithExcludeParams(names ...string) Option {
 	return func(o *options) { o.excludeParams = append(o.excludeParams, names...) }
@@ -144,7 +140,7 @@ func WithExcludeParams(names ...string) Option {
 
 // Log 操作日志注解。title 为模块名，businessType 为业务类型。
 //
-// 须排在鉴权之后：被拒的请求在 Java 侧同样进不到切面（sa-token 在拦截器阶段就返回）。
+// 须排在鉴权之后：被拒的请求在鉴权阶段就返回，进不到本中间件。
 func Log(title string, businessType enum.BusinessType, opts ...Option) gin.HandlerFunc {
 	o := &options{
 		operatorType:     enum.OperatorTypeManage,
@@ -232,7 +228,7 @@ func emit(c *gin.Context, evt *Event) {
 	r(context.WithoutCancel(c.Request.Context()), evt)
 }
 
-// fillLoginUser 填充登录用户相关字段，未登录时整体留零（对照 Java loginUser 为 null 的分支）。
+// fillLoginUser 填充登录用户相关字段，未登录时整体留零。
 //
 // 逐个截断：这些列是 varchar(32)/(50)，而会话与请求头的内容不受本进程控制
 // （oper_ip 取自可伪造的 X-Forwarded-For），超长会让异步落库整条失败——
@@ -249,7 +245,7 @@ func fillLoginUser(c *gin.Context, evt *Event) {
 	evt.DeviceType = limit(lu.DeviceType, maxClientKeyLength)
 	evt.Browser = limit(lu.Browser, maxNameLength)
 	evt.OS = limit(lu.OS, maxNameLength)
-	// 请求头没带 clientid 时回落会话里的（对照 Java isBlank 才覆盖）。
+	// 请求头没带 clientid 时回落会话里的。
 	if evt.ClientKey == "" {
 		evt.ClientKey = limit(lu.ClientKey, maxClientKeyLength)
 	}
@@ -257,9 +253,9 @@ func fillLoginUser(c *gin.Context, evt *Event) {
 
 // requestParam 采集入参。
 //
-// 对照 Java：query/form 有值就用它，否则（PUT/POST/DELETE）取方法入参。
-// Java 的「方法入参」是 joinPoint.getArgs()，既含 @RequestBody 也含 @PathVariable，
-// 故 Go 侧除请求体外还要带上路径参数——否则 DELETE /client/{ids} 只剩一条
+// query/form 有值就用它，否则（PUT/POST/DELETE）取方法入参。
+// 原实现的「方法入参」含 @RequestBody 也含 @PathVariable，
+// 故除请求体外还要带上路径参数——否则 DELETE /client/{ids} 只剩一条
 // "删了点什么" 的空记录，而删了哪几个客户端恰是审计最需要的信息。
 func requestParam(c *gin.Context, exclude []string) string {
 	if params := middleware.SanitizeFormParam(c, maxContentLength, exclude); params != "" {
@@ -312,7 +308,7 @@ func excluded(name string, extra []string) bool {
 	return false
 }
 
-// joinParams 用空格拼接非空片段，对照 Java StringJoiner(" ")。
+// joinParams 用空格拼接非空片段。
 func joinParams(parts ...string) string {
 	kept := make([]string, 0, len(parts))
 	for _, p := range parts {
@@ -326,7 +322,7 @@ func joinParams(parts ...string) string {
 // lastError 取 handler 登记的最后一个错误，无错误返回 nil。
 //
 // 本项目 handler 不直接渲染错误而是 c.Error 后交给 middleware.Recover，
-// 故业务失败与 Java 抛异常在此等价——两边都判为 FAIL。
+// 故业务失败与直接抛异常在此等价——都判为 FAIL。
 func lastError(c *gin.Context) error {
 	if len(c.Errors) == 0 {
 		return nil
@@ -339,7 +335,7 @@ func lastError(c *gin.Context) error {
 //
 // 只看 c.Errors 是不够的：handler 也可以直接 c.JSON(200, response.Fail(...))
 // 而不登记错误（user_handler 就是这么写的），那样会记出一条 status=0 却
-// json_result 带 code:500 的自相矛盾的日志。Java 侧 LogAspect 同样只认异常，
+// json_result 带 code:500 的自相矛盾的日志。原实现只认异常，
 // 但本项目多出这条 code 通路，且与 repeatsubmit 判定不一致会让同一次请求
 // 在两个中间件里得出相反结论。
 //
@@ -386,9 +382,9 @@ func errorMsg(err error) string {
 	return err.Error()
 }
 
-// handlerName 取 handler 函数名作为 Method，补 "()" 对齐 Java "类名.方法名()" 的形态。
+// handlerName 取 handler 函数名作为 Method，补 "()"。
 // gin 的 HandlerName 形如 ".../internal/system/handler.(*ClientApi).Add-fm"，
-// "-fm" 是方法值的编译期后缀，去掉更贴近 Java 的读法。
+// "-fm" 是方法值的编译期后缀，去掉。
 func handlerName(c *gin.Context) string {
 	name := strings.TrimSuffix(c.HandlerName(), "-fm")
 	if name == "" {
@@ -397,7 +393,7 @@ func handlerName(c *gin.Context) string {
 	return limit(name+"()", maxContentLength)
 }
 
-// limit 按字符数截断，对照 Java StringUtils.substring(value, 0, maxLength)。
+// limit 按字符数截断。
 // 按 rune 而非 byte 截：中文文案按字节切会把最后一个字切成乱码。
 func limit(s string, maxLen int) string {
 	if len(s) <= maxLen {
@@ -454,8 +450,7 @@ func (w *responseCapture) jsonBody() bool {
 }
 
 // text 返回抄本。非 JSON 响应返回空串：导出接口的响应体是 xlsx 二进制，
-// 落进 json_result 既无可读性又白占 4000 字节。对照 Java 侧 export 返回 void、
-// jsonResult 为 null 因而不记录。
+// 落进 json_result 既无可读性又白占 4000 字节。
 func (w *responseCapture) text() string {
 	if !w.jsonBody() {
 		return ""

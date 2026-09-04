@@ -68,7 +68,7 @@ func TestOperLogSelectPageQueryAll(t *testing.T) {
 }
 
 // TestOperLogSelectPageQueryEmpty 空串/零值一概不筛：WHERE 段不含任何业务过滤列。
-// 对齐 Java likeIfText/eqIfText/eqIfPresent/betweenParams 在入参为空时的不筛语义。
+// 入参为空时不落 WHERE 条件。
 func TestOperLogSelectPageQueryEmpty(t *testing.T) {
 	sql, _ := captureOperLogSQL(t, bo.SysOperLogQueryBo{},
 		pkgrepo.PageQuery{PageNum: 1, PageSize: 10})
@@ -86,7 +86,7 @@ func TestOperLogSelectPageQueryEmpty(t *testing.T) {
 }
 
 // TestOperLogBusinessTypeZeroNotFilter 单值 businessType=0 不参与过滤，
-// 对齐 Java 的 businessType > 0：0=其他 要筛得走 businessTypes。
+// businessType=0 是"其他"，要筛"其他"得走 businessTypes 集合。
 func TestOperLogBusinessTypeZeroNotFilter(t *testing.T) {
 	q := bo.SysOperLogQueryBo{BusinessType: 0}
 	sql, _ := captureOperLogSQL(t, q, pkgrepo.PageQuery{PageNum: 1, PageSize: 10})
@@ -96,7 +96,7 @@ func TestOperLogBusinessTypeZeroNotFilter(t *testing.T) {
 }
 
 // TestOperLogSelectPageQueryHalfDate 只给一端时间不筛 oper_time，
-// 对齐 Java betweenParams 的 begin != null && end != null 才生效。
+// 两端同时给才生效。
 func TestOperLogSelectPageQueryHalfDate(t *testing.T) {
 	q := bo.SysOperLogQueryBo{BeginTime: "2026-01-01"} // 只有 begin
 	sql, _ := captureOperLogSQL(t, q, pkgrepo.PageQuery{PageNum: 1, PageSize: 10})

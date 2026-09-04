@@ -60,7 +60,6 @@ func newClient(configKey string, cfg ClientConfig) (*Client, error) {
 
 	// 两个 checksum 开关必须显式设成 WhenRequired：默认值会给每个请求附带
 	// x-amz-checksum-* 头与 trailer，MinIO / 阿里云等 S3 兼容实现不认，直接报错。
-	// 对齐 Java DefaultOssClientImpl 里同名的两项设置。
 	base := s3.New(s3.Options{
 		Credentials:                creds,
 		Region:                     cfg.Region,
@@ -70,9 +69,9 @@ func newClient(configKey string, cfg ClientConfig) (*Client, error) {
 		ResponseChecksumValidation: aws.ResponseChecksumValidationWhenRequired,
 	})
 
-	// 预签名客户端的 endpoint 用 domainUrl 而非 endpointUrl（对齐 Java 的
-	// s3Presigner.endpointOverride(domainUrl)）：配了 CDN 域名时，签出的链接
-	// 得指向 CDN，指回源站等于绕过 CDN。未配 domainUrl 时 DomainURL 回落 endpoint。
+	// 预签名客户端的 endpoint 用 domainUrl 而非 endpointUrl：
+	// 配了 CDN 域名时，签出的链接得指向 CDN，指回源站等于绕过 CDN。
+	// 未配 domainUrl 时 DomainURL 回落 endpoint。
 	presignBase := s3.New(s3.Options{
 		Credentials:                creds,
 		Region:                     cfg.Region,
@@ -101,9 +100,8 @@ func (c *Client) IsPrivate() bool { return c.cfg.IsPrivate() }
 
 // BuildPathKey 生成对象键：[prefix/]yyyy/MM/dd/<32位十六进制>.<后缀>。
 //
-// 格式须与 Java AbstractOssClientImpl.buildPathKey 逐字一致——键直接落库，
-// 改了格式老数据仍按旧键存放，只是新旧混排；但若日期段或 uuid 长度变了，
-// 任何按前缀扫描桶的运维脚本都会失效。
+// 格式须固定——键直接落库，改了格式老数据仍按旧键存放，只是新旧混排；
+// 但若日期段或 uuid 长度变了，任何按前缀扫描桶的运维脚本都会失效。
 func (c *Client) BuildPathKey(fileName string) string {
 	id := strings.ReplaceAll(uuid.NewString(), "-", "")
 	datePath := time.Now().Format("2006/01/02")
@@ -161,8 +159,7 @@ func (c *Client) Upload(ctx context.Context, key string, body io.Reader,
 
 // Download 取对象元信息与数据流。调用方须关闭返回的流。
 //
-// 返回流而非字节切片（Java 那边 IoUtil.readBytes 全量读进内存）：
-// 下载走 io.Copy 直通响应，大文件不会把进程内存打爆。
+// 返回流而非字节切片：下载走 io.Copy 直通响应，大文件不会把进程内存打爆。
 func (c *Client) Download(ctx context.Context, key string) (*GetObjectResult, io.ReadCloser, error) {
 	out, err := c.s3.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(c.cfg.Bucket),

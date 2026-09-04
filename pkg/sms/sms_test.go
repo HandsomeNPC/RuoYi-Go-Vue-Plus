@@ -215,7 +215,7 @@ func TestSendCodeDisabled(t *testing.T) {
 	}
 }
 
-// TestSendCodePassesCodeParam 验证码以 code 为模板变量名下发（对齐 Java map.put("code", ...)）。
+// TestSendCodePassesCodeParam 验证码以 code 为模板变量名下发。
 func TestSendCodePassesCodeParam(t *testing.T) {
 	var got map[string]string
 	restore := SetSender(senderFunc(func(_ context.Context, _ string, params map[string]string) error {

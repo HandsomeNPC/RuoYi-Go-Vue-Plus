@@ -8,16 +8,14 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// writeWait 单条消息的写超时。到点即认定连接不可用并剔除，
-// 对应 Java MessageProperties.webSocketSendTimeLimit。
+// writeWait 单条消息的写超时。到点即认定连接不可用并剔除。
 const writeWait = 10 * time.Second
 
 // wsConn 一条 WebSocket 连接。
 //
 // gorilla/websocket 明确规定同一连接上并发写会 panic，而广播是多 goroutine
-// 触发的。Java 侧靠 ConcurrentWebSocketSessionDecorator 加锁串行化，
-// 这里改用「单写者 goroutine + 有缓冲 channel」——Go 里更地道，且能顺带
-// 用缓冲长度界定慢客户端：写满即放弃该连接，不让它堵住广播。
+// 触发的。这里改用「单写者 goroutine + 有缓冲 channel」串行化——Go 里更地道，
+// 且能顺带用缓冲长度界定慢客户端：写满即放弃该连接，不让它堵住广播。
 type wsConn struct {
 	conn *websocket.Conn
 	// out 待发消息队列，由 writePump 独占消费。

@@ -14,10 +14,9 @@ import (
 	"ruoyi-go-vue-plus/pkg/response"
 )
 
-// OperLogApi 操作日志监控接口（对应 Java SysOperlogController）。
+// OperLogApi 操作日志监控接口。
 type OperLogApi struct{}
 
-// OperLogApiApp 包级实例。
 var OperLogApiApp = new(OperLogApi)
 
 // List 分页查询操作日志列表。
@@ -42,8 +41,8 @@ func (a *OperLogApi) List(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(res))
 }
 
-// Export 导出操作日志列表为 xlsx 附件（对应 Java SysOperlogController.export）。
-// 与 Java 一致走 POST：前端 commonExport 以 form 表单 POST 提交筛选条件，故用 ShouldBind。
+// Export 导出操作日志列表为 xlsx 附件。
+// 走 POST：前端 commonExport 以 form 表单提交筛选条件，故用 ShouldBind。
 // 响应体是二进制附件，不返回 response.R。多取一行用于判定超限，避免"先捞完百万行再拒绝"。
 func (a *OperLogApi) Export(c *gin.Context) {
 	var q bo.SysOperLogQueryBo
@@ -63,7 +62,7 @@ func (a *OperLogApi) Export(c *gin.Context) {
 	}
 }
 
-// Remove 批量删除操作日志。主键串以逗号分隔，与 Java 的 @PathVariable Long[] operIds 同形。
+// Remove 批量删除操作日志。主键串以逗号分隔。
 func (a *OperLogApi) Remove(c *gin.Context) {
 	ids, err := parseIDs(c.Param("operIds"))
 	if err != nil {

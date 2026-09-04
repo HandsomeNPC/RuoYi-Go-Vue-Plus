@@ -9,8 +9,7 @@ type SysConfigQueryBo struct {
 	ConfigKey  string `form:"configKey"`
 	// ConfigType 系统内置（Y是 N否）。
 	ConfigType string `form:"configType"`
-	// BeginTime/EndTime 创建时间区间，闭区间，两端须同时给出才生效
-	// （对齐 Java betweenParams 的 begin != null && end != null）。
+	// BeginTime/EndTime 创建时间区间，闭区间，两端须同时给出才生效。
 	//
 	// tag 里的方括号不是笔误：前端 fieldMappingTime 把日期区间摊平成
 	// params[beginTime]/params[endTime] 两个 query 参数，gin 按字面量匹配 form tag，

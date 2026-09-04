@@ -12,7 +12,6 @@ import (
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
-// ErrClientNotFound 客户端不存在。
 var ErrClientNotFound = errors.New("repository: 客户端不存在")
 
 // ClientRepository sys_client 数据访问。
@@ -63,7 +62,7 @@ func (r *ClientRepository) SelectByID(ctx context.Context, id int64) (*model.Sys
 	return &client, nil
 }
 
-// SelectPageList 按条件分页查客户端。条件均为空串不筛（对齐 Java eqIfText 语义）。
+// SelectPageList 按条件分页查客户端。条件均为空串不筛。
 //
 // 返回实体而非 VO：SysClientVo 的三个 *List 字段无对应列，GORM 会按字段名拼进 SELECT。
 func (r *ClientRepository) SelectPageList(ctx context.Context, q bo.SysClientQueryBo,
@@ -102,7 +101,7 @@ func (r *ClientRepository) SelectList(ctx context.Context, q bo.SysClientQueryBo
 	return rows, nil
 }
 
-// applyClientQuery 应用客户端查询条件。条件均为空串不筛（对齐 Java eqIfText 语义）。
+// applyClientQuery 应用客户端查询条件。条件均为空串不筛。
 // 分页与导出两条路径必须共用它，否则过滤逻辑改一处漏一处。
 func applyClientQuery(db *gorm.DB, q bo.SysClientQueryBo) *gorm.DB {
 	if q.ClientID != "" {
@@ -157,7 +156,7 @@ func (r *ClientRepository) UpdateByID(ctx context.Context, id int64,
 	return res.RowsAffected, nil
 }
 
-// UpdateStatusByClientID 按客户端标识改状态，返回受影响行数（对齐 Java updateClientStatus 的按 client_id 定位）。
+// UpdateStatusByClientID 按客户端标识改状态，返回受影响行数。
 func (r *ClientRepository) UpdateStatusByClientID(ctx context.Context, clientID,
 	status string) (int64, error) {
 
@@ -194,7 +193,7 @@ func (r *ClientRepository) DeleteByIDs(ctx context.Context, ids []int64) (int64,
 }
 
 // ExistsByClientKey 判断 client_key 是否已被占用，excludeID > 0 时排除该主键
-// （对齐 Java neIfPresent，供修改场景排除自身）。
+// （供修改场景排除自身）。
 func (r *ClientRepository) ExistsByClientKey(ctx context.Context, clientKey string,
 	excludeID int64) (bool, error) {
 

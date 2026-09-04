@@ -1,6 +1,6 @@
 package bo
 
-// SysConfigBo 参数配置业务对象（入参），对应 Java SysConfigBo。
+// SysConfigBo 参数配置业务对象（入参）。
 type SysConfigBo struct {
 	ConfigID    int64  `json:"configId"`
 	ConfigName  string `json:"configName" binding:"required,max=100"`

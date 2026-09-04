@@ -134,8 +134,7 @@ func TestNormalizeServerURLTrimsTrailingSlash(t *testing.T) {
 	}
 }
 
-// TestNormalizeServerURLRejectsInvalid 非法 serverUrl 要在注册期就被挡下，
-// 对齐 JustAuth AuthChecker.isValidServerUrl 的四项要求。
+// TestNormalizeServerURLRejectsInvalid 非法 serverUrl 要在注册期就被挡下。
 func TestNormalizeServerURLRejectsInvalid(t *testing.T) {
 	for _, in := range []string{
 		"",                  // 未配置
@@ -218,8 +217,8 @@ func TestFirstNonEmpty(t *testing.T) {
 	}
 }
 
-// TestStateKeyPrefix state 的 Redis 键须落在与 Java 一致的前缀下，
-// 否则同库共存的 Java 与 Go 进程会各写一处、互不认账。
+// TestStateKeyPrefix state 的 Redis 键须落在固定前缀下，
+// 否则同库共存的不同进程会各写一处、互不认账。
 func TestStateKeyPrefix(t *testing.T) {
 	if got := stateKey("abc"); !strings.HasPrefix(got, "global:social_auth_codes:") {
 		t.Errorf("stateKey = %q, 前缀不符", got)

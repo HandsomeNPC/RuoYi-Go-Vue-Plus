@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// SysOperLogBo 操作日志记录业务对象（入参），对应 Java SysOperLogBo。
+// SysOperLogBo 操作日志记录业务对象（入参）。
 type SysOperLogBo struct {
 	OperID int64  `json:"operId"`
 	Title  string `json:"title"`

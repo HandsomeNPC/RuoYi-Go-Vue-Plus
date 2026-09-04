@@ -36,7 +36,7 @@ func InstanceDefault(ctx context.Context) (*Client, error) {
 // Instance 取指定配置键的客户端，供下载/删除按文件记录的 service 列取用。
 //
 // 配置变了不需要显式失效：每次都重新解析缓存里的配置，与已缓存客户端的配置比对，
-// 不一致就重建（对齐 Java OssFactory 的 verifyConfig）。Remove 只是主动清理。
+// 不一致就重建。Remove 只是主动清理。
 func Instance(ctx context.Context, configKey string) (*Client, error) {
 	if configKey == "" {
 		return nil, ErrDefaultConfigNotSet

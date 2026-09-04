@@ -10,13 +10,12 @@ import (
 	"ruoyi-go-vue-plus/pkg/response"
 )
 
-// CacheApi 缓存监控接口（对应 Java CacheController）。
+// CacheApi 缓存监控接口。
 type CacheApi struct{}
 
-// CacheApiApp 包级实例。
 var CacheApiApp = new(CacheApi)
 
-// GetInfo 获取 Redis 缓存监控信息（对应 Java CacheController.getInfo）。
+// GetInfo 获取 Redis 缓存监控信息。
 func (a *CacheApi) GetInfo(c *gin.Context) {
 	res, err := service.CacheSvcApp.GetInfo(c.Request.Context())
 	if err != nil {

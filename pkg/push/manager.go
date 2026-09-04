@@ -14,7 +14,7 @@ import (
 	pkgredis "ruoyi-go-vue-plus/pkg/redis"
 )
 
-// 客户端/服务端约定的控制消息，取值对齐 Java MessageConstants。
+// 客户端/服务端约定的控制消息。
 const (
 	// pingMessage 客户端心跳请求。
 	pingMessage = "ping"
@@ -24,7 +24,7 @@ const (
 	kickedMessage = "kicked"
 )
 
-// Manager 推送会话管理器，对应 Java PushSessionManager。
+// Manager 推送会话管理器。
 type Manager struct {
 	cfg      config.PushConfig
 	registry *registry
@@ -96,8 +96,7 @@ func (m *Manager) Online() int {
 	return m.registry.online()
 }
 
-// Publish 把消息发布到 Redis 主题，由各实例的订阅方投给本地连接
-// （对应 Java publishMessage / publishAll）。
+// Publish 把消息发布到 Redis 主题，由各实例的订阅方投给本地连接。
 //
 // 必须走 Redis 而不能直接写本地会话：nginx 后可能有多个实例，
 // 用户连在哪个实例上不确定，只发本地会话会让其余实例上的用户收不到。
@@ -105,7 +104,7 @@ func Publish(ctx context.Context, dto PushDTO) error {
 	if dto.Payload == nil {
 		return nil
 	}
-	// 推送未启用时静默跳过，与 Java PushHelper.isEnabled 的短路一致。
+	// 推送未启用时静默跳过。
 	if Default() == nil {
 		return nil
 	}
@@ -120,20 +119,19 @@ func Publish(ctx context.Context, dto PushDTO) error {
 	return nil
 }
 
-// PublishAll 广播给全部在线用户（对应 Java publishAll）。
+// PublishAll 广播给全部在线用户。
 func PublishAll(ctx context.Context, payload *systemdto.PushPayloadDTO) error {
 	return Publish(ctx, Broadcast(payload))
 }
 
-// PublishUsers 发布给指定用户（对应 Java publishMessage）。
+// PublishUsers 发布给指定用户。
 func PublishUsers(ctx context.Context, userIDs []int64,
 	payload *systemdto.PushPayloadDTO) error {
 
 	return Publish(ctx, ToUsers(userIDs, payload))
 }
 
-// subscribe 订阅 Redis 消息主题并分发到本地连接
-// （对应 Java MessageTopicListener）。
+// subscribe 订阅 Redis 消息主题并分发到本地连接。
 func (m *Manager) subscribe() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

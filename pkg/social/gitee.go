@@ -11,7 +11,6 @@ import (
 )
 
 // giteeDefaultScope 默认权限范围。
-// 对齐 JustAuth AuthGiteeScope 里唯一 isDefault=true 的一项。
 const giteeDefaultScope = "user_info"
 
 // giteeProvider Gitee。端点固定写死：x/oauth2/endpoints 的 52 个平台里没有 Gitee。

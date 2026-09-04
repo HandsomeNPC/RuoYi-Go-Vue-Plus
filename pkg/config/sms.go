@@ -2,7 +2,7 @@ package config
 
 import "github.com/spf13/viper"
 
-// 阿里云短信的接入点默认值，对照 sms4j AlibabaConfig 的同名字段。
+// 阿里云短信的接入点默认值。
 const (
 	defaultSMSEndpoint = "dysmsapi.aliyuncs.com"
 	defaultSMSRegionID = "cn-hangzhou"
@@ -10,7 +10,7 @@ const (
 
 // SMSConfig 短信配置，对应 yaml 的 sms 段。
 //
-// 只覆盖阿里云一家：Java 侧用 sms4j 聚合多厂商，Go 生态无对应物，
+// 只覆盖阿里云一家：sms4j 聚合多厂商，Go 生态无对应物，
 // 故由 pkg/sms 的 Sender 接口留扩展点，配置段先按阿里云的参数形状定。
 type SMSConfig struct {
 	// Enabled 是否开启短信功能。关闭时发信接口返回提示而非报错。

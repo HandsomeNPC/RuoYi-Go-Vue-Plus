@@ -34,10 +34,10 @@ func (r *MessageRepository) Insert(ctx context.Context, msg *model.SysMessage) e
 	return nil
 }
 
-// SelectBoxList 查某分类下当前用户可见的消息（对应 Java selectMessageList）。
+// SelectBoxList 查某分类下当前用户可见的消息。
 //
 // 可见 = 全局广播（send_user_ids = '0'）或当前用户在接收人串里。
-// since 为创建时间下界，limit 为最大条数，二者对齐 Java 的「仅 30 天内、最多 100 条」。
+// since 为创建时间下界，limit 为最大条数，二者对应「仅 30 天内、最多 100 条」的约束。
 func (r *MessageRepository) SelectBoxList(ctx context.Context, category string,
 	userID int64, since time.Time, limit int) ([]*model.SysMessage, error) {
 
@@ -53,7 +53,7 @@ func (r *MessageRepository) SelectBoxList(ctx context.Context, category string,
 		Where("create_time >= ?", since).
 		Where("send_user_ids = ? OR FIND_IN_SET(?, send_user_ids)",
 			constant.MessageGlobalUserIDs, userID).
-		// 与 Java orderByDesc(createTime, messageId) 一致；主键兜底保证同秒内顺序稳定。
+		// 主键兜底保证同秒内顺序稳定。
 		Order("create_time DESC").
 		Order("message_id DESC")
 	if limit > 0 {

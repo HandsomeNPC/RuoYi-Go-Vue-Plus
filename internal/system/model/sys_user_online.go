@@ -1,6 +1,6 @@
 package model
 
-// SysUserOnline 当前在线会话，对应 Java org.dromara.system.domain.SysUserOnline。
+// SysUserOnline 当前在线会话。
 //
 // 非表实体：数据来源于 Redis 中活跃的 token 会话，故无 gorm 列标签与 TableName。
 type SysUserOnline struct {

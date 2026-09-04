@@ -13,7 +13,6 @@ import (
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
-// ErrConfigNotFound 参数配置不存在。
 var ErrConfigNotFound = errors.New("repository: 参数配置不存在")
 
 // ConfigRepository sys_config 数据访问。
@@ -82,7 +81,7 @@ func (r *ConfigRepository) SelectPageList(ctx context.Context, q bo.SysConfigQue
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysConfig], error) {
 
 	db := applyConfigQuery(r.db.WithContext(ctx).Model(&model.SysConfig{}), q)
-	// 仅在调用方未指定排序时按主键升序兜底（对齐 Java orderByAsc(SysConfig::getConfigId)）。
+	// 仅在调用方未指定排序时按主键升序兜底。
 	// 不能无条件追加：GORM 合并排序子句时先注册的排在前，主键唯一会让后来的排序列失效。
 	if !page.HasOrder() {
 		db = db.Order("config_id")
@@ -113,7 +112,7 @@ func (r *ConfigRepository) SelectList(ctx context.Context, q bo.SysConfigQueryBo
 	return rows, nil
 }
 
-// applyConfigQuery 应用参数配置查询条件（对齐 Java buildQueryWrapper）：
+// applyConfigQuery 应用参数配置查询条件：
 // 名称/键名走 like，类型走 eq，创建时间走闭区间；空串一概不筛。
 // 分页与导出两条路径必须共用它，否则过滤逻辑改一处漏一处。
 func applyConfigQuery(db *gorm.DB, q bo.SysConfigQueryBo) *gorm.DB {
@@ -126,7 +125,7 @@ func applyConfigQuery(db *gorm.DB, q bo.SysConfigQueryBo) *gorm.DB {
 	if q.ConfigType != "" {
 		db = db.Where("config_type = ?", q.ConfigType)
 	}
-	// 两端须同时给出（对齐 Java betweenParams 的 begin != null && end != null）：
+	// 两端须同时给出：
 	// 只给一端就筛会让前端清空半个日期框时结果突变。
 	if q.BeginTime != "" && q.EndTime != "" {
 		db = db.Where("create_time BETWEEN ? AND ?", q.BeginTime, q.EndTime)
@@ -135,8 +134,7 @@ func applyConfigQuery(db *gorm.DB, q bo.SysConfigQueryBo) *gorm.DB {
 }
 
 // likeEscaper 转义 LIKE 模式里的元字符，使入参按字面量匹配。
-// 不转义的话搜 "%" 会命中全表、"_" 会变成任意单字符通配——
-// 这是与 Java likeIfText（不转义）的有意差异，那边搜含 % 的参数名同样会跑偏。
+// 不转义的话搜 "%" 会命中全表、"_" 会变成任意单字符通配。
 // 反斜杠必须排在最前：否则会把后两条刚补上的转义符再转一次。
 var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 
@@ -183,7 +181,6 @@ func (r *ConfigRepository) UpdateByID(ctx context.Context, configID int64,
 }
 
 // UpdateByKey 按参数键名更新指定列，返回受影响行数（0 表示键名不存在）。
-// 对应 Java updateConfig 中 configId 为 null 时走的 eq(configKey).updateCount 分支。
 func (r *ConfigRepository) UpdateByKey(ctx context.Context, configKey string,
 	columns map[string]any) (int64, error) {
 
@@ -205,7 +202,7 @@ func (r *ConfigRepository) UpdateByKey(ctx context.Context, configKey string,
 }
 
 // DeleteByIDs 按主键批量删除，返回受影响行数。
-// sys_config 无 del_flag，这是物理删除（对齐 Java 侧该表未开逻辑删除）。
+// sys_config 无 del_flag，这是物理删除。
 func (r *ConfigRepository) DeleteByIDs(ctx context.Context, ids []int64) (int64, error) {
 	if len(ids) == 0 {
 		return 0, fmt.Errorf("repository: 参数配置主键为空")
@@ -221,7 +218,7 @@ func (r *ConfigRepository) DeleteByIDs(ctx context.Context, ids []int64) (int64,
 }
 
 // ExistsByConfigKey 判断 config_key 是否已被占用，excludeID > 0 时排除该主键
-// （对齐 Java neIfPresent，供修改场景排除自身）。
+// （供修改场景排除自身）。
 func (r *ConfigRepository) ExistsByConfigKey(ctx context.Context, configKey string,
 	excludeID int64) (bool, error) {
 

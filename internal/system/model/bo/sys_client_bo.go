@@ -1,6 +1,6 @@
 package bo
 
-// SysClientBo 授权管理业务对象（入参），对应 Java SysClientBo。
+// SysClientBo 授权管理业务对象（入参）。
 type SysClientBo struct {
 	ID           int64  `json:"id"`
 	ClientID     string `json:"clientId"`

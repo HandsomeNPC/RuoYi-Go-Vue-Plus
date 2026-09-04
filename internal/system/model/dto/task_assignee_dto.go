@@ -2,8 +2,7 @@ package dto
 
 import "time"
 
-// TaskAssigneeDTO 任务受让人分页结果，对应 Java
-// org.dromara.system.api.domain.TaskAssigneeDTO。
+// TaskAssigneeDTO 任务受让人分页结果。
 type TaskAssigneeDTO struct {
 	// Total 总大小。
 	Total int64 `json:"total"`
@@ -11,12 +10,12 @@ type TaskAssigneeDTO struct {
 	List []TaskHandler `json:"list"`
 }
 
-// NewTaskAssignee 创建任务受让人分页结果，对应 Java TaskAssigneeDTO(Long, List)。
+// NewTaskAssignee 创建任务受让人分页结果。
 func NewTaskAssignee(total int64, list []TaskHandler) *TaskAssigneeDTO {
 	return &TaskAssigneeDTO{Total: total, List: list}
 }
 
-// TaskHandler 任务受让人明细对象，对应 Java TaskAssigneeDTO.TaskHandler。
+// TaskHandler 任务受让人明细对象。
 type TaskHandler struct {
 	// StorageID 主键。
 	StorageID string `json:"storageId"`
@@ -30,8 +29,8 @@ type TaskHandler struct {
 	CreateTime *time.Time `json:"createTime"`
 }
 
-// ConvertToHandlerList 将源列表转换为 TaskHandler 列表，对应 Java
-// TaskAssigneeDTO.convertToHandlerList。各 mapper 为 nil 时对应字段取零值。
+// ConvertToHandlerList 将源列表转换为 TaskHandler 列表。
+// 各 mapper 为 nil 时对应字段取零值。
 func ConvertToHandlerList[T any](
 	source []T,
 	storageID func(T) string,

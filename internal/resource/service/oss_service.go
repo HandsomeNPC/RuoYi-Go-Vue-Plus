@@ -24,16 +24,14 @@ import (
 	"ruoyi-go-vue-plus/pkg/snowflake"
 )
 
-// ErrOssNotFound OSS 对象不存在。
 var ErrOssNotFound = errors.New("service: 文件数据不存在")
 
-// presignTTL 私有桶预签名链接的有效期，对齐 Java Duration.ofSeconds(120)。
+// presignTTL 私有桶预签名链接的有效期。
 const presignTTL = 120 * time.Second
 
 // OssService OSS 对象存储业务逻辑。
 type OssService struct{}
 
-// OssSvcApp 包级实例。
 var OssSvcApp = new(OssService)
 
 // DownloadResult 下载所需的元信息与数据流，调用方须关闭 Body。
@@ -43,7 +41,7 @@ type DownloadResult struct {
 	ContentType  string
 	Size         int64
 	// Body 对象数据流，直通响应，不在此处读进内存
-	// （Java 侧 IoUtil.readBytes 全量缓冲，大文件会把进程内存打爆）。
+	// （全量缓冲会把大文件的进程内存打爆）。
 	Body io.ReadCloser
 }
 
@@ -72,7 +70,7 @@ func (s *OssService) QueryPageList(ctx context.Context, q bo.SysOssQueryBo,
 	return pkgrepo.Page(rows, res.Total), nil
 }
 
-// ListByIDs 按主键批量查 OSS 对象，缺失的主键静默跳过（对齐 Java 的 removeAll(null)）。
+// ListByIDs 按主键批量查 OSS 对象，缺失的主键静默跳过。
 func (s *OssService) ListByIDs(ctx context.Context, ids []int64) ([]*vo.SysOssVo, error) {
 	out := make([]*vo.SysOssVo, 0, len(ids))
 	for _, id := range ids {
@@ -89,7 +87,7 @@ func (s *OssService) ListByIDs(ctx context.Context, ids []int64) ([]*vo.SysOssVo
 	return out, nil
 }
 
-// getByID 读穿缓存取单条（对齐 Java @Cacheable(cacheNames = SYS_OSS, key = "#ossId")）。
+// getByID 读穿缓存取单条。
 //
 // 缓存的是库里的原始记录，不含预签名 URL：那个链接 120 秒就过期，
 // 缓存进去（TTL 30 天）等于发一批必然失效的地址。
@@ -117,7 +115,7 @@ func ossKey(ossID int64) string {
 	return strconv.FormatInt(ossID, 10)
 }
 
-// matchingURL 私有桶把访问地址换成限时预签名链接（对应 Java matchingUrl）。
+// matchingURL 私有桶把访问地址换成限时预签名链接。
 //
 // 取客户端或签名失败只记日志、保留库里的原地址：某个配置的服务不可达时，
 // 整页列表仍应能打开（Java 的 queryPageList 未做此保护，一处不可达整页报错，
@@ -142,7 +140,7 @@ func (s *OssService) matchingURL(ctx context.Context, item *vo.SysOssVo) {
 	item.URL = url
 }
 
-// Upload 上传文件并落库（对应 Java upload(MultipartFile, SysOssExt)）。
+// Upload 上传文件并落库。
 // ossExtJSON 是前端可选带上的扩展信息 JSON 串，解析失败按空处理。
 func (s *OssService) Upload(ctx context.Context, header *multipart.FileHeader,
 	ossExtJSON string) (*vo.SysOssVo, error) {
@@ -215,7 +213,7 @@ func buildOssExt(ossExtJSON string, size int64, contentType string) string {
 	return string(b)
 }
 
-// Download 取文件流（对应 Java download）。调用方须关闭返回的 DownloadResult。
+// Download 取文件流。调用方须关闭返回的 DownloadResult。
 func (s *OssService) Download(ctx context.Context, ossID int64) (*DownloadResult, error) {
 	row, err := repository.NewOssRepository(database.DB()).SelectByID(ctx, ossID)
 	if err != nil {
@@ -268,7 +266,7 @@ func (s *OssService) DeleteWithValidByIDs(ctx context.Context, ids []int64) erro
 		return err
 	}
 	// 删除后再失效，且必须失效：那份缓存 TTL 30 天，不清的话
-	// listByIds 会一直返回已删文件（Java 侧漏了这一步）。
+	// listByIds 会一直返回已删文件。
 	for _, row := range rows {
 		_ = cache.Evict(ctx, constant.CacheSysOss, ossKey(row.OssID))
 	}

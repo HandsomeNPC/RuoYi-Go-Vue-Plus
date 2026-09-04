@@ -21,13 +21,12 @@ type SocialLoginConfig struct {
 }
 
 // Configured 判断该平台是否配了基本凭据。
-// 两项缺一即视为未启用——对齐 Java AuthChecker.isSupportedAuth 的口径：
-// 它把「配置不全」也归进「不支持该平台」。
+// 两项缺一即视为未启用——配置不全也归进「不支持该平台」。
 func (c SocialLoginConfig) Configured() bool {
 	return c.ClientID != "" && c.ClientSecret != ""
 }
 
-// SocialConfig 三方登录配置，对应 yaml 的 social 段(Java 侧叫 justauth)。
+// SocialConfig 三方登录配置，对应 yaml 的 social 段。
 //
 // 整段留空是合法的：三方登录本就是可选功能，未配置的平台由
 // /auth/binding/{source} 返回「xx平台账号暂不支持」。

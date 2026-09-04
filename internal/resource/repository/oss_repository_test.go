@@ -84,7 +84,7 @@ func TestApplyOssQueryAllConditions(t *testing.T) {
 	}
 }
 
-// TestApplyOssQueryEmptyConditions 空值一概不落 WHERE（对齐 Java likeIfText/eqIfText 语义）。
+// TestApplyOssQueryEmptyConditions 空值一概不落 WHERE。
 func TestApplyOssQueryEmptyConditions(t *testing.T) {
 	got := captureOssSQL(t, bo.SysOssQueryBo{}, pkgrepo.PageQuery{PageNum: 1, PageSize: 10})
 

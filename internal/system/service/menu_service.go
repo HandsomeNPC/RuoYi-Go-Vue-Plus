@@ -21,34 +21,28 @@ import (
 	"ruoyi-go-vue-plus/pkg/tree"
 )
 
-// ErrMenuNotFound 菜单不存在。
 var ErrMenuNotFound = errors.New("service: 菜单不存在")
 
-// ErrMenuNameExists 同一上级下的菜单名称已被占用。
 var ErrMenuNameExists = errors.New("service: 菜单名称已存在")
 
-// ErrMenuParentIsSelf 上级菜单指向了自己。
 var ErrMenuParentIsSelf = errors.New("service: 上级菜单不能选择自己")
 
-// ErrMenuFrameNeedHTTP 外链菜单的地址必须是 http(s)。
 var ErrMenuFrameNeedHTTP = errors.New("service: 外链地址必须以http(s)://开头")
 
-// ErrMenuRouteConflict 路由名称或地址与既有菜单冲突。
 var ErrMenuRouteConflict = errors.New("service: 路由名称或地址已存在")
 
 // MenuService 菜单业务逻辑。
 type MenuService struct{}
 
-// MenuSvcApp 包级实例。
 var MenuSvcApp = new(MenuService)
 
-// SelectMenuPermsByUserId 按用户ID查菜单权限标识（对应 Java SysMenuServiceImpl#selectMenuPermsByUserId）。
+// SelectMenuPermsByUserId 按用户ID查菜单权限标识。
 func (s *MenuService) SelectMenuPermsByUserId(ctx context.Context, userID int64) ([]string, error) {
 	return repository.NewMenuRepository(database.DB()).SelectMenuPermsByUserId(ctx, userID)
 }
 
-// SelectMenuPermsByRoleIds 按角色ID集合查权限（对应 Java SysMenuServiceImpl#selectMenuPermsByRoleIds）。
-// 返回 map[roleId]perms，每个角色的 perms 去重且保序（对应 Java LinkedHashMap + LinkedHashSet）。
+// SelectMenuPermsByRoleIds 按角色ID集合查权限。
+// 返回 map[roleId]perms，每个角色的 perms 去重且保序。
 func (s *MenuService) SelectMenuPermsByRoleIds(ctx context.Context, roleIDs []int64) (map[int64][]string, error) {
 	rows, err := repository.NewMenuRepository(database.DB()).SelectMenuPermsByRoleIds(ctx, roleIDs)
 	if err != nil {
@@ -77,7 +71,7 @@ func (s *MenuService) SelectMenuPermsByRoleIds(ctx context.Context, roleIDs []in
 	return out, nil
 }
 
-// SelectMenuTreeByUserId 按用户ID查菜单树（对应 Java SysMenuServiceImpl#selectMenuTreeByUserId）。
+// SelectMenuTreeByUserId 按用户ID查菜单树。
 // 超管拿全量目录+菜单，其余用户按角色过滤。扁平结果就地组装成树：走 tree.BuildInPlace
 // 而非 tree.Build，顺序已由 SQL 的 ORDER BY parent_id, order_num 定好且无需再排，节点是
 // SysMenu 实体本身而非独立树节点。
@@ -102,7 +96,7 @@ func (s *MenuService) SelectMenuTreeByUserId(ctx context.Context, userID int64) 
 		func(m *model.SysMenu, children []*model.SysMenu) { m.Children = children }), nil
 }
 
-// BuildMenus 构建前端路由（对应 Java SysMenuServiceImpl#buildMenus）。
+// BuildMenus 构建前端路由。
 // 路由 name 规则：path 首字母大写 + menuId。
 func (s *MenuService) BuildMenus(menus []*model.SysMenu) []*vo.RouterVo {
 	routers := make([]*vo.RouterVo, 0, len(menus))
@@ -158,7 +152,7 @@ func (s *MenuService) BuildMenus(menus []*model.SysMenu) []*vo.RouterVo {
 	return routers
 }
 
-// QueryList 按条件查菜单列表（对应 Java selectMenuList(bo, userId)）。
+// QueryList 按条件查菜单列表。
 // 超管拿全量，其余用户按其角色关联的菜单过滤。
 func (s *MenuService) QueryList(ctx context.Context, q bo.SysMenuQueryBo,
 	userID int64) ([]*vo.SysMenuVo, error) {
@@ -180,7 +174,7 @@ func (s *MenuService) QueryList(ctx context.Context, q bo.SysMenuQueryBo,
 	return vo.Conv.ConvertToSysMenuVoList(menus), nil
 }
 
-// QueryByID 按主键查菜单（对应 Java selectMenuById），不存在时返回 ErrMenuNotFound。
+// QueryByID 按主键查菜单，不存在时返回 ErrMenuNotFound。
 func (s *MenuService) QueryByID(ctx context.Context, menuID int64) (*vo.SysMenuVo, error) {
 	menu, err := repository.NewMenuRepository(database.DB()).SelectByID(ctx, menuID)
 	if err != nil {
@@ -192,11 +186,11 @@ func (s *MenuService) QueryByID(ctx context.Context, menuID int64) (*vo.SysMenuV
 	return vo.Conv.ConvertToSysMenuVo(menu), nil
 }
 
-// BuildMenuTreeSelect 把菜单列表构造成前端下拉树（对应 Java buildMenuTreeSelect）。
+// BuildMenuTreeSelect 把菜单列表构造成前端下拉树。
 //
 // 走 tree.Build 而非 BuildInPlace：树节点是独立的 Tree[int64]（含 label/weight 与
-// 四个 Extra 键），不是 SysMenuVo 本身。根节点固定取 0——Java 的无 parentId 重载
-// 是拿列表首元素的 parentId 当根，而菜单列表按 parent_id 升序，首元素必是顶级菜单。
+// 四个 Extra 键），不是 SysMenuVo 本身。根节点固定取 0——菜单列表按 parent_id 升序，
+// 首元素必是顶级菜单。
 func (s *MenuService) BuildMenuTreeSelect(menus []*vo.SysMenuVo) []*tree.Tree[int64] {
 	return tree.Build(menus, constant.ConstantTopParentID,
 		func(m *vo.SysMenuVo, node *tree.Tree[int64]) {
@@ -211,8 +205,8 @@ func (s *MenuService) BuildMenuTreeSelect(menus []*vo.SysMenuVo) []*tree.Tree[in
 		})
 }
 
-// SelectMenuIDsByRoleID 按角色查其选中的菜单主键（对应 Java selectMenuListByRoleId）。
-// 角色不存在时返回 ErrRoleNotFound——Java 侧直接 NPE，这里显式报错。
+// SelectMenuIDsByRoleID 按角色查其选中的菜单主键。
+// 角色不存在时返回 ErrRoleNotFound。
 func (s *MenuService) SelectMenuIDsByRoleID(ctx context.Context, roleID int64) ([]int64, error) {
 	role, err := repository.NewRoleRepository(database.DB()).SelectByID(ctx, roleID)
 	if err != nil {
@@ -225,7 +219,7 @@ func (s *MenuService) SelectMenuIDsByRoleID(ctx context.Context, roleID int64) (
 		SelectMenuIDsByRoleID(ctx, roleID, role.MenuCheckStrictly)
 }
 
-// CheckMenuNameUnique 校验同一上级下的菜单名称是否可用（对齐 Java 的「唯一即 true」）。
+// CheckMenuNameUnique 校验同一上级下的菜单名称是否可用（唯一即 true）。
 // excludeID > 0 时排除该主键，供修改场景复用。
 func (s *MenuService) CheckMenuNameUnique(ctx context.Context, menuName string,
 	parentID, excludeID int64) (bool, error) {
@@ -238,7 +232,7 @@ func (s *MenuService) CheckMenuNameUnique(ctx context.Context, menuName string,
 	return !exists, nil
 }
 
-// InsertMenu 新增菜单（对应 Java insertMenu）。插入成功后回填 b.MenuID。
+// InsertMenu 新增菜单。插入成功后回填 b.MenuID。
 func (s *MenuService) InsertMenu(ctx context.Context, b *bo.SysMenuBo) error {
 	if b == nil {
 		return errors.New("service: 菜单入参为空")
@@ -258,7 +252,7 @@ func (s *MenuService) InsertMenu(ctx context.Context, b *bo.SysMenuBo) error {
 	return nil
 }
 
-// UpdateMenu 按主键修改菜单（对应 Java updateMenu）。
+// UpdateMenu 按主键修改菜单。
 func (s *MenuService) UpdateMenu(ctx context.Context, b *bo.SysMenuBo) error {
 	if b == nil {
 		return errors.New("service: 菜单入参为空")
@@ -285,9 +279,9 @@ func (s *MenuService) UpdateMenu(ctx context.Context, b *bo.SysMenuBo) error {
 	return err
 }
 
-// validateMenu 新增/修改共用的四道校验，顺序对齐 Java Controller 的 if-else 链：
+// validateMenu 新增/修改共用的四道校验：
 // 名称重复 → 外链地址 → 上级是自己（仅修改）→ 路由冲突。
-// 同时触发多条时，前端看到的提示才与 Java 一致。
+// 同时触发多条时，前端看到的提示保持稳定。
 //
 // excludeID 为 0 表示新增场景（无自身可排除）。
 func (s *MenuService) validateMenu(ctx context.Context, b *bo.SysMenuBo, excludeID int64) error {
@@ -316,14 +310,14 @@ func (s *MenuService) validateMenu(ctx context.Context, b *bo.SysMenuBo, exclude
 	return nil
 }
 
-// checkRouteConfigUnique 校验路由组合是否唯一（对齐 Java checkRouteConfigUnique）。
+// checkRouteConfigUnique 校验路由组合是否唯一。
 // 按钮无路由，直接放行。
 func (s *MenuService) checkRouteConfigUnique(ctx context.Context, b *bo.SysMenuBo) (bool, error) {
 	if b.MenuType == constant.MenuTypeButton {
 		return true, nil
 	}
 
-	// routeName 缺省时以 path 代之（对齐 Java），两者都参与候选集匹配。
+	// routeName 缺省时以 path 代之，两者都参与候选集匹配。
 	routeName := menuRouteName(b.Path, b.MenuType, b.ParentID)
 	candidates, err := repository.NewMenuRepository(database.DB()).
 		SelectRouteConflictCandidates(ctx, b.Path, routeName)
@@ -333,12 +327,12 @@ func (s *MenuService) checkRouteConfigUnique(ctx context.Context, b *bo.SysMenuB
 	return routeConfigUnique(b, routeName, candidates), nil
 }
 
-// routeConfigUnique 在候选集里逐条判定路由冲突，对齐 Java 的三条规则。
+// routeConfigUnique 在候选集里逐条判定路由冲突。
 //
 // 与 checkRouteConfigUnique 分开是为了可测：三条规则的边界（大小写不敏感、
 // 跨级同名放行、按钮不参与）是本模块最容易写错的地方，抽成纯函数才能不连库覆盖。
 func routeConfigUnique(b *bo.SysMenuBo, routeName string, candidates []*model.SysMenu) bool {
-	// menuID 为 0（新增）时不会等于任何库中主键，等效 Java 用 -1 占位。
+	// menuID 为 0（新增）时不会等于任何库中主键。
 	for _, db := range candidates {
 		if db == nil || db.MenuID == b.MenuID {
 			continue
@@ -352,8 +346,7 @@ func routeConfigUnique(b *bo.SysMenuBo, routeName string, candidates []*model.Sy
 			return false
 		// 根目录下的路径是一级路由，全局唯一。
 		//
-		// 这条分支实际不可达：两者 parentID 同为 0 时第一条已命中。Java 侧同样如此，
-		// 照搬是为了在 Java 补上"根目录跨父级"语义时能一眼对上，不必推演差异。
+		// 这条分支实际不可达：两者 parentID 同为 0 时第一条已命中。
 		case strings.EqualFold(b.Path, db.Path) &&
 			b.ParentID == constant.ConstantTopParentID &&
 			db.ParentID == constant.ConstantTopParentID:
@@ -370,8 +363,7 @@ func routeConfigUnique(b *bo.SysMenuBo, routeName string, candidates []*model.Sy
 	return true
 }
 
-// menuRouteName 取菜单的路由名称，空则以 path 兜底（对齐 Java
-// StringUtils.isEmpty(getRouteName()) ? path : getRouteName()）。
+// menuRouteName 取菜单的路由名称，空则以 path 兜底。
 //
 // 复用 model.SysMenu 的 RouteName 而不另写一份：一级非外链菜单的 routeName 恒为空，
 // 这条规则只落在实体方法里，重写必然漂移。
@@ -402,7 +394,7 @@ func buildMenuUpdateColumns(b *bo.SysMenuBo) map[string]any {
 		"remark":      b.Remark,
 	}
 	// icon/ext 与三个控制字段缺省即视为不改：漏传不该把线上的 'Y'/'0' 刷成空串，
-	// 那会让 char(1) 列既不是 Y 也不是 N。等效于 Java updateById 对 null 字段的跳过。
+	// 那会让 char(1) 列既不是 Y 也不是 N。
 	if b.Icon != "" {
 		columns["icon"] = b.Icon
 	}
@@ -424,7 +416,7 @@ func buildMenuUpdateColumns(b *bo.SysMenuBo) map[string]any {
 	return columns
 }
 
-// DeleteMenuByID 删除单个菜单（对应 Java deleteMenuById(Long) + Controller 的两道拦截）。
+// DeleteMenuByID 删除单个菜单。
 //
 // 两道拦截留在 service 而非 handler：它们是数据完整性约束而非 HTTP 关注点，
 // 放这里才能挡住将来其它调用路径。
@@ -443,7 +435,7 @@ func (s *MenuService) DeleteMenuByID(ctx context.Context, menuID int64) error {
 	}
 
 	// 已分配给角色的菜单直接删会留下悬空的 sys_role_menu 行；单删不做级联清理，
-	// 要连带清理请走 DeleteMenuByIDs（对齐 Java 单删/级联删两个入口的分工）。
+	// 要连带清理请走 DeleteMenuByIDs。
 	assigned, err := repository.NewRoleRepository(database.DB()).
 		ExistsRoleMenuByMenuID(ctx, menuID)
 	if err != nil {
@@ -463,7 +455,7 @@ func (s *MenuService) DeleteMenuByID(ctx context.Context, menuID int64) error {
 	return nil
 }
 
-// DeleteMenuByIDs 批量级联删除菜单（对应 Java deleteMenuById(Collection) + cascade 入口）。
+// DeleteMenuByIDs 批量级联删除菜单。
 //
 // 与单删的差别：不校验"已分配角色"，而是连带清理 sys_role_menu——级联删除的语义
 // 就是"连同授权一起去掉"。子菜单校验仍在，且排除本批自身（父子同批提交是合法用法）。

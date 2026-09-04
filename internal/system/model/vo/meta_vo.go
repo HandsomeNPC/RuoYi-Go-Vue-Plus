@@ -2,7 +2,7 @@ package vo
 
 import "ruoyi-go-vue-plus/pkg/strutil"
 
-// MetaVo 路由显示信息视图对象，对应 Java MetaVo。
+// MetaVo 路由显示信息视图对象。
 type MetaVo struct {
 	Title   string `json:"title"`
 	Icon    string `json:"icon"`
@@ -13,8 +13,7 @@ type MetaVo struct {
 	ActiveMenu string `json:"activeMenu"`
 }
 
-// NewMetaVo 构造路由元信息。link/activeMenu 不满足格式要求时留空，
-// 对应 Java MetaVo 构造器里的 ishttp / startWith("/") 前置判断。
+// NewMetaVo 构造路由元信息。link/activeMenu 不满足格式要求时留空。
 func NewMetaVo(title, icon string, noCache bool, link, activeMenu string) *MetaVo {
 	m := &MetaVo{Title: title, Icon: icon, NoCache: noCache}
 	if strutil.IsHTTP(link) {

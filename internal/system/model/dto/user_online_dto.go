@@ -1,6 +1,6 @@
 package dto
 
-// UserOnlineDTO 当前在线会话信息对象，对应 Java org.dromara.system.api.domain.UserOnlineDTO。
+// UserOnlineDTO 当前在线会话信息对象。
 type UserOnlineDTO struct {
 	// TokenID 会话编号。
 	TokenID string `json:"tokenId"`

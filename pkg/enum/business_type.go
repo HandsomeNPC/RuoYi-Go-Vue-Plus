@@ -1,12 +1,10 @@
 package enum
 
-// BusinessType 业务操作类型，对应 Java org.dromara.common.log.enums.BusinessType。
+// BusinessType 业务操作类型。
 //
-// 取值即 Java 侧 enum.ordinal()——LogAspect 落库写的是 businessType().ordinal()，
-// 库里存的是数字，故顺序不可调整、不可插入新值，只能在末尾追加。
+// 落库写的是 ordinal()，库里存的是数字，故顺序不可调整、不可插入新值，只能在末尾追加。
 type BusinessType int
 
-// 业务操作类型枚举实例，数值与 Java 声明顺序一一对应。
 const (
 	BusinessTypeOther   BusinessType = iota // 其它
 	BusinessTypeInsert                      // 新增
@@ -36,8 +34,7 @@ func (b BusinessType) Info() string {
 	return businessTypeInfos[b]
 }
 
-// OperatorType 操作人类别，对应 Java org.dromara.common.log.enums.OperatorType。
-// 取值同为 Java 的 ordinal()，不可调序。
+// OperatorType 操作人类别，取值为 ordinal()，不可调序。
 type OperatorType int
 
 // 操作人类别枚举实例。
@@ -50,8 +47,7 @@ const (
 // Int 返回落库数值。
 func (o OperatorType) Int() int { return int(o) }
 
-// BusinessStatus 操作状态，对应 Java org.dromara.common.log.enums.BusinessStatus。
-// 落 sys_oper_log.status（0正常 1异常），取值同为 ordinal()。
+// BusinessStatus 操作状态，落 sys_oper_log.status（0正常 1异常），取值为 ordinal()。
 type BusinessStatus int
 
 // 操作状态枚举实例。

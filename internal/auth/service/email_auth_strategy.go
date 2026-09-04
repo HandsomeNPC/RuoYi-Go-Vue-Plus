@@ -21,7 +21,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 )
 
-// emailAuthStrategy 邮箱验证码认证策略（对应 Java EmailAuthStrategy）。
+// emailAuthStrategy 邮箱验证码认证策略。
 type emailAuthStrategy struct{}
 
 // Login 执行邮箱验证码登录，并按客户端配置生成访问令牌。body 为原始 JSON 字节，解析成 EmailLoginBody。
@@ -41,8 +41,7 @@ func (s *emailAuthStrategy) Login(req *http.Request, body []byte,
 	}
 
 	// 验证码不存在/已过期直接返回（不计重试），匹配与否交由 CheckLogin 闭包判定，
-	// 错误验证码才计入重试次数——对齐 Java 在 checkLogin supplier 内 throw CaptchaExpireException
-	// 越过计数、返回 bool 走计数的两态语义。
+	// 错误验证码才计入重试次数——过期走 error 越过计数、匹配返回 bool 走计数的两态语义。
 	matched, err := s.validateEmailCode(req, email, emailCode)
 	if err != nil {
 		return nil, err
@@ -77,12 +76,10 @@ func (s *emailAuthStrategy) Login(req *http.Request, body []byte,
 
 // validateEmailCode 校验邮箱验证码是否存在且匹配。
 //
-// 对照 Java EmailAuthStrategy.validateEmailCode：Java 在 checkLogin 的 supplier 内被调用，
-// 验证码为空 throw CaptchaExpireException（越过计数分支、不计重试），否则返回 code.equals(emailCode)
-// 交由 supplier 取反作失败计数。Go 无异常，故返回 (bool, error)：过期返回 error 由调用方直接返回
+// Go 无异常，故返回 (bool, error)：过期返回 error 由调用方直接返回
 // （不进 CheckLogin），匹配返回 bool 供 CheckLogin 闭包作计数判定。
 //
-// 与图形验证码不同，邮箱码只读不删：Java 侧亦只读，码自有 TTL 自然过期。
+// 与图形验证码不同，邮箱码只读不删：码自有 TTL 自然过期。
 func (s *emailAuthStrategy) validateEmailCode(req *http.Request, email, emailCode string) (bool, error) {
 	ctx := req.Context()
 	cached, err := redis.Client().Get(ctx, constant.CaptchaCodeKey+email).Result()
@@ -91,7 +88,7 @@ func (s *emailAuthStrategy) validateEmailCode(req *http.Request, email, emailCod
 		return false, errs.New(0, "邮箱验证码读取失败", err.Error())
 	}
 	if cached == "" {
-		// 对照 Java StringUtils.isBlank(code) 抛 CaptchaExpireException。
+		// 验证码为空即过期。
 		msg := i18n.Msg(ctx, "user.jcaptcha.expire")
 		SysLoginSvcApp.RecordLoginInfo(req, email, constant.ConstantLoginFail, msg)
 		return false, errs.New(0, msg, "")

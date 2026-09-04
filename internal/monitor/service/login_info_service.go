@@ -15,14 +15,12 @@ import (
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
-// ErrLoginInfoNotFound 登录日志不存在。
 var ErrLoginInfoNotFound = errors.New("service: 登录日志不存在")
 
-// LoginInfoSvc 登录日志监控服务，对应 Java SysLoginInfoServiceImpl 的查询/删除部分
-// （记录落库 part 已在 internal/system/service 的 LoginInfoSvcApp，这里只做监控侧）。
+// LoginInfoSvc 登录日志监控服务，只做监控侧的查询/删除
+// （记录落库在 internal/system/service 的 LoginInfoSvcApp）。
 type LoginInfoSvc struct{}
 
-// LoginInfoSvcApp 包级实例。
 var LoginInfoSvcApp = new(LoginInfoSvc)
 
 // QueryPageList 按条件分页查登录日志。
@@ -49,7 +47,7 @@ func (s *LoginInfoSvc) QueryList(ctx context.Context, q bo.SysLoginInfoQueryBo,
 	return vo.Conv.ConvertToSysLoginInfoVoList(rows), nil
 }
 
-// DeleteByIDs 批量删除登录日志。未命中的主键静默跳过（对齐 Java deleteByIds 不做存在性预校验）。
+// DeleteByIDs 批量删除登录日志。未命中的主键静默跳过（不做存在性预校验）。
 func (s *LoginInfoSvc) DeleteByIDs(ctx context.Context, ids []int64) error {
 	if len(ids) == 0 {
 		return fmt.Errorf("service: 登录日志主键不能为空")
@@ -60,14 +58,14 @@ func (s *LoginInfoSvc) DeleteByIDs(ctx context.Context, ids []int64) error {
 	return nil
 }
 
-// Clean 清空全部登录日志（对应 Java cleanLoginInfo）。
+// Clean 清空全部登录日志。
 func (s *LoginInfoSvc) Clean(ctx context.Context) error {
 	return systemrepo.NewLoginInfoRepository(database.DB()).Clean(ctx)
 }
 
-// Unlock 清除指定用户的登录失败锁定状态（对应 Java unlock）。
+// Unlock 清除指定用户的登录失败锁定状态。
 //
-// 直接 Del 而非像 Java 那样先 hasKey 再 deleteObject：删除不存在的 key 是 no-op，
+// 直接 Del 而非先 hasKey 再 delete：删除不存在的 key 是 no-op，
 // 二者可观察行为一致，少一次往返。key 前缀 pwd_err_cnt: 与 auth 进程写入侧约定相同。
 func (s *LoginInfoSvc) Unlock(ctx context.Context, userName string) error {
 	if userName == "" {

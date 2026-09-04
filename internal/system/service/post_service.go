@@ -15,25 +15,21 @@ import (
 	"ruoyi-go-vue-plus/pkg/snowflake"
 )
 
-// ErrPostNotFound 岗位不存在。
 var ErrPostNotFound = errors.New("service: 岗位不存在")
 
 // ErrPostNameExists 同一部门下的岗位名称已被占用。
 var ErrPostNameExists = errors.New("service: 岗位名称已存在")
 
-// ErrPostCodeExists 岗位编码已被占用。
 var ErrPostCodeExists = errors.New("service: 岗位编码已存在")
 
-// ErrPostHasUsers 岗位下已有分配用户，不能禁用。
 var ErrPostHasUsers = errors.New("service: 该岗位下存在已分配用户，不能禁用")
 
 // PostService 岗位业务逻辑。
 type PostService struct{}
 
-// PostSvcApp 包级实例。
 var PostSvcApp = new(PostService)
 
-// SelectPostsByUserId 按用户ID查岗位列表（对应 Java SysPostServiceImpl#selectPostsByUserId）。
+// SelectPostsByUserId 按用户ID查岗位列表。
 func (s *PostService) SelectPostsByUserId(ctx context.Context, userID int64) ([]*vo.SysPostVo, error) {
 	posts, err := repository.NewPostRepository(database.DB()).SelectPostsByUserId(ctx, userID)
 	if err != nil {
@@ -73,7 +69,7 @@ func (s *PostService) QueryList(ctx context.Context, q bo.SysPostQueryBo,
 	return vo.Conv.ConvertToSysPostVoList(rows), nil
 }
 
-// QueryByID 按主键查岗位（对应 Java selectPostById），不存在时返回 ErrPostNotFound。
+// QueryByID 按主键查岗位，不存在时返回 ErrPostNotFound。
 func (s *PostService) QueryByID(ctx context.Context, postID int64) (*vo.SysPostVo, error) {
 	post, err := repository.NewPostRepository(database.DB()).SelectByID(ctx, postID)
 	if err != nil {
@@ -85,7 +81,7 @@ func (s *PostService) QueryByID(ctx context.Context, postID int64) (*vo.SysPostV
 	return vo.Conv.ConvertToSysPostVo(post), nil
 }
 
-// OptionSelect 岗位选择框列表（对应 Java optionselect）。
+// OptionSelect 岗位选择框列表。
 // deptID > 0 时返回该部门下的全部岗位；否则按 postIDs 返回启用岗位（postIDs 为空则返回全部启用岗位）。
 func (s *PostService) OptionSelect(ctx context.Context, deptID int64,
 	postIDs []int64) ([]*vo.SysPostVo, error) {
@@ -105,7 +101,7 @@ func (s *PostService) OptionSelect(ctx context.Context, deptID int64,
 	return vo.Conv.ConvertToSysPostVoList(rows), nil
 }
 
-// CheckPostNameUnique 校验同一部门下的岗位名称是否可用（对齐 Java 的「唯一即 true」）。
+// CheckPostNameUnique 校验同一部门下的岗位名称是否可用（唯一即 true）。
 // excludeID > 0 时排除该主键，供修改场景复用。
 func (s *PostService) CheckPostNameUnique(ctx context.Context, postName string,
 	deptID, excludeID int64) (bool, error) {
@@ -118,7 +114,7 @@ func (s *PostService) CheckPostNameUnique(ctx context.Context, postName string,
 	return !exists, nil
 }
 
-// CheckPostCodeUnique 校验岗位编码是否可用（对齐 Java 的「唯一即 true」）。
+// CheckPostCodeUnique 校验岗位编码是否可用（唯一即 true）。
 // excludeID > 0 时排除该主键，供修改场景复用。
 func (s *PostService) CheckPostCodeUnique(ctx context.Context, postCode string,
 	excludeID int64) (bool, error) {
@@ -131,12 +127,12 @@ func (s *PostService) CheckPostCodeUnique(ctx context.Context, postCode string,
 	return !exists, nil
 }
 
-// CountUserPostByID 统计已分配该岗位的用户数（对应 Java countUserPostById）。
+// CountUserPostByID 统计已分配该岗位的用户数。
 func (s *PostService) CountUserPostByID(ctx context.Context, postID int64) (int64, error) {
 	return repository.NewPostRepository(database.DB()).CountUserPostByID(ctx, postID)
 }
 
-// InsertPost 新增岗位（对应 Java insertPost）。名称/编码重复时返回对应哨兵错误。
+// InsertPost 新增岗位。名称/编码重复时返回对应哨兵错误。
 func (s *PostService) InsertPost(ctx context.Context, b *bo.SysPostBo) error {
 	if b == nil {
 		return errors.New("service: 岗位入参为空")
@@ -164,10 +160,10 @@ func (s *PostService) InsertPost(ctx context.Context, b *bo.SysPostBo) error {
 	return nil
 }
 
-// UpdatePost 修改岗位（对应 Java updatePost）。
+// UpdatePost 修改岗位。
 //
-// 名称/编码重复与「禁用但已有用户」三道校验对齐 Java edit 的 if-else 链，
-// 同时触发多条时前端看到的提示才与 Java 一致。
+// 名称/编码重复与「禁用但已有用户」三道校验，
+// 同时触发多条时前端看到的提示保持稳定。
 func (s *PostService) UpdatePost(ctx context.Context, b *bo.SysPostBo) error {
 	if b == nil {
 		return errors.New("service: 岗位入参为空")
@@ -227,14 +223,14 @@ func buildPostUpdateColumns(b *bo.SysPostBo) map[string]any {
 		"remark": b.Remark,
 	}
 	// 状态缺省即视为不改：漏传字段不该把线上的 '0' 刷成空串，
-	// 那会让岗位既不算启用也不算停用。等效于 Java updateById 对 null 字段的跳过。
+	// 那会让岗位既不算启用也不算停用。
 	if b.Status != "" {
 		columns["status"] = b.Status
 	}
 	return columns
 }
 
-// DeletePostByIDs 批量删除岗位（对应 Java deletePostByIds）。
+// DeletePostByIDs 批量删除岗位。
 // 任一岗位已有用户分配即整批拒绝，不做部分删除。
 func (s *PostService) DeletePostByIDs(ctx context.Context, ids []int64) error {
 	if len(ids) == 0 {
@@ -247,7 +243,7 @@ func (s *PostService) DeletePostByIDs(ctx context.Context, ids []int64) error {
 		return err
 	}
 
-	// 先整批校验再删，不边删边校验：Java 侧靠抛异常回滚事务，这里没有事务包裹，
+	// 先整批校验再删，不边删边校验：这里没有事务包裹，
 	// 一旦先删了几行再撞上已分配的岗位就会留下删一半的状态。
 	for _, post := range rows {
 		count, err := repo.CountUserPostByID(ctx, post.PostID)
@@ -280,7 +276,7 @@ func (s *PostService) resolveDeptIDs(ctx context.Context, q *bo.SysPostQueryBo) 
 	return nil
 }
 
-// SelectPostListByUserId 按用户ID取已授权岗位ID列表（对应 Java selectPostListByUserId）。
+// SelectPostListByUserId 按用户ID取已授权岗位ID列表。
 func (s *PostService) SelectPostListByUserId(ctx context.Context, userID int64) ([]int64, error) {
 	posts, err := repository.NewPostRepository(database.DB()).SelectPostsByUserId(ctx, userID)
 	if err != nil {

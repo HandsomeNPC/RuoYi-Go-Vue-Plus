@@ -10,7 +10,7 @@ import (
 // maxSafeDigits 数字保持数值型的最大十进制位数。
 // 超过这个位数 Excel 会按浮点存、把尾数抹成 0（雪花 ID 是 19 位，
 // 直接写数值会显示成 1.7611E+18 且低位丢失），故转字符串。
-// 与 Java ExcelBigNumberConvert 的 15 位口径一致。
+// 15 位阈值，保证大数渲染。
 const maxSafeDigits = 15
 
 // timeLayout 时间列的渲染格式，对齐项目其它出参。

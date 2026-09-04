@@ -22,8 +22,7 @@ func (githubProvider) OAuth2Config(cfg config.SocialLoginConfig) (*oauth2.Config
 		ClientID:     cfg.ClientID,
 		ClientSecret: cfg.ClientSecret,
 		RedirectURL:  cfg.RedirectURI,
-		// 不设默认 scope：JustAuth 的 AuthGithubScope 全部 isDefault=false，
-		// getScopes 因而返回空串，授权地址不带 scope 参数。
+		// 不设默认 scope：授权地址默认不带 scope 参数。
 		Scopes: cfg.Scopes,
 		Endpoint: oauth2.Endpoint{
 			AuthURL:  "https://github.com/login/oauth/authorize",
@@ -42,7 +41,7 @@ func (githubProvider) FetchUser(ctx context.Context, _ config.SocialLoginConfig,
 		Avatar string      `json:"avatar_url"`
 		Email  string      `json:"email"`
 	}
-	// 授权头是 "token xxx" 而非 "Bearer xxx"，对齐 JustAuth TokenUtils.token。
+	// 授权头是 "token xxx" 而非 "Bearer xxx"。
 	header := http.Header{"Authorization": []string{"token " + tok.AccessToken}}
 	if err := getJSON(ctx, client, "https://api.github.com/user", header, &u); err != nil {
 		return nil, err

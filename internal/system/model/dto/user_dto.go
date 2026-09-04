@@ -2,7 +2,7 @@ package dto
 
 import "time"
 
-// UserDTO 用户简要信息对象，对应 Java org.dromara.system.api.domain.UserDTO。
+// UserDTO 用户简要信息对象。
 type UserDTO struct {
 	// UserID 用户ID。
 	UserID int64 `json:"userId"`

@@ -29,10 +29,9 @@ import (
 	"ruoyi-go-vue-plus/pkg/useragent"
 )
 
-// SysLoginService 登录态组装（对应 Java SysLoginService）。
+// SysLoginService 登录态组装。
 type SysLoginService struct{}
 
-// SysLoginSvcApp 包级实例。
 var SysLoginSvcApp = new(SysLoginService)
 
 // BuildLoginUser 组装登录态上下文并填充终端信息(IP/位置/浏览器/OS)。
@@ -121,10 +120,10 @@ func (*SysLoginService) BuildLoginUser(req *http.Request, user *systemvo.SysUser
 	return loginUser, nil
 }
 
-// SocialRegister 把三方账号绑定到指定用户，对应 Java SysLoginService.socialRegister。
+// SocialRegister 把三方账号绑定到指定用户。
 //
 // authId = source + 平台内唯一 id，是「这个三方账号」的全局标识；
-// 查重与续绑的判定都在 system 的 service 层（连同 Java @Lock4j 的替代锁），
+// 查重与续绑的判定都在 system 的 service 层（含 Redis 互斥锁），
 // 此处只负责把 social.AuthUser 摊平成 SysSocialBo。
 func (*SysLoginService) SocialRegister(ctx context.Context, userID int64,
 	au *social.AuthUser) error {
@@ -156,12 +155,12 @@ func (*SysLoginService) SocialRegister(ctx context.Context, userID int64,
 	return systemservice.SocialSvcApp.SaveOrUpdate(ctx, b)
 }
 
-// RecordOnlineUser 把当前会话的在线摘要写入 Redis(online_tokens:<token>)，// 对应 Java UserLoginSuccessListener.handleLoginSuccess 写 UserOnlineDTO。
+// RecordOnlineUser 把当前会话的在线摘要写入 Redis(online_tokens:<token>)。
 //
 // 必须在 loginhelper.Login 返回后调：EventLogin 在 Login 内部即触发，彼时
 // token-session 尚未写入 LoginUser，监听器取不到终端信息，故写入只能落在 auth 层。
-// TTL 镜像 token 自身剩余 TTL：令牌失效即在线摘要失效，与 Java 按 loginParameter.timeout 设值等价。
-// 用 context.Background 而非请求 ctx：缓存写不该绑请求生命周期，与 Java 走 SpringUtils 事件一致。
+// TTL 镜像 token 自身剩余 TTL：令牌失效即在线摘要失效。
+// 用 context.Background 而非请求 ctx：缓存写不该绑请求生命周期。
 func (*SysLoginService) RecordOnlineUser(lu *authmodel.LoginUser, token string) {
 	if lu == nil || token == "" {
 		return
@@ -203,18 +202,18 @@ func (*SysLoginService) RecordOnlineUser(lu *authmodel.LoginUser, token string) 
 	}
 }
 
-// Logout 退出登录，对应 Java SysLoginService.logout。
+// Logout 退出登录。
 //
 // token 由 handler 从请求上下文取（sagin.GetTokenFromCtx），service 层不碰 *gin.Context。
 //
-// **不返回 error**：对照 Java 的 try/finally——取登录态与注销都把 NotLoginException 吞掉，
-// 退出接口对外恒为成功。这里同样只记日志：token 已失效/已登出时 LogoutByToken 会返回
-// ErrInvalidTokenData，等价于 Java 的 NotLoginException，不该让前端登出失败。
+// **不返回 error**：取登录态与注销都把 NotLoginException 吞掉，退出接口对外恒为成功。
+// 这里同样只记日志：token 已失效/已登出时 LogoutByToken 会返回 ErrInvalidTokenData，
+// 不该让前端登出失败。
 //
 // 顺序要紧：必须先取 LoginUser 再注销。注销会删掉 token-session，之后就拿不到用户名了。
 func (s *SysLoginService) Logout(req *http.Request, token string) {
 	if token == "" {
-		// 未携带 token，等同 Java loginUser 为 null 直接 return。
+		// 未携带 token，等同未登录直接 return。
 		return
 	}
 	if loginUser := loginhelper.GetLoginUserByToken(token); loginUser != nil {
@@ -225,16 +224,15 @@ func (s *SysLoginService) Logout(req *http.Request, token string) {
 		s.RecordLoginInfo(req, loginUser.Username, constant.ConstantLogout,
 			i18n.Msg(ctx, "user.logout.success"))
 	}
-	// 对照 Java finally 里的 StpUtil.logout()：删 token 信息、账号映射、token-session。
+	// 注销：删 token 信息、账号映射、token-session。
 	if err := sagin.LogoutByToken(token); err != nil {
 		log.Printf("[auth] 注销 token 失败(按已登出处理): %v", err)
 	}
 }
 
-// RecordLoginInfo 记录登录信息，对应 Java SysLoginService.recordLoginInfo。
+// RecordLoginInfo 记录登录信息。
 //
-// Java 从 ServletUtils.getRequest()（线程绑定）取 IP/UA/clientid 后发 Spring 事件；
-// Go 无线程本地，req 必须由调用方显式传入，req 为 nil 时只记 username/status/message。
+// req 必须由调用方显式传入（Go 无线程本地），req 为 nil 时只记 username/status/message。
 //
 // 落库异步，本函数立即返回、不报错：日志写失败不该影响登录结果。ctx 用
 // context.WithoutCancel 脱开请求生命周期，否则响应一发完 ctx 即取消，落库必失败。
@@ -251,12 +249,12 @@ func (*SysLoginService) RecordLoginInfo(req *http.Request, username, status, mes
 		evt.ClientID = req.Header.Get(constant.ClientIDHeader)
 		ctx = context.WithoutCancel(req.Context())
 	}
-	// 同进程直接调 system service，不走 HTTP（对照 CLAUDE.md 的 in-process 约定）。
+	// 同进程直接调 system service，不走 HTTP（CLAUDE.md 的 in-process 约定）。
 	systemservice.LoginInfoSvcApp.RecordLoginInfo(ctx, evt)
 }
 
 // CheckLogin 执行登录失败次数校验，并在成功后清空失败计数。
-// req 除了提供 ctx，还用于记录登录日志（取 IP/UA/clientid），对照 BuildLoginUser 的取参方式。
+// req 除了提供 ctx，还用于记录登录日志（取 IP/UA/clientid）。
 func (s *SysLoginService) CheckLogin(req *http.Request, loginType enum.LoginType,
 	username string, authSuccess func() bool) error {
 

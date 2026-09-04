@@ -4,9 +4,9 @@ import (
 	"time"
 )
 
-// SysPostVo 岗位信息视图对象，对应 Java SysPostVo。
+// SysPostVo 岗位信息视图对象。
 type SysPostVo struct {
-	// excel tag 的值逐字抄 Java @ExcelProperty，无 tag 的字段不导出。
+	// excel tag 对应导出列，无 tag 的字段不导出。
 	PostID       int64  `json:"postId" excel:"岗位序号"`
 	DeptID       int64  `json:"deptId" excel:"部门id"`
 	PostCode     string `json:"postCode" excel:"岗位编码"`
@@ -14,7 +14,7 @@ type SysPostVo struct {
 	PostCategory string `json:"postCategory" excel:"类别编码"`
 	PostSort     int    `json:"postSort" excel:"岗位排序"`
 	// Status 状态（0正常 1停用）。
-	// 导出时按 excelDict 转标签，对齐 Java @ExcelDictFormat(dictType = "sys_normal_disable")。
+	// 导出时按 excelDict 转标签。
 	Status     string     `json:"status" excel:"状态" excelDict:"0=正常,1=停用"`
 	Remark     string     `json:"remark" excel:"备注"`
 	CreateTime *time.Time `json:"createTime" excel:"创建时间"`

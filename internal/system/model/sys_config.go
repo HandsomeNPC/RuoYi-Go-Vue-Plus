@@ -1,6 +1,6 @@
 package model
 
-// SysConfig 参数配置表（sys_config），对应 Java org.dromara.system.domain.SysConfig。
+// SysConfig 参数配置表（sys_config）。
 type SysConfig struct {
 	ConfigID    int64  `gorm:"column:config_id;primaryKey" json:"configId"`
 	ConfigName  string `gorm:"column:config_name" json:"configName"`

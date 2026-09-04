@@ -60,7 +60,7 @@ func TestSelectRolePageListWhereConditions(t *testing.T) {
 	}
 }
 
-// TestSelectRolePageListEmptySkipsFilter 空串/零值条件不应落到 WHERE——对齐 Java likeIfText/eqIfText。
+// TestSelectRolePageListEmptySkipsFilter 空串/零值条件不应落到 WHERE。
 func TestSelectRolePageListEmptySkipsFilter(t *testing.T) {
 	got := captureRoleSQL(t, bo.SysRoleQueryBo{},
 		pkgrepo.PageQuery{PageNum: 1, PageSize: 10})[0]
@@ -79,7 +79,7 @@ func TestSelectRolePageListEmptySkipsFilter(t *testing.T) {
 }
 
 // TestSelectRolePageListHalfTimeRangeNotFilter 只给一端时间不应筛——
-// 前端清空半个日期框时结果不该突变，对齐 Java betweenParams 的 begin && end 语义。
+// 前端清空半个日期框时结果不该突变，两端同时给才生效。
 func TestSelectRolePageListHalfTimeRangeNotFilter(t *testing.T) {
 	got := captureRoleSQL(t, bo.SysRoleQueryBo{BeginTime: "2026-01-01 00:00:00"},
 		pkgrepo.PageQuery{PageNum: 1, PageSize: 10})[0]
@@ -89,7 +89,7 @@ func TestSelectRolePageListHalfTimeRangeNotFilter(t *testing.T) {
 }
 
 // TestEscapeRoleLike LIKE 元字符须转义成字面量——
-// 不转义搜 % 会命中全表、_ 会变成任意单字符通配，这是与 Java likeIfText 的有意差异。
+// 不转义搜 % 会命中全表、_ 会变成任意单字符通配。
 // 反斜杠排最前，避免重复转义。
 func TestEscapeRoleLike(t *testing.T) {
 	cases := map[string]string{

@@ -14,7 +14,6 @@ import (
 	"ruoyi-go-vue-plus/pkg/snowflake"
 )
 
-// ErrDictDataNotFound 字典数据不存在。
 var ErrDictDataNotFound = errors.New("service: 字典数据不存在")
 
 // ErrDictDataValueExists 同一字典类型下的键值已被占用。
@@ -23,7 +22,6 @@ var ErrDictDataValueExists = errors.New("service: 字典键值已存在")
 // DictDataService 字典数据业务逻辑。
 type DictDataService struct{}
 
-// DictDataSvcApp 包级实例。
 var DictDataSvcApp = new(DictDataService)
 
 // QueryPageList 按条件分页查字典数据。
@@ -50,7 +48,7 @@ func (s *DictDataService) QueryList(ctx context.Context, q bo.SysDictDataQueryBo
 	return vo.Conv.ConvertToSysDictDataVoList(rows), nil
 }
 
-// QueryByID 按字典编码查字典数据（对应 Java selectDictDataById），
+// QueryByID 按字典编码查字典数据，
 // 不存在时返回 ErrDictDataNotFound。
 func (s *DictDataService) QueryByID(ctx context.Context, dictCode int64) (*vo.SysDictDataVo, error) {
 	data, err := repository.NewDictDataRepository(database.DB()).SelectByID(ctx, dictCode)
@@ -63,7 +61,7 @@ func (s *DictDataService) QueryByID(ctx context.Context, dictCode int64) (*vo.Sy
 	return vo.Conv.ConvertToSysDictDataVo(data), nil
 }
 
-// CheckDictDataUnique 校验同一字典类型下的键值是否可用（对齐 Java 的「唯一即 true」）。
+// CheckDictDataUnique 校验同一字典类型下的键值是否可用（唯一即 true）。
 // excludeID > 0 时排除该主键，供修改场景复用。
 func (s *DictDataService) CheckDictDataUnique(ctx context.Context, dictType, dictValue string,
 	excludeID int64) (bool, error) {
@@ -76,8 +74,7 @@ func (s *DictDataService) CheckDictDataUnique(ctx context.Context, dictType, dic
 	return !exists, nil
 }
 
-// InsertDictData 新增字典数据（对应 Java insertDictData
-// + @CachePut(SYS_DICT, key = "#bo.dictType")）。
+// InsertDictData 新增字典数据。
 // 同类型下键值重复时返回 ErrDictDataValueExists；插入成功后回填 b.DictCode。
 func (s *DictDataService) InsertDictData(ctx context.Context, b *bo.SysDictDataBo) error {
 	if b == nil {
@@ -104,8 +101,7 @@ func (s *DictDataService) InsertDictData(ctx context.Context, b *bo.SysDictDataB
 	return nil
 }
 
-// UpdateDictData 按字典编码修改字典数据（对应 Java updateDictData
-// + @CachePut(SYS_DICT, key = "#bo.dictType")）。
+// UpdateDictData 按字典编码修改字典数据。
 // 同类型下键值被别的数据占用时返回 ErrDictDataValueExists；主键不存在返回 ErrDictDataNotFound。
 func (s *DictDataService) UpdateDictData(ctx context.Context, b *bo.SysDictDataBo) error {
 	if b == nil {
@@ -140,7 +136,6 @@ func (s *DictDataService) UpdateDictData(ctx context.Context, b *bo.SysDictDataB
 	}
 
 	// 把这条数据挪到别的类型下时，原类型的缓存列表里还留着它，需一并刷新。
-	// Java 的 @CachePut 只按新 dictType 回写，漏了这一步。
 	if old.DictType != b.DictType {
 		s.refreshTypeCache(ctx, old.DictType)
 	}
@@ -162,14 +157,14 @@ func buildDictDataUpdateColumns(b *bo.SysDictDataBo) map[string]any {
 		"remark":     b.Remark,
 	}
 	// 是否默认缺省即视为不改：前端编辑表单根本不含该字段，一律写会把线上的 'Y'
-	// 刷成空串，让 char(1) 既不是 'Y' 也不是 'N'。等效于 Java updateById 对 null 字段的跳过。
+	// 刷成空串，让 char(1) 既不是 'Y' 也不是 'N'。
 	if b.IsDefault != "" {
 		columns["is_default"] = b.IsDefault
 	}
 	return columns
 }
 
-// DeleteDictDataByIDs 批量删除字典数据（对应 Java deleteDictDataByIds）。
+// DeleteDictDataByIDs 批量删除字典数据。
 func (s *DictDataService) DeleteDictDataByIDs(ctx context.Context, ids []int64) error {
 	if len(ids) == 0 {
 		return errors.New("service: 字典数据主键不能为空")
@@ -198,7 +193,7 @@ func (s *DictDataService) DeleteDictDataByIDs(ctx context.Context, ids []int64) 
 	return nil
 }
 
-// refreshTypeCache 重查该类型下的字典数据并回写 SYS_DICT 缓存（@CachePut 语义）。
+// refreshTypeCache 重查该类型下的字典数据并回写 SYS_DICT 缓存。
 //
 // 回写而非单纯失效：字典是全站高频读，删除类操作后紧接着的读请求不该都落到库上。
 // 查库失败则退化为失效——宁可下次读穿，也不能留着与库不一致的旧列表。

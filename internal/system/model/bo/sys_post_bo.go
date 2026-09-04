@@ -1,6 +1,6 @@
 package bo
 
-// SysPostBo 岗位信息业务对象（入参），对应 Java SysPostBo。
+// SysPostBo 岗位信息业务对象（入参）。
 type SysPostBo struct {
 	PostID int64 `json:"postId"`
 	DeptID int64 `json:"deptId" binding:"required"`

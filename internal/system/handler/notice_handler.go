@@ -14,10 +14,9 @@ import (
 	"ruoyi-go-vue-plus/pkg/response"
 )
 
-// NoticeApi 通知公告接口（对应 Java SysNoticeController）。
+// NoticeApi 通知公告接口。
 type NoticeApi struct{}
 
-// NoticeApiApp 包级实例。
 var NoticeApiApp = new(NoticeApi)
 
 // List 分页查询通知公告列表。
@@ -102,7 +101,7 @@ func (a *NoticeApi) Edit(c *gin.Context) {
 	c.JSON(http.StatusOK, response.OkVoid())
 }
 
-// Remove 批量删除通知公告。主键串以逗号分隔，与 Java 的 @PathVariable Long[] noticeIds 同形。
+// Remove 批量删除通知公告。主键串以逗号分隔。
 func (a *NoticeApi) Remove(c *gin.Context) {
 	ids, err := parseIDs(c.Param("noticeIds"))
 	if err != nil {

@@ -16,16 +16,13 @@ import (
 	"ruoyi-go-vue-plus/pkg/snowflake"
 )
 
-// ErrDictTypeNotFound 字典类型不存在。
 var ErrDictTypeNotFound = errors.New("service: 字典类型不存在")
 
-// ErrDictTypeExists 字典类型已被占用。
 var ErrDictTypeExists = errors.New("service: 字典类型已存在")
 
 // DictTypeService 字典类型业务逻辑。
 type DictTypeService struct{}
 
-// DictTypeSvcApp 包级实例。
 var DictTypeSvcApp = new(DictTypeService)
 
 // QueryPageList 按条件分页查字典类型。
@@ -52,12 +49,12 @@ func (s *DictTypeService) QueryList(ctx context.Context, q bo.SysDictTypeQueryBo
 	return vo.Conv.ConvertToSysDictTypeVoList(rows), nil
 }
 
-// QueryAll 查全部字典类型（对应 Java selectDictTypeAll），供下拉选择用。
+// QueryAll 查全部字典类型，供下拉选择用。
 func (s *DictTypeService) QueryAll(ctx context.Context) ([]*vo.SysDictTypeVo, error) {
 	return s.QueryList(ctx, bo.SysDictTypeQueryBo{}, 0)
 }
 
-// QueryByID 按主键查字典类型（对应 Java selectDictTypeById），不存在时返回 ErrDictTypeNotFound。
+// QueryByID 按主键查字典类型，不存在时返回 ErrDictTypeNotFound。
 func (s *DictTypeService) QueryByID(ctx context.Context, dictID int64) (*vo.SysDictTypeVo, error) {
 	dict, err := repository.NewDictTypeRepository(database.DB()).SelectByID(ctx, dictID)
 	if err != nil {
@@ -69,19 +66,17 @@ func (s *DictTypeService) QueryByID(ctx context.Context, dictID int64) (*vo.SysD
 	return vo.Conv.ConvertToSysDictTypeVo(dict), nil
 }
 
-// SelectDictDataByType 按字典类型查字典数据（对应 Java selectDictDataByType
-// + @Cacheable(SYS_DICT, key = "#dictType")）。
+// SelectDictDataByType 按字典类型查字典数据。
 //
-// 类型不存在时返回空切片而非报错，且这个空切片同样入缓存——Java 侧
-// CollUtil.isNotEmpty 判空后返回 emptyList，@Cacheable 缓存的就是它，
-// 意在防缓存穿透（新建类型下还没有数据时同样不该反复打库）。
+// 类型不存在时返回空切片而非报错，且这个空切片同样入缓存——意在
+// 防缓存穿透（新建类型下还没有数据时同样不该反复打库）。
 func (s *DictTypeService) SelectDictDataByType(ctx context.Context,
 	dictType string) ([]*vo.SysDictDataVo, error) {
 
 	return selectDictDataByTypeCached(ctx, dictType)
 }
 
-// CheckDictTypeUnique 校验 dict_type 是否可用（对齐 Java checkDictTypeUnique，同为「唯一即 true」）。
+// CheckDictTypeUnique 校验 dict_type 是否可用（唯一即 true）。
 // excludeID > 0 时排除该主键，供修改场景复用。
 func (s *DictTypeService) CheckDictTypeUnique(ctx context.Context, dictType string,
 	excludeID int64) (bool, error) {
@@ -94,7 +89,7 @@ func (s *DictTypeService) CheckDictTypeUnique(ctx context.Context, dictType stri
 	return !exists, nil
 }
 
-// InsertDictType 新增字典类型（对应 Java insertDictType + @CachePut(SYS_DICT, key = "#bo.dictType")）。
+// InsertDictType 新增字典类型。
 // dict_type 重复时返回 ErrDictTypeExists；插入成功后回填 b.DictID。
 func (s *DictTypeService) InsertDictType(ctx context.Context, b *bo.SysDictTypeBo) error {
 	if b == nil {
@@ -120,14 +115,13 @@ func (s *DictTypeService) InsertDictType(ctx context.Context, b *bo.SysDictTypeB
 		return err
 	}
 	b.DictID = add.DictID
-	// @CachePut：新类型下必然还没有字典数据，写入空列表防缓存穿透（对齐 Java 返回 new ArrayList<>()）。
+	// 新类型下必然还没有字典数据，写入空列表防缓存穿透。
 	_ = cache.Put(ctx, constant.CacheSysDict, add.DictType, []*vo.SysDictDataVo{},
 		constant.CacheTTLSysDict)
 	return nil
 }
 
-// UpdateDictType 修改字典类型（对应 Java updateDictType
-// + @CachePut(SYS_DICT, key = "#bo.dictType")）。
+// UpdateDictType 修改字典类型。
 //
 // 改类型名会联动改写 sys_dict_data.dict_type：两表靠这个字符串关联而非外键，
 // 不联动会让该类型下的字典数据全部失联。
@@ -175,12 +169,12 @@ func (s *DictTypeService) UpdateDictType(ctx context.Context, b *bo.SysDictTypeB
 		return err
 	}
 
-	// 旧类型名的两组缓存会成为无人回收的孤儿（@CachePut 只写新键），按旧名失效。
+	// 旧类型名的两组缓存会成为无人回收的孤儿，按旧名失效。
 	if old.DictType != b.DictType {
 		_ = cache.Evict(ctx, constant.CacheSysDict, old.DictType)
 		_ = cache.Evict(ctx, constant.CacheSysDictType, old.DictType)
 	}
-	// @CachePut：回写新类型名下的字典数据列表。查库失败不影响改类型本身已成功，
+	// 回写新类型名下的字典数据列表。查库失败不影响改类型本身已成功，
 	// 缓存留空下次读时自然回填。
 	if list, err := selectDictDataByTypeUncached(ctx, b.DictType); err == nil {
 		_ = cache.Put(ctx, constant.CacheSysDict, b.DictType, list, constant.CacheTTLSysDict)
@@ -199,7 +193,7 @@ func buildDictTypeUpdateColumns(b *bo.SysDictTypeBo) map[string]any {
 	}
 }
 
-// DeleteDictTypeByIDs 批量删除字典类型（对应 Java deleteDictTypeByIds）。
+// DeleteDictTypeByIDs 批量删除字典类型。
 // 任一类型下已有字典数据即整批拒绝，不做部分删除。
 func (s *DictTypeService) DeleteDictTypeByIDs(ctx context.Context, ids []int64) error {
 	if len(ids) == 0 {
@@ -212,7 +206,7 @@ func (s *DictTypeService) DeleteDictTypeByIDs(ctx context.Context, ids []int64) 
 		return err
 	}
 
-	// 先整批校验再删，不边删边校验：Java 侧靠抛异常回滚事务，这里没有事务包裹，
+	// 先整批校验再删，不边删边校验：这里没有事务包裹，
 	// 一旦先删了几行再撞上已分配的类型就会留下删一半的状态。
 	dataRepo := repository.NewDictDataRepository(database.DB())
 	for _, dict := range rows {
@@ -237,7 +231,7 @@ func (s *DictTypeService) DeleteDictTypeByIDs(ctx context.Context, ids []int64) 
 	return nil
 }
 
-// ResetDictCache 清空字典缓存（对应 Java resetDictCache）。
+// ResetDictCache 清空字典缓存。
 // 两组一起清：SYS_DICT 存类型下的数据列表，SYS_DICT_TYPE 存类型本身，只清一组会留下不一致。
 func (s *DictTypeService) ResetDictCache(ctx context.Context) error {
 	if err := cache.EvictGroup(ctx, constant.CacheSysDict); err != nil {
@@ -246,7 +240,7 @@ func (s *DictTypeService) ResetDictCache(ctx context.Context) error {
 	return cache.EvictGroup(ctx, constant.CacheSysDictType)
 }
 
-// validateDictTypeFormat 校验字典类型命名格式（对齐 Java @Pattern(RegexConstants.DICTIONARY_TYPE)）。
+// validateDictTypeFormat 校验字典类型命名格式。
 //
 // 放在 service 而非 BO 的 binding tag：gin 默认的 validator 没有注册这条正则，
 // 而字典类型是 sys_dict_data 的关联键，格式失守会让前端按类型取字典时静默取空。
@@ -259,8 +253,8 @@ func validateDictTypeFormat(dictType string) error {
 
 // selectDictDataByTypeCached 读穿 SYS_DICT 缓存取某类型下的字典数据。
 //
-// 供字典类型与字典数据两个 service 共用：Java 侧读方法挂在 SysDictTypeServiceImpl 上，
-// 而 SysDictDataServiceImpl 的写方法要靠它回填 @CachePut 的值，两边指的是同一份缓存。
+// 供字典类型与字典数据两个 service 共用：读方法挂在这里，
+// 而字典数据的写方法要靠它回填缓存，两边指的是同一份缓存。
 func selectDictDataByTypeCached(ctx context.Context, dictType string) ([]*vo.SysDictDataVo, error) {
 	var cached []*vo.SysDictDataVo
 	if hit, _ := cache.Get(ctx, constant.CacheSysDict, dictType, &cached); hit {
@@ -276,7 +270,7 @@ func selectDictDataByTypeCached(ctx context.Context, dictType string) ([]*vo.Sys
 }
 
 // selectDictDataByTypeUncached 直接查库取某类型下的字典数据，恒返回非 nil 切片
-// （对齐 Java 的 emptyList 兜底，同时保证 JSON 序列化成 [] 而非 null）。
+// （同时保证 JSON 序列化成 [] 而非 null）。
 func selectDictDataByTypeUncached(ctx context.Context, dictType string) ([]*vo.SysDictDataVo, error) {
 	rows, err := repository.NewDictDataRepository(database.DB()).SelectByType(ctx, dictType)
 	if err != nil {

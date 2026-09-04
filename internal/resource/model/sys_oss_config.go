@@ -1,6 +1,6 @@
 package model
 
-// SysOssConfig 对象存储配置表（sys_oss_config），对应 Java org.dromara.system.domain.SysOssConfig。
+// SysOssConfig 对象存储配置表（sys_oss_config）。
 type SysOssConfig struct {
 	OssConfigID int64  `gorm:"column:oss_config_id;primaryKey" json:"ossConfigId"`
 	ConfigKey   string `gorm:"column:config_key" json:"configKey"`
@@ -18,7 +18,7 @@ type SysOssConfig struct {
 	Ext1   string `gorm:"column:ext1" json:"ext1"`
 	Remark string `gorm:"column:remark" json:"remark"`
 	// AccessPolicy 桶权限类型（0private 1public-read-write 2public-read）。
-	// 建表 SQL 的注释把 2 写成 custom，与 Java AccessPolicy 枚举不符，以枚举为准。
+	// 建表 SQL 的注释把 2 写成 custom，与枚举定义不符，以枚举为准。
 	AccessPolicy string `gorm:"column:access_policy" json:"accessPolicy"`
 
 	BaseEntity

@@ -2,7 +2,7 @@ package model
 
 import "ruoyi-go-vue-plus/pkg/repository"
 
-// SysPost 岗位表（sys_post），对应 Java org.dromara.system.domain.SysPost。
+// SysPost 岗位表（sys_post）。
 type SysPost struct {
 	PostID       int64  `gorm:"column:post_id;primaryKey" json:"postId"`
 	DeptID       int64  `gorm:"column:dept_id" json:"deptId"`

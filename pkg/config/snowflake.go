@@ -7,8 +7,7 @@ const SnowflakeMaxID = 31
 
 // SnowflakeConfig 雪花 ID 生成器配置，对应 yaml 的 snowflake 段。
 //
-// 各业务表主键均为 bigint 且无 auto_increment，由应用层发号（对照 Java
-// MyBatis-Plus 的 ASSIGN_ID）。多进程共用同一库时，**每个进程必须配到不同的
+// 各业务表主键均为 bigint 且无 auto_increment，由应用层发号。多进程共用同一库时，**每个进程必须配到不同的
 // workerId**，否则同一毫秒内可能撞号，故该项放在 <module>.yaml 而非 application.yaml。
 type SnowflakeConfig struct {
 	// WorkerID 工作机器号，取值 0-SnowflakeMaxID。

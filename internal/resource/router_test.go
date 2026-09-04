@@ -34,9 +34,9 @@ func registeredRoutes(t *testing.T, prefix string) map[string]bool {
 	return out
 }
 
-// TestRegisterRoutesOssPaths OSS 的五个接口按 Java SysOssController 的方法与路径
+// TestRegisterRoutesOssPaths OSS 的五个接口按预期的方法与路径
 // 注册到真实路由表上（而非另建一份探针，那只能验 gin 的规则、验不到本文件的注册）。
-// Java 侧裸路径 /oss，这里传 /resource 验 standalone 形态。
+// 裸路径 /oss，这里传 /resource 验 standalone 形态。
 func TestRegisterRoutesOssPaths(t *testing.T) {
 	registered := registeredRoutes(t, "/resource")
 
@@ -51,9 +51,9 @@ func TestRegisterRoutesOssPaths(t *testing.T) {
 			t.Errorf("未注册路由 %s", want)
 		}
 	}
-	// Java 侧 oss 无导出接口，不该凭空造一个。
+	// oss 无导出接口，不该凭空造一个。
 	if registered["POST /resource/oss/export"] {
-		t.Error("Java 侧 oss 无导出接口，不应注册 POST /resource/oss/export")
+		t.Error("oss 无导出接口，不应注册 POST /resource/oss/export")
 	}
 }
 
@@ -99,7 +99,7 @@ func TestOssConfigAndOssIDsCoexist(t *testing.T) {
 }
 
 // TestRegisterRoutesMessageBox 消息盒子随 prefix 一起注册
-// （Java 的 SysMessageController 挂 /message/box，裸路径无模块前缀；
+// （SysMessageController 挂 /message/box，裸路径无模块前缀；
 // 这里传 /resource 验 standalone 形态，modular 形态由 nginx 剥前缀补回）。
 func TestRegisterRoutesMessageBox(t *testing.T) {
 	registered := registeredRoutes(t, "/resource")
@@ -113,7 +113,7 @@ func TestRegisterRoutesMessageBox(t *testing.T) {
 }
 
 // TestRegisterRoutesCaptchaPaths 短信与邮箱验证码端点已注册
-// （对齐 Java SysSmsController/SysEmailController 的 /sms/code 与 /email/code，
+// （/sms/code 与 /email/code，
 // Controller 裸路径无前缀；这里传 /resource 验 standalone 形态，前端实际经
 // 网关打 /resource/sms/code）。
 //

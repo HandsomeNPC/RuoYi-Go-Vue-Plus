@@ -17,37 +17,26 @@ import (
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 )
 
-// clientLogTitle 客户端管理的操作日志模块名，对照 Java @Log(title = "客户端管理")。
 const clientLogTitle = "客户端管理"
 
-// configLogTitle 参数管理的操作日志模块名，对照 Java @Log(title = "参数管理")。
 const configLogTitle = "参数管理"
 
-// deptLogTitle 部门管理的操作日志模块名，对照 Java @Log(title = "部门管理")。
 const deptLogTitle = "部门管理"
 
-// dictDataLogTitle 字典数据的操作日志模块名，对照 Java @Log(title = "字典数据")。
 const dictDataLogTitle = "字典数据"
 
-// dictTypeLogTitle 字典类型的操作日志模块名，对照 Java @Log(title = "字典类型")。
 const dictTypeLogTitle = "字典类型"
 
-// menuLogTitle 菜单管理的操作日志模块名，对照 Java @Log(title = "菜单管理")。
 const menuLogTitle = "菜单管理"
 
-// noticeLogTitle 通知公告的操作日志模块名，对照 Java @Log(title = "通知公告")。
 const noticeLogTitle = "通知公告"
 
-// postLogTitle 岗位管理的操作日志模块名，对照 Java @Log(title = "岗位管理")。
 const postLogTitle = "岗位管理"
 
-// roleLogTitle 角色管理的操作日志模块名，对照 Java @Log(title = "角色管理")。
 const roleLogTitle = "角色管理"
 
-// profileLogTitle 个人信息的操作日志模块名，对照 Java @Log(title = "个人信息")。
 const profileLogTitle = "个人信息"
 
-// userLogTitle 用户管理的操作日志模块名，对照 Java @Log(title = "用户管理")。
 const userLogTitle = "用户管理"
 
 func RegisterRoutes(r *gin.Engine, prefix string) {
@@ -62,13 +51,12 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	protected.Use(plugin.TokenInterceptor(), loginhelper.AuditContext())
 	user := protected.Group("/user")
 	user.GET("/getInfo", sagin.CheckLogin(), handler.UserApiApp.GetInfo)
-	// 个人信息：与 Java 一致不校验权限码，仅需登录——用户改自己的资料不该卡权限。
-	// profile/avatar 端点 Java 的 SysProfileController 未提供，前端的上传留待 OSS 落地后再补。
+	// 个人信息：不校验权限码，仅需登录——用户改自己的资料不该卡权限。
+	// profile/avatar 端点暂未提供，前端上传留待 OSS 落地后再补。
 	profile := user.Group("/profile")
 	profile.GET("", sagin.CheckLogin(), handler.ProfileApiApp.Profile)
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
-	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行，与 Java 侧
-	// RepeatSubmitAspect 抛异常后 LogAspect 记一条失败日志一致。
+	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
 	profile.PUT("", sagin.CheckLogin(),
 		oplog.Log(profileLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.ProfileApiApp.UpdateProfile)
@@ -81,8 +69,7 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	// 用户管理：静态段（list/deptTree/optionselect/authRole/unlock/export/importData/importTemplate
 	// /resetPwd/changeStatus）与同层 /:userId 共存，gin 静态段优先，无需调整注册顺序。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
-	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行，与 Java 侧
-	// RepeatSubmitAspect 抛异常后 LogAspect 记一条失败日志一致。
+	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
 	user.GET("/list", satoken.CheckPermission("system:user:list"), handler.UserApiApp.List)
 	user.GET("/list/dept/:deptId", satoken.CheckPermission("system:user:list"),
 		handler.UserApiApp.ListByDept)
@@ -99,7 +86,7 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 		oplog.Log(userLogTitle, enum.BusinessTypeExport), handler.UserApiApp.Export)
 	user.POST("/importData", satoken.CheckPermission("system:user:import"),
 		oplog.Log(userLogTitle, enum.BusinessTypeImport), handler.UserApiApp.ImportData)
-	// importTemplate 与 Java 一致不校验权限码，仅需登录：下载模板不该卡权限。
+	// importTemplate 不校验权限码，仅需登录：下载模板不该卡权限。
 	user.POST("/importTemplate", sagin.CheckLogin(), handler.UserApiApp.ImportTemplate)
 	// 路径用 "" 而非 "/"：后者会注册成 /user/。
 	user.POST("", satoken.CheckPermission("system:user:add"),
@@ -120,7 +107,7 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	user.PUT("/authRole", satoken.CheckPermission("system:user:edit"),
 		oplog.Log(userLogTitle, enum.BusinessTypeGrant),
 		repeatsubmit.RepeatSubmit(0, ""), handler.UserApiApp.InsertAuthRole)
-	// 根路径 "" 与 /:userId 复用 GetInfoByID：Java 的 @GetMapping({"/","/{userId}"}) 同一方法。
+	// 根路径 "" 与 /:userId 复用 GetInfoByID。
 	// 须注册在各静态段之后，静态段优先与 /:userId 共存。
 	user.GET("", satoken.CheckPermission("system:user:query"), handler.UserApiApp.GetInfoByID)
 	user.GET("/:userId", satoken.CheckPermission("system:user:query"),
@@ -130,12 +117,10 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 
 	menu := protected.Group("/menu")
 	menu.GET("/getRouters", sagin.CheckLogin(), handler.MenuApiApp.GetRouters)
-	// 多个中间件串联即 AND：Java 侧 list/getInfo 同时挂了 @SaCheckRole(超管)
-	// 与 @SaCheckPermission，两道都得过。注意这与单个 CheckPermission 内部多值的
-	// OR 语义不同——那是"任一权限码命中放行"。
+	// 多个中间件串联即 AND：各中间件都得过。注意这与单个 CheckPermission 内部多值的 OR 语义不同——那是"任一权限码命中放行"。
 	menu.GET("/list", satoken.CheckRole(constant.SuperAdminRoleKey),
 		satoken.CheckPermission("system:menu:list"), handler.MenuApiApp.List)
-	// treeselect 与 roleMenuTreeselect 只要 query 权限，不挂超管角色（对照 Java）：
+	// treeselect 与 roleMenuTreeselect 只要 query 权限，不挂超管角色：
 	// 角色授权界面要用它们，而分配角色的人未必是超管。
 	menu.GET("/treeselect", satoken.CheckPermission("system:menu:query"),
 		handler.MenuApiApp.TreeSelect)
@@ -146,8 +131,7 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 		satoken.CheckPermission("system:menu:query"), handler.MenuApiApp.GetInfo)
 	// 路径用 "" 而非 "/"：后者会注册成 /menu/。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
-	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行，与 Java 侧
-	// RepeatSubmitAspect 抛异常后 LogAspect 记一条失败日志一致。
+	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
 	menu.POST("", satoken.CheckRole(constant.SuperAdminRoleKey),
 		satoken.CheckPermission("system:menu:add"),
 		oplog.Log(menuLogTitle, enum.BusinessTypeInsert),
@@ -167,22 +151,20 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	client := protected.Group("/client")
 	client.GET("/list", satoken.CheckPermission("system:client:list"), handler.ClientApiApp.List)
 	client.GET("/:id", satoken.CheckPermission("system:client:query"), handler.ClientApiApp.GetInfo)
-	// 导出走 POST 与 Java 一致：前端以 form 表单 POST 提交筛选条件。
+	// 导出走 POST：前端以 form 表单 POST 提交筛选条件。
 	// 与 PUT ""/changeStatus 同理，路径更具体，须注册在 client.POST("") 之后。
 	client.POST("/export", satoken.CheckPermission("system:client:export"),
 		oplog.Log(clientLogTitle, enum.BusinessTypeExport), handler.ClientApiApp.Export)
 	// 路径用 "" 而非 "/"：后者会注册成 /client/。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
-	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行，与 Java 侧
-	// RepeatSubmitAspect 抛异常后 LogAspect 记一条失败日志一致。
+	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
 	client.POST("", satoken.CheckPermission("system:client:add"),
 		oplog.Log(clientLogTitle, enum.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.ClientApiApp.Add)
 	client.PUT("", satoken.CheckPermission("system:client:edit"),
 		oplog.Log(clientLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.ClientApiApp.Edit)
-	// changeStatus 不挂防重：对齐 Java(仅 edit 带 @RepeatSubmit)，
-	// 且它幂等——重复提交同一状态无副作用。须注册在 PUT "" 之后，路径更具体。
+	// changeStatus 不挂防重：它幂等——重复提交同一状态无副作用。须注册在 PUT "" 之后，路径更具体。
 	client.PUT("/changeStatus", satoken.CheckPermission("system:client:edit"),
 		oplog.Log(clientLogTitle, enum.BusinessTypeUpdate),
 		handler.ClientApiApp.ChangeStatus)
@@ -193,17 +175,16 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	config := protected.Group("/config")
 	config.GET("/list", satoken.CheckPermission("system:config:list"), handler.ConfigApiApp.List)
 	// configKey 与 :configId 同层但静态段优先，gin 能区分二者，无需调整注册顺序。
-	// 与 Java 一致不校验权限码，仅需登录：前端多处要读参数却未必有配置管理权限。
+	// 不校验权限码，仅需登录：前端多处要读参数却未必有配置管理权限。
 	config.GET("/configKey/:configKey", sagin.CheckLogin(), handler.ConfigApiApp.GetConfigKey)
 	config.GET("/:configId", satoken.CheckPermission("system:config:query"),
 		handler.ConfigApiApp.GetInfo)
-	// 导出走 POST 与 Java 一致：前端以 form 表单 POST 提交筛选条件。
+	// 导出走 POST：前端以 form 表单 POST 提交筛选条件。
 	config.POST("/export", satoken.CheckPermission("system:config:export"),
 		oplog.Log(configLogTitle, enum.BusinessTypeExport), handler.ConfigApiApp.Export)
 	// 路径用 "" 而非 "/"：后者会注册成 /config/。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
-	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行，与 Java 侧
-	// RepeatSubmitAspect 抛异常后 LogAspect 记一条失败日志一致。
+	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
 	config.POST("", satoken.CheckPermission("system:config:add"),
 		oplog.Log(configLogTitle, enum.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.ConfigApiApp.Add)
@@ -214,7 +195,7 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 		oplog.Log(configLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.ConfigApiApp.UpdateByKey)
 	// refreshCache 与 :configIds 同层，静态段优先，无需调整注册顺序。
-	// 权限码用 remove 而非独立的 refresh：对照 Java @SaCheckPermission("system:config:remove")。
+	// 权限码用 remove 而非独立的 refresh。
 	config.DELETE("/refreshCache", satoken.CheckPermission("system:config:remove"),
 		oplog.Log(configLogTitle, enum.BusinessTypeClean),
 		handler.ConfigApiApp.RefreshCache)
@@ -233,35 +214,33 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	dept.GET("/:deptId", satoken.CheckPermission("system:dept:query"), handler.DeptApiApp.GetInfo)
 	// 路径用 "" 而非 "/"：后者会注册成 /dept/。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
-	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行，与 Java 侧
-	// RepeatSubmitAspect 抛异常后 LogAspect 记一条失败日志一致。
+	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
 	dept.POST("", satoken.CheckPermission("system:dept:add"),
 		oplog.Log(deptLogTitle, enum.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.DeptApiApp.Add)
 	dept.PUT("", satoken.CheckPermission("system:dept:edit"),
 		oplog.Log(deptLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.DeptApiApp.Edit)
-	// 与 Java 一致只支持单删：部门有父子关系，批量删无法保证删除顺序。
+	// 只支持单删：部门有父子关系，批量删无法保证删除顺序。
 	dept.DELETE("/:deptId", satoken.CheckPermission("system:dept:remove"),
 		oplog.Log(deptLogTitle, enum.BusinessTypeDelete), handler.DeptApiApp.Remove)
 
 	// 字典数据与字典类型是 /dict 下两个并列静态段，各自独立注册。
-	// 权限码共用 system:dict:*（对照 Java 两个 Controller 的注解），非 dict:data/dict:type 分设。
+	// 权限码共用 system:dict:*，非 dict:data/dict:type 分设。
 	dictData := protected.Group("/dict/data")
 	dictData.GET("/list", satoken.CheckPermission("system:dict:list"),
 		handler.DictDataApiApp.List)
 	// type/:dictType 与 :dictCode 同层但静态段优先，gin 能区分二者，无需调整注册顺序。
-	// 与 Java 一致不校验权限码，仅需登录：前端 DictTag 到处渲染字典标签却未必有字典管理权限。
+	// 不校验权限码，仅需登录：前端 DictTag 到处渲染字典标签却未必有字典管理权限。
 	dictData.GET("/type/:dictType", sagin.CheckLogin(), handler.DictDataApiApp.DictType)
 	dictData.GET("/:dictCode", satoken.CheckPermission("system:dict:query"),
 		handler.DictDataApiApp.GetInfo)
-	// 导出走 POST 与 Java 一致：前端 commonExport 以 form 表单提交筛选条件。
+	// 导出走 POST：前端 commonExport 以 form 表单提交筛选条件。
 	dictData.POST("/export", satoken.CheckPermission("system:dict:export"),
 		oplog.Log(dictDataLogTitle, enum.BusinessTypeExport), handler.DictDataApiApp.Export)
 	// 路径用 "" 而非 "/"：后者会注册成 /dict/data/。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
-	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行，与 Java 侧
-	// RepeatSubmitAspect 抛异常后 LogAspect 记一条失败日志一致。
+	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
 	dictData.POST("", satoken.CheckPermission("system:dict:add"),
 		oplog.Log(dictDataLogTitle, enum.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.DictDataApiApp.Add)
@@ -275,7 +254,7 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	dictType.GET("/list", satoken.CheckPermission("system:dict:list"),
 		handler.DictTypeApiApp.List)
 	// optionselect 与 :dictId 同层，静态段优先，无需调整注册顺序。
-	// 与 Java 一致不校验权限码，仅需登录：前端选字典时未必有字典管理权限。
+	// 不校验权限码，仅需登录：前端选字典时未必有字典管理权限。
 	dictType.GET("/optionselect", sagin.CheckLogin(), handler.DictTypeApiApp.OptionSelect)
 	dictType.GET("/:dictId", satoken.CheckPermission("system:dict:query"),
 		handler.DictTypeApiApp.GetInfo)
@@ -288,7 +267,7 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 		oplog.Log(dictTypeLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.DictTypeApiApp.Edit)
 	// refreshCache 与 :dictIds 同层，静态段优先，无需调整注册顺序。
-	// 权限码用 remove 而非独立的 refresh：对照 Java @SaCheckPermission("system:dict:remove")。
+	// 权限码用 remove 而非独立的 refresh。
 	dictType.DELETE("/refreshCache", satoken.CheckPermission("system:dict:remove"),
 		oplog.Log(dictTypeLogTitle, enum.BusinessTypeClean), handler.DictTypeApiApp.RefreshCache)
 	dictType.DELETE("/:dictIds", satoken.CheckPermission("system:dict:remove"),
@@ -301,15 +280,14 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 		handler.NoticeApiApp.GetInfo)
 	// 路径用 "" 而非 "/"：后者会注册成 /notice/。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
-	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行，与 Java 侧
-	// RepeatSubmitAspect 抛异常后 LogAspect 记一条失败日志一致。
+	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
 	notice.POST("", satoken.CheckPermission("system:notice:add"),
 		oplog.Log(noticeLogTitle, enum.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.NoticeApiApp.Add)
 	notice.PUT("", satoken.CheckPermission("system:notice:edit"),
 		oplog.Log(noticeLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.NoticeApiApp.Edit)
-	// Java 侧 notice 没有导出接口，故不注册 /export。
+	// notice 无导出接口，故不注册 /export。
 	notice.DELETE("/:noticeIds", satoken.CheckPermission("system:notice:remove"),
 		oplog.Log(noticeLogTitle, enum.BusinessTypeDelete), handler.NoticeApiApp.Remove)
 
@@ -323,13 +301,12 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 		handler.PostApiApp.DeptTree)
 	post.GET("/:postId", satoken.CheckPermission("system:post:query"),
 		handler.PostApiApp.GetInfo)
-	// 导出走 POST 与 Java 一致：前端 commonExport 以 form 表单 POST 提交筛选条件。
+	// 导出走 POST：前端 commonExport 以 form 表单 POST 提交筛选条件。
 	post.POST("/export", satoken.CheckPermission("system:post:export"),
 		oplog.Log(postLogTitle, enum.BusinessTypeExport), handler.PostApiApp.Export)
 	// 路径用 "" 而非 "/"：后者会注册成 /post/。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
-	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行，与 Java 侧
-	// RepeatSubmitAspect 抛异常后 LogAspect 记一条失败日志一致。
+	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
 	post.POST("", satoken.CheckPermission("system:post:add"),
 		oplog.Log(postLogTitle, enum.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.PostApiApp.Add)
@@ -339,11 +316,10 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	post.DELETE("/:postIds", satoken.CheckPermission("system:post:remove"),
 		oplog.Log(postLogTitle, enum.BusinessTypeDelete), handler.PostApiApp.Remove)
 
-	// social 与 Java 一致不校验权限码，仅需登录：用户查自己的社会化绑定关系不该卡权限。
+	// social 不校验权限码，仅需登录：用户查自己的社会化绑定关系不该卡权限。
 	social := protected.Group("/social")
 	social.GET("/list", sagin.CheckLogin(), handler.SocialApiApp.List)
 
-	// roleLogTitle 角色管理的操作日志模块名，对照 Java @Log(title = "角色管理")。
 	role := protected.Group("/role")
 	role.GET("/list", satoken.CheckPermission("system:role:list"), handler.RoleApiApp.List)
 	// optionselect、authUser/*、deptTree/:roleId 与 :roleId 同层但前两者段更具体，
@@ -354,16 +330,15 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 		handler.RoleApiApp.AllocatedList)
 	role.GET("/authUser/unallocatedList", satoken.CheckPermission("system:role:list"),
 		handler.RoleApiApp.UnallocatedList)
-	// deptTree/:roleId 取角色部门勾选 + 部门下拉树，对照 Java roleDeptTreeselect。
+	// deptTree/:roleId 取角色部门勾选 + 部门下拉树。
 	role.GET("/deptTree/:roleId", satoken.CheckPermission("system:role:list"),
 		handler.RoleApiApp.DeptTreeSelect)
-	// 导出走 POST 与 Java 一致：前端以 form 表单 POST 提交筛选条件。
+	// 导出走 POST：前端以 form 表单 POST 提交筛选条件。
 	role.POST("/export", satoken.CheckPermission("system:role:export"),
 		oplog.Log(roleLogTitle, enum.BusinessTypeExport), handler.RoleApiApp.Export)
 	// 路径用 "" 而非 "/"：后者会注册成 /role/。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
-	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行，与 Java 侧
-	// RepeatSubmitAspect 抛异常后 LogAspect 记一条失败日志一致。
+	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
 	role.POST("", satoken.CheckPermission("system:role:add"),
 		oplog.Log(roleLogTitle, enum.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.RoleApiApp.Add)
@@ -396,8 +371,7 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 // InitRouter 构建并返回 system 进程的 gin 引擎(独立部署用)。
 // 独立部署不带 /system 前缀，交给 nginx 代理时剥离。
 //
-// /resource/* 的路由（消息盒子、推送端点）归 internal/resource——
-// 那批接口在 Java 侧同属 /resource 前缀，与 OSS 一起由 resource 进程承载。
+// /resource/* 的路由（消息盒子、推送端点）归 internal/resource——与 OSS 一起由 resource 进程承载。
 func InitRouter() *gin.Engine {
 	r := gin.New()
 

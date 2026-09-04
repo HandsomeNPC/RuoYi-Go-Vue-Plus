@@ -17,10 +17,9 @@ import (
 	"ruoyi-go-vue-plus/pkg/response"
 )
 
-// LoginInfoApi 登录日志监控接口（对应 Java SysLoginInfoController）。
+// LoginInfoApi 登录日志监控接口。
 type LoginInfoApi struct{}
 
-// LoginInfoApiApp 包级实例。
 var LoginInfoApiApp = new(LoginInfoApi)
 
 // List 分页查询登录日志列表。
@@ -45,8 +44,8 @@ func (a *LoginInfoApi) List(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(res))
 }
 
-// Export 导出登录日志列表为 xlsx 附件（对应 Java SysLoginInfoController.export）。
-// 与 Java 一致走 POST：前端 commonExport 以 form 表单 POST 提交筛选条件，故用 ShouldBind。
+// Export 导出登录日志列表为 xlsx 附件。
+// 走 POST：前端 commonExport 以 form 表单提交筛选条件，故用 ShouldBind。
 // 响应体是二进制附件，不返回 response.R。多取一行用于判定超限，避免"先捞完百万行再拒绝"。
 func (a *LoginInfoApi) Export(c *gin.Context) {
 	var q bo.SysLoginInfoQueryBo
@@ -66,7 +65,7 @@ func (a *LoginInfoApi) Export(c *gin.Context) {
 	}
 }
 
-// Remove 批量删除登录日志。主键串以逗号分隔，与 Java 的 @PathVariable Long[] infoIds 同形。
+// Remove 批量删除登录日志。主键串以逗号分隔。
 func (a *LoginInfoApi) Remove(c *gin.Context) {
 	ids, err := parseIDs(c.Param("infoIds"))
 	if err != nil {

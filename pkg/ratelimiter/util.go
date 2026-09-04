@@ -6,8 +6,7 @@ import (
 	"time"
 )
 
-// newInstanceID 生成进程实例 ID，用于 LimitTypeCluster 的维度隔离，
-// 对照 Java RedissonClient.getId()（UUID 字符串）。
+// newInstanceID 生成进程实例 ID，用于 LimitTypeCluster 的维度隔离。
 func newInstanceID() string {
 	id, err := randomHex(16)
 	if err != nil {

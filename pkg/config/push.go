@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-// 消息推送传输方式，对照 Java MessageTransportEnum。
+// 消息推送传输方式。
 const (
 	// PushTransportSSE Server-Sent Events，单向轻量传输。
 	PushTransportSSE = "sse"
@@ -17,37 +17,35 @@ const (
 
 // defaultPushPath 推送端点路径的相对部分，注册时由调用方拼上 prefix。
 //
-// 对齐 Java：微服务版 nacos 把 message.path 覆盖成 /message，网关对 /resource/**
+// 微服务版 nacos 把 message.path 覆盖成 /message，网关对 /resource/**
 // 做 StripPrefix=1 剥前缀，故后端只注册裸 /message。单体/直连场景由 prefix
 // （standalone 传 /resource）拼成完整 /resource/message。
 //
 // 仓库自带前端 apps/web-antd/src/utils/message.ts 连的是 /resource/sse 与
-// /resource/websocket，与默认值对不上——Java 侧同样如此，靠改配置对齐。
+// /resource/websocket，与默认值对不上，靠改配置对齐。
 // 要让自带前端直接连通，把 push.path 改成对应路径（sse / websocket）即可。
 const defaultPushPath = "/message"
 
-// PushConfig 消息推送配置，对应 yaml 的 push 段（对照 Java MessageProperties）。
+// PushConfig 消息推送配置，对应 yaml 的 push 段。
 //
 // 未暴露 allowedOrigins：跨域已由 pkg/middleware 的 CORS 统一管，
 // 握手期再加一套白名单只会两处打架。
 type PushConfig struct {
 	// Enabled 是否启用消息推送。关闭时不注册推送路由，且发布消息直接跳过。
 	Enabled bool `mapstructure:"enabled"`
-	// Transport 传输方式：sse / websocket。取值非法时回落 sse（对齐 Java
-	// MessageTransportEnum.of 找不到即返回 SSE），故不在 validate 里报错。
+	// Transport 传输方式：sse / websocket。取值非法时回落 sse，故不在 validate 里报错。
 	Transport string `mapstructure:"transport"`
 	// Path 统一访问路径。
 	Path string `mapstructure:"path"`
 	// SSETimeoutSeconds SSE 连接超时(秒)，超时后服务端主动结束该流，由前端重连。
-	// 对应 Java sse-timeout（那边单位是毫秒）。
+	// 注意原项目单位是毫秒。
 	SSETimeoutSeconds int `mapstructure:"sseTimeoutSeconds"`
-	// HeartbeatSeconds 心跳间隔(秒)，同时用于剔除失效连接，对应 Java heartbeat-interval。
+	// HeartbeatSeconds 心跳间隔(秒)，同时用于剔除失效连接。
 	HeartbeatSeconds int `mapstructure:"heartbeatSeconds"`
 	// SendBuffer 单条连接的待发送消息缓冲条数。
 	//
 	// 缓冲写满即断开该连接：推送是可丢的通知，不能让一个卡死的慢客户端
-	// 把广播协程堵住（Java 侧 ConcurrentWebSocketSessionDecorator 的
-	// bufferSizeLimit 同为此意，只是它按字节数算）。
+	// 把广播协程堵住。
 	SendBuffer int `mapstructure:"sendBuffer"`
 }
 
@@ -55,7 +53,7 @@ type PushConfig struct {
 func DefaultPush() PushConfig {
 	return PushConfig{
 		Enabled:           true,
-		Transport:         PushTransportSSE, // 对齐 Java MessageProperties 的默认值
+		Transport:         PushTransportSSE,
 		Path:              defaultPushPath,
 		SSETimeoutSeconds: 86400,
 		HeartbeatSeconds:  60,
@@ -64,7 +62,7 @@ func DefaultPush() PushConfig {
 }
 
 // IsWebSocket 是否走 WebSocket 传输。
-// 非 websocket 一概视为 sse，对齐 Java MessageTransportEnum.of 的兜底。
+// 非 websocket 一概视为 sse。
 func (c PushConfig) IsWebSocket() bool {
 	return strings.EqualFold(c.Transport, PushTransportWebSocket)
 }

@@ -2,7 +2,7 @@ package model
 
 import "time"
 
-// BaseEntity 实体基类，对应 Java org.dromara.common.mybatis.core.domain.BaseEntity。
+// BaseEntity 实体基类。
 // 各实体匿名嵌入复用本审计字段；具体值由 service 层在落库前按登录态写入。
 type BaseEntity struct {
 	CreateDept int64      `gorm:"column:create_dept" json:"createDept"`

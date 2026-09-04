@@ -18,7 +18,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/snowflake"
 )
 
-// 消息盒子的展示口径，对齐 Java SysMessageServiceImpl 的 BOX_LIMIT / BOX_DAYS。
+// 消息盒子的展示口径：每类最多 boxLimit 条、最近 boxDays 天。
 const (
 	// boxLimit 每个分类最多展示的条数。
 	boxLimit = 100
@@ -26,7 +26,7 @@ const (
 	boxDays = 30
 )
 
-// 消息盒子的标题文案，对齐 Java resolveTitle 的三个分支。
+// 消息盒子的标题文案。
 const (
 	titleSystem   = "系统消息"
 	titleNotice   = "通知公告消息"
@@ -36,17 +36,15 @@ const (
 // MessageService 消息记录业务逻辑。
 type MessageService struct{}
 
-// MessageSvcApp 包级实例。
 var MessageSvcApp = new(MessageService)
 
-// QueryMessageBox 查当前用户的消息盒子（对应 Java queryMessageBox）。
+// QueryMessageBox 查当前用户的消息盒子。
 // 按系统消息 / 通知公告 / 工作流三类分别返回。
 func (s *MessageService) QueryMessageBox(ctx context.Context,
 	userID int64) (*vo.SysMessageBoxVo, error) {
 
 	box := new(vo.SysMessageBoxVo)
-	// 三个分类分别查：Java 也是三次查询。合成一次再按 category 分组看似省一次
-	// 往返，但每类各自限流 100 条，单查才能让 LIMIT 落到 SQL 上。
+	// 三个分类分别查：每类各自限流 100 条，单查才能让 LIMIT 落到 SQL 上。
 	for _, item := range []struct {
 		category string
 		dest     *[]*vo.SysMessageVo
@@ -87,7 +85,7 @@ func (s *MessageService) selectBoxList(ctx context.Context, category string,
 	return out, nil
 }
 
-// parseMessageData 反序列化扩展数据（对应 Java parseData）。
+// parseMessageData 反序列化扩展数据。
 // 解析失败按空处理：data_json 是展示用的附加信息，坏了一条不该让整个消息盒子失败。
 func parseMessageData(dataJSON string) any {
 	if strings.TrimSpace(dataJSON) == "" {
@@ -101,19 +99,19 @@ func parseMessageData(dataJSON string) any {
 	return data
 }
 
-// PublishAll 广播消息给全部用户（对应 Java publishAll）：先落消息盒子再推送。
+// PublishAll 广播消息给全部用户：先落消息盒子再推送。
 func (s *MessageService) PublishAll(ctx context.Context, payload *dto.PushPayloadDTO) error {
 	return s.publish(ctx, nil, payload)
 }
 
-// PublishUsers 发布消息给指定用户（对应 Java publishMessage）。
+// PublishUsers 发布消息给指定用户。
 func (s *MessageService) PublishUsers(ctx context.Context, userIDs []int64,
 	payload *dto.PushPayloadDTO) error {
 
 	return s.publish(ctx, userIDs, payload)
 }
 
-// publish 统一的「存储 + 推送」流程（对应 Java storeMessage 后接 PushHelper）。
+// publish 统一的「存储 + 推送」流程。
 //
 // 落库失败要上抛：消息盒子查不到就等于消息丢了。推送失败只记日志——
 // 消息已经进盒子，用户下次打开就能看到，不值得让调用方（如公告新增）整体失败。
@@ -132,8 +130,7 @@ func (s *MessageService) publish(ctx context.Context, userIDs []int64,
 	return nil
 }
 
-// storeMessage 把消息写进消息盒子，并回填 payload.MessageID
-// （对应 Java storeMessage / storeAll / storeUsers）。
+// storeMessage 把消息写进消息盒子，并回填 payload.MessageID。
 // 不入盒子的类型（如 LLM 流式消息）直接跳过。
 func (s *MessageService) storeMessage(ctx context.Context, userIDs []int64,
 	payload *dto.PushPayloadDTO) error {
@@ -151,10 +148,10 @@ func (s *MessageService) storeMessage(ctx context.Context, userIDs []int64,
 	return nil
 }
 
-// buildMessage 组装消息实体（对应 Java buildMessage）。
+// buildMessage 组装消息实体。
 func buildMessage(userIDs []int64, payload *dto.PushPayloadDTO) *model.SysMessage {
 	messageID := payload.MessageID
-	// 调用方已指定则沿用，否则发号（对齐 Java 的 messageId == null 判断）。
+	// 调用方已指定则沿用，否则发号。
 	if messageID == 0 {
 		messageID = snowflake.Next() // message_id 无 auto_increment
 	}
@@ -188,8 +185,7 @@ func marshalMessageData(data any) string {
 	return string(b)
 }
 
-// joinSendUserIDs 拼接接收人串，空列表表示全局广播
-// （对齐 Java CollUtil.isEmpty ? GLOBAL_USER_IDS : joinComma）。
+// joinSendUserIDs 拼接接收人串，空列表表示全局广播。
 func joinSendUserIDs(userIDs []int64) string {
 	if len(userIDs) == 0 {
 		return constant.MessageGlobalUserIDs
@@ -201,7 +197,7 @@ func joinSendUserIDs(userIDs []int64) string {
 	return strings.Join(parts, ",")
 }
 
-// supportsMessageBox 判断该消息是否需要入消息盒子（对应 Java supportsMessageBox）。
+// supportsMessageBox 判断该消息是否需要入消息盒子。
 // 只有通用消息与通知公告入盒子，且排除大模型消息——LLM 是逐字流式下发的，
 // 每个片段都存一条会瞬间把表写满。
 func supportsMessageBox(payload *dto.PushPayloadDTO) bool {
@@ -214,7 +210,7 @@ func supportsMessageBox(payload *dto.PushPayloadDTO) bool {
 	return payload.Type != constant.PushTypeLLM && payload.Source != constant.PushSourceLLM
 }
 
-// resolveCategory 按类型/来源推断消息分类（对应 Java resolveCategory）。
+// resolveCategory 按类型/来源推断消息分类。
 func resolveCategory(payload *dto.PushPayloadDTO) string {
 	switch {
 	case payload.Type == constant.PushTypeNotice || payload.Source == constant.PushSourceNotice:
@@ -226,7 +222,7 @@ func resolveCategory(payload *dto.PushPayloadDTO) string {
 	}
 }
 
-// resolveTitle 按分类生成标题（对应 Java resolveTitle）。
+// resolveTitle 按分类生成标题。
 func resolveTitle(payload *dto.PushPayloadDTO) string {
 	switch resolveCategory(payload) {
 	case constant.MessageCategoryNotice:
@@ -238,7 +234,7 @@ func resolveTitle(payload *dto.PushPayloadDTO) string {
 	}
 }
 
-// resolveContent 从扩展数据里取详细内容（对应 Java resolveContent）。
+// resolveContent 从扩展数据里取详细内容。
 // 只认 map 形态的 data 里的 noticeContent 键，其余情况留空。
 func resolveContent(payload *dto.PushPayloadDTO) string {
 	data, ok := payload.Data.(map[string]any)

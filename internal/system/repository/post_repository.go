@@ -12,7 +12,6 @@ import (
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
-// ErrPostNotFound 岗位不存在。
 var ErrPostNotFound = errors.New("repository: 岗位不存在")
 
 // PostRepository sys_post 数据访问。
@@ -25,7 +24,7 @@ func NewPostRepository(db *gorm.DB) *PostRepository {
 	return &PostRepository{db: db}
 }
 
-// CountByDeptID 统计部门下的岗位数（对应 Java countPostByDeptId）。
+// CountByDeptID 统计部门下的岗位数。
 func (r *PostRepository) CountByDeptID(ctx context.Context, deptID int64) (int64, error) {
 	if deptID <= 0 {
 		return 0, nil
@@ -42,8 +41,8 @@ func (r *PostRepository) CountByDeptID(ctx context.Context, deptID int64) (int64
 	return count, nil
 }
 
-// SelectPostsByUserId 按用户ID查其关联岗位（对应 Java SysPostMapper#selectPostsByUserId）。
-// 经 sys_user_post 关联，sys_post 的逻辑删除由实体自动过滤；不按岗位状态过滤（与 Java 一致）。
+// SelectPostsByUserId 按用户ID查其关联岗位。
+// 经 sys_user_post 关联，sys_post 的逻辑删除由实体自动过滤；不按岗位状态过滤。
 func (r *PostRepository) SelectPostsByUserId(ctx context.Context, userID int64) ([]*model.SysPost, error) {
 	if userID <= 0 {
 		return nil, nil
@@ -91,12 +90,12 @@ func (r *PostRepository) SelectByIDs(ctx context.Context, ids []int64) ([]*model
 	return rows, nil
 }
 
-// SelectPageList 按条件分页查岗位（对应 Java selectPagePostList）。
+// SelectPageList 按条件分页查岗位。
 func (r *PostRepository) SelectPageList(ctx context.Context, q bo.SysPostQueryBo,
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysPost], error) {
 
 	db := applyPostQuery(r.db.WithContext(ctx).Model(&model.SysPost{}), q)
-	// 仅在调用方未指定排序时按 post_sort 升序兜底（对齐 Java orderByAsc(SysPost::getPostSort)）。
+	// 仅在调用方未指定排序时按 post_sort 升序兜底。
 	// 不能无条件追加：GORM 合并排序子句时先注册的排在前，主键唯一会让后来的排序列失效。
 	if !page.HasOrder() {
 		db = db.Order("post_sort")
@@ -128,13 +127,13 @@ func (r *PostRepository) SelectList(ctx context.Context, q bo.SysPostQueryBo,
 }
 
 // SelectNormalByIDs 查启用状态的岗位，ids 非空时按主键过滤
-// （对应 Java selectPostByIds：ids 为空即不加 IN 条件，退化成查全部启用岗位）。
+// （ids 为空即不加 IN 条件，退化成查全部启用岗位）。
 func (r *PostRepository) SelectNormalByIDs(ctx context.Context, ids []int64) ([]*model.SysPost, error) {
 	db := r.db.WithContext(ctx).Model(&model.SysPost{}).Where("status = ?", "0")
 	if len(ids) > 0 {
 		db = db.Where("post_id IN ?", ids)
 	}
-	// Java 未指定排序，这里固定按 post_sort 升序：下拉框的选项顺序不该随 MySQL 返回顺序漂移。
+	// 固定按 post_sort 升序：下拉框的选项顺序不该随 MySQL 返回顺序漂移。
 	db = db.Order("post_sort")
 
 	var rows []*model.SysPost
@@ -144,7 +143,7 @@ func (r *PostRepository) SelectNormalByIDs(ctx context.Context, ids []int64) ([]
 	return rows, nil
 }
 
-// applyPostQuery 应用岗位查询条件（对齐 Java buildQueryWrapper）：
+// applyPostQuery 应用岗位查询条件：
 // 编码/类别/名称走 LIKE，状态走 =，创建时间走闭区间，部门走单部门 eq 或部门树 IN。
 // 分页与导出两条路径必须共用它，否则过滤逻辑改一处漏一处。
 func applyPostQuery(db *gorm.DB, q bo.SysPostQueryBo) *gorm.DB {
@@ -160,12 +159,12 @@ func applyPostQuery(db *gorm.DB, q bo.SysPostQueryBo) *gorm.DB {
 	if q.Status != "" {
 		db = db.Where("status = ?", q.Status)
 	}
-	// 两端须同时给出（对齐 Java betweenParams 的 begin != null && end != null）：
+	// 两端须同时给出：
 	// 只给一端就筛会让前端清空半个日期框时结果突变。
 	if q.BeginTime != "" && q.EndTime != "" {
 		db = db.Where("create_time BETWEEN ? AND ?", q.BeginTime, q.EndTime)
 	}
-	// 单部门搜索优先于部门树搜索（对齐 Java 的 if/else if）。
+	// 单部门搜索优先于部门树搜索。
 	if q.DeptID > 0 {
 		db = db.Where("dept_id = ?", q.DeptID)
 	} else if len(q.DeptIDs) > 0 {
@@ -229,7 +228,7 @@ func (r *PostRepository) DeleteByIDs(ctx context.Context, ids []int64) (int64, e
 }
 
 // ExistsByPostName 判断同一部门下的岗位名称是否已被占用，excludeID > 0 时排除该主键
-// （对齐 Java checkPostNameUnique：名称 + 部门两列共同判重，供修改场景排除自身）。
+// （名称 + 部门两列共同判重，供修改场景排除自身）。
 func (r *PostRepository) ExistsByPostName(ctx context.Context, postName string,
 	deptID, excludeID int64) (bool, error) {
 
@@ -252,7 +251,7 @@ func (r *PostRepository) ExistsByPostName(ctx context.Context, postName string,
 }
 
 // ExistsByPostCode 判断岗位编码是否已被占用，excludeID > 0 时排除该主键
-// （对齐 Java checkPostCodeUnique：编码全局判重，供修改场景排除自身）。
+// （编码全局判重，供修改场景排除自身）。
 func (r *PostRepository) ExistsByPostCode(ctx context.Context, postCode string,
 	excludeID int64) (bool, error) {
 
@@ -272,7 +271,7 @@ func (r *PostRepository) ExistsByPostCode(ctx context.Context, postCode string,
 	return count > 0, nil
 }
 
-// CountUserPostByID 统计已分配该岗位的用户数（对应 Java countUserPostById）。
+// CountUserPostByID 统计已分配该岗位的用户数。
 // 走 sys_user_post 关联表，岗位被引用即不可删/不可禁用。
 func (r *PostRepository) CountUserPostByID(ctx context.Context, postID int64) (int64, error) {
 	if postID <= 0 {
@@ -289,11 +288,10 @@ func (r *PostRepository) CountUserPostByID(ctx context.Context, postID int64) (i
 	return count, nil
 }
 
-// CountByIDs 按主键集合统计存在的岗位数（对应 Java selectPostCount）。
+// CountByIDs 按主键集合统计存在的岗位数。
 //
-// Java 此方法带 @DataPermission，非超管账号下注入岗位数据隔离条件，
-// 使"我能看到的岗位"与传入数量不等时抛"没有权限访问岗位的数据"。Go 侧数据权限尚未落地，
-// 此处只按主键计数——等数据权限落地后挂上过滤，调用点不必改。
+// 数据权限的岗位数据隔离条件尚未落地，此处只按主键计数——
+// 等数据权限落地后挂上过滤，调用点不必改。
 func (r *PostRepository) CountByIDs(ctx context.Context, postIDs []int64) (int64, error) {
 	if len(postIDs) == 0 {
 		return 0, nil

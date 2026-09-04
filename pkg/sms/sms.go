@@ -1,6 +1,6 @@
 // Package sms 短信发送。
 //
-// Java 侧用 sms4j 聚合多厂商，Go 生态无对应物，故这里自留 Sender 接口，
+// sms4j 聚合多厂商，Go 生态无对应物，故这里自留 Sender 接口，
 // 内置阿里云一家实现；换/加厂商只需再写一个 Sender，调用方不动。
 //
 // 初始化对照 mail.Init / captcha.Init：sms.Init() 无参，自读 config.Get().SMS。
@@ -18,8 +18,7 @@ import (
 // ErrDisabled 短信功能未开启。由调用方翻译成给前端看的文案。
 var ErrDisabled = errors.New("sms: 短信功能未开启")
 
-// templateParamCode 模板变量名。阿里云模板里写 ${code}，此处的键须与之一致，
-// 对齐 Java 侧 map.put("code", code)。
+// templateParamCode 模板变量名固定为 "code"，阿里云模板里写 ${code}，此处的键须与之一致。
 const templateParamCode = "code"
 
 // Sender 短信发送器。params 是模板变量表。

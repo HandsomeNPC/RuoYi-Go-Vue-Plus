@@ -1,10 +1,9 @@
 package dto
 
-// LoginInfoEvent 登录事件，对应 Java org.dromara.common.log.event.LoginInfoEvent。
+// LoginInfoEvent 登录事件。
 //
-// Java 侧该对象经 Spring 事件总线投递给 @Async @EventListener 落库；本项目无事件
-// 总线，改由 auth 直接调 system 的 LoginInfoSvcApp.RecordLoginInfo（同进程函数调用，
-// 内部异步落库），此结构体退化为纯入参载体，语义与字段对齐 Java 便于对照。
+// 本项目无事件总线，改由 auth 直接调 system 的 LoginInfoSvcApp.RecordLoginInfo
+// （同进程函数调用，内部异步落库），此结构体退化为纯入参载体。
 type LoginInfoEvent struct {
 	// Username 用户账号。
 	Username string `json:"username"`

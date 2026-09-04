@@ -12,7 +12,7 @@ import (
 //   - skipCopySameType yes：*time.Time 等同类型直接拷贝，免深度转换报错。
 //   - autoMap BaseEntity：提升嵌入式审计字段，使 VO 的 CreateTime/CreateBy 按名映射。
 //
-// SysOssConfigVo 无 autoMap：它不含任何审计字段（对齐 Java 的 SysOssConfigVo）。
+// SysOssConfigVo 无 autoMap：它不含任何审计字段。
 //
 // 命名 ConvertTo<Target>；列表加 List。
 //

@@ -1,6 +1,6 @@
 package bo
 
-// SysDeptBo 部门业务对象（入参），对应 Java SysDeptBo。
+// SysDeptBo 部门业务对象（入参）。
 type SysDeptBo struct {
 	DeptID       int64  `json:"deptId"`
 	ParentID     int64  `json:"parentId"`

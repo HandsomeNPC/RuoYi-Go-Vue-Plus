@@ -33,7 +33,7 @@ func Init() {
 		Build()
 
 	sagin.SetManager(manager)
-	// 登出/被踢/被顶时清 online_tokens 摘要，对照 Java UserActionListener 三个回调删缓存。
+	// 登出/被踢/被顶时清 online_tokens 摘要。
 	// sa-token-go 在这些动作内部同步触发事件，故无需再于各调用点手删。
 	registerOnlineTokenCleanup(manager)
 	log.Printf("[%s] sa-token 已就绪: tokenName=%s",

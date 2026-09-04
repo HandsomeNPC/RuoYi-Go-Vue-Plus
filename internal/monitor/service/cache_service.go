@@ -11,10 +11,9 @@ import (
 	"ruoyi-go-vue-plus/pkg/response"
 )
 
-// CacheSvc 缓存监控服务（对应 Java CacheController 的业务部分）。
+// CacheSvc 缓存监控服务。
 type CacheSvc struct{}
 
-// CacheSvcApp 包级实例。
 var CacheSvcApp = new(CacheSvc)
 
 // GetInfo 取 Redis 服务信息、库大小与命令统计饼图数据。
@@ -63,7 +62,6 @@ func parseInfo(s string) map[string]string {
 
 // parseCommandStats 解析 commandstats 段为饼图数据：每条形如
 // cmdstat_get:calls=37,usec=12,... 取 name=get、value=37（calls 数）。
-// 取值口径与 Java substringBetween(property,"calls=",",usec") 一致。
 func parseCommandStats(s string) []map[string]string {
 	var list []map[string]string
 	for _, line := range strings.Split(s, "\n") {

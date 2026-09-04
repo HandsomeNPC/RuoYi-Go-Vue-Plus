@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// SysDeptVo 部门视图对象，对应 Java SysDeptVo。
+// SysDeptVo 部门视图对象。
 type SysDeptVo struct {
 	DeptID   int64 `json:"deptId"`
 	ParentID int64 `json:"parentId"`

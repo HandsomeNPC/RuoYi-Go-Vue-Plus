@@ -97,7 +97,7 @@ func TestSupportsMessageBox(t *testing.T) {
 			Type: constant.PushTypeCustom, Source: constant.PushSourceClient}, false},
 		{"LLM 类型不入盒子", &dto.PushPayloadDTO{
 			Type: constant.PushTypeLLM, Source: constant.PushSourceLLM}, false},
-		// 类型合法但来源是 LLM：Java 侧同样排除，否则大模型走 message 类型就绕过了限制。
+		// 类型合法但来源是 LLM：同样排除，否则大模型走 message 类型就绕过了限制。
 		{"LLM 来源不入盒子", &dto.PushPayloadDTO{
 			Type: constant.PushTypeMessage, Source: constant.PushSourceLLM}, false},
 	}
@@ -110,7 +110,7 @@ func TestSupportsMessageBox(t *testing.T) {
 	}
 }
 
-// TestResolveCategory 分类按类型/来源推断（对齐 Java resolveCategory 的优先级）。
+// TestResolveCategory 分类按类型/来源推断。
 func TestResolveCategory(t *testing.T) {
 	tests := []struct {
 		name         string

@@ -1,6 +1,6 @@
 package model
 
-// SysDictType 字典类型表（sys_dict_type），对应 Java org.dromara.system.domain.SysDictType。
+// SysDictType 字典类型表（sys_dict_type）。
 type SysDictType struct {
 	DictID   int64  `gorm:"column:dict_id;primaryKey" json:"dictId"`
 	DictName string `gorm:"column:dict_name" json:"dictName"`

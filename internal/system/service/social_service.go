@@ -15,16 +15,13 @@ import (
 	"ruoyi-go-vue-plus/pkg/snowflake"
 )
 
-// SocialService 社会化关系业务逻辑（对应 Java SysSocialServiceImpl）。
+// SocialService 社会化关系业务逻辑。
 type SocialService struct{}
 
-// SocialSvcApp 包级实例。
 var SocialSvcApp = new(SocialService)
 
-// ErrSocialAlreadyBound 该三方账号已被其他用户绑定。
 var ErrSocialAlreadyBound = errors.New("service: 此三方账号已经被绑定")
 
-// ErrSocialNotFound 社会化绑定不存在。
 var ErrSocialNotFound = errors.New("service: 社会化绑定不存在")
 
 // socialRegisterLockTTL 绑定操作的互斥锁存活时间。
@@ -34,7 +31,7 @@ const socialRegisterLockTTL = 10 * time.Second
 // socialRegisterLockKey 绑定互斥锁的键前缀，后接 authId。
 const socialRegisterLockKey = "global:lock:social_register:"
 
-// QueryListByUserId 按用户ID查其绑定的社会化授权列表（对应 Java queryListByUserId）。
+// QueryListByUserId 按用户ID查其绑定的社会化授权列表。
 // 当前用户查不到属空集，不算错。
 func (s *SocialService) QueryListByUserId(ctx context.Context,
 	userID int64) ([]*vo.SysSocialVo, error) {
@@ -46,7 +43,7 @@ func (s *SocialService) QueryListByUserId(ctx context.Context,
 	return vo.Conv.ConvertToSysSocialVoList(rows), nil
 }
 
-// SelectByAuthId 按 authId 查绑定关系（对应 Java selectByAuthId）。
+// SelectByAuthId 按 authId 查绑定关系。
 func (s *SocialService) SelectByAuthId(ctx context.Context,
 	authID string) ([]*vo.SysSocialVo, error) {
 
@@ -57,12 +54,11 @@ func (s *SocialService) SelectByAuthId(ctx context.Context,
 	return vo.Conv.ConvertToSysSocialVoList(rows), nil
 }
 
-// SaveOrUpdate 绑定或续绑一个三方账号，承接 Java SysLoginService.socialRegister 的判定：
+// SaveOrUpdate 绑定或续绑一个三方账号：
 // authId 已被他人占用则拒绝；本人已绑过同平台则更新令牌，否则新增。
 //
-// Java 侧靠 @Lock4j 分布式锁挡住同一 authId 的并发绑定，本项目无该设施，
-// 故用 Redis SetNX 自建一把（键按 authId 分桶）。不加锁的话两个并发请求
-// 会各自查重通过、双双插入，留下两行同 auth_id 的脏数据。
+// 用 Redis SetNX 自建互斥锁（键按 authId 分桶）挡住同一 authId 的并发绑定。
+// 不加锁的话两个并发请求会各自查重通过、双双插入，留下两行同 auth_id 的脏数据。
 func (s *SocialService) SaveOrUpdate(ctx context.Context, b *bo.SysSocialBo) error {
 	if b == nil || b.AuthID == "" || b.UserID <= 0 {
 		return fmt.Errorf("service: 社会化绑定入参不完整")
@@ -79,8 +75,7 @@ func (s *SocialService) SaveOrUpdate(ctx context.Context, b *bo.SysSocialBo) err
 
 	repo := repository.NewSocialRepository(database.DB())
 
-	// 已被绑定就拒绝——包括被自己绑定：Java 在 authId 命中时无条件抛异常，
-	// 同一账号重复点绑定按「已绑定」提示，而非静默续绑。
+	// 已被绑定就拒绝——包括被自己绑定：同一账号重复点绑定按「已绑定」提示，而非静默续绑。
 	bound, err := repo.SelectByAuthID(ctx, b.AuthID)
 	if err != nil {
 		return err
@@ -106,8 +101,7 @@ func (s *SocialService) SaveOrUpdate(ctx context.Context, b *bo.SysSocialBo) err
 	return repo.Insert(ctx, add)
 }
 
-// DeleteWithValidById 删除一条社会化绑定，返回是否删到
-// （对应 Java deleteWithValidById 的 deleteById > 0）。
+// DeleteWithValidById 删除一条社会化绑定，返回是否删到。
 //
 // 受影响行数为 0 即视为失败，是删除类接口的既定口径（见 docs/CRUD-SPEC.md 第 4 节例外）。
 func (s *SocialService) DeleteWithValidById(ctx context.Context, id int64) (bool, error) {

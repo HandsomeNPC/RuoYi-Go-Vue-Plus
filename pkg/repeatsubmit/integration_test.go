@@ -83,7 +83,6 @@ func uniqueToken(t *testing.T) string {
 }
 
 // TestSuccessBlocksRepeat 成功后保留键：interval 内的相同提交必须被挡。
-// 对照 Java doAfterReturning「成功则不删 redis 数据」。
 func TestSuccessBlocksRepeat(t *testing.T) {
 	s := setupRedis(t)
 	r := newEngine(s, func(c *gin.Context) {
@@ -107,7 +106,6 @@ func TestSuccessBlocksRepeat(t *testing.T) {
 }
 
 // TestFailureAllowsRetry 业务失败应删键，用户可以立刻重试。
-// 对照 Java doAfterReturning 里 code != SUCCESS 时 deleteRepeatKey。
 func TestFailureAllowsRetry(t *testing.T) {
 	s := setupRedis(t)
 	r := newEngine(s, func(c *gin.Context) {
@@ -130,7 +128,6 @@ func TestFailureAllowsRetry(t *testing.T) {
 }
 
 // TestPanicAllowsRetry handler panic 应删键并由 Recover 渲染 500，且不吐半截响应。
-// 对照 Java doAfterThrowing。
 func TestPanicAllowsRetry(t *testing.T) {
 	s := setupRedis(t)
 	hit := 0
@@ -237,7 +234,7 @@ func TestBodyReachesHandler(t *testing.T) {
 }
 
 // TestRedisDownFailsOpen Redis 不可用时应放行而非阻断业务（可用性优先）。
-// 与 pkg/ratelimiter 同款取舍，也是与 Java 的有意差异。
+// 与 pkg/ratelimiter 同款取舍。
 func TestRedisDownFailsOpen(t *testing.T) {
 	// 指向一个必然连不上的端口，不需要真实 Redis，故不调 setupRedis。
 	bad := goredis.NewClient(&goredis.Options{Addr: "127.0.0.1:1"})

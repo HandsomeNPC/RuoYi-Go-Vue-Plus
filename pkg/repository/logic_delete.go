@@ -9,7 +9,7 @@ import (
 	"gorm.io/gorm/schema"
 )
 
-// del_flag 取值，对齐 RuoYi 的 char(1) 语义。
+// del_flag 取值，char(1) 语义。
 const (
 	// FlagNotDeleted 未删除。
 	FlagNotDeleted = "0"

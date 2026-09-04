@@ -37,7 +37,7 @@ const httpTimeout = 10 * time.Second
 //
 // 手写 RPC 签名而非引官方 SDK：签名算法二十来行，而
 // alibabacloud-go/dysmsapi 会连带拉进近十个 alibabacloud-go/* 包。
-// 算法与 sms4j 的 AliyunUtils 逐字对齐（那是 Java 侧实际在用的实现）。
+// 签名算法须与实际在用的实现逐字一致。
 type aliyunSender struct {
 	cfg    config.SMSConfig
 	client *http.Client
@@ -115,7 +115,7 @@ func (s *aliyunSender) Send(ctx context.Context, phone string, params map[string
 		return fmt.Errorf("sms: 解析响应失败: %w, 响应: %s", err, truncate(string(body), 200))
 	}
 	if out.Code != aliyunSuccessCode {
-		// 把厂商文案透出去：调用方要把它当作给前端的提示（对齐 Java 取 smsResponse 的 data）。
+		// 把厂商文案透出去：调用方要把它当作给前端的提示。
 		return fmt.Errorf("sms: 短信发送失败: %s", firstNonEmpty(out.Message, out.Code))
 	}
 	return nil

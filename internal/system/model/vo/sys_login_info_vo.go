@@ -4,8 +4,8 @@ import (
 	"time"
 )
 
-// SysLoginInfoVo 系统访问记录视图对象，对应 Java SysLoginInfoVo。
-// excel tag 逐字抄 Java @ExcelProperty；deviceType/status 按 @ExcelDictFormat 转标签。
+// SysLoginInfoVo 系统访问记录视图对象。
+// excel tag 对应导出列；deviceType/status 按 excelDict 转标签。
 type SysLoginInfoVo struct {
 	InfoID     int64  `json:"infoId" excel:"序号"`
 	UserName   string `json:"userName" excel:"用户账号"`

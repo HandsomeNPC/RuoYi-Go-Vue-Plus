@@ -100,7 +100,6 @@ func TestAcquireDifferentKeysIndependent(t *testing.T) {
 }
 
 // TestHandlerRendersRejection 触发限流时走完整 gin 链路应返回 200 + code 500 + 提示文案。
-// 对照 Java：HTTP 200 + {"code":500,"msg":"访问过于频繁，请稍候再试"}，而非 429。
 func TestHandlerRendersRejection(t *testing.T) {
 	l := setupRedis(t)
 
@@ -149,7 +148,6 @@ func (l *Limiter) middleware(fn func(*gin.Context) string, window time.Duration,
 }
 
 // TestRedisDownFailsOpen Redis 不可用时应放行而非阻断业务（可用性优先）。
-// 这是与 Java 的有意差异：Java 把非 ServiceException 包成 RuntimeException 阻断请求。
 func TestRedisDownFailsOpen(t *testing.T) {
 	// 指向一个必然连不上的端口，不需要真实 Redis，故不调 setupRedis。
 	bad := goredis.NewClient(&goredis.Options{Addr: "127.0.0.1:1"})

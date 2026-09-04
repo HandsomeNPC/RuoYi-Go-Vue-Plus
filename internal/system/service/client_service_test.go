@@ -146,9 +146,9 @@ func TestResolveRuleValueRoundTrip(t *testing.T) {
 	}
 }
 
-// TestNewClientID client_id 取 md5(clientKey + clientSecret)，对齐 Java SecureUtil.md5。
+// TestNewClientID client_id 取 md5(clientKey + clientSecret)。
 func TestNewClientID(t *testing.T) {
-	// 与 Java 同算法的已知取值，改动实现会在此暴露。
+	// 已知取值，改动实现会在此暴露。
 	if got, want := newClientID("pc", "pc123"), "2ce0a4f4bf6c4a854a97a5ddfd941ebb"; got != want {
 		t.Errorf("newClientID(pc, pc123) = %q, 期望 %q", got, want)
 	}
@@ -160,11 +160,11 @@ func TestNewClientID(t *testing.T) {
 		t.Errorf("newClientID 长度 = %d, 期望 32", len(got))
 	}
 	// 注意 md5 作用于拼接后的整串，故 (ab,c) 与 (a,bc) 必然同值——
-	// 这是 Java 的既有行为，不是缺陷，此处不做区分性断言。
+	// 这是既有行为，不是缺陷，此处不做区分性断言。
 }
 
 // TestBuildClientUpdateColumnsAlwaysWritten 五个可编辑列无条件写入，空串即清空。
-// client_id 仅在前端回填非空时才落入 SET——对齐 Java updateByBo 对 null 字段的跳过语义。
+// client_id 仅在前端回填非空时才落入 SET——空值跳过语义。
 func TestBuildClientUpdateColumnsAlwaysWritten(t *testing.T) {
 	// 全部规则字段留空：模拟前端清空访问路径与 IP 白名单。
 	got := buildClientUpdateColumns(&bo.SysClientBo{
@@ -226,8 +226,8 @@ func TestBuildClientUpdateColumnsIncludesSet(t *testing.T) {
 	}
 }
 
-// TestBuildClientUpdateColumnsClientID client_id 直接采用前端回填值，对齐 Java updateByBo
-// @CacheEvict(key = "#bo.clientId") 的语义——evict 的是前端回传的那个 key，
+// TestBuildClientUpdateColumnsClientID client_id 直接采用前端回填值，
+// evict 的是前端回传的那个 key，
 // 服务端不重算（前端在修改 key/secret 时自行更新 clientId 回传）。
 func TestBuildClientUpdateColumnsClientID(t *testing.T) {
 	// 前端回填了 clientId：原样落库。

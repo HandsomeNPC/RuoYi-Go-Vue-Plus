@@ -1,6 +1,6 @@
 package dto
 
-// PostDTO 岗位简要信息对象，对应 Java org.dromara.system.api.domain.PostDTO。
+// PostDTO 岗位简要信息对象。
 type PostDTO struct {
 	// PostID 岗位ID。
 	PostID int64 `json:"postId"`

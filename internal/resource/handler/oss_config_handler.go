@@ -15,10 +15,9 @@ import (
 	"ruoyi-go-vue-plus/pkg/response"
 )
 
-// OssConfigApi 对象存储配置接口（对应 Java SysOssConfigController）。
+// OssConfigApi 对象存储配置接口。
 type OssConfigApi struct{}
 
-// OssConfigApiApp 包级实例。
 var OssConfigApiApp = new(OssConfigApi)
 
 // List 分页查询配置列表。
@@ -112,7 +111,7 @@ func (a *OssConfigApi) Edit(c *gin.Context) {
 	c.JSON(http.StatusOK, response.OkVoid())
 }
 
-// ChangeStatus 切换默认配置（对应 Java changeStatus）。
+// ChangeStatus 切换默认配置。
 func (a *OssConfigApi) ChangeStatus(c *gin.Context) {
 	var b bo.SysOssConfigStatusBo
 	if err := c.ShouldBindJSON(&b); err != nil {

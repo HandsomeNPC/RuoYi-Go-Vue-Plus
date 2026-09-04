@@ -1,6 +1,6 @@
 package vo
 
-// SysUserInfoVo 用户信息视图对象，对应 Java SysUserInfoVo。
+// SysUserInfoVo 用户信息视图对象。
 type SysUserInfoVo struct {
 	User SysUserVo `json:"user"`
 	// RoleIDs 角色ID列表，由 service 回填。

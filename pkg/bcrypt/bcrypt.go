@@ -1,9 +1,9 @@
-// Package bcrypt bcrypt 密码哈希（对应 hutool cn.hutool.crypto.digest.BCrypt）。
+// Package bcrypt bcrypt 密码哈希。
 //
 // hutool 的 BCrypt 暴露 gensalt/hashpw/checkpw 三件套，其中 gensalt 单独产出盐串。
 // Go 标准库 golang.org/x/crypto/bcrypt 把盐折进哈希串里一次性返回，没有独立产盐的
 // 公开 API；本包因此只对齐实际用到的高阶用法——hashpw(password) 自动产盐、
-// checkpw(plaintext, hashed) 校验，与原项目 Java 侧调用形态一致。
+// checkpw(plaintext, hashed) 校验明文与哈希。
 package bcrypt
 
 import (
@@ -13,7 +13,7 @@ import (
 	gobcrypt "golang.org/x/crypto/bcrypt"
 )
 
-// DefaultCost 默认代价因子，对应 hutool GENSALT_DEFAULT_LOG2_ROUNDS = 10。
+// DefaultCost 默认代价因子。
 const DefaultCost = 10
 
 // MaxPasswordSize bcrypt 单次哈希的密码字节上限。
@@ -25,7 +25,7 @@ var ErrPasswordMismatch = errors.New("bcrypt: 密码不匹配")
 // ErrPasswordTooLong 密码超过 bcrypt 上限。
 var ErrPasswordTooLong = errors.New("bcrypt: 密码长度超过上限(72 字节)")
 
-// Hashpw 哈希明文密码（对应 hutool BCrypt.hashpw(String)），代价因子取 DefaultCost。
+// Hashpw 哈希明文密码，代价因子取 DefaultCost。
 func Hashpw(password string) (string, error) {
 	return HashpwWithCost(password, DefaultCost)
 }
@@ -57,7 +57,7 @@ func Verify(plaintext, hashed string) error {
 	return fmt.Errorf("bcrypt: 哈希格式非法: %w", err)
 }
 
-// Checkpw 校验明文与哈希是否匹配（对应 hutool BCrypt.checkpw）。
+// Checkpw 校验明文与哈希是否匹配。
 func Checkpw(plaintext, hashed string) bool {
 	return Verify(plaintext, hashed) == nil
 }

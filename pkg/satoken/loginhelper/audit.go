@@ -10,8 +10,8 @@ import (
 // 的审计回调填 create_by/create_dept 等列。
 //
 // 之所以要这道中间件：GORM 回调只拿得到 *gorm.DB，取不到 *gin.Context，而 pkg/repository
-// 也不能反向 import 本包（会成环），故登录态只能经 ctx 接力。等价于 Java 侧 sa-token
-// 的 thread-local——那边由全局 servlet filter 自动持有，Go 无等价物只能显式挂载。
+// 也不能反向 import 本包（会成环），故登录态只能经 ctx 接力。Go 无全局 thread-local 等价物，
+// 只能由这道中间件显式挂载。
 //
 // 须注册在 TokenInterceptor 之后：GetLoginUser 读的 token 由它写进 gin.Context。
 // 未登录时不写，由回调按 -1 兜底。

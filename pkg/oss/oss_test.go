@@ -128,7 +128,7 @@ func TestDomainURLFallback(t *testing.T) {
 // pathKeyPattern 对象键的格式：[prefix/]yyyy/MM/dd/<32位十六进制>[.后缀]
 var pathKeyPattern = regexp.MustCompile(`^\d{4}/\d{2}/\d{2}/[0-9a-f]{32}`)
 
-// TestBuildPathKey 对象键格式须与 Java 逐字一致——键直接落库，
+// TestBuildPathKey 对象键格式须逐字稳定——键直接落库，
 // 日期段或 uuid 长度一变，按前缀扫桶的运维脚本就全失效。
 func TestBuildPathKey(t *testing.T) {
 	c := &Client{cfg: NewClientConfig(Properties{Endpoint: "127.0.0.1:9000"})}
@@ -144,8 +144,7 @@ func TestBuildPathKey(t *testing.T) {
 		t.Errorf("key = %q 应以当天日期 %s 开头", key, want)
 	}
 
-	// 无扩展名时后缀为空串。Java 那边 lastIndexOf(".") 返回 -1 被 hutool 当成
-	// "倒数第一个字符"，会造出个假后缀；此处有意不复刻该行为。
+	// 无扩展名时后缀为空串（不复刻原项目造出假后缀的 bug）。
 	if key := c.BuildPathKey("README"); lastSegmentExt(key) != "" {
 		t.Errorf("无扩展名的文件 key = %q 不应有后缀", key)
 	}

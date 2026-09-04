@@ -20,10 +20,9 @@ import (
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 )
 
-// RoleApi 角色信息接口（对应 Java SysRoleController）。
+// RoleApi 角色信息接口。
 type RoleApi struct{}
 
-// RoleApiApp 包级实例。
 var RoleApiApp = new(RoleApi)
 
 // List 分页查询角色列表。
@@ -48,8 +47,8 @@ func (a *RoleApi) List(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(res))
 }
 
-// Export 导出角色列表为 xlsx 附件（对应 Java SysRoleController.export）。
-// 与 Java 一致走 POST：前端 commonExport 以 form 表单 POST 提交筛选条件，
+// Export 导出角色列表为 xlsx 附件。
+// 走 POST：前端 commonExport 以 form 表单 POST 提交筛选条件，
 // 故用 ShouldBind 同时吃 form body 与 query。
 //
 // 响应体是二进制附件，不返回 response.R——见 pkg/excel 的说明。
@@ -76,7 +75,7 @@ func (a *RoleApi) Export(c *gin.Context) {
 }
 
 // GetInfo 按主键查角色详情。
-// 与 Java 一致：先做数据权限校验，校验失败直接拦在 selectRoleById 之前，
+// 先做数据权限校验，校验失败直接拦在 selectRoleById 之前，
 // 故角色不存在时落在"没有权限访问部分角色数据"而非 404。
 func (a *RoleApi) GetInfo(c *gin.Context) {
 	roleID, err := strconv.ParseInt(c.Param("roleId"), 10, 64)
@@ -140,7 +139,7 @@ func (a *RoleApi) Edit(c *gin.Context) {
 		_ = c.Error(translateRoleError(err, "修改", b.RoleName))
 		return
 	}
-	// rows==0 对齐 Java toAjax(0) 的失败口径：值与库中相同时 MySQL 报 0 行。
+	// rows==0 时报失败：值与库中相同时 MySQL 报 0 行。
 	if rows == 0 {
 		_ = c.Error(errs.New(response.CodeFail,
 			fmt.Sprintf("修改角色'%s'失败，请联系管理员", b.RoleName), ""))
@@ -214,7 +213,7 @@ func (a *RoleApi) ChangeStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, response.OkVoid())
 }
 
-// Remove 批量删除角色。主键串以逗号分隔，与 Java 的 @PathVariable Long[] roleIds 同形。
+// Remove 批量删除角色。主键串以逗号分隔。
 func (a *RoleApi) Remove(c *gin.Context) {
 	ids, err := parseIDs(c.Param("roleIds"))
 	if err != nil {
@@ -232,7 +231,7 @@ func (a *RoleApi) Remove(c *gin.Context) {
 	c.JSON(http.StatusOK, response.OkVoid())
 }
 
-// OptionSelect 获取角色选择框列表（对应 Java optionselect）。
+// OptionSelect 获取角色选择框列表。
 // roleIds 可缺省：传则按主键过滤且只取启用角色，不传返回全部启用角色。
 // 数组既可能以 roleIds=1&roleIds=2 下发，也可能是 roleIds=1,2，两种都要吃下。
 func (a *RoleApi) OptionSelect(c *gin.Context) {
@@ -254,7 +253,7 @@ func (a *RoleApi) OptionSelect(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(res))
 }
 
-// AllocatedList 查询已分配该角色的用户列表（对应 Java authUser/allocatedList）。
+// AllocatedList 查询已分配该角色的用户列表。
 func (a *RoleApi) AllocatedList(c *gin.Context) {
 	var q bo.SysUserQueryBo
 	if err := c.ShouldBindQuery(&q); err != nil {
@@ -275,7 +274,7 @@ func (a *RoleApi) AllocatedList(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(res))
 }
 
-// UnallocatedList 查询未分配该角色的用户列表（对应 Java authUser/unallocatedList）。
+// UnallocatedList 查询未分配该角色的用户列表。
 func (a *RoleApi) UnallocatedList(c *gin.Context) {
 	var q bo.SysUserQueryBo
 	if err := c.ShouldBindQuery(&q); err != nil {
@@ -296,8 +295,7 @@ func (a *RoleApi) UnallocatedList(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(res))
 }
 
-// CancelAuthUser 取消单个用户的角色授权（对应 Java authUser/cancel）。
-// 请求体是 {roleId, userId}，对应 Java 的 @RequestBody SysUserRole。
+// CancelAuthUser 取消单个用户的角色授权。
 func (a *RoleApi) CancelAuthUser(c *gin.Context) {
 	var ur model.SysUserRole
 	if err := c.ShouldBindJSON(&ur); err != nil {
@@ -319,8 +317,8 @@ func (a *RoleApi) CancelAuthUser(c *gin.Context) {
 	c.JSON(http.StatusOK, response.OkVoid())
 }
 
-// CancelAuthUserAll 批量取消角色下的用户授权（对应 Java authUser/cancelAll）。
-// roleId 与 userIds 走 query 参数，与 Java 的默认表单绑定一致。
+// CancelAuthUserAll 批量取消角色下的用户授权。
+// roleId 与 userIds 走 query 参数。
 func (a *RoleApi) CancelAuthUserAll(c *gin.Context) {
 	roleID, err := strconv.ParseInt(c.Query("roleId"), 10, 64)
 	if err != nil || roleID <= 0 {
@@ -345,8 +343,8 @@ func (a *RoleApi) CancelAuthUserAll(c *gin.Context) {
 	c.JSON(http.StatusOK, response.OkVoid())
 }
 
-// SelectAuthUserAll 批量给角色追加用户授权（对应 Java authUser/selectAll）。
-// 先做数据权限校验（与 Java 一致），再授权并踢受影响用户下线。
+// SelectAuthUserAll 批量给角色追加用户授权。
+// 先做数据权限校验，再授权并踢受影响用户下线。
 func (a *RoleApi) SelectAuthUserAll(c *gin.Context) {
 	roleID, err := strconv.ParseInt(c.Query("roleId"), 10, 64)
 	if err != nil || roleID <= 0 {
@@ -376,8 +374,8 @@ func (a *RoleApi) SelectAuthUserAll(c *gin.Context) {
 	c.JSON(http.StatusOK, response.OkVoid())
 }
 
-// DeptTreeSelect 获取对应角色的部门树及选中节点（对应 Java deptTree/{roleId}）。
-// 选中节点取该角色的部门勾选；树取全量部门下拉树（与 Java selectDeptTreeList(new SysDeptBo) 一致）。
+// DeptTreeSelect 获取对应角色的部门树及选中节点。
+// 选中节点取该角色的部门勾选；树取全量部门下拉树。
 func (a *RoleApi) DeptTreeSelect(c *gin.Context) {
 	roleID, err := strconv.ParseInt(c.Param("roleId"), 10, 64)
 	if err != nil || roleID <= 0 {
@@ -413,7 +411,7 @@ func (a *RoleApi) DeptTreeSelect(c *gin.Context) {
 // translateRoleError 把新增/修改共用的几类校验哨兵错误翻成前端文案，
 // 命中返回可直接 c.Error 的错误，未命中返回 nil 交调用方兜底。
 //
-// action 取"新增"/"修改"，对齐 Java 两个分支各自的提示前缀。
+// action 取"新增"/"修改"，用作两个分支的提示前缀。
 func translateRoleError(err error, action, roleName string) error {
 	switch {
 	case errors.Is(err, systemservice.ErrRoleNameExists):
@@ -429,7 +427,7 @@ func translateRoleError(err error, action, roleName string) error {
 }
 
 // parseUserIDsQuery 解析 query 上的 userIds 数组参数（形如 userIds=1&userIds=2 或 userIds=1,2）。
-// 空集合合法（selectAll 空批与 Java 一致视作成功），返回 (nil, true)。
+// 空集合合法（selectAll 空批视作成功），返回 (nil, true)。
 // 任一段非法即整体拒绝并登记错误，返回 ok=false 让调用方直接 return。
 func parseUserIDsQuery(c *gin.Context) ([]int64, bool) {
 	raw := strings.Join(c.QueryArray("userIds"), ",")

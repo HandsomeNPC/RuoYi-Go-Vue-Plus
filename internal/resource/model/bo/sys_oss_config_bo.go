@@ -1,6 +1,6 @@
 package bo
 
-// SysOssConfigBo 对象存储配置业务对象（入参），对应 Java SysOssConfigBo。
+// SysOssConfigBo 对象存储配置业务对象（入参）。
 type SysOssConfigBo struct {
 	OssConfigID int64  `json:"ossConfigId"`
 	ConfigKey   string `json:"configKey" binding:"required,min=2,max=100"`

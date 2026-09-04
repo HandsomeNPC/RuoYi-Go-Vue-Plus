@@ -43,7 +43,7 @@ func captureSocialSQL(t *testing.T, fn func(*SocialRepository) error) []string {
 // 这条最值得钉：sys_social 的 DDL 里有 del_flag 列，哪天有人「顺手」给
 // SysSocial 嵌上 repository.LogicDelete，删除就会静默变成软删——
 // 而 sys_social 的查询路径不带 del_flag 条件，解绑后前端仍能看到那条绑定。
-// Java 侧 SysSocial 上没有 @TableLogic，物理删除才是对齐的行为。
+// 物理删除才是正确行为。
 func TestDeleteByIDIsPhysical(t *testing.T) {
 	stmts := captureSocialSQL(t, func(r *SocialRepository) error {
 		_, err := r.DeleteByID(context.Background(), 42)

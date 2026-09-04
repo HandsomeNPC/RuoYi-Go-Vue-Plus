@@ -94,7 +94,7 @@ func TestPostQuerySkipsEmptyConditions(t *testing.T) {
 }
 
 // TestPostQueryTimeRangeNeedsBothEnds 只给一端时间不筛，
-// 对齐 Java betweenParams 的 begin != null && end != null。
+// 两端同时给才生效。
 func TestPostQueryTimeRangeNeedsBothEnds(t *testing.T) {
 	for name, q := range map[string]bo.SysPostQueryBo{
 		"只有起始": {BeginTime: "2024-01-01 00:00:00"},
@@ -109,7 +109,7 @@ func TestPostQueryTimeRangeNeedsBothEnds(t *testing.T) {
 	}
 }
 
-// TestPostQueryDeptTreePrecedence 单部门搜索优先于部门树搜索（对齐 Java 的 if/else if）。
+// TestPostQueryDeptTreePrecedence 单部门搜索优先于部门树搜索。
 // 两者同时给出时只走 dept_id = ?，不应出现 dept_id IN。
 func TestPostQueryDeptTreePrecedence(t *testing.T) {
 	q := bo.SysPostQueryBo{DeptID: 100, DeptIDs: []int64{100, 101}}

@@ -282,7 +282,7 @@ func TestRegistryConcurrentAccess(t *testing.T) {
 
 // TestIsPing 心跳同时认裸串与 JSON 两种形态。
 //
-// Java 侧客户端发裸 "ping"，而仓库自带前端发 {"type":"ping"}。
+// 旧版客户端发裸 "ping"，而仓库自带前端发 {"type":"ping"}。
 // 只认一种会让另一方 pongTimeout 超时，进而误判断线并反复重连。
 func TestIsPing(t *testing.T) {
 	for _, in := range []string{

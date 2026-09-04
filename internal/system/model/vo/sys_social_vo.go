@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// SysSocialVo 社会化关系视图对象，对应 Java SysSocialVo。
+// SysSocialVo 社会化关系视图对象。
 type SysSocialVo struct {
 	ID               int64      `json:"id"`
 	UserID           int64      `json:"userId"`

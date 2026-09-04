@@ -2,7 +2,7 @@ package vo
 
 import "time"
 
-// ProfileUserVo 用户信息视图对象，对应 Java ProfileUserVo。
+// ProfileUserVo 用户信息视图对象。
 type ProfileUserVo struct {
 	UserID   int64  `json:"userId"`
 	DeptID   int64  `json:"deptId"`

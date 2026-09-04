@@ -72,7 +72,7 @@ func TestNextMath(t *testing.T) {
 			if got, _ := strconv.Atoi(answer); got != want {
 				t.Errorf("题面 %q 答案应为 %d, got %s", question, want, answer)
 			}
-			// 对照 Java MathGenerator：结果非负。
+			// 结果非负。
 			if want < 0 {
 				t.Errorf("题面 %q 结果为负数 %d", question, want)
 			}
@@ -181,7 +181,7 @@ func TestKey(t *testing.T) {
 	}
 }
 
-// TestExpiration 有效期应为 2 分钟，对照 Java Constants.CAPTCHA_EXPIRATION。
+// TestExpiration 有效期应为 2 分钟。
 func TestExpiration(t *testing.T) {
 	if expiration.Minutes() != 2 {
 		t.Errorf("有效期应为 2 分钟, got %v", expiration)

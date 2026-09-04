@@ -38,7 +38,7 @@ func (r *LoginInfoRepository) SelectPageList(ctx context.Context, q bo.SysLoginI
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysLoginInfo], error) {
 
 	db := applyLoginInfoQuery(r.db.WithContext(ctx).Model(&model.SysLoginInfo{}), q)
-	// 仅在调用方未指定排序时按主键降序兜底（对齐 Java orderByDesc(SysLoginInfo::getInfoId)）。
+	// 仅在调用方未指定排序时按主键降序兜底。
 	if !page.HasOrder() {
 		db = db.Order("info_id DESC")
 	}
@@ -68,7 +68,7 @@ func (r *LoginInfoRepository) SelectList(ctx context.Context, q bo.SysLoginInfoQ
 	return rows, nil
 }
 
-// applyLoginInfoQuery 应用登录日志查询条件（对齐 Java buildQueryWrapper）：
+// applyLoginInfoQuery 应用登录日志查询条件：
 // ipaddr/userName 走 like，status 走 eq，login_time 走闭区间；空串一概不筛。
 // 分页与导出两条路径必须共用它，否则过滤逻辑改一处漏一处。
 // escapeLike 复用 config_repository.go 同包定义。
@@ -82,7 +82,7 @@ func applyLoginInfoQuery(db *gorm.DB, q bo.SysLoginInfoQueryBo) *gorm.DB {
 	if q.Status != "" {
 		db = db.Where("status = ?", q.Status)
 	}
-	// 两端须同时给出（对齐 Java betweenParams 的 begin != null && end != null）：
+	// 两端须同时给出：
 	// 只给一端就筛会让前端清空半个日期框时结果突变。
 	if q.BeginTime != "" && q.EndTime != "" {
 		db = db.Where("login_time BETWEEN ? AND ?", q.BeginTime, q.EndTime)
@@ -91,7 +91,7 @@ func applyLoginInfoQuery(db *gorm.DB, q bo.SysLoginInfoQueryBo) *gorm.DB {
 }
 
 // DeleteByIDs 按主键批量删除，返回受影响行数。
-// sys_login_info 无 del_flag，这是物理删除（对齐 Java deleteByIds）。
+// sys_login_info 无 del_flag，这是物理删除。
 func (r *LoginInfoRepository) DeleteByIDs(ctx context.Context, ids []int64) (int64, error) {
 	if len(ids) == 0 {
 		return 0, fmt.Errorf("repository: 登录日志主键为空")
@@ -106,7 +106,7 @@ func (r *LoginInfoRepository) DeleteByIDs(ctx context.Context, ids []int64) (int
 	return res.RowsAffected, nil
 }
 
-// Clean 清空全部登录日志（对应 Java cleanLoginInfo 的 lambda().delete()）。
+// Clean 清空全部登录日志。
 func (r *LoginInfoRepository) Clean(ctx context.Context) error {
 	if err := r.db.WithContext(ctx).Where("1 = 1").Delete(&model.SysLoginInfo{}).Error; err != nil {
 		return fmt.Errorf("repository: 清空登录日志失败: %w", err)

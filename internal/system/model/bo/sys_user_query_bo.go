@@ -6,7 +6,7 @@ package bo
 // 字段全部可选，与 SysUserBo 分开：后者 binding:"required" 是新增场景的契约，
 // Go 的 binding tag 没有校验分组概念，一个结构体只能有一套规则。
 type SysUserQueryBo struct {
-	// UserName 用户名，LIKE 模糊匹配（对齐 Java likeIfText）。
+	// UserName 用户名，LIKE 模糊匹配。
 	UserName string `form:"userName"`
 	// NickName 用户昵称，LIKE 模糊匹配。
 	NickName string `form:"nickName"`
@@ -19,12 +19,11 @@ type SysUserQueryBo struct {
 	RoleID int64 `form:"roleId"`
 	// UserID 用户 ID，精确匹配（工作流按用户范围审批场景用）。
 	UserID int64 `form:"userId"`
-	// UserIDs 用户ID串，逗号分隔，命中即 IN（对应 Java splitTo(userIds, toLong)）。
+	// UserIDs 用户ID串，逗号分隔，命中即 IN。
 	UserIDs string `form:"userIds"`
 	// ExcludeUserIDs 排除用户ID串，逗号分隔，命中即 NOT IN。
 	ExcludeUserIDs string `form:"excludeUserIds"`
-	// DeptID 部门ID，service 解析成「自身+全部子部门」写回 DeptIDs 供 IN 过滤
-	// （对应 Java buildQueryWrapper 里 deptMapper.selectDeptAndChildById 的子查询）。
+	// DeptID 部门ID，service 解析成「自身+全部子部门」写回 DeptIDs 供 IN 过滤。
 	DeptID int64 `form:"deptId"`
 	// DeptIDs 解析后的部门ID集合，不接 query，由 service 按 DeptID 填充。
 	DeptIDs []int64 `form:"-"`

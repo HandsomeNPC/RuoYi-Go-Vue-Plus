@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// SysMessageVo 消息记录视图对象，对应 Java SysMessageVo。
+// SysMessageVo 消息记录视图对象。
 type SysMessageVo struct {
 	MessageID int64  `json:"messageId"`
 	Category  string `json:"category"`

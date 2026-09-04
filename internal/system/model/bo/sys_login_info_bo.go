@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// SysLoginInfoBo 系统访问记录业务对象（入参），对应 Java SysLoginInfoBo。
+// SysLoginInfoBo 系统访问记录业务对象（入参）。
 type SysLoginInfoBo struct {
 	InfoID        int64  `json:"infoId"`
 	UserName      string `json:"userName"`

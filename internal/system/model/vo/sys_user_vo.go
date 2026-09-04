@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// SysUserVo 用户信息视图对象，对应 Java SysUserVo。
+// SysUserVo 用户信息视图对象。
 type SysUserVo struct {
 	UserID   int64  `json:"userId"`
 	DeptID   int64  `json:"deptId"`

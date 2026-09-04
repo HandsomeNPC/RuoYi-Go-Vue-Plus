@@ -5,7 +5,6 @@ import (
 )
 
 // goverter 生成 VO→DTO 转换器，替代手写逐字段拷贝。
-// 对应 Java BeanUtil.copyToList(roles, RoleDTO.class) / copyToList(posts, PostDTO.class)。
 // 生成：go generate ./internal/system/model/...
 //
 //   - nil→nil：Pointer 构建器默认守卫，无需设置。

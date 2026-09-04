@@ -16,16 +16,13 @@ import (
 	"ruoyi-go-vue-plus/pkg/snowflake"
 )
 
-// ErrConfigNotFound 参数配置不存在。
 var ErrConfigNotFound = errors.New("service: 参数配置不存在")
 
-// ErrConfigKeyExists 参数键名已被占用。
 var ErrConfigKeyExists = errors.New("service: 参数键名已存在")
 
 // ConfigService 参数配置业务逻辑。
 type ConfigService struct{}
 
-// ConfigSvcApp 包级实例。
 var ConfigSvcApp = new(ConfigService)
 
 // QueryPageList 按条件分页查参数配置。
@@ -52,7 +49,7 @@ func (s *ConfigService) QueryList(ctx context.Context, q bo.SysConfigQueryBo,
 	return vo.Conv.ConvertToSysConfigVoList(rows), nil
 }
 
-// QueryByID 按主键查参数配置（对应 Java selectConfigById），不存在时返回 ErrConfigNotFound。
+// QueryByID 按主键查参数配置，不存在时返回 ErrConfigNotFound。
 func (s *ConfigService) QueryByID(ctx context.Context, configID int64) (*vo.SysConfigVo, error) {
 	cfg, err := repository.NewConfigRepository(database.DB()).SelectByID(ctx, configID)
 	if err != nil {
@@ -64,12 +61,11 @@ func (s *ConfigService) QueryByID(ctx context.Context, configID int64) (*vo.SysC
 	return vo.Conv.ConvertToSysConfigVo(cfg), nil
 }
 
-// SelectConfigByKey 按参数键名取参数值（对应 Java selectConfigByKey + @Cacheable(key = "#configKey")）。
+// SelectConfigByKey 按参数键名取参数值。
 //
-// 键不存在时返回空串而非报错（对齐 Java ObjectUtils.notNullGetter 的 EMPTY 兜底），
-// 且这个空串同样入缓存——Spring @Cacheable 缓存的是返回值，不区分"查到空"与"没查到"。
-// 照搬这一点是必要的：insertConfig 的 @CachePut 会在新增时把该键刷成真值，
-// 不会留下永久的空缓存。
+// 键不存在时返回空串而非报错，且这个空串同样入缓存——缓存的是返回值，
+// 不区分「查到空」与「没查到」。照搬这一点是必要的：insertConfig 会在新增时
+// 把该键刷成真值，不会留下永久的空缓存。
 func (s *ConfigService) SelectConfigByKey(ctx context.Context, configKey string) (string, error) {
 	var cached string
 	if hit, _ := cache.Get(ctx, constant.CacheSysConfig, configKey, &cached); hit {
@@ -89,7 +85,7 @@ func (s *ConfigService) SelectConfigByKey(ctx context.Context, configKey string)
 	return value, nil
 }
 
-// CheckConfigKeyUnique 校验 config_key 是否可用（对齐 Java checkConfigKeyUnique，同为「唯一即 true」）。
+// CheckConfigKeyUnique 校验 config_key 是否可用（唯一即 true）。
 // excludeID > 0 时排除该主键，供修改场景复用。
 func (s *ConfigService) CheckConfigKeyUnique(ctx context.Context, configKey string,
 	excludeID int64) (bool, error) {
@@ -102,7 +98,7 @@ func (s *ConfigService) CheckConfigKeyUnique(ctx context.Context, configKey stri
 	return !exists, nil
 }
 
-// InsertConfig 新增参数配置（对应 Java insertConfig + @CachePut(key = "#bo.configKey")）。
+// InsertConfig 新增参数配置。
 // config_key 重复时返回 ErrConfigKeyExists；插入成功后回填 b.ConfigID。
 func (s *ConfigService) InsertConfig(ctx context.Context, b *bo.SysConfigBo) error {
 	if b == nil {
@@ -125,14 +121,13 @@ func (s *ConfigService) InsertConfig(ctx context.Context, b *bo.SysConfigBo) err
 		return err
 	}
 	b.ConfigID = add.ConfigID
-	// @CachePut：新增即把键值写进缓存，顺带覆盖 SelectConfigByKey 可能缓存过的空串。
+	// 新增即把键值写进缓存，顺带覆盖 SelectConfigByKey 可能缓存过的空串。
 	_ = cache.Put(ctx, constant.CacheSysConfig, add.ConfigKey, add.ConfigValue,
 		constant.CacheTTLSysConfig)
 	return nil
 }
 
-// UpdateConfig 按主键修改参数配置（对应 Java updateConfig 的 configId 非空分支
-// + @CachePut(key = "#bo.configKey")）。
+// UpdateConfig 按主键修改参数配置。
 // config_key 被别的配置占用时返回 ErrConfigKeyExists；主键不存在返回 ErrConfigNotFound。
 func (s *ConfigService) UpdateConfig(ctx context.Context, b *bo.SysConfigBo) error {
 	if b == nil {
@@ -162,7 +157,7 @@ func (s *ConfigService) UpdateConfig(ctx context.Context, b *bo.SysConfigBo) err
 		}
 		return err
 	}
-	// 改键名时旧键的缓存会成为无人回收的孤儿（@CachePut 只写新键），先按旧键失效。
+	// 改键名时旧键的缓存会成为无人回收的孤儿，先按旧键失效。
 	if old.ConfigKey != b.ConfigKey {
 		_ = cache.Evict(ctx, constant.CacheSysConfig, old.ConfigKey)
 	}
@@ -186,14 +181,14 @@ func buildConfigUpdateColumns(b *bo.SysConfigBo) map[string]any {
 		"remark": b.Remark,
 	}
 	// 内置标记缺省即视为不改：漏传字段不该把线上的 'Y' 刷成空串，
-	// 那会让内置参数失去删除保护。等效于 Java updateById 对 null 字段的跳过。
+	// 那会让内置参数失去删除保护。
 	if b.ConfigType != "" {
 		columns["config_type"] = b.ConfigType
 	}
 	return columns
 }
 
-// UpdateConfigByKey 按参数键名修改参数值（对应 Java updateConfig 的 configId 为空分支）。
+// UpdateConfigByKey 按参数键名修改参数值。
 // 键名不存在时返回 ErrConfigNotFound。
 //
 // 只改 config_value：入参仅这两个字段，把 name/type/remark 一并写空会抹掉现有配置。
@@ -214,7 +209,7 @@ func (s *ConfigService) UpdateConfigByKey(ctx context.Context, b *bo.SysConfigUp
 		return err
 	}
 
-	// 先失效再更新（对齐 Java 该分支显式的 CacheUtils.evict）：
+	// 先失效再更新：
 	// 更新失败时缓存宁可空着走一次 DB，也不能留着与库不一致的旧值。
 	_ = cache.Evict(ctx, constant.CacheSysConfig, b.ConfigKey)
 
@@ -230,7 +225,7 @@ func (s *ConfigService) UpdateConfigByKey(ctx context.Context, b *bo.SysConfigUp
 	return nil
 }
 
-// DeleteConfigByIDs 批量删除参数配置（对应 Java deleteConfigByIds）。
+// DeleteConfigByIDs 批量删除参数配置。
 // 命中任一内置参数（config_type = 'Y'）即整批拒绝，不做部分删除。
 func (s *ConfigService) DeleteConfigByIDs(ctx context.Context, ids []int64) error {
 	if len(ids) == 0 {
@@ -243,7 +238,7 @@ func (s *ConfigService) DeleteConfigByIDs(ctx context.Context, ids []int64) erro
 		return err
 	}
 
-	// 先整批校验再删，不边删边校验：Java 侧靠抛异常回滚事务，这里没有事务包裹，
+	// 先整批校验再删，不边删边校验：这里没有事务包裹，
 	// 一旦先删了几行再撞上内置参数就会留下删一半的状态。
 	for _, cfg := range rows {
 		if cfg.ConfigType == constant.Yes {
@@ -262,7 +257,7 @@ func (s *ConfigService) DeleteConfigByIDs(ctx context.Context, ids []int64) erro
 	return nil
 }
 
-// ResetConfigCache 清空参数缓存（对应 Java resetConfigCache / CacheUtils.clear）。
+// ResetConfigCache 清空参数缓存。
 func (s *ConfigService) ResetConfigCache(ctx context.Context) error {
 	return cache.EvictGroup(ctx, constant.CacheSysConfig)
 }

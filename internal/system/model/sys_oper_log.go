@@ -2,7 +2,7 @@ package model
 
 import "time"
 
-// SysOperLog 操作日志记录表（sys_oper_log），对应 Java org.dromara.system.domain.SysOperLog。
+// SysOperLog 操作日志记录表（sys_oper_log）。
 // 不继承 BaseEntity，无审计字段。
 type SysOperLog struct {
 	OperID int64  `gorm:"column:oper_id;primaryKey" json:"operId"`

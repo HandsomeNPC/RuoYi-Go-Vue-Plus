@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// SysNoticeVo 通知公告视图对象，对应 Java SysNoticeVo。
+// SysNoticeVo 通知公告视图对象。
 type SysNoticeVo struct {
 	NoticeID    int64  `json:"noticeId"`
 	NoticeTitle string `json:"noticeTitle"`

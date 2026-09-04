@@ -14,18 +14,16 @@ import (
 	"ruoyi-go-vue-plus/pkg/snowflake"
 )
 
-// OperLogService 操作日志业务逻辑，对应 Java SysOperLogServiceImpl。
+// OperLogService 操作日志业务逻辑。
 type OperLogService struct{}
 
-// OperLogSvcApp 包级实例。
 var OperLogSvcApp = new(OperLogService)
 
-// RecordOper 记录操作日志，对应 Java SysOperLogServiceImpl.recordOper
-// （@Async @EventListener）。签名满足 oplog.Recorder，由 main 注册给 pkg/oplog。
+// RecordOper 记录操作日志。签名满足 oplog.Recorder，由 main 注册给 pkg/oplog。
 //
 // **异步**：反查 IP 归属地要读地址库、落库要走网络，都不该占住请求线程；调用方
-// 拿不到错误——操作日志写失败不该影响业务结果，与 Java @Async 语义一致。因此
-// ctx 必须已脱离请求生命周期（pkg/oplog 侧传的是 context.WithoutCancel）。
+// 拿不到错误——操作日志写失败不该影响业务结果。因此 ctx 必须已脱离请求生命周期
+// （pkg/oplog 侧传的是 context.WithoutCancel）。
 func (s *OperLogService) RecordOper(ctx context.Context, evt *oplog.Event) {
 	if evt == nil {
 		return
@@ -61,7 +59,6 @@ func (s *OperLogService) recordOper(ctx context.Context, evt *oplog.Event) error
 		OS:            evt.OS,
 		OperURL:       evt.OperURL,
 		OperIP:        evt.OperIP,
-		// 对照 Java recordOper 里的 AddressUtils.getRealAddressByIP：
 		// 归属地在消费侧补，注解侧只带原始 IP。
 		OperLocation: ip.RealAddressByIP(evt.OperIP),
 		OperParam:    evt.OperParam,
@@ -73,7 +70,7 @@ func (s *OperLogService) recordOper(ctx context.Context, evt *oplog.Event) error
 	return s.InsertOperLog(ctx, b)
 }
 
-// InsertOperLog 新增操作日志，对应 Java insertOperlog。
+// InsertOperLog 新增操作日志。
 // 落库时间取当前时刻，主键由雪花发号（oper_id 无 auto_increment）。
 func (s *OperLogService) InsertOperLog(ctx context.Context, b *bo.SysOperLogBo) error {
 	if b == nil {

@@ -1,4 +1,4 @@
-// Package mail 邮件发送，对照 Java ruoyi-common-mail 的 MailBuilder。
+// Package mail 邮件发送。
 //
 // 只做「纯文本、单收件人」——本项目发邮件的唯一场景是登录验证码，
 // 附件/HTML/群发都用不上，引一个第三方库不划算，标准库 net/smtp 足够。
@@ -23,8 +23,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/config"
 )
 
-// ErrDisabled 邮件功能未开启。由调用方翻译成给前端看的文案
-// （对照 Java "当前系统没有开启邮箱功能！"）。
+// ErrDisabled 邮件功能未开启。由调用方翻译成给前端看的文案。
 var ErrDisabled = errors.New("mail: 邮件功能未开启")
 
 // dialTimeout 建连超时。SMTP 服务器不可达时若不设超时，

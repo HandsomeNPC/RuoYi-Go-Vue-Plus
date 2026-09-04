@@ -21,8 +21,6 @@ type sender interface {
 }
 
 // registry 会话簿：userID -> (token -> 连接)，支持同一用户多终端同时在线。
-// 对照 Java WebSocketSessionManager/SseEmitterSessionManager 里的
-// USER_TOKEN_SESSIONS / USER_TOKEN_EMITTERS。
 type registry struct {
 	mu       sync.RWMutex
 	sessions map[int64]map[string]sender
@@ -35,7 +33,7 @@ func newRegistry() *registry {
 // connect 登记一条新连接，并返回同 token 的旧连接（若有）供调用方善后。
 //
 // 同 token 视为同一终端重连，旧连接必须让位——否则刷新页面会让废弃连接
-// 一直留在簿子里，广播时白发一份（对齐 Java connect 的 remove-then-put）。
+// 一直留在簿子里，广播时白发一份：remove-then-put 防止旧连接残留。
 // 关闭旧连接放在锁外做：close 可能阻塞在网络 IO 上，持锁会卡住所有推送。
 func (r *registry) connect(userID int64, token string, s sender) (old sender) {
 	r.mu.Lock()
@@ -104,8 +102,7 @@ func (r *registry) userIDs() []int64 {
 	return ids
 }
 
-// sendToUser 把消息投给该用户的全部连接，发送失败的顺手剔除
-// （对齐 Java sessions.entrySet().removeIf 的自清理）。
+// sendToUser 把消息投给该用户的全部连接，发送失败的顺手剔除。
 func (r *registry) sendToUser(userID int64, payload []byte) {
 	for token, s := range r.snapshot(userID) {
 		if s.send(payload) {
@@ -135,7 +132,7 @@ func (r *registry) drop(userID int64, token string, expect sender) {
 	expect.close()
 }
 
-// monitor 周期性发心跳并剔除失效连接（对照 Java sessionMonitor / sseMonitor）。
+// monitor 周期性发心跳并剔除失效连接。
 // 随 stop 关闭而退出。
 func (r *registry) monitor(interval time.Duration, stop <-chan struct{}) {
 	ticker := time.NewTicker(interval)

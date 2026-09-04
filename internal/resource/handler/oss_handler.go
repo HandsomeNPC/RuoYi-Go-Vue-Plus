@@ -18,17 +18,16 @@ import (
 	"ruoyi-go-vue-plus/pkg/response"
 )
 
-// maxUploadSize 单文件大小上限，对齐 Java spring.servlet.multipart.max-file-size。
+// maxUploadSize 单文件大小上限。
 const maxUploadSize = 10 << 20
 
 // headerDownloadFilename 附件名响应头，与 pkg/excel 用的是同一个约定：
 // 前端读它拿文件名，比解析 Content-Disposition 省事。
 const headerDownloadFilename = "download-filename"
 
-// OssApi 文件上传接口（对应 Java SysOssController）。
+// OssApi 文件上传接口。
 type OssApi struct{}
 
-// OssApiApp 包级实例。
 var OssApiApp = new(OssApi)
 
 // List 分页查询 OSS 对象列表。
@@ -53,7 +52,7 @@ func (a *OssApi) List(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(res))
 }
 
-// ListByIDs 按主键串查 OSS 对象（对应 Java listByIds）。
+// ListByIDs 按主键串查 OSS 对象。
 func (a *OssApi) ListByIDs(c *gin.Context) {
 	ids, err := parseIDs(c.Param("ossIds"))
 	if err != nil {
@@ -69,7 +68,7 @@ func (a *OssApi) ListByIDs(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(rows))
 }
 
-// Upload 上传文件（对应 Java upload）。
+// Upload 上传文件。
 // 走 multipart/form-data：file 是文件本体，ossExt 是可选的扩展信息 JSON 串。
 func (a *OssApi) Upload(c *gin.Context) {
 	header, err := c.FormFile("file")
@@ -97,7 +96,7 @@ func (a *OssApi) Upload(c *gin.Context) {
 	}))
 }
 
-// Download 下载文件（对应 Java download）。
+// Download 下载文件。
 //
 // 与导出接口同为不返回 response.R 的例外，响应体是二进制附件。
 // 所有可能失败的活都得在写第一个字节之前干完：middleware.Recover 只在
@@ -145,7 +144,7 @@ func (a *OssApi) Download(c *gin.Context) {
 	}
 }
 
-// Remove 批量删除 OSS 对象（对应 Java remove）。
+// Remove 批量删除 OSS 对象。
 func (a *OssApi) Remove(c *gin.Context) {
 	ids, err := parseIDs(c.Param("ossIds"))
 	if err != nil {

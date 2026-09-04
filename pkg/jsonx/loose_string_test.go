@@ -4,7 +4,7 @@ import "testing"
 
 // TestLooseStringAcceptsScalars 三种标量都收成字符串。
 //
-// 存在意义是对齐 Jackson：前端把开关类配置按布尔下发（configValue: true），
+// 存在意义：前端把开关类配置按布尔下发（configValue: true），
 // 而该列是 varchar。严格解码会让这类调用一律"参数校验失败"。
 func TestLooseStringAcceptsScalars(t *testing.T) {
 	cases := map[string]string{
@@ -59,7 +59,7 @@ func TestLooseStringRejectsComposites(t *testing.T) {
 }
 
 // TestLooseStringMarshalsAsString 出参形态与普通 string 字段无差别，
-// 前端读到的始终是字符串（对齐 Java 侧 String 字段的出参）。
+// 前端读到的始终是字符串。
 func TestLooseStringMarshalsAsString(t *testing.T) {
 	for _, c := range []struct {
 		in   LooseString

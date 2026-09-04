@@ -1,6 +1,6 @@
 package bo
 
-// SysNoticeBo 通知公告业务对象（入参），对应 Java SysNoticeBo。
+// SysNoticeBo 通知公告业务对象（入参）。
 type SysNoticeBo struct {
 	NoticeID    int64  `json:"noticeId"`
 	NoticeTitle string `json:"noticeTitle" binding:"required,max=50"`

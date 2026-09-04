@@ -19,7 +19,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/social"
 )
 
-// socialAuthStrategy 第三方授权认证策略（对应 Java SocialAuthStrategy）。
+// socialAuthStrategy 第三方授权认证策略。
 type socialAuthStrategy struct{}
 
 // Login 用三方授权码换用户资料、按绑定关系回查系统用户并签发令牌。

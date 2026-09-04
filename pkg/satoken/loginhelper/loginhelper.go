@@ -80,9 +80,8 @@ const loginUserCacheKey = "ruoyi:loginUser"
 // GetLoginUser 取当前请求的登录用户，未登录返回 nil。
 //
 // 结果按请求缓存进 gin.Context：每次都要解会话就是一次 Redis 往返，而一个请求里
-// 审计中间件、操作日志、handler 各自都要取一遍。Java 侧 StpUtil 的会话有 sa-token
-// 的请求级 holder 兜着，sa-token-go 没有，只能在这里自己存一层。
-// 未登录也缓存（存 nil），否则匿名请求每个调用点都白跑一次 Redis。
+// 审计中间件、操作日志、handler 各自都要取一遍。sa-token-go 没有请求级 holder，
+// 只能在这里自己存一层。未登录也缓存（存 nil），否则匿名请求每个调用点都白跑一次 Redis。
 //
 // 返回的是本请求内共享的同一个指针，调用方只读、不要改字段。
 func GetLoginUser(c *gin.Context) *authmodel.LoginUser {
@@ -201,15 +200,13 @@ func IsLogin(c *gin.Context) bool {
 	return token != "" && sagin.IsLogin(token)
 }
 
-// LogoutUser 注销指定用户的会话（对应 Java StpUtil.logoutByLoginId(loginID)，
-// 即 OnlineUserCleanEvent 的最终动作：角色/授权变动后让受影响在线用户下次请求即失效）。
+// LogoutUser 注销指定用户的会话：角色/授权变动后让受影响在线用户下次请求即失效。
 //
 // 只注销 default 设备的会话：sa-token-go 的 account→token 映射按 (loginID, device) 分桶，
-// 没有现成的"枚举该用户全部设备"接口，多端登录的其余会话不会被一并清掉。这是与
-// Java searchTokenValue 全量扫描的有意差距——单端覆盖已能让权限变更在下次登录生效，
-// 多端场景留待 sa-token-go 提供枚举能力后再补。
+// 没有现成的"枚举该用户全部设备"接口，多端登录的其余会话不会被一并清掉。
+// 单端覆盖已能让权限变更在下次登录生效，多端场景留待 sa-token-go 提供枚举能力后再补。
 //
-// 失败只记日志：注销失败不该阻断写库流程，与 Java 的 try/catch ignored 一致。
+// 失败只记日志：注销失败不该阻断写库流程。
 func LogoutUser(userID int64) {
 	if userID <= 0 {
 		return

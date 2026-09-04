@@ -16,10 +16,9 @@ import (
 	"ruoyi-go-vue-plus/pkg/response"
 )
 
-// DictTypeApi 字典类型接口（对应 Java SysDictTypeController）。
+// DictTypeApi 字典类型接口。
 type DictTypeApi struct{}
 
-// DictTypeApiApp 包级实例。
 var DictTypeApiApp = new(DictTypeApi)
 
 // List 分页查询字典类型列表。
@@ -44,8 +43,8 @@ func (a *DictTypeApi) List(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(res))
 }
 
-// Export 导出字典类型列表为 xlsx 附件（对应 Java SysDictTypeController.export）。
-// 与 Java 一致走 POST：前端 commonExport 以 form 表单 POST 提交筛选条件，
+// Export 导出字典类型列表为 xlsx 附件。
+// 走 POST：前端 commonExport 以 form 表单 POST 提交筛选条件，
 // 故用 ShouldBind 同时吃 form body 与 query。
 //
 // 响应体是二进制附件，不返回 response.R——见 pkg/excel 的说明。
@@ -92,8 +91,8 @@ func (a *DictTypeApi) GetInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(res))
 }
 
-// OptionSelect 获取字典类型下拉选择列表（对应 Java optionselect）。
-// 与 Java 一致不校验权限码，仅需登录：前端选字典时未必有字典管理权限。
+// OptionSelect 获取字典类型下拉选择列表。
+// 不校验权限码，仅需登录：前端选字典时未必有字典管理权限。
 func (a *DictTypeApi) OptionSelect(c *gin.Context) {
 	res, err := systemservice.DictTypeSvcApp.QueryAll(c.Request.Context())
 	if err != nil {
@@ -153,7 +152,7 @@ func (a *DictTypeApi) Edit(c *gin.Context) {
 	c.JSON(http.StatusOK, response.OkVoid())
 }
 
-// Remove 批量删除字典类型。主键串以逗号分隔，与 Java 的 @PathVariable Long[] dictIds 同形。
+// Remove 批量删除字典类型。主键串以逗号分隔。
 func (a *DictTypeApi) Remove(c *gin.Context) {
 	ids, err := parseIDs(c.Param("dictIds"))
 	if err != nil {
@@ -171,7 +170,7 @@ func (a *DictTypeApi) Remove(c *gin.Context) {
 
 // RefreshCache 刷新字典缓存。
 //
-// Java 侧挂了 @Lock4j 分布式锁防并发重建；此处不加：本实现只是清两组 Redis key
+// 本实现只是清两组 Redis key
 // （EvictGroup 的 SCAN+DEL 本身幂等），没有"清空后重新加载"的窗口期，并发清也不会
 // 产生不一致。等将来改成预热式刷新再补锁。
 func (a *DictTypeApi) RefreshCache(c *gin.Context) {

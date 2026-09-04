@@ -17,7 +17,6 @@ import (
 	"ruoyi-go-vue-plus/pkg/snowflake"
 )
 
-// ErrNoticeNotFound 通知公告不存在。
 var ErrNoticeNotFound = errors.New("service: 通知公告不存在")
 
 // noticeTypeDictType 公告类型字典，用于新增时取类型标签拼推送文案。
@@ -26,14 +25,12 @@ const noticeTypeDictType = "sys_notice_type"
 // noticeCreateByNoMatch 创建人账号查不到用户时使用的哨兵值。
 //
 // 不能退化成"不按创建人筛"：那会把全部公告都返回，与用户「只看某人发的公告」
-// 的意图相反。用负数保证 create_by 永不命中（雪花 ID 恒为正），
-// 等价于 Java `eq(createBy, null)` 查不出任何行的效果。
+// 的意图相反。用负数保证 create_by 永不命中（雪花 ID 恒为正）。
 const noticeCreateByNoMatch int64 = -1
 
 // NoticeService 通知公告业务逻辑。
 type NoticeService struct{}
 
-// NoticeSvcApp 包级实例。
 var NoticeSvcApp = new(NoticeService)
 
 // QueryPageList 按条件分页查通知公告，并回填创建人名称。
@@ -59,7 +56,7 @@ func (s *NoticeService) QueryPageList(ctx context.Context, q bo.SysNoticeQueryBo
 	return pkgrepo.Page(rows, res.Total), nil
 }
 
-// resolveCreateBy 把创建人账号换成用户ID（对齐 Java 先查 userMapper 再 eq createBy）。
+// resolveCreateBy 把创建人账号换成用户ID。
 // 账号为空表示不按创建人筛；查不到用户时返回必然不匹配的哨兵值。
 func (s *NoticeService) resolveCreateBy(ctx context.Context, createByName string) (int64, error) {
 	if createByName == "" {
@@ -77,10 +74,10 @@ func (s *NoticeService) resolveCreateBy(ctx context.Context, createByName string
 	return user.UserID, nil
 }
 
-// fillCreateByNames 批量回填创建人名称（对齐 VO 上的 @Translation(USER_ID_TO_NAME)）。
+// fillCreateByNames 批量回填创建人名称。
 //
 // 先去重再一次 IN 查库，不逐行单查——列表页 10 行会打 10 次库。
-// 走 sys_user_name 缓存组，与 Java @Cacheable(SYS_USER_NAME, key="#userId") 对齐。
+// 走 sys_user_name 缓存组。
 func (s *NoticeService) fillCreateByNames(ctx context.Context, rows []*vo.SysNoticeVo) error {
 	pending := make([]int64, 0, len(rows))
 	// seen 单独记账：names 里存的是"已解析出的名字"，空串可能是真实的空名，
@@ -125,12 +122,12 @@ func (s *NoticeService) fillCreateByNames(ctx context.Context, rows []*vo.SysNot
 	return nil
 }
 
-// userNameCacheKey 用户账号缓存的 key，与 Java @Cacheable(key = "#userId") 同形。
+// userNameCacheKey 用户账号缓存的 key。
 func userNameCacheKey(userID int64) string {
 	return strconv.FormatInt(userID, 10)
 }
 
-// QueryByID 按主键查通知公告（对应 Java selectNoticeById），不存在返回 ErrNoticeNotFound。
+// QueryByID 按主键查通知公告，不存在返回 ErrNoticeNotFound。
 func (s *NoticeService) QueryByID(ctx context.Context, noticeID int64) (*vo.SysNoticeVo, error) {
 	notice, err := repository.NewNoticeRepository(database.DB()).SelectByID(ctx, noticeID)
 	if err != nil {
@@ -147,11 +144,11 @@ func (s *NoticeService) QueryByID(ctx context.Context, noticeID int64) (*vo.SysN
 	return out, nil
 }
 
-// InsertNotice 新增通知公告并向全部在线用户广播（对应 Java insertNotice + Controller 的 publishAll）。
+// InsertNotice 新增通知公告并向全部在线用户广播。
 // 插入成功后回填 b.NoticeID。
 //
-// 广播编排放在 service 而非 handler：Java 把它摊在 Controller 里，但"新增公告要
-// 通知全员"是业务规则而非 HTTP 关注点，放这里才挡得住将来其它调用路径。
+// 广播编排放在 service 而非 handler：「新增公告要通知全员」是业务规则而非 HTTP
+// 关注点，放这里才挡得住将来其它调用路径。
 func (s *NoticeService) InsertNotice(ctx context.Context, b *bo.SysNoticeBo) error {
 	if b == nil {
 		return errors.New("service: 通知公告入参为空")
@@ -176,7 +173,7 @@ func (s *NoticeService) InsertNotice(ctx context.Context, b *bo.SysNoticeBo) err
 // 让新增接口报错——那会诱使用户重复提交，出两条一样的公告。
 func (s *NoticeService) broadcastNotice(ctx context.Context, b *bo.SysNoticeBo) {
 	label := s.noticeTypeLabel(ctx, b.NoticeType)
-	// data 的键名与 Java 侧逐字一致：前端按它们渲染公告弹窗。
+	// data 的键名固定，前端按它们渲染公告弹窗。
 	data := map[string]any{
 		"noticeType":      b.NoticeType,
 		"noticeTypeLabel": label,
@@ -198,7 +195,7 @@ func (s *NoticeService) broadcastNotice(ctx context.Context, b *bo.SysNoticeBo) 
 	}
 }
 
-// noticeTypeLabel 取公告类型的字典标签（对应 Java dictService.getDictLabel）。
+// noticeTypeLabel 取公告类型的字典标签。
 // 查不到时返回原始值，让文案退化成 "[1] 标题" 而非 "[] 标题"。
 func (s *NoticeService) noticeTypeLabel(ctx context.Context, noticeType string) string {
 	if noticeType == "" {
@@ -217,7 +214,7 @@ func (s *NoticeService) noticeTypeLabel(ctx context.Context, noticeType string) 
 	return noticeType
 }
 
-// UpdateNotice 修改通知公告（对应 Java updateNotice）。主键不存在返回 ErrNoticeNotFound。
+// UpdateNotice 修改通知公告。主键不存在返回 ErrNoticeNotFound。
 func (s *NoticeService) UpdateNotice(ctx context.Context, b *bo.SysNoticeBo) error {
 	if b == nil {
 		return errors.New("service: 通知公告入参为空")
@@ -253,7 +250,7 @@ func buildNoticeUpdateColumns(b *bo.SysNoticeBo) map[string]any {
 		"remark": b.Remark,
 	}
 	// 类型与状态缺省即视为不改：漏传字段不该把线上的 '1'/'0' 刷成空串，
-	// 那会让公告既不算通知也不算公告。等效于 Java updateById 对 null 字段的跳过。
+	// 那会让公告既不算通知也不算公告。
 	if b.NoticeType != "" {
 		columns["notice_type"] = b.NoticeType
 	}
@@ -263,7 +260,7 @@ func buildNoticeUpdateColumns(b *bo.SysNoticeBo) map[string]any {
 	return columns
 }
 
-// DeleteNoticeByIDs 批量删除通知公告（对应 Java deleteNoticeByIds）。
+// DeleteNoticeByIDs 批量删除通知公告。
 func (s *NoticeService) DeleteNoticeByIDs(ctx context.Context, ids []int64) error {
 	if len(ids) == 0 {
 		return errors.New("service: 通知公告主键不能为空")
@@ -273,7 +270,7 @@ func (s *NoticeService) DeleteNoticeByIDs(ctx context.Context, ids []int64) erro
 	if err != nil {
 		return err
 	}
-	// 一行都没删掉说明主键全不存在，对齐 Java toAjax(0) 的失败口径。
+	// 一行都没删掉说明主键全不存在。
 	if affected == 0 {
 		return ErrNoticeNotFound
 	}

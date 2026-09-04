@@ -1,6 +1,6 @@
 package vo
 
-// SysMessageBoxVo 消息盒子视图对象，对应 Java SysMessageBoxVo。
+// SysMessageBoxVo 消息盒子视图对象。
 type SysMessageBoxVo struct {
 	SystemList   []*SysMessageVo `json:"systemList"`
 	NoticeList   []*SysMessageVo `json:"noticeList"`

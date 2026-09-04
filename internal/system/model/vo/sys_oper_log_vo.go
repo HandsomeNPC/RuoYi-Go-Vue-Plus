@@ -4,9 +4,9 @@ import (
 	"time"
 )
 
-// SysOperLogVo 操作日志记录视图对象，对应 Java SysOperLogVo。
-// excel tag 逐字抄 Java @ExcelProperty；businessType/operatorType/status/deviceType
-// 按 @ExcelDictFormat 转标签。BusinessTypes 仅查询条件用，导出不落列。
+// SysOperLogVo 操作日志记录视图对象。
+// excel tag 对应导出列；businessType/operatorType/status/deviceType
+// 按 excelDict 转标签。BusinessTypes 仅查询条件用，导出不落列。
 type SysOperLogVo struct {
 	OperID int64  `json:"operId" excel:"日志主键"`
 	Title  string `json:"title" excel:"操作模块"`

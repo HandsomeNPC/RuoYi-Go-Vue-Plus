@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// AuditDefaultUserID 取不到登录用户时写入的兜底值，对照 Java InjectionMetaObjectHandler.DEFAULT_USER_ID。
+// AuditDefaultUserID 取不到登录用户时写入的兜底值。
 const AuditDefaultUserID int64 = -1
 
 // 审计列名。回调按列名而非 Go 类型识别字段，因此 pkg/repository 无需 import
@@ -44,7 +44,7 @@ func AuditUserFrom(ctx context.Context) (AuditUser, bool) {
 	return u, ok
 }
 
-// RegisterAuditCallbacks 注册审计字段自动填充回调，等价于 Java 的 InjectionMetaObjectHandler。
+// RegisterAuditCallbacks 注册审计字段自动填充回调。
 //
 // Before("gorm:create") 落在用户钩子之后、ConvertToCreateValues 读字段之前；
 // Before("gorm:update") 落在 gorm:setup_reflect_value 之后，故 ReflectValue 已就绪。
@@ -57,7 +57,7 @@ func RegisterAuditCallbacks(db *gorm.DB) error {
 		Register("ruoyi:audit_update_fill", auditUpdateFill)
 }
 
-// resolveAuditUser 解析操作者，缺登录态时回落 -1（对照 Java 取不到 LoginUser 的分支）。
+// resolveAuditUser 解析操作者，缺登录态时回落 -1。
 func resolveAuditUser(ctx context.Context) AuditUser {
 	u, ok := AuditUserFrom(ctx)
 	if !ok || u.UserID == 0 {
@@ -80,7 +80,7 @@ func auditInsertFill(db *gorm.DB) {
 	user := resolveAuditUser(stmt.Context)
 
 	eachRow(stmt.ReflectValue, func(row reflect.Value) {
-		// create_time 已有值时以它为基准，让 update_time 与之一致（对照 Java 保留预设 createTime）。
+		// create_time 已有值时以它为基准，让 update_time 与之一致。
 		current := now
 		if f := stmt.Schema.FieldsByDBName[colCreateTime]; f != nil {
 			if v, zero := f.ValueOf(stmt.Context, row); !zero {
@@ -94,7 +94,7 @@ func auditInsertFill(db *gorm.DB) {
 			_ = f.Set(stmt.Context, row, current)
 		}
 
-		// 对照 Java if (createBy == null)：已指定创建人则三个人员字段整体不动。
+		// 已指定创建人则三个人员字段整体不动。
 		createBy := stmt.Schema.FieldsByDBName[colCreateBy]
 		if createBy == nil {
 			return
@@ -114,7 +114,7 @@ func auditInsertFill(db *gorm.DB) {
 	})
 }
 
-// auditUpdateFill 更新前无条件刷新 update_by/update_time（对照 Java updateFill）。
+// auditUpdateFill 更新前无条件刷新 update_by/update_time。
 //
 // 这里必须用 SetColumn：Updates(map) / Update(col, val) 的 Dest 是 map，逐行反射覆盖不到。
 func auditUpdateFill(db *gorm.DB) {

@@ -27,41 +27,33 @@ import (
 	"ruoyi-go-vue-plus/pkg/tree"
 )
 
-// ErrUserPhoneExists 手机号已被占用。
 var ErrUserPhoneExists = errors.New("service: 手机号已存在")
 
-// ErrUserEmailExists 邮箱已被占用。
 var ErrUserEmailExists = errors.New("service: 邮箱已存在")
 
-// ErrUserNameExists 登录账号已被占用。
 var ErrUserNameExists = errors.New("service: 登录账号已存在")
 
-// ErrUserNotFound 用户不存在。
 var ErrUserNotFound = errors.New("service: 用户不存在")
 
-// ErrUserUpdateFailed 修改用户未生效（对齐 Java flag < 1 的失败口径）。
+// ErrUserUpdateFailed 修改用户未生效（受影响行数 < 1 视为失败）。
 var ErrUserUpdateFailed = errors.New("service: 修改用户信息失败")
 
-// ErrUserDeleteFailed 删除用户未生效（对齐 Java flag < 1 的失败口径）。
+// ErrUserDeleteFailed 删除用户未生效（受影响行数 < 1 视为失败）。
 var ErrUserDeleteFailed = errors.New("service: 删除用户失败")
 
-// ErrUserProfileUpdate 个人资料更新未生效（对齐 Java rows <= 0 的失败口径）。
+// ErrUserProfileUpdate 个人资料更新未生效（受影响行数 < 1 视为失败）。
 var ErrUserProfileUpdate = errors.New("service: 修改个人信息异常，请联系管理员")
 
-// ErrUserPasswordSame 新旧密码相同。
 var ErrUserPasswordSame = errors.New("service: 新密码不能与旧密码相同")
 
-// ErrUserPasswordWrong 旧密码错误。
 var ErrUserPasswordWrong = errors.New("service: 旧密码错误")
 
 // UserService 用户业务逻辑。
 type UserService struct{}
 
-// UserSvcApp 包级实例。
 var UserSvcApp = new(UserService)
 
-// LoadUserByUsername 按用户名加载可登录用户，并校验是否存在或被停用
-// （对应 Java PasswordAuthStrategy#loadUserByUsername）。
+// LoadUserByUsername 按用户名加载可登录用户，并校验是否存在或被停用。
 func (*UserService) LoadUserByUsername(ctx context.Context, username string) (*vo.SysUserVo, error) {
 	entity, err := repository.NewUserRepository(database.DB()).SelectByUserName(ctx, username)
 	if err != nil {
@@ -79,8 +71,7 @@ func (*UserService) LoadUserByUsername(ctx context.Context, username string) (*v
 	return user, nil
 }
 
-// LoadUserByPhone 按手机号加载可登录用户，并校验是否存在或被停用
-// （对应 Java SmsAuthStrategy#loadUserByPhoneNumber）。
+// LoadUserByPhone 按手机号加载可登录用户，并校验是否存在或被停用。
 func (*UserService) LoadUserByPhone(ctx context.Context, phone string) (*vo.SysUserVo, error) {
 	entity, err := repository.NewUserRepository(database.DB()).SelectByPhone(ctx, phone)
 	if err != nil {
@@ -98,8 +89,7 @@ func (*UserService) LoadUserByPhone(ctx context.Context, phone string) (*vo.SysU
 	return user, nil
 }
 
-// LoadUserByEmail 按邮箱加载可登录用户，并校验是否存在或被停用
-// （对应 Java EmailAuthStrategy#loadUserByEmail）。
+// LoadUserByEmail 按邮箱加载可登录用户，并校验是否存在或被停用。
 func (*UserService) LoadUserByEmail(ctx context.Context, email string) (*vo.SysUserVo, error) {
 	entity, err := repository.NewUserRepository(database.DB()).SelectByEmail(ctx, email)
 	if err != nil {
@@ -117,8 +107,8 @@ func (*UserService) LoadUserByEmail(ctx context.Context, email string) (*vo.SysU
 	return user, nil
 }
 
-// LoadUserByID 按用户ID加载可登录用户，并校验是否存在或被停用
-// （对应 Java SocialAuthStrategy#loadUser）。供三方登录按绑定关系回查系统用户。
+// LoadUserByID 按用户ID加载可登录用户，并校验是否存在或被停用。
+// 供三方登录按绑定关系回查系统用户。
 func (*UserService) LoadUserByID(ctx context.Context, userID int64) (*vo.SysUserVo, error) {
 	entity, err := repository.NewUserRepository(database.DB()).SelectByUserID(ctx, userID)
 	if err != nil {
@@ -136,9 +126,8 @@ func (*UserService) LoadUserByID(ctx context.Context, userID int64) (*vo.SysUser
 	return user, nil
 }
 
-// SelectUserByID 按用户ID查用户并回填角色（对应 Java ISysUserService#selectUserById）。
-// Java 原用 DataPermissionHelper.ignore 跳过数据权限隔离；Go 侧数据权限尚未落地，
-// 此处直接查库。用户不存在返回 (nil, nil)，由 handler 转成"没有权限访问用户数据"。
+// SelectUserByID 按用户ID查用户并回填角色。
+// 数据权限尚未落地，此处直接查库。用户不存在返回 (nil, nil)，由 handler 转成"没有权限访问用户数据"。
 func (*UserService) SelectUserByID(ctx context.Context, userID int64) (*vo.SysUserVo, error) {
 	entity, err := repository.NewUserRepository(database.DB()).SelectByUserID(ctx, userID)
 	if err != nil {
@@ -156,7 +145,7 @@ func (*UserService) SelectUserByID(ctx context.Context, userID int64) (*vo.SysUs
 	return user, nil
 }
 
-// SelectUserProfile 取个人中心信息（对应 Java SysProfileController.profile）。
+// SelectUserProfile 取个人中心信息。
 // 单独走 ProfileUserVo 而非 SysUserVo：个人中心要避开脱敏字段，并附带角色组/岗位组。
 //
 // 用户不存在返回 (nil, nil)：当前登录用户查不到属于异常登录态，由 handler 兜底提示。
@@ -172,7 +161,7 @@ func (*UserService) SelectUserProfile(ctx context.Context,
 	}
 
 	user := vo.Conv.ConvertToProfileUserVo(entity)
-	// 回填部门名：Java 由 @Translation(DEPT_ID_TO_NAME) 在 VO 层完成，Go 无翻译层，手动查。
+	// 回填部门名：Go 无翻译层，手动查。
 	// 父级不存在（如根部门）时留空，不算错。
 	if user.DeptID > 0 {
 		if dept, err := repository.NewDeptRepository(database.DB()).
@@ -194,8 +183,8 @@ func (*UserService) SelectUserProfile(ctx context.Context,
 	return &vo.ProfileVo{User: user, RoleGroup: roleGroup, PostGroup: postGroup}, nil
 }
 
-// SelectUserRoleGroup 查用户所属角色组（对应 Java selectUserRoleGroup）。
-// 把角色名按逗号拼接；无角色返回空串（对齐 Java StringUtils.EMPTY）。
+// SelectUserRoleGroup 查用户所属角色组。
+// 把角色名按逗号拼接；无角色返回空串。
 func (*UserService) SelectUserRoleGroup(ctx context.Context, userID int64) (string, error) {
 	roles, err := RoleSvcApp.SelectRolesByUserId(ctx, userID)
 	if err != nil {
@@ -210,7 +199,7 @@ func (*UserService) SelectUserRoleGroup(ctx context.Context, userID int64) (stri
 	return strings.Join(names, ","), nil
 }
 
-// SelectUserPostGroup 查用户所属岗位组（对应 Java selectUserPostGroup）。
+// SelectUserPostGroup 查用户所属岗位组。
 // 把岗位名按逗号拼接；无岗位返回空串。
 func (*UserService) SelectUserPostGroup(ctx context.Context, userID int64) (string, error) {
 	posts, err := PostSvcApp.SelectPostsByUserId(ctx, userID)
@@ -226,7 +215,7 @@ func (*UserService) SelectUserPostGroup(ctx context.Context, userID int64) (stri
 	return strings.Join(names, ","), nil
 }
 
-// CheckPhoneUnique 校验手机号是否可用（对齐 Java 的「唯一即 true」）。
+// CheckPhoneUnique 校验手机号是否可用（唯一即 true）。
 // excludeID > 0 时排除该主键，供个人中心改资料排除自身。
 func (*UserService) CheckPhoneUnique(ctx context.Context, phone string,
 	excludeID int64) (bool, error) {
@@ -239,7 +228,7 @@ func (*UserService) CheckPhoneUnique(ctx context.Context, phone string,
 	return !exists, nil
 }
 
-// CheckEmailUnique 校验邮箱是否可用（对齐 Java 的「唯一即 true」）。
+// CheckEmailUnique 校验邮箱是否可用（唯一即 true）。
 // excludeID > 0 时排除该主键，供个人中心改资料排除自身。
 func (*UserService) CheckEmailUnique(ctx context.Context, email string,
 	excludeID int64) (bool, error) {
@@ -252,7 +241,7 @@ func (*UserService) CheckEmailUnique(ctx context.Context, email string,
 	return !exists, nil
 }
 
-// UpdateUserProfile 修改个人资料（对应 Java updateUserProfile）。
+// UpdateUserProfile 修改个人资料。
 // 手机号/邮箱非空时先校验唯一；更新未生效（rows=0）返回 ErrUserProfileUpdate。
 func (*UserService) UpdateUserProfile(ctx context.Context, userID int64,
 	b *bo.SysUserProfileBo) error {
@@ -261,7 +250,7 @@ func (*UserService) UpdateUserProfile(ctx context.Context, userID int64,
 		return errors.New("service: 个人资料入参为空")
 	}
 
-	// 仅在传入非空值时校验唯一：对齐 Java isNotEmpty 判空后再 check。
+	// 仅在传入非空值时校验唯一：个人资料表单字段全可选，空值表示不改。
 	if b.PhoneNumber != "" {
 		unique, err := UserSvcApp.CheckPhoneUnique(ctx, b.PhoneNumber, userID)
 		if err != nil {
@@ -287,7 +276,7 @@ func (*UserService) UpdateUserProfile(ctx context.Context, userID int64,
 	if err != nil {
 		return err
 	}
-	// 当前登录用户查不到属异常态；rows=0 对齐 Java 的 toAjax(0) 失败口径。
+	// 当前登录用户查不到属异常态；rows=0 视为失败。
 	if rows == 0 {
 		return ErrUserProfileUpdate
 	}
@@ -296,7 +285,7 @@ func (*UserService) UpdateUserProfile(ctx context.Context, userID int64,
 
 // buildUserProfileColumns 组装个人资料更新列。
 //
-// 走 map 且仅写非空字段——对齐 Java setIfPresent：个人资料表单字段全可选，
+// 走 map 且仅写非空字段：个人资料表单字段全可选，
 // 漏传的字段不该把线上的昵称/邮箱刷成空串。avatar 为 0 视为未传。
 func buildUserProfileColumns(b *bo.SysUserProfileBo) map[string]any {
 	columns := make(map[string]any, 5)
@@ -318,7 +307,7 @@ func buildUserProfileColumns(b *bo.SysUserProfileBo) map[string]any {
 	return columns
 }
 
-// ResetUserPwd 重置密码（对应 Java resetUserPwd）。
+// ResetUserPwd 重置密码。
 // 明文由调用方传入，此处负责 BCrypt 哈希后落库。
 func (*UserService) ResetUserPwd(ctx context.Context, userID int64,
 	password string) error {
@@ -338,7 +327,7 @@ func (*UserService) ResetUserPwd(ctx context.Context, userID int64,
 	return nil
 }
 
-// ChangeUserPassword 修改当前用户密码（对应 Java SysProfileController.updatePwd）。
+// ChangeUserPassword 修改当前用户密码。
 // 旧密码不匹配返回 ErrUserPasswordWrong，新旧相同返回 ErrUserPasswordSame，
 // 校验通过后由 ResetUserPwd 哈希落库。只取一次用户记录，旧/新两次校验共用同一份哈希。
 func (*UserService) ChangeUserPassword(ctx context.Context, userID int64,
@@ -353,7 +342,7 @@ func (*UserService) ChangeUserPassword(ctx context.Context, userID int64,
 		return err
 	}
 
-	// 旧密码校验：不匹配即 ErrUserPasswordWrong，对齐 Java BCrypt.checkpw 失败分支。
+	// 旧密码校验：不匹配即 ErrUserPasswordWrong。
 	if err := bcrypt.Verify(oldPassword, entity.Password); err != nil {
 		return ErrUserPasswordWrong
 	}
@@ -364,9 +353,8 @@ func (*UserService) ChangeUserPassword(ctx context.Context, userID int64,
 	return UserSvcApp.ResetUserPwd(ctx, userID, newPassword)
 }
 
-// SelectAllocatedList 分页查询已分配某角色的用户（对应 Java selectAllocatedList）。
-// roleId 由 q.RoleID 承载；空结果不报错。返回 VO，不回填部门名（DEPT_ID_TO_NAME
-// 翻译层尚未落地，与 SelectUserByID 一致留空）。
+// SelectAllocatedList 分页查询已分配某角色的用户。
+// roleId 由 q.RoleID 承载；空结果不报错。返回 VO，不回填部门名（翻译层尚未落地，与 SelectUserByID 一致留空）。
 func (*UserService) SelectAllocatedList(ctx context.Context, q bo.SysUserQueryBo,
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysUserVo], error) {
 
@@ -378,8 +366,8 @@ func (*UserService) SelectAllocatedList(ctx context.Context, q bo.SysUserQueryBo
 	return pkgrepo.Page(vo.Conv.ConvertToSysUserVoList(res.Rows), res.Total), nil
 }
 
-// SelectUnallocatedList 分页查询未分配某角色的用户（对应 Java selectUnallocatedList）。
-// 先取该角色已分配的用户集合，再 NOT IN 排除——与 Java 的两步一致。
+// SelectUnallocatedList 分页查询未分配某角色的用户。
+// 先取该角色已分配的用户集合，再 NOT IN 排除。
 func (*UserService) SelectUnallocatedList(ctx context.Context, q bo.SysUserQueryBo,
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysUserVo], error) {
 
@@ -396,8 +384,7 @@ func (*UserService) SelectUnallocatedList(ctx context.Context, q bo.SysUserQuery
 	return pkgrepo.Page(vo.Conv.ConvertToSysUserVoList(res.Rows), res.Total), nil
 }
 
-// resolveDeptIDs 把 q.DeptID 解析成「自身+全部子部门」写回 q.DeptIDs
-// 供 repository 的 IN 过滤用（对应 Java buildQueryWrapper 里 selectDeptAndChildById 的子查询）。
+// resolveDeptIDs 把 q.DeptID 解析成「自身+全部子部门」写回 q.DeptIDs，供 repository 的 IN 过滤用。
 func (s *UserService) resolveDeptIDs(ctx context.Context, q *bo.SysUserQueryBo) error {
 	if q.DeptID <= 0 {
 		return nil
@@ -410,7 +397,7 @@ func (s *UserService) resolveDeptIDs(ctx context.Context, q *bo.SysUserQueryBo) 
 	return nil
 }
 
-// QueryPageList 分页查询用户管理列表（对应 Java selectPageUserList）。
+// QueryPageList 分页查询用户管理列表。
 func (s *UserService) QueryPageList(ctx context.Context, q bo.SysUserQueryBo,
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysUserVo], error) {
 
@@ -424,10 +411,10 @@ func (s *UserService) QueryPageList(ctx context.Context, q bo.SysUserQueryBo,
 	return pkgrepo.Page(vo.Conv.ConvertToSysUserVoList(res.Rows), res.Total), nil
 }
 
-// QueryExportList 按条件查导出列表（对应 Java selectUserExportList）。
+// QueryExportList 按条件查导出列表。
 // limit <= 0 不限制；导出方应传 excel.MaxRows+1 以提前判定超限。
 // 批量回填 DeptName/LeaderName：先按结果里的 deptID 集合查部门（拿部门名+负责人 userID），
-// 再按负责人 userID 集合一次查账号名（对齐 Java 联表取 leader 的 user_name），两查询与行数无关，避免 N+1。
+// 再按负责人 userID 集合一次查账号名，两查询与行数无关，避免 N+1。
 func (s *UserService) QueryExportList(ctx context.Context, q bo.SysUserQueryBo,
 	limit int) ([]*vo.SysUserExportVo, error) {
 
@@ -444,8 +431,7 @@ func (s *UserService) QueryExportList(ctx context.Context, q bo.SysUserQueryBo,
 }
 
 // fillExportDeptLeader 回填导出行的部门名与负责人名。
-// Java 用 DeptExcelConverter 把 deptId 渲染成部门名、联表取 leader 的 user_name；
-// Go 无翻译层，直接按集合查库回填。部门/负责人查不到时留空，不算错（fail-open）。
+// 直接按集合查库回填。部门/负责人查不到时留空，不算错（fail-open）。
 func fillExportDeptLeader(ctx context.Context, rows []*vo.SysUserExportVo) {
 	deptIDs := make(map[int64]struct{})
 	for _, r := range rows {
@@ -497,7 +483,7 @@ func fillExportDeptLeader(ctx context.Context, rows []*vo.SysUserExportVo) {
 	}
 }
 
-// ImportUsers 导入用户（对应 Java SysUserImportListener）。
+// ImportUsers 导入用户。
 // 读 xlsx 后逐行处理：不存在则新增（密码取 sys.user.initPassword 配置，由 InsertUser BCrypt），
 // 存在且 updateSupport 则更新（保留既有角色/岗位——空集不清旧），否则记"已存在"。
 // 任一行异常只记失败不中断；failureNum>0 抛汇总错误，否则返回成功汇总文案。
@@ -517,7 +503,7 @@ func (s *UserService) ImportUsers(ctx context.Context, r io.Reader,
 	var successMsg, failureMsg strings.Builder
 	for _, iv := range rows {
 		userName := strings.TrimSpace(iv.UserName)
-		// 基础格式校验对齐 Java @NotBlank @Size(2-30)：账号缺失或超长直接判失败行。
+		// 基础格式校验：账号缺失或超长直接判失败行。
 		if userName == "" || len(userName) < 2 || len(userName) > 30 {
 			failureNum++
 			failureMsg.WriteString(fmt.Sprintf("\n%d、账号 %s 导入失败：用户账号不能为空或长度不在2到30之间",
@@ -586,7 +572,7 @@ func (s *UserService) ImportUsers(ctx context.Context, r io.Reader,
 		successNum, successMsg.String()), nil
 }
 
-// CheckUserNameUnique 校验登录账号是否可用（对齐 Java 的「唯一即 true」）。
+// CheckUserNameUnique 校验登录账号是否可用（唯一即 true）。
 // excludeID > 0 时排除该主键，供修改场景排除自身。
 func (s *UserService) CheckUserNameUnique(ctx context.Context, userName string,
 	excludeID int64) (bool, error) {
@@ -599,7 +585,7 @@ func (s *UserService) CheckUserNameUnique(ctx context.Context, userName string,
 	return !exists, nil
 }
 
-// CheckUserAllowed 校验用户是否允许操作（对应 Java checkUserAllowed）。
+// CheckUserAllowed 校验用户是否允许操作。
 // 超管用户不可被增删改。失败时返回带文案的 ServiceError。
 func (s *UserService) CheckUserAllowed(ctx context.Context, userID int64) error {
 	if userID != 0 && loginhelper.IsSuperAdmin(userID) {
@@ -608,11 +594,10 @@ func (s *UserService) CheckUserAllowed(ctx context.Context, userID int64) error 
 	return nil
 }
 
-// CheckUserDataScope 校验当前用户对给定用户是否有数据权限（对应 Java checkUserDataScope）。
+// CheckUserDataScope 校验当前用户对给定用户是否有数据权限。
 // 超管短路放行；非超管按主键统计可见用户数，为 0 即越权。
 //
-// Java 的 countUserById 带 @DataPermission 注入隔离条件，Go 侧数据权限尚未落地，
-// 此处只按主键计数——等数据权限落地后挂上过滤，调用点不必改。
+// 数据权限尚未落地，此处只按主键计数——等数据权限落地后挂上过滤，调用点不必改。
 func (s *UserService) CheckUserDataScope(ctx context.Context, userID int64) error {
 	if userID == 0 {
 		return nil
@@ -630,7 +615,7 @@ func (s *UserService) CheckUserDataScope(ctx context.Context, userID int64) erro
 	return nil
 }
 
-// InsertUser 新增用户（对应 Java insertUser）。
+// InsertUser 新增用户。
 // 校验部门数据权限 + 账号/手机/邮箱唯一（手机/邮箱非空时）后，
 // BCrypt 密码、发雪花主键、写主行与角色/岗位关联。唯一冲突返回对应哨兵错误。
 func (s *UserService) InsertUser(ctx context.Context, b *bo.SysUserBo) error {
@@ -680,9 +665,9 @@ func (s *UserService) InsertUser(ctx context.Context, b *bo.SysUserBo) error {
 	return s.insertUserPost(ctx, b.UserID, b.PostIDs, false)
 }
 
-// UpdateUser 修改用户（对应 Java updateUser）。
+// UpdateUser 修改用户。
 // 校验操作权限 + 数据权限 + 部门数据权限 + 唯一性后，清旧重建角色/岗位，再更新主行。
-// 主行未生效（flag<1）抛 ErrUserUpdateFailed；并失效该用户昵称缓存。
+// 主行未生效（rows<1）抛 ErrUserUpdateFailed；并失效该用户昵称缓存。
 func (s *UserService) UpdateUser(ctx context.Context, b *bo.SysUserBo) error {
 	if b == nil || b.UserID <= 0 {
 		return errors.New("service: 用户主键不能为空")
@@ -716,7 +701,7 @@ func (s *UserService) UpdateUser(ctx context.Context, b *bo.SysUserBo) error {
 		}
 	}
 
-	// 先清旧重建关联再改主行：与 Java 同序。此处无事务包裹，主行失败则关联已重建，
+	// 先清旧重建关联再改主行：此处无事务包裹，主行失败则关联已重建，
 	// 重试即可收敛——反向（先主行后关联）一旦关联失败会留下"主行改了、关联没动"的脏状态。
 	if err := s.insertUserRole(ctx, b.UserID, b.RoleIDs, true); err != nil {
 		return err
@@ -732,7 +717,7 @@ func (s *UserService) UpdateUser(ctx context.Context, b *bo.SysUserBo) error {
 	if rows < 1 {
 		return ErrUserUpdateFailed
 	}
-	// 对应 Java @CacheEvict(cacheNames = SYS_NICKNAME, key = userId)。
+	// 失效该用户昵称缓存。
 	_ = cache.Evict(ctx, constant.CacheSysNickname, strconv.FormatInt(b.UserID, 10))
 	return nil
 }
@@ -761,9 +746,9 @@ func buildUserUpdateColumns(b *bo.SysUserBo) map[string]any {
 	return columns
 }
 
-// DeleteUserByIDs 批量删除用户（对应 Java deleteUserByIds）。
+// DeleteUserByIDs 批量删除用户。
 // 当前登录用户不得在删除集合内；逐个校验操作权限与数据权限后，整批清关联再删主行。
-// 主行未生效（flag<1）抛 ErrUserDeleteFailed。
+// 主行未生效（rows<1）抛 ErrUserDeleteFailed。
 func (s *UserService) DeleteUserByIDs(ctx context.Context, currentUserID int64,
 	ids []int64) error {
 
@@ -799,7 +784,7 @@ func (s *UserService) DeleteUserByIDs(ctx context.Context, currentUserID int64,
 	return nil
 }
 
-// SelectByIDs 按用户ID串/部门取基础信息（对应 Java selectUserByIds），供 optionselect 用。
+// SelectByIDs 按用户ID串/部门取基础信息，供 optionselect 用。
 func (s *UserService) SelectByIDs(ctx context.Context, userIds []int64,
 	deptID int64) ([]*vo.SysUserVo, error) {
 
@@ -810,7 +795,7 @@ func (s *UserService) SelectByIDs(ctx context.Context, userIds []int64,
 	return vo.Conv.ConvertToSysUserVoList(rows), nil
 }
 
-// ResetUserPwdWithCheck 重置密码（对应 Java resetPwd controller 分支）。
+// ResetUserPwdWithCheck 重置密码。
 // 校验操作权限与数据权限后复用 ResetUserPwd（内部 BCrypt）。
 func (s *UserService) ResetUserPwdWithCheck(ctx context.Context, b *bo.SysUserBo) error {
 	if b == nil || b.UserID <= 0 {
@@ -825,8 +810,8 @@ func (s *UserService) ResetUserPwdWithCheck(ctx context.Context, b *bo.SysUserBo
 	return s.ResetUserPwd(ctx, b.UserID, b.Password)
 }
 
-// UpdateUserStatusWithCheck 修改用户状态（对应 Java changeStatus controller 分支）。
-// 校验操作权限与数据权限后更新状态；主行未生效返回 ErrUserNotFound（对齐 toAjax(0) 失败口径）。
+// UpdateUserStatusWithCheck 修改用户状态。
+// 校验操作权限与数据权限后更新状态；主行未生效返回 ErrUserNotFound。
 func (s *UserService) UpdateUserStatusWithCheck(ctx context.Context,
 	b *bo.SysUserBo) error {
 
@@ -850,7 +835,7 @@ func (s *UserService) UpdateUserStatusWithCheck(ctx context.Context,
 	return nil
 }
 
-// Unlock 解锁用户（对应 Java unlock）。
+// Unlock 解锁用户。
 // 用户不存在抛错；存在则清掉 Redis 里的密码错误计数键，fail-open（Redis 故障不阻断）。
 func (s *UserService) Unlock(ctx context.Context, userID int64) error {
 	user, err := s.SelectUserByID(ctx, userID)
@@ -867,7 +852,7 @@ func (s *UserService) Unlock(ctx context.Context, userID int64) error {
 	return nil
 }
 
-// GetUserInfoByID 按用户编号取详情 + 角色ID + 岗位 + 可授权角色（对应 Java getInfo(userId)）。
+// GetUserInfoByID 按用户编号取详情 + 角色ID + 岗位 + 可授权角色。
 // userID <= 0（根路径）时只返回可授权角色列表；非超管查看非超管用户时滤掉超管角色。
 func (s *UserService) GetUserInfoByID(ctx context.Context,
 	userID, currentUserID int64) (*vo.SysUserInfoVo, error) {
@@ -909,7 +894,7 @@ func (s *UserService) GetUserInfoByID(ctx context.Context,
 	return info, nil
 }
 
-// AuthRole 取用户授权角色信息（对应 Java authRole）。
+// AuthRole 取用户授权角色信息。
 // 校验数据权限后回填用户与其可授权角色（带 flag 标记已授权），非超管查看非超管用户时滤掉超管角色。
 func (s *UserService) AuthRole(ctx context.Context,
 	userID int64) (*vo.SysUserInfoVo, error) {
@@ -931,7 +916,7 @@ func (s *UserService) AuthRole(ctx context.Context,
 	}, nil
 }
 
-// InsertUserAuth 用户授权角色（对应 Java insertUserAuth）。
+// InsertUserAuth 用户授权角色。
 // 校验数据权限后清旧重建该用户的角色关联。
 func (s *UserService) InsertUserAuth(ctx context.Context, userID int64,
 	roleIDs []int64) error {
@@ -942,14 +927,14 @@ func (s *UserService) InsertUserAuth(ctx context.Context, userID int64,
 	return s.insertUserRole(ctx, userID, roleIDs, true)
 }
 
-// DeptTree 取用户筛选用的部门树（对应 Java deptTree），透传部门 service。
+// DeptTree 取用户筛选用的部门树，透传部门 service。
 func (s *UserService) DeptTree(ctx context.Context,
 	q bo.SysDeptQueryBo) ([]*tree.Tree[int64], error) {
 
 	return DeptSvcApp.SelectDeptTreeList(ctx, q)
 }
 
-// SelectListByDept 取部门下全部用户（对应 Java selectUserListByDept）。
+// SelectListByDept 取部门下全部用户。
 func (s *UserService) SelectListByDept(ctx context.Context,
 	deptID int64) ([]*vo.SysUserVo, error) {
 
@@ -960,9 +945,8 @@ func (s *UserService) SelectListByDept(ctx context.Context,
 	return vo.Conv.ConvertToSysUserVoList(rows), nil
 }
 
-// insertUserRole 写用户-角色关联（对应 Java insertUserRole）。
-// 空集直接返回且不清旧：导入更新场景（已有用户、模板无角色列）需保留既有角色，
-// 与 Java ArrayUtil.isEmpty(roleIds) 在清旧之前 return 一致。
+// insertUserRole 写用户-角色关联。
+// 空集直接返回且不清旧：导入更新场景（已有用户、模板无角色列）需保留既有角色。
 // 非目标超管用户剔除超管角色；空集（剔除后）抛错；数据权限校验可见角色数；
 // clear=true 时先清旧再批量插。
 func (s *UserService) insertUserRole(ctx context.Context, userID int64,
@@ -983,7 +967,7 @@ func (s *UserService) insertUserRole(ctx context.Context, userID int64,
 	if len(roleIDs) == 0 {
 		return errs.New(0, "不允许为普通用户分配超级管理员角色，请至少选择一个其他角色", "")
 	}
-	// 数据权限校验：可见角色数与传入数不等即越权（对应 Java selectRoleCount）。
+	// 数据权限校验：可见角色数与传入数不等即越权。
 	count, err := repository.NewRoleRepository(database.DB()).CountByRoleIDs(ctx, roleIDs)
 	if err != nil {
 		return err
@@ -1000,7 +984,7 @@ func (s *UserService) insertUserRole(ctx context.Context, userID int64,
 	return repo.InsertUserRoles(ctx, userID, roleIDs)
 }
 
-// insertUserPost 写用户-岗位关联（对应 Java insertUserPost）。
+// insertUserPost 写用户-岗位关联。
 // 空集直接返回且不清旧（同 insertUserRole 的语义，保留既有岗位）。
 // 数据权限校验可见岗位数；clear=true 时先清旧再批量插。
 func (s *UserService) insertUserPost(ctx context.Context, userID int64,
@@ -1025,8 +1009,8 @@ func (s *UserService) insertUserPost(ctx context.Context, userID int64,
 	return repo.InsertUserPosts(ctx, userID, postIDs)
 }
 
-// filterSuperAdminRoles 过滤掉超管角色，对齐 Java StreamUtils.filter(r -> !r.isSuperAdmin())。
-// 目标用户本身是超管时不滤（与 Java LoginHelper.isSuperAdmin(userId) ? roles : filter 一致）。
+// filterSuperAdminRoles 过滤掉超管角色。
+// 目标用户本身是超管时不滤。
 func filterSuperAdminRoles(roles []*vo.SysRoleVo, userID int64) []*vo.SysRoleVo {
 	if loginhelper.IsSuperAdmin(userID) {
 		return roles
@@ -1041,7 +1025,7 @@ func filterSuperAdminRoles(roles []*vo.SysRoleVo, userID int64) []*vo.SysRoleVo 
 	return out
 }
 
-// derefUserVo 解引用用户 VO，nil 时返回零值（对齐 Java R.ok(null) 的 data: null 语义）。
+// derefUserVo 解引用用户 VO，nil 时返回零值（保持 data: null 的语义）。
 func derefUserVo(u *vo.SysUserVo) vo.SysUserVo {
 	if u == nil {
 		return vo.SysUserVo{}

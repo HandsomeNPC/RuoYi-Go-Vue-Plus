@@ -64,7 +64,7 @@ func TestLoginInfoSelectPageQueryAll(t *testing.T) {
 }
 
 // TestLoginInfoSelectPageQueryEmpty 空串一概不筛：WHERE 段不含任何业务过滤列。
-// 对齐 Java likeIfText/eqIfText/betweenParams 在入参为空时的不筛语义。
+// 入参为空时不落 WHERE 条件。
 func TestLoginInfoSelectPageQueryEmpty(t *testing.T) {
 	sql, _ := captureLoginInfoSQL(t, bo.SysLoginInfoQueryBo{},
 		pkgrepo.PageQuery{PageNum: 1, PageSize: 10})
@@ -79,7 +79,7 @@ func TestLoginInfoSelectPageQueryEmpty(t *testing.T) {
 }
 
 // TestLoginInfoSelectPageQueryHalfDate 只给一端时间不筛 login_time，
-// 对齐 Java betweenParams 的 begin != null && end != null 才生效。
+// 两端同时给才生效。
 func TestLoginInfoSelectPageQueryHalfDate(t *testing.T) {
 	q := bo.SysLoginInfoQueryBo{BeginTime: "2026-01-01"} // 只有 begin
 	sql, _ := captureLoginInfoSQL(t, q, pkgrepo.PageQuery{PageNum: 1, PageSize: 10})

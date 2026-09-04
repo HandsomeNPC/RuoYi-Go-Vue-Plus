@@ -51,7 +51,7 @@ func dryAuditDB(t *testing.T) *gorm.DB {
 	return db
 }
 
-// TestAuditInsertFillNoLoginUser ctx 无操作者时回落 -1（对齐 Java DEFAULT_USER_ID）。
+// TestAuditInsertFillNoLoginUser ctx 无操作者时回落 -1。
 func TestAuditInsertFillNoLoginUser(t *testing.T) {
 	row := &auditFixture{ID: 1, Name: "x"}
 	dryAuditDB(t).Create(row)
@@ -101,8 +101,7 @@ func TestAuditInsertFillKeepsPresetCreateTime(t *testing.T) {
 	}
 }
 
-// TestAuditInsertFillKeepsPresetCreateBy 已指定创建人时三个人员字段整体不动
-// （对齐 Java if (createBy == null) 的整块守卫）。
+// TestAuditInsertFillKeepsPresetCreateBy 已指定创建人时三个人员字段整体不动。
 func TestAuditInsertFillKeepsPresetCreateBy(t *testing.T) {
 	const presetBy int64 = 999
 

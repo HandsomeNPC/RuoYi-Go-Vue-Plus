@@ -1,4 +1,4 @@
-// Package cache 通用 Redis 缓存助手，对应 Java 侧 @Cacheable / @CacheEvict 的效果。
+// Package cache 通用 Redis 缓存助手。
 //
 // 键格式：group + ":" + key，与 pkg/constant/cache_names.go 的组名和 TTL 常量配合使用。
 // 所有结构体序列化走 pkg/jsonx，保持与 API 出参相同的 int64 精度契约。
@@ -50,12 +50,12 @@ func Put(ctx context.Context, group, key string, val any, ttl time.Duration) err
 	return rdb().Set(ctx, cacheKey(group, key), data, ttl).Err()
 }
 
-// Evict 删除单个缓存条目，对应 @CacheEvict(key = "...")。key 不存在时幂等。
+// Evict 删除单个缓存条目。key 不存在时幂等。
 func Evict(ctx context.Context, group, key string) error {
 	return rdb().Del(ctx, cacheKey(group, key)).Err()
 }
 
-// EvictGroup 删除整个缓存组的所有条目，对应 @CacheEvict(allEntries = true)。
+// EvictGroup 删除整个缓存组的所有条目。
 // 用 SCAN 分批枚举 group:* 后 pipeline Del，避免 KEYS 指令阻塞 Redis。
 func EvictGroup(ctx context.Context, group string) error {
 	pattern := group + ":*"

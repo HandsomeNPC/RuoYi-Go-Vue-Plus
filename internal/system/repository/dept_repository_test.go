@@ -134,8 +134,8 @@ func TestDeptSelectListBelongDeptIncludesSelf(t *testing.T) {
 	}
 }
 
-// TestDeptSelectNormalByIDsOptionalFilter ids 为空时退化成查全部启用部门（对齐 Java 的
-// in(CollUtil.isNotEmpty(ids), ...)），非空时才加 IN。
+// TestDeptSelectNormalByIDsOptionalFilter ids 为空时退化成查全部启用部门，
+// 非空时才加 IN。
 func TestDeptSelectNormalByIDsOptionalFilter(t *testing.T) {
 	tests := []struct {
 		name   string

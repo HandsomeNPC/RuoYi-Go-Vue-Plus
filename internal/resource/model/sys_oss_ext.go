@@ -1,6 +1,6 @@
 package model
 
-// SysOssExt 附件扩展字段对象，对应 Java org.dromara.system.domain.SysOssExt。
+// SysOssExt 附件扩展字段对象。
 //
 // 不映射表，序列化为 JSON 存入 sys_oss.ext1 列，故无 gorm 列标签与 TableName。
 type SysOssExt struct {

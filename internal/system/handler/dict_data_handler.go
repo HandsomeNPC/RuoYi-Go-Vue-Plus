@@ -16,10 +16,9 @@ import (
 	"ruoyi-go-vue-plus/pkg/response"
 )
 
-// DictDataApi 字典数据接口（对应 Java SysDictDataController）。
+// DictDataApi 字典数据接口。
 type DictDataApi struct{}
 
-// DictDataApiApp 包级实例。
 var DictDataApiApp = new(DictDataApi)
 
 // List 分页查询字典数据列表。
@@ -44,8 +43,8 @@ func (a *DictDataApi) List(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(res))
 }
 
-// Export 导出字典数据列表为 xlsx 附件（对应 Java SysDictDataController.export）。
-// 与 Java 一致走 POST：前端 commonExport 以 form 表单 POST 提交筛选条件，
+// Export 导出字典数据列表为 xlsx 附件。
+// 走 POST：前端 commonExport 以 form 表单 POST 提交筛选条件，
 // 故用 ShouldBind 同时吃 form body 与 query。
 //
 // 响应体是二进制附件，不返回 response.R——见 pkg/excel 的说明。
@@ -92,9 +91,9 @@ func (a *DictDataApi) GetInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(res))
 }
 
-// DictType 按字典类型查字典数据列表（对应 Java dictType）。
+// DictType 按字典类型查字典数据列表。
 //
-// 与 Java 一致不校验权限码，仅需登录：前端 DictTag 组件到处要渲染字典标签，
+// 不校验权限码，仅需登录：前端 DictTag 组件到处要渲染字典标签，
 // 却未必有字典管理权限。类型不存在时返回 200 + 空数组（service 已按空切片兜底）。
 func (a *DictDataApi) DictType(c *gin.Context) {
 	dictType := c.Param("dictType")
@@ -160,7 +159,7 @@ func (a *DictDataApi) Edit(c *gin.Context) {
 	c.JSON(http.StatusOK, response.OkVoid())
 }
 
-// Remove 批量删除字典数据。主键串以逗号分隔，与 Java 的 @PathVariable Long[] dictCodes 同形。
+// Remove 批量删除字典数据。主键串以逗号分隔。
 func (a *DictDataApi) Remove(c *gin.Context) {
 	ids, err := parseIDs(c.Param("dictCodes"))
 	if err != nil {

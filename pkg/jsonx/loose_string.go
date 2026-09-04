@@ -8,11 +8,10 @@ import (
 
 // LooseString 反序列化时接受字符串、布尔、数字三种 JSON 标量的字符串字段。
 //
-// 存在的理由是与 Java 的 Jackson 对齐：那边把 true / 42 静默强转成 "true" / "42"
-// 塞进 String 字段，而 jsonx 用的 ConfigCompatibleWithStandardLibrary 与
-// encoding/json 一样严格，遇到类型不匹配直接报错。前端在共用一个后端契约时，
-// 会把开关类配置项按布尔下发（如 sys.oss.previewListResource），
-// 严格解码会让这类正常调用一律卡在"参数校验失败"上。
+// 与 Jackson 行为对齐：把 true / 42 静默强转成 "true" / "42"，前端约定如此。
+// jsonx 用的 ConfigCompatibleWithStandardLibrary 与 encoding/json 一样严格，
+// 遇到类型不匹配直接报错。前端在共用一个后端契约时，会把开关类配置项按布尔下发
+// （如 sys.oss.previewListResource），严格解码会让这类正常调用一律卡在"参数校验失败"上。
 //
 // 只用在值本身就以字符串落库、而前端可能发送非字符串标量的字段上；
 // 语义上确实是布尔或数字的字段应当直接声明成 bool / int64。

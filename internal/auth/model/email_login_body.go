@@ -1,6 +1,6 @@
 package model
 
-// EmailLoginBody 邮箱验证码登录对象（对应 Java EmailLoginBody），内嵌 LoginBody。
+// EmailLoginBody 邮箱验证码登录对象，内嵌 LoginBody。
 type EmailLoginBody struct {
 	LoginBody
 	// Email 邮箱。

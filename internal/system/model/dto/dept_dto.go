@@ -1,6 +1,6 @@
 package dto
 
-// DeptDTO 部门简要信息对象，对应 Java org.dromara.system.api.domain.DeptDTO。
+// DeptDTO 部门简要信息对象。
 type DeptDTO struct {
 	// DeptID 部门ID。
 	DeptID int64 `json:"deptId"`

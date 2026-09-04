@@ -19,19 +19,16 @@ import (
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 )
 
-// ossLogTitle OSS 对象存储的操作日志模块名，对照 Java @Log(title = "OSS对象存储")。
 const ossLogTitle = "OSS对象存储"
 
-// ossConfigLogTitle 对象存储配置的操作日志模块名，对照 Java @Log(title = "对象存储配置")。
 const ossConfigLogTitle = "对象存储配置"
 
-// ossConfigStatusLogTitle 状态修改单独一个标题，对照 Java @Log(title = "对象存储状态修改")。
 const ossConfigStatusLogTitle = "对象存储状态修改"
 
 // RegisterRoutes 注册 resource 路由。
 //
 // 内部路由 /oss、/message 不带模块名前缀，由调用方传 prefix：
-//   - modular（InitRouter）传 ""，前端打 /resource/oss，由 nginx 剥前缀后转 /oss（对齐 Java gateway StripPrefix=1）；
+//   - modular（InitRouter）传 ""，前端打 /resource/oss，由 nginx 剥前缀后转 /oss；
 //   - standalone 传 "/resource"，无网关，进程内自带完整路径。
 //
 // 推送端点同理（见 RegisterPushRoutes），同样靠 prefix 拼，故 nginx 对 /resource/ 一视同仁地剥前缀即可。
@@ -47,16 +44,15 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	// AuditContext 须排在 TokenInterceptor 之后：它取的登录态依赖后者解析出的 token。
 	protected.Use(plugin.TokenInterceptor(), loginhelper.AuditContext())
 
-	// 与 Java 一致不校验权限码，仅需登录：消息盒子只返回当前用户自己的消息。
+	// 不校验权限码，仅需登录：消息盒子只返回当前用户自己的消息。
 	protected.GET("/message/box", sagin.CheckLogin(), handler.MessageApiApp.GetBox)
 
-	// 短信/邮箱验证码：登录前就要调，必须免鉴权。Java 侧整个 CaptchaController
-	// 挂 @SaIgnore，而这两个端点落在带 TokenInterceptor 的组内，故显式 Ignore 放行。
+	// 短信/邮箱验证码：登录前就要调，必须免鉴权。这两个端点落在带
+	// TokenInterceptor 的组内，故显式 Ignore 放行。
 	//
-	// 限流对照 Java @RateLimiter(key="#phoneNumber", time=60, count=1)：同一手机号
-	// /邮箱 60 秒 1 次。Java 把 emailCode/emailCodeImpl 拆两层使开关关闭时不触发限流，
-	// Go 侧限流是 handler 之前的中间件，做不到同样的拆分——后果仅是邮箱功能关闭时
-	// 重复请求也占额度，接口本就返回失败，不值得为此把限流下沉进 handler。
+	// 限流：同一手机号/邮箱 60 秒 1 次。Go 侧限流是 handler 之前的
+	// 中间件，做不到按开关关闭拆分——后果仅是邮箱功能关闭时重复请求也
+	// 占额度，接口本就返回失败，不值得为此把限流下沉进 handler。
 	protected.GET("/sms/code", sagin.Ignore(),
 		ratelimiter.RateLimiterWithKeyFunc(time.Minute, 1,
 			func(c *gin.Context) string { return c.Query("phoneNumber") }, 0, ""),
@@ -69,22 +65,21 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	// /oss/config 必须先于 /oss 注册组：两组的静态段虽然 gin 能区分，
 	// 但先注册更具体的路径可避免 DELETE /oss/config/:ids 被 /oss/:ossIds 吃掉。
 	ossConfig := protected.Group("/oss/config")
-	// 与 Java 一致，详情页复用 list 权限码而非 query。
+	// 详情页复用 list 权限码而非 query。
 	ossConfig.GET("/list", satoken.CheckPermission("system:ossConfig:list"),
 		handler.OssConfigApiApp.List)
 	ossConfig.GET("/:ossConfigId", satoken.CheckPermission("system:ossConfig:list"),
 		handler.OssConfigApiApp.GetInfo)
 	// 路径用 "" 而非 "/"：后者会注册成 /oss/config/。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
-	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行，与 Java 侧
-	// RepeatSubmitAspect 抛异常后 LogAspect 记一条失败日志一致。
+	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行，仍记一条失败日志。
 	ossConfig.POST("", satoken.CheckPermission("system:ossConfig:add"),
 		oplog.Log(ossConfigLogTitle, enum.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.OssConfigApiApp.Add)
 	ossConfig.PUT("", satoken.CheckPermission("system:ossConfig:edit"),
 		oplog.Log(ossConfigLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.OssConfigApiApp.Edit)
-	// changeStatus 路径更具体，须注册在 PUT "" 之后。与 Java 一致挂防重：
+	// changeStatus 路径更具体，须注册在 PUT "" 之后。挂防重：
 	// 它会把全表刷成非默认再置目标行，重复提交期间存在"一个默认都没有"的窗口。
 	ossConfig.PUT("/changeStatus", satoken.CheckPermission("system:ossConfig:edit"),
 		oplog.Log(ossConfigStatusLogTitle, enum.BusinessTypeUpdate),
@@ -99,8 +94,7 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 		handler.OssApiApp.ListByIDs)
 	oss.GET("/download/:ossId", satoken.CheckPermission("system:oss:download"),
 		handler.OssApiApp.Download)
-	// upload 不挂防重(对齐 Java 未标 @RepeatSubmit)：同一文件重传是合法诉求，
-	// 且每次都生成新 key，不存在覆盖。
+	// upload 不挂防重：同一文件重传是合法诉求，且每次都生成新 key，不存在覆盖。
 	// WithoutRequestData 不可省：oplog 采集入参会对 multipart 请求调 ParseForm，
 	// 那会把整个文件读进内存再塞进 sys_oper_log.oper_param。
 	oss.POST("/upload", satoken.CheckPermission("system:oss:upload"),
@@ -114,8 +108,7 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 //
 // 推送路径取自配置（push.path，相对部分，默认 /message），注册时拼上 prefix：
 // 与业务路由同前缀策略——modular 传 "" 得 /message（nginx 剥 /resource 后匹配），
-// standalone 传 "/resource" 得 /resource/message（直连）。对齐 Java：微服务版
-// nacos 把 message.path 覆盖成 /message，网关 StripPrefix=1 剥 /resource。
+// standalone 传 "/resource" 得 /resource/message（直连）。
 // 不属于 protected 组的中间件链，单独注册在根引擎上。
 func RegisterPushRoutes(r *gin.Engine, prefix string) {
 	// 推送端点按 push.transport 决定走 SSE 还是 WebSocket，路径取配置值。
@@ -132,8 +125,7 @@ func RegisterPushRoutes(r *gin.Engine, prefix string) {
 	// 而 sa-token-go 的 query 分支不剥 Bearer 前缀，不规范化会一律 401。
 	r.GET(path, push.NormalizeQueryToken(), plugin.TokenInterceptor(),
 		sagin.CheckLogin(), push.Handler())
-	// close 对齐 Java SseController.close：前端主动断开时清掉服务端会话，
-	// 不必等心跳超时才回收。
+	// close：前端主动断开时清掉服务端会话，不必等心跳超时才回收。
 	r.GET(path+"/close", push.NormalizeQueryToken(), plugin.TokenInterceptor(),
 		sagin.CheckLogin(), push.CloseHandler())
 }

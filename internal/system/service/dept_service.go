@@ -19,28 +19,24 @@ import (
 	"ruoyi-go-vue-plus/pkg/tree"
 )
 
-// ErrDeptNotFound 部门不存在。
 var ErrDeptNotFound = errors.New("service: 部门不存在")
 
 // ErrDeptNameExists 同一上级下的部门名称已被占用。
 var ErrDeptNameExists = errors.New("service: 部门名称已存在")
 
-// ErrDeptParentIsSelf 上级部门指向了自己。
 var ErrDeptParentIsSelf = errors.New("service: 上级部门不能是自己")
 
 // DeptService 部门业务逻辑。
 type DeptService struct{}
 
-// DeptSvcApp 包级实例。
 var DeptSvcApp = new(DeptService)
 
-// SelectByID 按主键查部门（对应 Java SysDeptServiceImpl#selectDeptById
-// + @Cacheable(key = "#deptId")），回填父部门名称。
+// SelectByID 按主键查部门，回填父部门名称。
 //
-// 不存在时返回 (nil, nil)：调用方语义各异——登录时按空串兜底（对齐 Java
-// Opt.orElse(StringUtils.EMPTY)），详情接口回 data: null（对齐 Java R.ok(null)）。
+// 不存在时返回 (nil, nil)：调用方语义各异——登录时按空串兜底，
+// 详情接口回 data: null。
 // 这个 nil 不入缓存：查不到多半是主键写错或已被删，缓存下来只会让后续新增同 id 的
-// 部门读到空值，而 Java 侧的 Redis CacheManager 同样跳过 null。
+// 部门读到空值。
 func (s *DeptService) SelectByID(ctx context.Context, deptID int64) (*vo.SysDeptVo, error) {
 	var cached vo.SysDeptVo
 	if hit, _ := cache.Get(ctx, constant.CacheSysDept, deptCacheKey(deptID), &cached); hit {
@@ -68,8 +64,8 @@ func (s *DeptService) SelectByID(ctx context.Context, deptID int64) (*vo.SysDept
 	return out, nil
 }
 
-// QueryList 按条件查部门列表（对应 Java selectDeptList）。
-// 返回扁平列表而非树：前端拿到后自行 listToTree，与 Java 一致。
+// QueryList 按条件查部门列表。
+// 返回扁平列表而非树：前端拿到后自行 listToTree。
 func (s *DeptService) QueryList(ctx context.Context, q bo.SysDeptQueryBo) ([]*vo.SysDeptVo, error) {
 	rows, err := repository.NewDeptRepository(database.DB()).SelectList(ctx, q)
 	if err != nil {
@@ -78,11 +74,10 @@ func (s *DeptService) QueryList(ctx context.Context, q bo.SysDeptQueryBo) ([]*vo
 	return vo.Conv.ConvertToSysDeptVoList(rows), nil
 }
 
-// QueryListExcludeChild 查部门列表并剔除 deptID 自身及其全部后代
-// （对应 Java SysDeptController#excludeChild）。
+// QueryListExcludeChild 查部门列表并剔除 deptID 自身及其全部后代。
 //
-// 在内存里过滤而非用 SQL 排除：Java 就是取全量后 removeIf，且这里要的是
-// "祖先链包含 deptID"，与 SelectList 的排序/条件无关，多一个查询分支不划算。
+// 在内存里过滤而非用 SQL 排除：这里要的是「祖先链包含 deptID」，
+// 与 SelectList 的排序/条件无关，多一个查询分支不划算。
 func (s *DeptService) QueryListExcludeChild(ctx context.Context,
 	deptID int64) ([]*vo.SysDeptVo, error) {
 
@@ -101,11 +96,10 @@ func (s *DeptService) QueryListExcludeChild(ctx context.Context,
 	return out, nil
 }
 
-// SelectDeptTreeList 按条件查部门并组装成前端下拉树（对应 Java selectDeptTreeList
-// + buildDeptTreeSelect）。
+// SelectDeptTreeList 按条件查部门并组装成前端下拉树。
 //
-// 走 tree.BuildMultiRoot 而非 Build：按条件过滤后祖先可能不在结果集内，悬空父级要当根挂接，
-// 与 Java TreeBuildUtils.buildMultiRoot 一致。disabled 按状态回填，前端据此灰掉停用部门。
+// 走 tree.BuildMultiRoot 而非 Build：按条件过滤后祖先可能不在结果集内，悬空父级要当根挂接。
+// disabled 按状态回填，前端据此灰掉停用部门。
 func (s *DeptService) SelectDeptTreeList(ctx context.Context,
 	q bo.SysDeptQueryBo) ([]*tree.Tree[int64], error) {
 
@@ -124,8 +118,8 @@ func (s *DeptService) SelectDeptTreeList(ctx context.Context,
 		}), nil
 }
 
-// QueryByIDs 查启用状态的部门供选择框用（对应 Java selectDeptByIds）。
-// ids 为空时返回全部启用部门，与 Java optionselect 不传参的语义一致。
+// QueryByIDs 查启用状态的部门供选择框用。
+// ids 为空时返回全部启用部门。
 func (s *DeptService) QueryByIDs(ctx context.Context, ids []int64) ([]*vo.SysDeptVo, error) {
 	rows, err := repository.NewDeptRepository(database.DB()).SelectNormalByIDs(ctx, ids)
 	if err != nil {
@@ -134,7 +128,7 @@ func (s *DeptService) QueryByIDs(ctx context.Context, ids []int64) ([]*vo.SysDep
 	return vo.Conv.ConvertToSysDeptVoList(rows), nil
 }
 
-// CheckDeptNameUnique 校验同一上级下的部门名称是否可用（对齐 Java 的「唯一即 true」）。
+// CheckDeptNameUnique 校验同一上级下的部门名称是否可用（唯一即 true）。
 // excludeID > 0 时排除该主键，供修改场景复用。
 func (s *DeptService) CheckDeptNameUnique(ctx context.Context, deptName string,
 	parentID, excludeID int64) (bool, error) {
@@ -147,10 +141,9 @@ func (s *DeptService) CheckDeptNameUnique(ctx context.Context, deptName string,
 	return !exists, nil
 }
 
-// CheckDeptDataScope 校验当前用户能否访问该部门（对应 Java checkDeptDataScope）。
+// CheckDeptDataScope 校验当前用户能否访问该部门。
 //
-// Java 靠 @DataPermission 给 countDeptById 注入部门隔离条件，Go 侧数据权限尚未落地，
-// 此处等价于"部门存在即放行"——正是 Java 在无隔离条件时的行为。等数据权限落地后
+// 数据权限尚未落地，此处等价于「部门存在即放行」。等数据权限落地后
 // 只需给这次 count 挂上过滤，调用点不必改。
 func (s *DeptService) CheckDeptDataScope(ctx context.Context, userID, deptID int64) error {
 	if deptID <= 0 {
@@ -169,7 +162,7 @@ func (s *DeptService) CheckDeptDataScope(ctx context.Context, userID, deptID int
 	return nil
 }
 
-// InsertDept 新增部门（对应 Java insertDept + @CacheEvict(SYS_DEPT_AND_CHILD, allEntries)）。
+// InsertDept 新增部门。
 // 部门名称重复时返回 ErrDeptNameExists；插入成功后回填 b.DeptID。
 func (s *DeptService) InsertDept(ctx context.Context, b *bo.SysDeptBo) error {
 	if b == nil {
@@ -211,9 +204,9 @@ func (s *DeptService) InsertDept(ctx context.Context, b *bo.SysDeptBo) error {
 	return nil
 }
 
-// UpdateDept 修改部门（对应 Java updateDept + @CacheEvict(SYS_DEPT key=deptId, SYS_DEPT_AND_CHILD allEntries)）。
+// UpdateDept 修改部门。
 //
-// userID 用于换父部门时的越权校验，对齐 Java 在 updateDept 内部再调一次 checkDeptDataScope。
+// userID 用于换父部门时的越权校验。
 func (s *DeptService) UpdateDept(ctx context.Context, userID int64, b *bo.SysDeptBo) error {
 	if b == nil {
 		return errors.New("service: 部门入参为空")
@@ -222,8 +215,8 @@ func (s *DeptService) UpdateDept(ctx context.Context, userID int64, b *bo.SysDep
 		return errors.New("service: 部门主键不能为空")
 	}
 
-	// 三道校验的先后顺序对齐 Java edit 的 if-else 链：名称重复 → 上级是自己 → 停用前置条件。
-	// 同时触发多条时，前端看到的提示才与 Java 一致。
+	// 三道校验的先后顺序：名称重复 → 上级是自己 → 停用前置条件。
+	// 同时触发多条时，前端看到的提示保持稳定。
 	unique, err := s.CheckDeptNameUnique(ctx, b.DeptName, b.ParentID, b.DeptID) // 排除自身
 	if err != nil {
 		return err
@@ -304,14 +297,14 @@ func buildDeptUpdateColumns(b *bo.SysDeptBo) map[string]any {
 		"email": b.Email,
 	}
 	// 状态缺省即视为不改：漏传字段不该把线上的 '0' 刷成空串，
-	// 那会让该部门既不算启用也不算停用。等效于 Java updateById 对 null 字段的跳过。
+	// 那会让该部门既不算启用也不算停用。
 	if b.Status != "" {
 		columns["status"] = b.Status
 	}
 	return columns
 }
 
-// checkDisableAllowed 校验部门是否允许停用（对应 Java edit 里 DISABLE 分支的两道拦截）。
+// checkDisableAllowed 校验部门是否允许停用。
 func (s *DeptService) checkDisableAllowed(ctx context.Context, deptID int64) error {
 	count, err := repository.NewDeptRepository(database.DB()).CountNormalChildren(ctx, deptID)
 	if err != nil {
@@ -331,8 +324,7 @@ func (s *DeptService) checkDisableAllowed(ctx context.Context, deptID int64) err
 	return nil
 }
 
-// updateChildrenAncestors 把后代的祖先链前缀从 oldAncestors 换成 newAncestors
-// （对应 Java updateDeptChildren）。
+// updateChildrenAncestors 把后代的祖先链前缀从 oldAncestors 换成 newAncestors。
 func (s *DeptService) updateChildrenAncestors(ctx context.Context, deptID int64,
 	oldAncestors, newAncestors string) error {
 
@@ -343,7 +335,7 @@ func (s *DeptService) updateChildrenAncestors(ctx context.Context, deptID int64,
 	}
 
 	for _, child := range children {
-		// 只替换第一处（对齐 Java replaceOnce）：祖先链里同一段主键序列理论上不会重复，
+		// 只替换第一处：祖先链里同一段主键序列理论上不会重复，
 		// 但全局替换一旦遇到重复段会把子树接到错误的位置上。
 		updated := strings.Replace(child.Ancestors, oldAncestors, newAncestors, 1)
 		if updated == child.Ancestors {
@@ -358,7 +350,7 @@ func (s *DeptService) updateChildrenAncestors(ctx context.Context, deptID int64,
 	return nil
 }
 
-// enableAncestors 把祖先链上的部门全部置为启用（对应 Java updateParentDeptStatusNormal）。
+// enableAncestors 把祖先链上的部门全部置为启用。
 func (s *DeptService) enableAncestors(ctx context.Context, ancestors string) error {
 	ids := parseAncestorIDs(ancestors)
 	if len(ids) == 0 {
@@ -375,12 +367,10 @@ func (s *DeptService) enableAncestors(ctx context.Context, ancestors string) err
 	return nil
 }
 
-// DeleteDeptByID 删除部门（对应 Java deleteDeptById
-// + @CacheEvict(SYS_DEPT key=deptId, SYS_DEPT_AND_CHILD allEntries)）。
+// DeleteDeptByID 删除部门。
 //
-// 四道前置拦截（默认部门 / 下级部门 / 用户 / 岗位）留在调用方 handler 之外、本方法之内，
-// 与 Java 把它们摊在 Controller 的做法不同：这些是数据完整性约束而非 HTTP 关注点，
-// 放这里才能挡住将来其它调用路径。
+// 四道前置拦截（默认部门 / 下级部门 / 用户 / 岗位）留在调用方 handler 之外、本方法之内：
+// 这些是数据完整性约束而非 HTTP 关注点，放这里才能挡住将来其它调用路径。
 func (s *DeptService) DeleteDeptByID(ctx context.Context, userID, deptID int64) error {
 	if deptID <= 0 {
 		return errors.New("service: 部门主键不能为空")
@@ -423,7 +413,7 @@ func (s *DeptService) DeleteDeptByID(ctx context.Context, userID, deptID int64) 
 	if err != nil {
 		return err
 	}
-	// 逻辑删除下 0 行只可能是主键不存在或已被删，对齐 Java toAjax(0) 的失败口径。
+	// 逻辑删除下 0 行只可能是主键不存在或已被删。
 	if affected == 0 {
 		return ErrDeptNotFound
 	}
@@ -439,7 +429,7 @@ func (s *DeptService) evictDept(ctx context.Context, deptID int64) {
 	_ = cache.EvictGroup(ctx, constant.CacheSysDeptAndChild)
 }
 
-// deptCacheKey 部门缓存的 key，与 Java @Cacheable(key = "#deptId") 同形。
+// deptCacheKey 部门缓存的 key。
 func deptCacheKey(deptID int64) string {
 	return strconv.FormatInt(deptID, 10)
 }

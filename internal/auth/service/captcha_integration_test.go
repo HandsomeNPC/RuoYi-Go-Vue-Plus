@@ -20,7 +20,7 @@ import (
 
 // 本文件覆盖 passwordAuthStrategy.validateCaptcha 的 Redis 行为（一次性消费、
 // 答错也删键、忽略大小写、失效提示）。这些用例原在 pkg/captcha/integration_test.go，
-// 随校验逻辑一并迁来——对照 Java，校验属于认证策略而非验证码组件。
+// 随校验逻辑一并迁来——校验属于认证策略而非验证码组件。
 //
 // 注意：失败分支会异步记登录失败日志，其中落库需要 database.Init()。本测试不初始化
 // 数据库，那次落库会 panic 并被 RecordLoginInfo 内的 recover 兜住（只打日志），
@@ -144,7 +144,7 @@ func TestValidateCaptchaExpired(t *testing.T) {
 	}
 }
 
-// TestValidateCaptchaIgnoreCase 字符验证码应忽略大小写，对照 Java equalsIgnoreCase。
+// TestValidateCaptchaIgnoreCase 字符验证码应忽略大小写。
 func TestValidateCaptchaIgnoreCase(t *testing.T) {
 	rdb := setupCaptchaRedis(t)
 	const answer = "aBcD"

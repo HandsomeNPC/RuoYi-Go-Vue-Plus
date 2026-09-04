@@ -18,19 +18,16 @@ import (
 	"ruoyi-go-vue-plus/pkg/snowflake"
 )
 
-// ErrClientNotFound 客户端不存在。
 var ErrClientNotFound = errors.New("service: 客户端不存在")
 
-// ErrClientKeyExists 客户端 key 已被占用。
 var ErrClientKeyExists = errors.New("service: 客户端key已存在")
 
 // ClientService 客户端业务逻辑。
 type ClientService struct{}
 
-// ClientSvcApp 包级实例。
 var ClientSvcApp = new(ClientService)
 
-// QueryByClientID 按客户端标识查客户端（对应 Java queryByClientId + @Cacheable）。
+// QueryByClientID 按客户端标识查客户端。
 // 不存在时返回 ErrClientNotFound，返回填充好 *List 字段的 VO。
 func (s *ClientService) QueryByClientID(ctx context.Context, clientID string) (*vo.SysClientVo, error) {
 	var out vo.SysClientVo
@@ -51,7 +48,7 @@ func (s *ClientService) QueryByClientID(ctx context.Context, clientID string) (*
 	return ptr, nil
 }
 
-// QueryByID 按主键查客户端（对应 Java queryById），
+// QueryByID 按主键查客户端，
 // 不存在时返回 ErrClientNotFound，返回填充好 *List 字段的 VO。
 func (s *ClientService) QueryByID(ctx context.Context, id int64) (*vo.SysClientVo, error) {
 	client, err := repository.NewClientRepository(database.DB()).SelectByID(ctx, id)
@@ -90,7 +87,7 @@ func (s *ClientService) QueryList(ctx context.Context, q bo.SysClientQueryBo,
 	return s.toVoList(clients), nil
 }
 
-// CheckClientKeyUnique 校验 client_key 是否可用（对齐 Java checkClickKeyUnique，同为「唯一即 true」）。
+// CheckClientKeyUnique 校验 client_key 是否可用（唯一即 true）。
 // excludeID > 0 时排除该主键，供修改场景复用。
 func (s *ClientService) CheckClientKeyUnique(ctx context.Context, clientKey string,
 	excludeID int64) (bool, error) {
@@ -103,7 +100,7 @@ func (s *ClientService) CheckClientKeyUnique(ctx context.Context, clientKey stri
 	return !exists, nil
 }
 
-// InsertByBo 新增客户端（对应 Java insertByBo）。
+// InsertByBo 新增客户端。
 // client_key 重复时返回 ErrClientKeyExists；插入成功后回填 b.ID。
 func (s *ClientService) InsertByBo(ctx context.Context, b *bo.SysClientBo) error {
 	if b == nil {
@@ -121,7 +118,7 @@ func (s *ClientService) InsertByBo(ctx context.Context, b *bo.SysClientBo) error
 	add := bo.Conv.ConvertToSysClient(b)
 	add.ID = snowflake.Next() // id 无 auto_increment
 	add.ClientID = newClientID(b.ClientKey, b.ClientSecret)
-	// 授权类型只做拼接，不切分也不归一（对齐 Java CollUtil.join）。
+	// 授权类型只做拼接，不切分也不归一。
 	add.GrantType = strings.Join(b.GrantTypeList, ",")
 	add.AccessPath = resolveRuleValue(b.AccessPath, b.AccessPathList, normalizeAccessPath)
 	add.IPWhitelist = resolveRuleValue(b.IPWhitelist, b.IPWhitelistList, nil)
@@ -134,7 +131,7 @@ func (s *ClientService) InsertByBo(ctx context.Context, b *bo.SysClientBo) error
 	return nil
 }
 
-// UpdateByBo 修改客户端（对应 Java updateByBo + @CacheEvict(key = "#bo.clientId")）。
+// UpdateByBo 修改客户端。
 // client_key 被别的客户端占用时返回 ErrClientKeyExists；主键不存在返回 ErrClientNotFound。
 func (s *ClientService) UpdateByBo(ctx context.Context, b *bo.SysClientBo) error {
 	if b == nil {
@@ -177,14 +174,14 @@ func buildClientUpdateColumns(b *bo.SysClientBo) map[string]any {
 		"access_path":   resolveRuleValue(b.AccessPath, b.AccessPathList, normalizeAccessPath),
 		"ip_whitelist":  resolveRuleValue(b.IPWhitelist, b.IPWhitelistList, nil),
 	}
-	// client_id 用前端回填值而非服务端重算——与 Java updateByBo 对齐：前端改动
+	// client_id 用前端回填值而非服务端重算：前端改动
 	// key/secret 后自行重算 clientId 回传，服务端直接落库；未回传则为空，跳过
-	// 不写（等效 Java updateById 对 null 字段的跳过），避免把既有 client_id 刷成空串。
+	// 不写，避免把既有 client_id 刷成空串。
 	if b.ClientID != "" {
 		columns["client_id"] = b.ClientID
 	}
 	// 状态与两个超时缺省即视为不改：漏传字段不该把线上 status 刷成空串、
-	// 或把超时刷成 0 令已签发的 token 立刻失效。等效于 Java 的 null 跳过。
+	// 或把超时刷成 0 令已签发的 token 立刻失效。
 	if b.Status != "" {
 		columns["status"] = b.Status
 	}
@@ -197,7 +194,7 @@ func buildClientUpdateColumns(b *bo.SysClientBo) map[string]any {
 	return columns
 }
 
-// UpdateClientStatus 改客户端启停状态（对应 Java updateClientStatus + @CacheEvict(key = "#clientId")）。
+// UpdateClientStatus 改客户端启停状态。
 // 客户端不存在时返回 ErrClientNotFound。
 func (s *ClientService) UpdateClientStatus(ctx context.Context, clientID, status string) error {
 	if clientID == "" {
@@ -209,7 +206,7 @@ func (s *ClientService) UpdateClientStatus(ctx context.Context, clientID, status
 	if err != nil {
 		return err
 	}
-	// 状态未变时 MySQL 也报 0 行；此处按 Java toAjax(0) 的口径一并当作失败回报。
+	// 状态未变时 MySQL 也报 0 行；此处一并当作失败回报。
 	if affected == 0 {
 		return ErrClientNotFound
 	}
@@ -217,8 +214,8 @@ func (s *ClientService) UpdateClientStatus(ctx context.Context, clientID, status
 	return nil
 }
 
-// DeleteWithValidByIDs 批量删除客户端（对应 Java deleteWithValidByIds + @CacheEvict(allEntries = true)）。
-// 无一行命中时返回 ErrClientNotFound，对齐 Java deleteByIds() > 0 的失败口径。
+// DeleteWithValidByIDs 批量删除客户端。
+// 无一行命中时返回 ErrClientNotFound。
 func (s *ClientService) DeleteWithValidByIDs(ctx context.Context, ids []int64) error {
 	if len(ids) == 0 {
 		return errors.New("service: 客户端主键不能为空")
@@ -236,17 +233,16 @@ func (s *ClientService) DeleteWithValidByIDs(ctx context.Context, ids []int64) e
 }
 
 // newClientID 生成客户端标识 md5(clientKey + clientSecret)。
-// md5 由 Java SecureUtil.md5 对齐所迫；该值是客户端查找键，不是机密。
+// md5 仅作客户端查找键，不是机密。
 func newClientID(clientKey, clientSecret string) string {
 	sum := md5.Sum([]byte(clientKey + clientSecret))
 	return hex.EncodeToString(sum[:])
 }
 
-// resolveRuleValue 归一化规则串的入库格式（对应 Java resolveRuleValue）：
+// resolveRuleValue 归一化规则串的入库格式：
 // raw 非空时切分 raw，否则用 list（list 不再切分，只归一化），结果以逗号拼接。
 //
-// 与 Java 的一处有意差异：Java 靠 rawValue == null 区分「字段缺省」与「显式传空串」，
-// Go 的 BO 字段是 string、两者都塌成 ""，故以 raw != "" 作代理。
+// Go 的 BO 字段是 string，null 与显式空串都塌成 ""，故以 raw != "" 作代理。
 // access_path/ip_whitelist 均为 default null 且回读时 splitRules("") == nil，
 // 故落库 "" 与 NULL 透过 API 观察不可区分。
 func resolveRuleValue(raw string, list []string, normalize func(string) string) string {
@@ -279,8 +275,7 @@ func (s *ClientService) toVoList(clients []*model.SysClient) []*vo.SysClientVo {
 	return out
 }
 
-// fillRuleFields 回填 VO 的扩展规则字段，便于前端直接展示/编辑
-// （对应 Java SysClientServiceImpl#fillClientRuleFields）。
+// fillRuleFields 回填 VO 的扩展规则字段，便于前端直接展示/编辑。
 func (s *ClientService) fillRuleFields(c *vo.SysClientVo) {
 	if c == nil {
 		return

@@ -1,6 +1,6 @@
 package model
 
-// SysUserRole 用户与角色关联表（sys_user_role），对应 Java org.dromara.system.domain.SysUserRole。
+// SysUserRole 用户与角色关联表（sys_user_role）。
 // 复合主键（user_id, role_id），无自增、无审计字段。
 type SysUserRole struct {
 	UserID int64 `gorm:"column:user_id;primaryKey" json:"userId"`

@@ -16,7 +16,7 @@ func setupManager(t *testing.T) {
 	sagin.SetManager(sagin.NewBuilder().Storage(memory.NewStorage()).Build())
 }
 
-// TestRegisterRoutesPaths auth 的接口都已按 Java AuthController 的方法与路径
+// TestRegisterRoutesPaths auth 的接口都已按预期的方法与路径
 // 注册到真实路由表上（而非另建一份探针，那只能验 gin 的规则、验不到本文件的注册）。
 func TestRegisterRoutesPaths(t *testing.T) {
 	gin.SetMode(gin.TestMode)
@@ -33,8 +33,8 @@ func TestRegisterRoutesPaths(t *testing.T) {
 		"POST /login",
 		"POST /logout",
 		"GET /code",
-		// 三方绑定三件套。路径与 HTTP 方法逐字对齐 Java AuthController：
-		// 前端 RuoYi-Plus-UI 的 api/system/social/auth.ts 按字面量调用，
+		// 三方绑定三件套。路径与 HTTP 方法：
+		// 前端 api/system/social/auth.ts 按字面量调用，
 		// 方法写错(如 unlock 用 POST)前端不会报错，只会静默 404。
 		"GET /binding/:source",
 		"POST /social/callback",

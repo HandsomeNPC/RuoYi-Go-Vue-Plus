@@ -16,15 +16,14 @@ import (
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 )
 
-// DeptApi 部门信息接口（对应 Java SysDeptController）。
+// DeptApi 部门信息接口。
 type DeptApi struct{}
 
-// DeptApiApp 包级实例。
 var DeptApiApp = new(DeptApi)
 
 // List 查询部门列表。
 //
-// 不分页：部门总量有限，前端拿扁平列表后自行 listToTree 整树渲染，与 Java 一致。
+// 不分页：部门总量有限，前端拿扁平列表后自行 listToTree 整树渲染。
 func (a *DeptApi) List(c *gin.Context) {
 	var q bo.SysDeptQueryBo
 	if err := c.ShouldBindQuery(&q); err != nil {
@@ -40,7 +39,7 @@ func (a *DeptApi) List(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(res))
 }
 
-// ExcludeChild 查询部门列表并排除指定节点及其后代（对应 Java excludeChild）。
+// ExcludeChild 查询部门列表并排除指定节点及其后代。
 // 用于编辑部门时的上级部门下拉框——把自己和自己的子树排掉，避免选出环。
 func (a *DeptApi) ExcludeChild(c *gin.Context) {
 	deptID, ok := parseDeptID(c)
@@ -75,17 +74,17 @@ func (a *DeptApi) GetInfo(c *gin.Context) {
 		_ = c.Error(err)
 		return
 	}
-	// 查不到时回 data: null 而非 404，对齐 Java R.ok(selectDeptById(...)) 的形态。
+	// 查不到时回 data: null 而非 404。
 	c.JSON(http.StatusOK, response.Ok(res))
 }
 
-// OptionSelect 获取部门选择框列表（对应 Java optionselect）。
+// OptionSelect 获取部门选择框列表。
 // deptIds 可缺省，缺省即返回全部启用部门。
 func (a *DeptApi) OptionSelect(c *gin.Context) {
 	var ids []int64
-	// 与 Java 的 @RequestParam(required = false) Long[] 同形：数组既可能以
+	// 数组既可能以
 	// deptIds=1&deptIds=2 下发，也可能是 deptIds=1,2，两种都要吃下。
-	// 空值（?deptIds=）按缺省处理，不当成非法入参——Java 侧同样得到空数组而非报错。
+	// 空值（?deptIds=）按缺省处理，不当成非法入参。
 	if raw := strings.Join(c.QueryArray("deptIds"), ","); strings.Trim(raw, ",") != "" {
 		parsed, err := parseIDs(raw)
 		if err != nil {
@@ -164,7 +163,7 @@ func (a *DeptApi) Edit(c *gin.Context) {
 	c.JSON(http.StatusOK, response.OkVoid())
 }
 
-// Remove 删除部门。与 Java 一致只支持单删——部门有父子关系，批量删无法保证删除顺序。
+// Remove 删除部门。只支持单删——部门有父子关系，批量删无法保证删除顺序。
 func (a *DeptApi) Remove(c *gin.Context) {
 	deptID, ok := parseDeptID(c)
 	if !ok {

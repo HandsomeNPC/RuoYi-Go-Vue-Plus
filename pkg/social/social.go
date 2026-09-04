@@ -1,6 +1,6 @@
 // Package social 三方账号授权登录。
 //
-// Java 侧用 JustAuth 提供全部平台实现，Go 生态无对应物：
+// Go 生态无 JustAuth 这样的对应物：
 // golang.org/x/oauth2 只覆盖 OAuth2 协议本身(拼授权地址、code 换令牌)，
 // 而「拿令牌去哪换用户资料、换回什么形状」不在 RFC 6749 范围内——
 // oauth2.Endpoint 只有 AuthURL/TokenURL 两个地址字段，没有 userinfo。
@@ -42,8 +42,7 @@ const (
 )
 
 // ErrUnsupportedSource 平台未接入或配置不全。
-// 由 handler 转成「xx平台账号暂不支持」，对齐 Java AuthController.authBinding
-// 取不到 SocialLoginConfigProperties 时的 R.fail 分支。
+// 由 handler 转成「xx平台账号暂不支持」。
 var ErrUnsupportedSource = errors.New("social: 不支持的第三方登录类型")
 
 // httpTimeout 单次请求超时。不设的话三方网关抽风会把 handler 协程挂死。
@@ -66,7 +65,7 @@ type AuthUser struct {
 }
 
 // AuthToken 令牌信息，字段与 sys_social 的令牌列一一对应。
-// 多数平台只填得起前几项，其余留零(Java 侧 BeanUtil.copyProperties 亦然)。
+// 多数平台只填得起前几项，其余留零。
 type AuthToken struct {
 	AccessToken  string
 	ExpireIn     int
@@ -108,10 +107,10 @@ var providers = map[string]Provider{
 
 // Init 按 config.Get().Social 注册配置齐全的平台。须在 config.Load 之后调用。
 //
-// 配置不全即不注册，等价于 Java AuthChecker.isSupportedAuth——
-// 它把缺 clientId/clientSecret(私有化部署再加 serverUrl)也归进「不支持该平台」。
+// 配置不全即不注册：缺 clientId/clientSecret(私有化部署再加 serverUrl)
+// 也归进「不支持该平台」。
 // 因此前端那个 wechat 按钮天然返回「暂不支持」：它不是合法 source，
-// 原项目 justauth 段里也只有 wechat_open/wechat_mp/wechat_enterprise。
+// 原项目只支持 wechat_open/wechat_mp/wechat_enterprise。
 func Init() {
 	c := config.Get()
 
@@ -150,7 +149,6 @@ func lookup(source string) (Provider, config.SocialLoginConfig, error) {
 
 // GetAuthorizeURL 生成授权跳转地址，并把 state 存进 Redis 待回调校验。
 //
-// 对齐 Java authRequest.authorize(AuthStateUtils.createState())：
 // state 是裸 UUID。前端(RuoYi-Plus-UI 的 SocialCallback/index.vue)把它原样回传，
 // 不做 base64/JSON 解码——RuoYi-Cloud-Plus 那套 Base64(JSON{domain,state})
 // 是配 vben5 前端的，此处不可混用。
@@ -173,7 +171,7 @@ func GetAuthorizeURL(ctx context.Context, source string) (string, error) {
 
 // LoginAuth 执行三方登录回调：校验 state、用 code 换令牌、再换用户资料。
 //
-// 三步同序对照 Java AuthDefaultRequest.login：checkCode → checkState → 换令牌 → 取用户。
+// 三步同序：checkCode → checkState → 换令牌 → 取用户。
 func LoginAuth(ctx context.Context, source, code, state string) (*AuthUser, error) {
 	p, lc, err := lookup(source)
 	if err != nil {
@@ -275,7 +273,7 @@ func bearerHeader(accessToken string) http.Header {
 	return http.Header{"Authorization": []string{"Bearer " + accessToken}}
 }
 
-// firstNonEmpty 返回首个非空串，对应 JustAuth 的 firstNotEmpty。
+// firstNonEmpty 返回首个非空串。
 func firstNonEmpty(vals ...string) string {
 	for _, v := range vals {
 		if v != "" {

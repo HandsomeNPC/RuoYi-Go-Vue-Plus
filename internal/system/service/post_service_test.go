@@ -61,7 +61,7 @@ func TestBuildPostUpdateColumnsExcludesAuditAndKey(t *testing.T) {
 }
 
 // TestBuildUserProfileColumnsOnlyNonEmpty 个人资料字段全可选：空串/0 视为未传，
-// 不该把线上的昵称/邮箱刷成空串（对齐 Java setIfPresent）。
+// 不该把线上的昵称/邮箱刷成空串。
 func TestBuildUserProfileColumnsOnlyNonEmpty(t *testing.T) {
 	got := buildUserProfileColumns(&bo.SysUserProfileBo{
 		NickName:    "",

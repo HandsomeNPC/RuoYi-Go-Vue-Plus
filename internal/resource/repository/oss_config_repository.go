@@ -13,7 +13,6 @@ import (
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
-// ErrOssConfigNotFound 对象存储配置不存在。
 var ErrOssConfigNotFound = errors.New("repository: 对象存储配置不存在")
 
 // OssConfigRepository sys_oss_config 数据访问。
@@ -85,7 +84,7 @@ func (r *OssConfigRepository) SelectPageList(ctx context.Context, q bo.SysOssCon
 	return pkgrepo.SelectPage(db, page, &rows)
 }
 
-// applyOssConfigQuery 应用配置查询条件（对齐 Java buildQueryWrapper）：
+// applyOssConfigQuery 应用配置查询条件：
 // 配置键与状态走 eq，桶名走 like。
 func applyOssConfigQuery(db *gorm.DB, q bo.SysOssConfigQueryBo) *gorm.DB {
 	if q.ConfigKey != "" {
@@ -139,7 +138,7 @@ func (r *OssConfigRepository) UpdateByID(ctx context.Context, ossConfigID int64,
 
 // UpdateStatus 切换默认配置：先把全表刷成非默认，再把目标行置为传入状态。
 //
-// 两条 update 必须同事务（对齐 Java 的 @Transactional）：中途失败会留下
+// 两条 update 必须同事务：中途失败会留下
 // 「一个默认都没有」的状态，此后所有上传都拿不到默认配置而失败。
 // 全表 update 无 WHERE 是有意的——默认配置全局唯一，逐个查出来再改反而更慢。
 func (r *OssConfigRepository) UpdateStatus(ctx context.Context, ossConfigID int64,

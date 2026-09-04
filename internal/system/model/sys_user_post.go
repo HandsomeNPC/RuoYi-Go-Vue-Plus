@@ -1,6 +1,6 @@
 package model
 
-// SysUserPost 用户与岗位关联表（sys_user_post），对应 Java org.dromara.system.domain.SysUserPost。
+// SysUserPost 用户与岗位关联表（sys_user_post）。
 // 复合主键（user_id, post_id），无自增、无审计字段。
 type SysUserPost struct {
 	UserID int64 `gorm:"column:user_id;primaryKey" json:"userId"`

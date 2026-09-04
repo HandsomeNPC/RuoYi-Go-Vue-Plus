@@ -13,7 +13,7 @@ import (
 )
 
 // serverEndpoints 私有化部署平台的端点模板。
-// %s 由配置里的 serverUrl 填充，取值逐字对齐 JustAuth AuthDefaultSource。
+// %s 由配置里的 serverUrl 填充。
 var serverEndpoints = map[string]struct {
 	authorize string
 	token     string
@@ -102,7 +102,7 @@ func (p serverProvider) FetchUser(ctx context.Context, cfg config.SocialLoginCon
 	}
 
 	au := &AuthUser{Source: p.source, Email: u.Email, Token: tokenFrom(tok)}
-	// 取值优先级逐字对齐 JustAuth 的 AuthMaxKeyRequest / AuthTopIamRequest。
+	// 取值优先级按各平台约定。
 	switch p.source {
 	case SourceMaxkey:
 		au.UUID = firstNonEmpty(u.UserID, u.Userid, u.Sub)
@@ -121,8 +121,7 @@ func (p serverProvider) FetchUser(ctx context.Context, cfg config.SocialLoginCon
 // normalizeServerURL 校验 serverUrl 并剥掉尾部斜杠。
 //
 // 必须剥：端点模板形如 "%s/oauth2/auth"，serverUrl 带尾斜杠会拼出 "//oauth2/auth"。
-// 对齐 JustAuth AbstractAuthServerRequest.normalizeServerUrl 与
-// AuthChecker.isValidServerUrl(要求 http/https、有 host、无 query/fragment)。
+// 校验规则：要求 http/https、有 host、无 query/fragment。
 func normalizeServerURL(serverURL string) (string, error) {
 	if serverURL == "" {
 		return "", fmt.Errorf("serverUrl 未配置")

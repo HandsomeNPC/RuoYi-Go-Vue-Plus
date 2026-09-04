@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// SysDictTypeVo 字典类型视图对象，对应 Java SysDictTypeVo。
+// SysDictTypeVo 字典类型视图对象。
 type SysDictTypeVo struct {
 	DictID     int64      `json:"dictId" excel:"字典主键"`
 	DictName   string     `json:"dictName" excel:"字典名称"`

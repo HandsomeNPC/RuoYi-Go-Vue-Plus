@@ -1,8 +1,7 @@
-// Package snowflake 雪花算法 ID 生成器，对照 Java MyBatis-Plus 的 ASSIGN_ID 主键策略。
+// Package snowflake 雪花算法 ID 生成器。
 //
 // RuoYi 各业务表主键都是 `bigint not null` 且不带 auto_increment，插入时必须由应用层
-// 发号。Java 侧由 MyBatis-Plus 自动填充，Go 侧 GORM 没有等价机制，故在 repository
-// 插入前显式调用 Next()。
+// 发号。GORM 没有等价机制，故在 repository 插入前显式调用 Next()。
 //
 // 初始化对照 redis.Init / captcha.Init：snowflake.Init() 无参，自读
 // config.Get().Snowflake；业务侧用包级 snowflake.Next()。

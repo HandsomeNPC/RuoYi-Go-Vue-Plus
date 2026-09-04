@@ -17,10 +17,9 @@ import (
 	"ruoyi-go-vue-plus/pkg/response"
 )
 
-// ClientApi 客户端管理接口（对应 Java SysClientController）。
+// ClientApi 客户端管理接口。
 type ClientApi struct{}
 
-// ClientApiApp 包级实例。
 var ClientApiApp = new(ClientApi)
 
 // List 分页查询客户端列表。
@@ -45,8 +44,8 @@ func (a *ClientApi) List(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Ok(res))
 }
 
-// Export 导出客户端列表为 xlsx 附件（对应 Java SysClientController.export）。
-// 与 Java 一致走 POST：前端 download() 与 commonExport 都以 form 表单 POST 提交筛选条件，
+// Export 导出客户端列表为 xlsx 附件。
+// 走 POST：前端 download() 与 commonExport 都以 form 表单 POST 提交筛选条件，
 // 故用 ShouldBind 同时吃 form body 与 query。
 //
 // 本项目唯一不返回 response.R 的 handler，响应体是二进制附件。
@@ -162,7 +161,7 @@ func (a *ClientApi) ChangeStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, response.OkVoid())
 }
 
-// Remove 批量删除客户端。主键串以逗号分隔，与 Java 的 @PathVariable Long[] ids 同形。
+// Remove 批量删除客户端。主键串以逗号分隔。
 func (a *ClientApi) Remove(c *gin.Context) {
 	ids, err := parseIDs(c.Param("ids"))
 	if err != nil {

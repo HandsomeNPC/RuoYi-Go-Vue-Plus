@@ -2,7 +2,7 @@ package oss
 
 import "strings"
 
-// 移植 Java BucketUrlUtil：按寻址风格拼桶地址。
+// 按寻址风格拼桶地址。
 //
 // 配置里的 endpoint/domain 允许带或不带协议头（库里 seed 的是裸 host:port），
 // 故统一先剥再按 isHttps 重加，避免出现 https://http://host 这种拼法。

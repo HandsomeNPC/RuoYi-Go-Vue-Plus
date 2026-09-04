@@ -1,6 +1,6 @@
 package vo
 
-// LoginVo 登录成功后的令牌信息返回对象（对应 Java org.dromara.web.domain.vo.LoginVo）。
+// LoginVo 登录成功后的令牌信息返回对象。
 type LoginVo struct {
 	// AccessToken 授权令牌。
 	AccessToken string `json:"access_token"`

@@ -85,7 +85,7 @@ func main() {
 
 	auth.RegisterRoutes(r, "/auth")
 	system.RegisterRoutes(r, "/system")
-	// resource：standalone 无网关，进程内自带 /resource 前缀（对齐 Java gateway StripPrefix=1 后的等价效果）。
+	// resource：standalone 无网关，进程内自带 /resource 前缀，等价于网关 StripPrefix=1 后的效果。
 	// 推送端点靠 prefix 拼 push.path（/message），故这里也得传 /resource → /resource/message。
 	resource.RegisterRoutes(r, "/resource")
 	resource.RegisterPushRoutes(r, "/resource")

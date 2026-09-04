@@ -12,7 +12,6 @@ import (
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
-// ErrDictDataNotFound 字典数据不存在。
 var ErrDictDataNotFound = errors.New("repository: 字典数据不存在")
 
 // DictDataRepository sys_dict_data 数据访问。
@@ -57,7 +56,7 @@ func (r *DictDataRepository) SelectByIDs(ctx context.Context, ids []int64) ([]*m
 	return rows, nil
 }
 
-// SelectByType 按字典类型查字典数据（对应 Java SysDictDataMapper#selectDictDataByType）。
+// SelectByType 按字典类型查字典数据。
 // 按排序号升序，前端下拉与标签渲染都依赖这个顺序。
 func (r *DictDataRepository) SelectByType(ctx context.Context, dictType string) ([]*model.SysDictData, error) {
 	if dictType == "" {
@@ -80,7 +79,7 @@ func (r *DictDataRepository) SelectPageList(ctx context.Context, q bo.SysDictDat
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysDictData], error) {
 
 	db := applyDictDataQuery(r.db.WithContext(ctx).Model(&model.SysDictData{}), q)
-	// 仅在调用方未指定排序时兜底（对齐 Java orderByAsc(dictSort, dictCode)）。
+	// 仅在调用方未指定排序时兜底。
 	// 不能无条件追加：GORM 合并排序子句时先注册的排在前，会让后来的排序列失效。
 	if !page.HasOrder() {
 		db = db.Order("dict_sort").Order("dict_code")
@@ -111,7 +110,7 @@ func (r *DictDataRepository) SelectList(ctx context.Context, q bo.SysDictDataQue
 	return rows, nil
 }
 
-// applyDictDataQuery 应用字典数据查询条件（对齐 Java buildQueryWrapper）：
+// applyDictDataQuery 应用字典数据查询条件：
 // 排序号/类型走 =，标签走 LIKE；空值一概不筛。
 // 分页与导出两条路径必须共用它，否则过滤逻辑改一处漏一处。
 func applyDictDataQuery(db *gorm.DB, q bo.SysDictDataQueryBo) *gorm.DB {
@@ -164,8 +163,7 @@ func (r *DictDataRepository) UpdateByID(ctx context.Context, dictCode int64,
 	return res.RowsAffected, nil
 }
 
-// UpdateTypeByType 把某字典类型下所有数据的 dict_type 改成新值，返回受影响行数
-// （对应 Java updateDictType 里对 sys_dict_data 的联动更新）。
+// UpdateTypeByType 把某字典类型下所有数据的 dict_type 改成新值，返回受影响行数。
 func (r *DictDataRepository) UpdateTypeByType(ctx context.Context,
 	oldType, newType string) (int64, error) {
 
@@ -185,7 +183,7 @@ func (r *DictDataRepository) UpdateTypeByType(ctx context.Context,
 }
 
 // DeleteByIDs 按字典编码批量删除，返回受影响行数。
-// sys_dict_data 无 del_flag，这是物理删除（对齐 Java 侧该表未开逻辑删除）。
+// sys_dict_data 无 del_flag，这是物理删除。
 func (r *DictDataRepository) DeleteByIDs(ctx context.Context, ids []int64) (int64, error) {
 	if len(ids) == 0 {
 		return 0, fmt.Errorf("repository: 字典数据主键为空")
@@ -201,7 +199,7 @@ func (r *DictDataRepository) DeleteByIDs(ctx context.Context, ids []int64) (int6
 }
 
 // ExistsByTypeAndValue 判断同一字典类型下的键值是否已被占用，excludeID > 0 时排除该主键
-// （对齐 Java checkDictDataUnique：类型 + 键值两列共同判重，供修改场景排除自身）。
+// （类型 + 键值两列共同判重，供修改场景排除自身）。
 func (r *DictDataRepository) ExistsByTypeAndValue(ctx context.Context, dictType,
 	dictValue string, excludeID int64) (bool, error) {
 
@@ -223,7 +221,7 @@ func (r *DictDataRepository) ExistsByTypeAndValue(ctx context.Context, dictType,
 	return count > 0, nil
 }
 
-// ExistsByType 判断某字典类型下是否已有字典数据（对应 Java deleteDictTypeByIds 的已分配校验）。
+// ExistsByType 判断某字典类型下是否已有字典数据。
 func (r *DictDataRepository) ExistsByType(ctx context.Context, dictType string) (bool, error) {
 	if dictType == "" {
 		return false, nil

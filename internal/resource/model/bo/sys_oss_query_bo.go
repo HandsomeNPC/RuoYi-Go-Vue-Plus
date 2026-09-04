@@ -9,7 +9,7 @@ type SysOssQueryBo struct {
 	FileSuffix   string `form:"fileSuffix"`
 	URL          string `form:"url"`
 	Service      string `form:"service"`
-	// CreateBy 上传人，0 视为不筛（对齐 Java eqIfPresent 的 null 判断）。
+	// CreateBy 上传人，0 视为不筛。
 	CreateBy int64 `form:"createBy"`
 	// BeginCreateTime/EndCreateTime 上传时间区间，闭区间，两端须同时给出才生效。
 	//

@@ -12,11 +12,10 @@ import (
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
-// OperLogSvc 操作日志监控服务，对应 Java SysOperLogServiceImpl 的查询/删除部分
-// （记录落库 part 已在 internal/system/service 的 OperLogSvcApp，这里只做监控侧）。
+// OperLogSvc 操作日志监控服务，只做监控侧的查询/删除
+// （记录落库在 internal/system/service 的 OperLogSvcApp）。
 type OperLogSvc struct{}
 
-// OperLogSvcApp 包级实例。
 var OperLogSvcApp = new(OperLogSvc)
 
 // QueryPageList 按条件分页查操作日志。
@@ -43,7 +42,7 @@ func (s *OperLogSvc) QueryList(ctx context.Context, q bo.SysOperLogQueryBo,
 	return vo.Conv.ConvertToSysOperLogVoList(rows), nil
 }
 
-// DeleteByIDs 批量删除操作日志。未命中的主键静默跳过（对齐 Java deleteOperLogByIds 不做存在性预校验）。
+// DeleteByIDs 批量删除操作日志。未命中的主键静默跳过（不做存在性预校验）。
 func (s *OperLogSvc) DeleteByIDs(ctx context.Context, ids []int64) error {
 	if len(ids) == 0 {
 		return fmt.Errorf("service: 操作日志主键不能为空")
@@ -54,10 +53,10 @@ func (s *OperLogSvc) DeleteByIDs(ctx context.Context, ids []int64) error {
 	return nil
 }
 
-// Clean 清空全部操作日志（对应 Java cleanOperLog）。
+// Clean 清空全部操作日志。
 //
-// 未挂分布式锁（Java 侧 cleanOperLog 带 @Lock4j）：clean 是全表 delete，幂等——
-// 并发两次只是第二次受影响 0 行，结果一致，故省去锁。本项目亦无 Lock4j 等价物。
+// 未挂分布式锁：clean 是全表 delete，幂等——并发两次只是第二次受影响 0 行，
+// 结果一致，故省去锁。
 func (s *OperLogSvc) Clean(ctx context.Context) error {
 	return systemrepo.NewOperLogRepository(database.DB()).Clean(ctx)
 }

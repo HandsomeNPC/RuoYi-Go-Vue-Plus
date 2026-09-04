@@ -8,12 +8,12 @@ import (
 	"github.com/lionsoul2014/ip2region/binding/golang/xdb"
 )
 
-// v4Content 内嵌的 IPv4 xdb 地址库（对应 Java resources/ip2region_v4.xdb）。
+// v4Content 内嵌的 IPv4 xdb 地址库。
 //
 //go:embed data/ip2region_v4.xdb
 var v4Content []byte
 
-// RealAddressByIP 离线查询 IP 的行政区域（对应 Java AddressUtils.getRealAddressByIP）。
+// RealAddressByIP 离线查询 IP 的行政区域。
 // 仅支持 IPv4；内网 IP 返回 "内网IP"；IPv6 或查询失败返回 "未知"。
 // 每次调用新建 Searcher（共享只读 buffer），避免并发写 ioCount 的竞争。
 func RealAddressByIP(ipStr string) string {

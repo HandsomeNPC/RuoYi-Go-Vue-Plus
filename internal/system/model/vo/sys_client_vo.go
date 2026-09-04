@@ -1,6 +1,6 @@
 package vo
 
-// SysClientVo 授权管理视图对象，对应 Java SysClientVo。
+// SysClientVo 授权管理视图对象。
 type SysClientVo struct {
 	ID           int64  `json:"id" excel:"id"`
 	ClientID     string `json:"clientId" excel:"客户端id"`
@@ -19,6 +19,6 @@ type SysClientVo struct {
 	ActiveTimeout   int64    `json:"activeTimeout" excel:"token活跃超时时间"`
 	Timeout         int64    `json:"timeout" excel:"token固定超时时间"`
 	// Status 状态（0正常 1停用）。
-	// 导出时按 excelDict 转成标签；与 Java 一致，客户端秘钥也明文导出。
+	// 导出时按 excelDict 转成标签；客户端秘钥明文导出。
 	Status string `json:"status" excel:"状态" excelDict:"0=正常,1=停用"`
 }

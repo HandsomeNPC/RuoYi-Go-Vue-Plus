@@ -1,9 +1,9 @@
 package model
 
-// SysSocial 社会化关系表（sys_social），对应 Java org.dromara.system.domain.SysSocial。
+// SysSocial 社会化关系表（sys_social）。
 //
-// 字段与 Java 实体对齐；DB 里另有 del_flag 列由框架逻辑删除使用，Java 实体未显式声明，
-// 此处亦不映射，避免与逻辑删除策略耦合（后续引入软删除时再补）。
+// DB 里另有 del_flag 列由框架逻辑删除使用，此处亦不映射，
+// 避免与逻辑删除策略耦合（后续引入软删除时再补）。
 type SysSocial struct {
 	ID               int64  `gorm:"column:id;primaryKey" json:"id"`
 	UserID           int64  `gorm:"column:user_id" json:"userId"`

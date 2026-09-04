@@ -96,7 +96,7 @@ func TestUserSelectPageListSkipsEmptyConditions(t *testing.T) {
 	}
 }
 
-// TestUserSelectPageListSingleTimeEndNoFilter 只给一端时间不筛（对齐 Java betweenParams 的两端同时给才生效）。
+// TestUserSelectPageListSingleTimeEndNoFilter 只给一端时间不筛（两端同时给才生效）。
 func TestUserSelectPageListSingleTimeEndNoFilter(t *testing.T) {
 	got := captureUserSQL(t, bo.SysUserQueryBo{
 		BeginTime: "2024-01-01 00:00:00",

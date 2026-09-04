@@ -17,16 +17,15 @@ import (
 	"ruoyi-go-vue-plus/pkg/response"
 )
 
-// OnlineSvc 在线用户监控服务（对应 Java SysUserOnlineController 的业务部分）。
+// OnlineSvc 在线用户监控服务。
 type OnlineSvc struct{}
 
-// OnlineSvcApp 包级实例。
 var OnlineSvcApp = new(OnlineSvc)
 
 // List 取所有未失效的在线会话，并按 IP/用户名过滤。
 //
 // 直接 Keys 扫描 online_tokens:* 而非走 sa-token 的 SearchTokenValue：在线摘要
-// 是项目自管键，不在 sa-token 的 token-key 命名空间里。与 Java RedisUtils.keys 同法。
+// 是项目自管键，不在 sa-token 的 token-key 命名空间里。
 func (s *OnlineSvc) List(ctx context.Context, ipaddr, userName string) ([]model.SysUserOnline, error) {
 	keys, err := pkgredis.Client().Keys(ctx, constant.OnlineTokenKeyPrefix+"*").Result()
 	if err != nil {
@@ -62,7 +61,7 @@ func (s *OnlineSvc) GetInfo(ctx context.Context, loginID string) ([]model.SysUse
 	return out, nil
 }
 
-// ForceLogout 强制指定 token 下线。踢一个已失效的 token 不报错，对应 Java try/catch NotLoginException ignored。
+// ForceLogout 强制指定 token 下线。踢一个已失效的 token 不报错。
 // 删除 online_tokens 摘要由 pkg/satoken 注册的 EventKickout 监听器兜住，此处不重复。
 func (s *OnlineSvc) ForceLogout(_ context.Context, token string) error {
 	if err := stputil.KickoutByToken(token); err != nil {
@@ -90,9 +89,9 @@ func (s *OnlineSvc) Remove(ctx context.Context, loginID, token string) error {
 
 // fetchOnline 取单个 token 的在线摘要。返回 ok=false 表示该会话不应计入在线列表。
 //
-// 活跃超时已失效/被踢/被顶的 token 跳过，对照 Java getTokenActiveTimeoutByToken(token) < -1：
-// 当前未配 active-timeout，CheckActiveTimeout 恒返回 nil（与 Java 返回 -1 一致），不过滤；
-// 一旦配上即自动生效。缓存键缺失(令牌已过 TTL)或反序列化失败同样跳过。
+// 活跃超时已失效/被踢/被顶的 token 跳过：当前未配 active-timeout，
+// CheckActiveTimeout 恒返回 nil，不过滤；一旦配上即自动生效。
+// 缓存键缺失(令牌已过 TTL)或反序列化失败同样跳过。
 func (s *OnlineSvc) fetchOnline(ctx context.Context, token string) (model.SysUserOnline, bool) {
 	if err := stputil.CheckActiveTimeout(token); err != nil {
 		return model.SysUserOnline{}, false
@@ -112,7 +111,7 @@ func (s *OnlineSvc) fetchOnline(ctx context.Context, token string) (model.SysUse
 	return uo, true
 }
 
-// filterOnline 按 IP/用户名过滤在线列表，与 Java 三分支同义：
+// filterOnline 按 IP/用户名过滤在线列表：
 // 两者都给则同时匹配，只给其一则单匹配，都空则原样返回。
 func filterOnline(in []model.SysUserOnline, ipaddr, userName string) []model.SysUserOnline {
 	if ipaddr == "" && userName == "" {

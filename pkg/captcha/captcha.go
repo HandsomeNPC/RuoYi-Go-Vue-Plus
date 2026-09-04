@@ -1,12 +1,11 @@
-// Package captcha 图形验证码的生成，对照 Java CaptchaController.getCodeImpl。
+// Package captcha 图形验证码的生成。
 //
 // 初始化对照 redis.Init / encrypt.Init：captcha.Init() 无参，自读 config.Get().Captcha，
 // 构造驱动并设包级全局；业务侧用包级 captcha.Generate() / captcha.Enabled()。
 //
 // **只管出题、画图、把答案写进 Redis**。校验(取值→删除→判空→比对)不在本包，而在
 // internal/auth/service 各认证策略的 validateCaptcha 里——校验失败要记登录失败日志，
-// 那要调 internal/system 的 service，而 pkg 不能 import internal/。这与 Java 一致：
-// Java 的校验也写在 PasswordAuthStrategy 而非验证码组件里。答案的 Redis 键由
+// 那要调 internal/system 的 service，而 pkg 不能 import internal/。答案的 Redis 键由
 // constant.CaptchaCodeKey 约定，两侧共用。
 //
 // 底层图形绘制用 base64Captcha 的 Driver（只用 DrawCaptcha 画图），
@@ -32,7 +31,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/redis"
 )
 
-// 图片渲染参数，对照 Java `new WaveAndCircleCaptcha(160, 60)` 与 Arial BOLD 45，
+// 图片渲染参数。
 // 按 config.CaptchaConfig 的设计固定写死，不做配置项。
 const (
 	imgWidth  = 160 // 图片宽度(像素)
@@ -49,11 +48,11 @@ const (
 // charSource 字符验证码取值集合，去掉了易混淆的 0/O/1/l/I。
 const charSource = "234567890abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ"
 
-// expiration 验证码有效期，对照 Java Duration.ofMinutes(Constants.CAPTCHA_EXPIRATION)。
+// expiration 验证码有效期。
 // 常量本身是裸 int(分钟)，此处补上单位。
 const expiration = time.Duration(constant.ConstantCaptchaExpiration) * time.Minute
 
-// Vo 图形验证码响应对象，对照 Java CaptchaController.CaptchaVo。
+// Vo 图形验证码响应对象。
 // 字段名与前端约定一致：login.vue 读 data.captchaEnabled / data.uuid / data.img。
 type Vo struct {
 	CaptchaEnabled bool   `json:"captchaEnabled"`
@@ -147,16 +146,10 @@ func get() *Captcha {
 }
 
 // Generate 生成验证码：出题、画图、把**答案**写入 Redis，返回图与 uuid。
-// 对照 Java CaptchaController.getCodeImpl。
-//
-// TODO: 对照 Java @RateLimiter(time=60, count=10, limitType=IP) 补 IP 限流；
-// Java 刻意把 getCode/getCodeImpl 拆两层，使开关关闭时不触发限流，
-// 此处 !enabled 提前返回已等效。
 func Generate(ctx context.Context) (*Vo, error) { return get().Generate(ctx) }
 
 // Generate 见包级 Generate。
 func (c *Captcha) Generate(ctx context.Context) (*Vo, error) {
-	// 未启用：只回开关位，不出题不画图，对照 Java new CaptchaVo(false, null, null)。
 	if !c.enabled {
 		return &Vo{CaptchaEnabled: false}, nil
 	}
@@ -167,7 +160,6 @@ func (c *Captcha) Generate(ctx context.Context) (*Vo, error) {
 		return nil, fmt.Errorf("captcha: 绘制失败: %w", err)
 	}
 
-	// 对照 Java IdUtil.simpleUUID()：无连字符。
 	id := strings.ReplaceAll(uuid.NewString(), "-", "")
 	// 存答案而非题面：算术题图上是 "3+5=?"，Redis 里是 "8"。
 	if err := c.client().Set(ctx, key(id), answer, expiration).Err(); err != nil {
@@ -177,14 +169,11 @@ func (c *Captcha) Generate(ctx context.Context) (*Vo, error) {
 	return &Vo{CaptchaEnabled: true, UUID: id, Img: stripB64Prefix(item.EncodeB64string())}, nil
 }
 
-// Enabled 返回验证码校验是否启用，对照 Java CaptchaProperties.getEnable()。
-// 校验逻辑在调用方（internal/auth 各认证策略的 validateCaptcha），本包只出题画图，
-// 故开关也交由调用方判断，对照 Java `if (captchaEnabled) { validateCaptcha(...) }`。
+// Enabled 返回验证码校验是否启用。
 func Enabled() bool { return get().enabled }
 
 // next 出题，返回画在图上的题面与用于比对的答案。
-// 字符验证码题面即答案；算术验证码题面是表达式、答案是计算结果，
-// 对照 Java 用 SpEL 求值后只缓存结果。
+// 字符验证码题面即答案；算术验证码题面是表达式、答案是计算结果。
 func (c *Captcha) next() (question, answer string) {
 	if c.typ == config.CaptchaTypeMath {
 		return nextMath(c.numberLength)
@@ -195,7 +184,7 @@ func (c *Captcha) next() (question, answer string) {
 }
 
 // nextMath 生成算术题，操作数为 numberLength 位。
-// 对照 Java MathGenerator(numberLength, false)：只用 + - ×，且保证结果非负。
+// 只用 + - ×，且保证结果非负。
 func nextMath(numberLength int) (question, answer string) {
 	// numberLength 位的取值上界：1 位 → 10，2 位 → 100。
 	bound := 1
@@ -224,7 +213,7 @@ func key(id string) string {
 }
 
 // stripB64Prefix 去掉 base64Captcha 自带的 "data:image/png;base64," 前缀，
-// 只返回裸 base64——对照 Java hutool getImageBase64()，前缀由前端自行拼接。
+// 只返回裸 base64，前缀由前端自行拼接。
 func stripB64Prefix(s string) string {
 	if _, after, ok := strings.Cut(s, ";base64,"); ok {
 		return after

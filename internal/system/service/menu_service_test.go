@@ -224,7 +224,7 @@ func TestRouteConfigUniqueSameLevelPathConflict(t *testing.T) {
 // /system/user 与 /monitor/user 在前端是两条不同路由。
 func TestRouteConfigUniqueDifferentLevelPathAllowed(t *testing.T) {
 	// 库中是二级菜单 path=user（parent=1），新增的挂在 parent=2 下。
-	// 两者 routeName 都是 "User" 且 menuType 同为 C——这正是 Java 第三条规则要拦的，
+	// 两者 routeName 都是 "User" 且 menuType 同为 C——这会被第三条规则拦下，
 	// 故此处用不同 menuType 隔开，单验"路径跨级不冲突"。
 	candidates := []*model.SysMenu{
 		{MenuID: 100, ParentID: 1, Path: "user", MenuType: "M", MenuName: "用户目录"},
@@ -239,7 +239,7 @@ func TestRouteConfigUniqueDifferentLevelPathAllowed(t *testing.T) {
 // TestRouteConfigUniqueRootPathConflict 根目录下的路径是一级路由，必须全局唯一。
 //
 // 注意它实际命中的是第一条规则（同级 path 冲突）——parentID 同为 0 时两条规则重合，
-// Java 侧的根目录分支同样不可达。这里仍单列一例，钉住"根目录同 path 被拒"这个结果，
+// 根目录分支同样不可达。这里仍单列一例，钉住"根目录同 path 被拒"这个结果，
 // 与它走哪条分支无关。
 func TestRouteConfigUniqueRootPathConflict(t *testing.T) {
 	candidates := []*model.SysMenu{
@@ -266,8 +266,8 @@ func TestRouteConfigUniqueRouteNameConflict(t *testing.T) {
 	}
 }
 
-// TestRouteConfigUniqueIsCaseInsensitive 路径比对大小写不敏感（对齐 Java
-// equalsAnyIgnoreCase）：vue-router 的 path 在多数部署下不区分大小写，
+// TestRouteConfigUniqueIsCaseInsensitive 路径比对大小写不敏感：
+// vue-router 的 path 在多数部署下不区分大小写，
 // 放过 User/user 会造出两条实际同址的路由。
 func TestRouteConfigUniqueIsCaseInsensitive(t *testing.T) {
 	candidates := []*model.SysMenu{

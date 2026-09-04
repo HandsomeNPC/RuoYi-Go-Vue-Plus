@@ -1,6 +1,6 @@
 package model
 
-// SysDictData 字典数据表（sys_dict_data），对应 Java org.dromara.system.domain.SysDictData。
+// SysDictData 字典数据表（sys_dict_data）。
 type SysDictData struct {
 	DictCode  int64  `gorm:"column:dict_code;primaryKey" json:"dictCode"`
 	DictSort  int    `gorm:"column:dict_sort" json:"dictSort"`

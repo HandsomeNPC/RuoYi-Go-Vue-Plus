@@ -1,11 +1,11 @@
-// Package repeatsubmit 提供防重复提交注解（装饰器），对照 Java @RepeatSubmit + RepeatSubmitAspect。
+// Package repeatsubmit 提供防重复提交注解（装饰器）。
 //
 // 判定逻辑（参考美团 GTIS 防重）：
 //   - 进 handler 前用 SETNX 抢锁，抢不到即判为重复提交并拦截；
 //   - handler 成功（响应 code=200）则保留键，interval 内的重复请求都被挡住；
 //   - handler 失败或 panic 则删键，允许立刻重试。
 //
-// 与 Java 的有意差异：指纹改用「请求体 + query 串」（Go 无 AOP 取不到方法入参）、
+// 取舍：指纹改用「请求体 + query 串」（无 AOP 取不到方法入参）、
 // 用 sha256 而非 md5；interval < 1s 在注册期 panic 而非运行期抛异常。
 package repeatsubmit
 
@@ -34,7 +34,7 @@ import (
 )
 
 const (
-	defaultInterval = 5 * time.Second // 默认防重间隔（Java default 5000ms）
+	defaultInterval = 5 * time.Second // 默认防重间隔
 	minInterval     = time.Second     // 最小间隔，更小则在注册期 panic
 	defaultMessage  = "不允许重复提交，请稍候再试" // 默认提示文案
 )
@@ -168,7 +168,7 @@ func (s *Submitter) run(c *gin.Context, o *options) {
 }
 
 // succeeded 判定本次请求是否成功：c.Error 非空、HTTP 非 2xx、响应 code 非 200 都算失败。
-// 响应体不是 R 结构（文件流、空响应等）时按成功处理（保留键），对照 Java instanceof 不匹配的语义。
+// 响应体不是 R 结构（文件流、空响应等）时按成功处理（保留键）。
 func (s *Submitter) succeeded(c *gin.Context, buf *bodyWriter) bool {
 	if len(c.Errors) > 0 {
 		return false
@@ -223,7 +223,7 @@ func (s *Submitter) token(c *gin.Context) string {
 	return strings.TrimSpace(c.GetHeader(s.tokenName))
 }
 
-// requestParams 取参与指纹的入参（请求体 + query 串），对照 Java 取方法入参数组。
+// requestParams 取参与指纹的入参（请求体 + query 串）。
 // 二者都无时指纹仅由 token 与路径决定。
 func requestParams(c *gin.Context) []byte {
 	query := c.Request.URL.RawQuery

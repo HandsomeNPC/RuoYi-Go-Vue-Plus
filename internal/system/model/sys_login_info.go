@@ -2,7 +2,7 @@ package model
 
 import "time"
 
-// SysLoginInfo 系统访问记录表（sys_login_info），对应 Java org.dromara.system.domain.SysLoginInfo。
+// SysLoginInfo 系统访问记录表（sys_login_info）。
 // 不继承 BaseEntity，无审计字段。
 type SysLoginInfo struct {
 	InfoID     int64  `gorm:"column:info_id;primaryKey" json:"infoId"`

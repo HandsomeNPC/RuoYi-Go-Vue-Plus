@@ -1,6 +1,6 @@
 package vo
 
-// SysOssConfigVo 对象存储配置视图对象，对应 Java SysOssConfigVo。
+// SysOssConfigVo 对象存储配置视图对象。
 type SysOssConfigVo struct {
 	OssConfigID int64  `json:"ossConfigId"`
 	ConfigKey   string `json:"configKey"`

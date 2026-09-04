@@ -1,10 +1,10 @@
-// Package jsonx 全局 JSON 编解码器，复刻 Java 侧 JacksonConfig 注册的 BigNumberSerializer。
+// Package jsonx 全局 JSON 编解码器。
 //
 // 存在的唯一理由是雪花主键：id 形如 1762000000000000001，超过 JS 的
 // Number.MAX_SAFE_INTEGER(9007199254740991)，直接以数字下发会被前端的 IEEE754
 // 抹掉末几位，拿它回传编辑/删除就命中不到原记录。
 //
-// 与 Java 同为**按值判断**而非按字段：同一个 JSON key 的值域可以横跨安全线两侧
+// 与原实现同为**按值判断**而非按字段：同一个 JSON key 的值域可以横跨安全线两侧
 // （sys_menu/sys_dept 的 parentId 根节点是 0、子节点是 19 位雪花值），前端
 // dept/index.vue 的 `form.parentId !== 0` 是严格比较，恒转字符串会破坏它。
 // 故不能用「给 ID 字段挂自定义类型」的做法，只能在序列化层按实际值决定形态。
@@ -19,7 +19,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
-// JS 安全整数边界，取值对齐 Java BigNumberSerializer。
+// JS 安全整数边界。
 const (
 	maxSafeInteger = 9007199254740991
 	minSafeInteger = -9007199254740991
@@ -70,8 +70,8 @@ func (bigInt64Codec) IsEmpty(ptr unsafe.Pointer) bool {
 
 // Decode 数字与字符串都接受。
 //
-// 这一侧比 Java 宽松（Java 的 Long 入参收不了字符串）且**必不可少**：出参既然把
-// 大 id 变成了字符串，前端把详情响应原样回传时送来的就是字符串，若只认数字会直接 400。
+// 入参这一侧更宽松且必不可少：出参既然把大 id 变成了字符串，前端把详情响应
+// 原样回传时送来的就是字符串，若只认数字会直接 400。
 func (bigInt64Codec) Decode(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
 	if iter.WhatIsNext() == jsoniter.StringValue {
 		s := iter.ReadString()

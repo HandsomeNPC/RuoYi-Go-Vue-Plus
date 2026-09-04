@@ -126,7 +126,7 @@ func parseDict(expr string) ([]dictPair, error) {
 }
 
 // label 把原始值换成字典标签。
-// 未命中时原样返回而非留空（与 Java convertByExp 的有意差异）：
+// 未命中时原样返回而非留空：
 // 导出是给人做审计的，留空会让"字典缺了一项"和"这行本来就没值"看起来一样。
 func (c column) label(raw string) string {
 	if raw == "" || len(c.dict) == 0 {

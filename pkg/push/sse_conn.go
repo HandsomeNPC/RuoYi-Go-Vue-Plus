@@ -52,7 +52,7 @@ func (c *sseConn) send(payload []byte) bool {
 	}
 }
 
-// ping 入队一条注释行心跳（对齐 Java SseEmitter.event().comment("heartbeat")）。
+// ping 入队一条注释行心跳。
 //
 // 注释行以 ":" 开头，EventSource 规范要求客户端静默忽略，故它只用于保活、
 // 不会触发前端 onmessage。

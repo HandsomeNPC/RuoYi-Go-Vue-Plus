@@ -1,6 +1,6 @@
 package bo
 
-// SysSocialBo 社会化关系业务对象（入参），对应 Java SysSocialBo。
+// SysSocialBo 社会化关系业务对象（入参）。
 type SysSocialBo struct {
 	ID               int64  `json:"id"`
 	AuthID           string `json:"authId" binding:"required"`

@@ -1,6 +1,6 @@
 package dto
 
-// RoleDTO 角色简要信息对象，对应 Java org.dromara.system.api.domain.RoleDTO。
+// RoleDTO 角色简要信息对象。
 type RoleDTO struct {
 	// RoleID 角色ID。
 	RoleID int64 `json:"roleId"`

@@ -20,22 +20,18 @@ import (
 	"ruoyi-go-vue-plus/pkg/snowflake"
 )
 
-// ErrRoleNotFound 角色不存在。
 var ErrRoleNotFound = errors.New("service: 角色不存在")
 
-// ErrRoleNameExists 角色名称已被占用。
 var ErrRoleNameExists = errors.New("service: 角色名称已存在")
 
-// ErrRoleKeyExists 角色权限字符已被占用。
 var ErrRoleKeyExists = errors.New("service: 角色权限已存在")
 
 // RoleService 角色业务逻辑。
 type RoleService struct{}
 
-// RoleSvcApp 包级实例。
 var RoleSvcApp = new(RoleService)
 
-// SelectRolesByUserId 按用户ID查角色列表（对应 Java SysRoleServiceImpl#selectRolesByUserId）。
+// SelectRolesByUserId 按用户ID查角色列表。
 func (s *RoleService) SelectRolesByUserId(ctx context.Context, userID int64) ([]*vo.SysRoleVo, error) {
 	roles, err := repository.NewRoleRepository(database.DB()).SelectRolesByUserId(ctx, userID)
 	if err != nil {
@@ -44,7 +40,7 @@ func (s *RoleService) SelectRolesByUserId(ctx context.Context, userID int64) ([]
 	return vo.Conv.ConvertToSysRoleVoList(roles), nil
 }
 
-// SelectRolePermissionByUserId 按用户ID查角色权限标识（对应 Java SysRoleServiceImpl#selectRolePermissionByUserId）。
+// SelectRolePermissionByUserId 按用户ID查角色权限标识。
 // 复用 selectRolesByUserId 结果，再对每个 roleKey 按逗号切分去重。
 func (s *RoleService) SelectRolePermissionByUserId(ctx context.Context, userID int64) ([]string, error) {
 	roles, err := repository.NewRoleRepository(database.DB()).SelectRolesByUserId(ctx, userID)
@@ -55,7 +51,6 @@ func (s *RoleService) SelectRolePermissionByUserId(ctx context.Context, userID i
 }
 
 // splitRoleKeys 拆分角色 roleKey（可能形如 "a,b"）并去重，丢弃空白段。
-// 对应 Java StringUtils.splitList(perm.getRoleKey().trim())。
 func splitRoleKeys(roles []*model.SysRole) []string {
 	set := make(map[string]struct{})
 	out := make([]string, 0, len(roles))
@@ -82,7 +77,7 @@ func splitRoleKeys(roles []*model.SysRole) []string {
 	return out
 }
 
-// QueryPageList 按条件分页查角色（对应 Java selectPageRoleList）。
+// QueryPageList 按条件分页查角色。
 func (s *RoleService) QueryPageList(ctx context.Context, q bo.SysRoleQueryBo,
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysRoleVo], error) {
 
@@ -106,7 +101,7 @@ func (s *RoleService) QueryList(ctx context.Context, q bo.SysRoleQueryBo,
 	return vo.Conv.ConvertToSysRoleVoList(rows), nil
 }
 
-// QueryByID 按主键查角色（对应 Java selectRoleById），不存在时返回 ErrRoleNotFound。
+// QueryByID 按主键查角色，不存在时返回 ErrRoleNotFound。
 func (s *RoleService) QueryByID(ctx context.Context, roleID int64) (*vo.SysRoleVo, error) {
 	role, err := repository.NewRoleRepository(database.DB()).SelectByID(ctx, roleID)
 	if err != nil {
@@ -118,7 +113,7 @@ func (s *RoleService) QueryByID(ctx context.Context, roleID int64) (*vo.SysRoleV
 	return vo.Conv.ConvertToSysRoleVo(role), nil
 }
 
-// SelectByIDs 取角色选择框列表（对应 Java selectRoleByIds）。
+// SelectByIDs 取角色选择框列表。
 // ids 为空返回全部启用角色，非空按主键过滤且只取启用状态。
 func (s *RoleService) SelectByIDs(ctx context.Context,
 	ids []int64) ([]*vo.SysRoleVo, error) {
@@ -130,8 +125,7 @@ func (s *RoleService) SelectByIDs(ctx context.Context,
 	return vo.Conv.ConvertToSysRoleVoList(rows), nil
 }
 
-// SelectDeptIDsByRoleID 取角色的部门（数据权限）勾选集合（对应 Java
-// selectDeptListByRoleId）。用于角色部门树回填 checkedKeys。
+// SelectDeptIDsByRoleID 取角色的部门（数据权限）勾选集合，用于角色部门树回填 checkedKeys。
 // 严格模式（DeptCheckStrictly）只回叶子勾选项——父级勾选时子项隐含，回传父级
 // 会让前端树把整棵子树渲染成不可逆的全选。
 func (s *RoleService) SelectDeptIDsByRoleID(ctx context.Context,
@@ -148,7 +142,7 @@ func (s *RoleService) SelectDeptIDsByRoleID(ctx context.Context,
 		SelectDeptIDsByRoleID(ctx, roleID, role.DeptCheckStrictly)
 }
 
-// CheckRoleNameUnique 校验角色名称是否可用（对齐 Java 的「唯一即 true」）。
+// CheckRoleNameUnique 校验角色名称是否可用（唯一即 true）。
 // excludeID > 0 时排除该主键，供修改场景复用。
 func (s *RoleService) CheckRoleNameUnique(ctx context.Context, roleName string,
 	excludeID int64) (bool, error) {
@@ -161,7 +155,7 @@ func (s *RoleService) CheckRoleNameUnique(ctx context.Context, roleName string,
 	return !exists, nil
 }
 
-// CheckRoleKeyUnique 校验角色权限字符是否可用（对齐 Java 的「唯一即 true」）。
+// CheckRoleKeyUnique 校验角色权限字符是否可用（唯一即 true）。
 // excludeID > 0 时排除该主键，供修改场景复用。
 func (s *RoleService) CheckRoleKeyUnique(ctx context.Context, roleKey string,
 	excludeID int64) (bool, error) {
@@ -174,7 +168,7 @@ func (s *RoleService) CheckRoleKeyUnique(ctx context.Context, roleKey string,
 	return !exists, nil
 }
 
-// CheckRoleAllowed 校验角色是否允许操作（对应 Java checkRoleAllowed）。
+// CheckRoleAllowed 校验角色是否允许操作。
 // 超管角色不可增删改，超管 roleKey 不可被借用或替换。失败时返回带文案的 ServiceError。
 func (s *RoleService) CheckRoleAllowed(ctx context.Context, b *bo.SysRoleBo) error {
 	if b == nil {
@@ -210,12 +204,11 @@ func (s *RoleService) CheckRoleAllowed(ctx context.Context, b *bo.SysRoleBo) err
 	return nil
 }
 
-// CheckRoleDataScope 校验当前用户对给定角色是否有数据权限（对应 Java checkRoleDataScope）。
+// CheckRoleDataScope 校验当前用户对给定角色是否有数据权限。
 //
 // 超管短路放行；非超管按主键统计可见角色数，与传入数量不等即越权。
-// Java 的 selectRoleCount 带 @DataPermission 注入隔离条件，Go 侧数据权限尚未落地，
-// count 只按主键计——传入的 roleIds 都是前端可见的，不等只能说明主键不存在。
-// 等数据权限落地后给 count 挂上过滤即可，调用点不必改。
+// 数据权限尚未落地，count 只按主键计——传入的 roleIds 都是前端可见的，
+// 不等只能说明主键不存在。等数据权限落地后给 count 挂上过滤即可，调用点不必改。
 func (s *RoleService) CheckRoleDataScope(ctx context.Context, userID, roleID int64) error {
 	if roleID <= 0 {
 		return nil
@@ -234,9 +227,9 @@ func (s *RoleService) CheckRoleDataScope(ctx context.Context, userID, roleID int
 	return nil
 }
 
-// InsertRole 新增角色（对应 Java insertRole）。名称/权限重复或操作超管时返回对应错误。
+// InsertRole 新增角色。名称/权限重复或操作超管时返回对应错误。
 // 插入主角色后回写 b.RoleID，再批量写菜单授权；角色-部门（数据权限）不在新增路径写，
-// 由 UpdateRolePermission 单独承接——与 Java 一致。
+// 由 UpdateRolePermission 单独承接。
 func (s *RoleService) InsertRole(ctx context.Context, b *bo.SysRoleBo) error {
 	if b == nil {
 		return errors.New("service: 角色入参为空")
@@ -266,9 +259,9 @@ func (s *RoleService) InsertRole(ctx context.Context, b *bo.SysRoleBo) error {
 	return s.insertRoleMenu(ctx, repo, b.RoleID, b.MenuIDs)
 }
 
-// UpdateRoleBaseInfo 修改角色基础信息（对应 Java updateRoleBaseInfo）。
+// UpdateRoleBaseInfo 修改角色基础信息。
 // 只更新 name/key/sort/status/remark，不触碰 data_scope/树联动（权限域，由
-// UpdateRolePermission 承接），与 Java 注释「仅更新基础字段，避免影响权限分配」一致。
+// UpdateRolePermission 承接）。
 // 停用且已被用户引用时拒绝。返回受影响行数与 error。
 func (s *RoleService) UpdateRoleBaseInfo(ctx context.Context,
 	b *bo.SysRoleBo) (int64, error) {
@@ -293,7 +286,7 @@ func (s *RoleService) UpdateRoleBaseInfo(ctx context.Context,
 		}
 		return 0, err
 	}
-	// 名称/权限重复校验，排除自身——对齐 Java edit 在 controller 里做的两道唯一性校验。
+	// 名称/权限重复校验，排除自身。
 	if unique, err := s.CheckRoleNameUnique(ctx, b.RoleName, b.RoleID); err != nil {
 		return 0, err
 	} else if !unique {
@@ -319,17 +312,16 @@ func (s *RoleService) UpdateRoleBaseInfo(ctx context.Context,
 	if err != nil {
 		return 0, err
 	}
-	// 仅在确实改了行时踢在线用户：对齐 Java 在 updateRoleBaseInfo > 0 分支里
-	// 才 publish OnlineUserCleanEvent。no-op 重复保存不该把人踢下线。
+	// 仅在确实改了行时踢在线用户：no-op 重复保存不该把人踢下线。
 	if rows > 0 {
 		s.cleanOnlineUserByRole(ctx, b.RoleID)
 	}
 	return rows, nil
 }
 
-// UpdateRolePermission 修改角色权限（菜单 + 数据权限，对应 Java updateRolePermission）。
+// UpdateRolePermission 修改角色权限（菜单 + 数据权限）。
 // 只更新 data_scope/树联动三列，先清旧菜单与部门关联再按当前勾选重建。
-// 返回受影响行数与 error（含 @CacheEvict(SYS_ROLE_CUSTOM key=roleId) 的等价清理）。
+// 返回受影响行数与 error。
 func (s *RoleService) UpdateRolePermission(ctx context.Context,
 	b *bo.SysRoleBo) (int64, error) {
 
@@ -360,7 +352,7 @@ func (s *RoleService) UpdateRolePermission(ctx context.Context,
 		return 0, err
 	}
 	// 先清理旧菜单/部门关联再重建：清旧失败而重建成功会留下"旧授权未清掉"的脏状态，
-	// 但此处无事务包裹，按 Java 的执行序照搬——重建失败则旧授权已成空，重试即可收敛。
+	// 但此处无事务包裹，按原执行序——重建失败则旧授权已成空，重试即可收敛。
 	if _, err := repo.DeleteRoleMenuByRoleIDs(ctx, []int64{b.RoleID}); err != nil {
 		return 0, err
 	}
@@ -373,11 +365,10 @@ func (s *RoleService) UpdateRolePermission(ctx context.Context,
 	if err := s.insertRoleDept(ctx, repo, b.RoleID, b.DeptIDs); err != nil {
 		return 0, err
 	}
-	// 数据权限缓存按角色失效：对应 Java @CacheEvict(SYS_ROLE_CUSTOM key=roleId)。
+	// 数据权限缓存按角色失效。
 	_ = cache.Evict(ctx, constant.CacheSysRoleCustom, strconv.FormatInt(b.RoleID, 10))
 	// 权限变更后让受影响在线用户下次请求即失效。
 	s.cleanOnlineUserByRole(ctx, b.RoleID)
-	// 返回值对齐 Java updateRolePermission 末尾 return insertRoleDept(bo)：
 	// 取部门授权条数，空集合视作 1（成功），使 controller 的 toAjax(>0) 恒为成功口径。
 	rows := int64(len(b.DeptIDs))
 	if rows == 0 {
@@ -386,7 +377,7 @@ func (s *RoleService) UpdateRolePermission(ctx context.Context,
 	return rows, nil
 }
 
-// UpdateRoleStatus 修改角色状态（对应 Java updateRoleStatus）。
+// UpdateRoleStatus 修改角色状态。
 // 停用且已被用户引用时拒绝。返回受影响行数与 error。
 func (s *RoleService) UpdateRoleStatus(ctx context.Context,
 	roleID int64, status string) (int64, error) {
@@ -409,15 +400,14 @@ func (s *RoleService) UpdateRoleStatus(ctx context.Context,
 	if err != nil {
 		return 0, err
 	}
-	// 仅在确实改了行时踢在线用户：对齐 Java 在 updateRoleStatus > 0 分支里
-	// 才 publish OnlineUserCleanEvent。重复提交同一状态不该把人踢下线。
+	// 仅在确实改了行时踢在线用户：重复提交同一状态不该把人踢下线。
 	if rows > 0 {
 		s.cleanOnlineUserByRole(ctx, roleID)
 	}
 	return rows, nil
 }
 
-// DeleteRoleByIDs 批量删除角色（对应 Java deleteRoleByIds）。
+// DeleteRoleByIDs 批量删除角色。
 // 先校验数据权限，再逐个校验「不可操作超管」「已分配用户不可删」，再清关联并删除。
 // 任一校验失败整批拒绝，不做部分删除——此处无事务包裹，边删边校验会留下删一半的状态。
 func (s *RoleService) DeleteRoleByIDs(ctx context.Context, userID int64,
@@ -459,12 +449,12 @@ func (s *RoleService) DeleteRoleByIDs(ctx context.Context, userID int64,
 	if _, err := repo.DeleteByIDs(ctx, roleIDs); err != nil {
 		return err
 	}
-	// 批量删除整组清空数据权限缓存：对应 Java @CacheEvict(SYS_ROLE_CUSTOM allEntries=true)。
+	// 批量删除整组清空数据权限缓存。
 	_ = cache.EvictGroup(ctx, constant.CacheSysRoleCustom)
 	return nil
 }
 
-// DeleteAuthUser 取消单个用户的角色授权（对应 Java deleteAuthUser）。
+// DeleteAuthUser 取消单个用户的角色授权。
 // 不允许取消当前登录用户自己的角色——否则会把自己踢出权限链导致无法操作。
 // 取消成功后踢该用户下线，让其下次登录重取角色。返回受影响行数与 error。
 func (s *RoleService) DeleteAuthUser(ctx context.Context, currentUserID,
@@ -484,7 +474,7 @@ func (s *RoleService) DeleteAuthUser(ctx context.Context, currentUserID,
 	return rows, nil
 }
 
-// DeleteAuthUsers 批量取消角色下的用户授权（对应 Java deleteAuthUsers）。
+// DeleteAuthUsers 批量取消角色下的用户授权。
 // 当前登录用户不得在取消集合内。返回受影响行数与 error。
 func (s *RoleService) DeleteAuthUsers(ctx context.Context, currentUserID,
 	roleID int64, userIDs []int64) (int64, error) {
@@ -503,12 +493,12 @@ func (s *RoleService) DeleteAuthUsers(ctx context.Context, currentUserID,
 	return rows, nil
 }
 
-// InsertAuthUsers 批量给角色追加用户授权（对应 Java insertAuthUsers）。
+// InsertAuthUsers 批量给角色追加用户授权。
 // 当前登录用户不得在授权集合内——避免把自己加进角色后权限溢出。返回受影响行数与 error。
 func (s *RoleService) InsertAuthUsers(ctx context.Context, roleID int64,
 	userIDs []int64) (int64, error) {
 
-	// rows 对齐 Java insertAuthUsers 的计数口径：空集合视作 1（成功），非空取入参数。
+	// 计数口径：空集合视作 1（成功），非空取入参数。
 	rows := int64(len(userIDs))
 	if rows == 0 {
 		rows = 1
@@ -527,7 +517,7 @@ func (s *RoleService) InsertAuthUsers(ctx context.Context, roleID int64,
 	return rows, nil
 }
 
-// insertRoleMenu 批量写角色-菜单关联（对应 Java insertRoleMenu）。
+// insertRoleMenu 批量写角色-菜单关联。
 // 空 list 直接返回：不勾任何菜单是合法用法。
 func (s *RoleService) insertRoleMenu(ctx context.Context,
 	repo *repository.RoleRepository, roleID int64, menuIDs []int64) error {
@@ -542,7 +532,7 @@ func (s *RoleService) insertRoleMenu(ctx context.Context,
 	return repo.InsertRoleMenuBatch(ctx, list)
 }
 
-// insertRoleDept 批量写角色-部门（数据权限）关联（对应 Java insertRoleDept）。
+// insertRoleDept 批量写角色-部门（数据权限）关联。
 // 空 list 直接返回：dataScope 非「自定义」的角色本就没有部门勾选。
 func (s *RoleService) insertRoleDept(ctx context.Context,
 	repo *repository.RoleRepository, roleID int64, deptIDs []int64) error {
@@ -557,7 +547,7 @@ func (s *RoleService) insertRoleDept(ctx context.Context,
 	return repo.InsertRoleDeptBatch(ctx, list)
 }
 
-// checkRoleDataScopeAll 批量数据权限校验（对应 Java checkRoleDataScope(Collection)）。
+// checkRoleDataScopeAll 批量数据权限校验。
 // 超管短路；非超管按主键统计可见数，与传入数量不等即越权。
 func (s *RoleService) checkRoleDataScopeAll(ctx context.Context, userID int64,
 	roleIDs []int64) error {
@@ -576,8 +566,7 @@ func (s *RoleService) checkRoleDataScopeAll(ctx context.Context, userID int64,
 	return nil
 }
 
-// cleanOnlineUserByRole 踢掉拥有该角色的在线用户（对应 Java cleanOnlineUserByRole，
-// 由 OnlineUserCleanEvent.byRole 触发）。先取角色下的用户集合再逐个注销会话。
+// cleanOnlineUserByRole 踢掉拥有该角色的在线用户，先取角色下的用户集合再逐个注销会话。
 func (s *RoleService) cleanOnlineUserByRole(ctx context.Context, roleID int64) {
 	userIDs, err := repository.NewRoleRepository(database.DB()).
 		SelectUserIDsByRoleID(ctx, roleID)
@@ -599,15 +588,14 @@ func buildRoleBaseUpdateColumns(b *bo.SysRoleBo) map[string]any {
 		"remark": b.Remark,
 	}
 	// 状态缺省即视为不改：漏传字段不该把线上的 '0' 刷成空串，
-	// 那会让角色既不算启用也不算停用。等效于 Java updateById 对 null 字段的跳过。
+	// 那会让角色既不算启用也不算停用。
 	if b.Status != "" {
 		columns["status"] = b.Status
 	}
 	return columns
 }
 
-// roleToBo 把实体翻成 BO 供 CheckRoleAllowed 复用（对应 Java BeanUtil.toBean(role, SysRoleBo.class)）。
-// 只填判定需要的 role_id/role_key/name，其余留零。
+// roleToBo 把实体翻成 BO 供 CheckRoleAllowed 复用，只填判定需要的 role_id/role_key/name，其余留零。
 func roleToBo(r *model.SysRole) *bo.SysRoleBo {
 	if r == nil {
 		return nil
@@ -619,7 +607,7 @@ func roleToBo(r *model.SysRole) *bo.SysRoleBo {
 	}
 }
 
-// equalsAny 判断 s 是否等于 keys 中任一值，对齐 Java StringUtils.equalsAny。
+// equalsAny 判断 s 是否等于 keys 中任一值。
 func equalsAny(s string, keys []string) bool {
 	for _, k := range keys {
 		if s == k {
@@ -651,7 +639,7 @@ func loginhelperFromCtx(ctx context.Context) int64 {
 	return au.UserID
 }
 
-// SelectRoleList 按条件查角色列表（对应 Java selectRoleList），供角色选择框/用户授权页取可授权角色用。
+// SelectRoleList 按条件查角色列表，供角色选择框/用户授权页取可授权角色用。
 // 不分页，limit <= 0 不限制。
 func (s *RoleService) SelectRoleList(ctx context.Context,
 	q bo.SysRoleQueryBo) ([]*vo.SysRoleVo, error) {
@@ -663,12 +651,12 @@ func (s *RoleService) SelectRoleList(ctx context.Context,
 	return vo.Conv.ConvertToSysRoleVoList(rows), nil
 }
 
-// SelectRoleAll 查全部角色（对应 Java selectRoleAll）。
+// SelectRoleAll 查全部角色。
 func (s *RoleService) SelectRoleAll(ctx context.Context) ([]*vo.SysRoleVo, error) {
 	return s.SelectRoleList(ctx, bo.SysRoleQueryBo{})
 }
 
-// SelectRoleListByUserId 按用户ID取已授权角色ID列表（对应 Java selectRoleListByUserId）。
+// SelectRoleListByUserId 按用户ID取已授权角色ID列表。
 func (s *RoleService) SelectRoleListByUserId(ctx context.Context,
 	userID int64) ([]int64, error) {
 
@@ -685,7 +673,7 @@ func (s *RoleService) SelectRoleListByUserId(ctx context.Context,
 	return out, nil
 }
 
-// SelectRolesAuthByUserId 按用户ID取可授权角色并标记已授权（对应 Java selectRolesAuthByUserId）。
+// SelectRolesAuthByUserId 按用户ID取可授权角色并标记已授权。
 // 取全部角色，把用户已有角色的 Flag 置 true，供前端授权树回显勾选。
 func (s *RoleService) SelectRolesAuthByUserId(ctx context.Context,
 	userID int64) ([]*vo.SysRoleVo, error) {

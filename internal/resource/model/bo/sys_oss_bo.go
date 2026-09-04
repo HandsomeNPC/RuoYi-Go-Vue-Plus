@@ -1,9 +1,9 @@
 package bo
 
-// SysOssBo OSS 对象存储业务对象（入参），对应 Java SysOssBo。
+// SysOssBo OSS 对象存储业务对象（入参）。
 //
-// 查询条件另见 SysOssQueryBo：Java 侧 list 复用本型 + QueryGroup，
-// 但 Go 的 binding tag 没有校验分组，两种场景只能分开建型。
+// 查询条件另见 SysOssQueryBo：Go 的 binding tag 没有校验分组，
+// 写入与查询两种场景只能分开建型。
 type SysOssBo struct {
 	OssID        int64  `json:"ossId"`
 	FileName     string `json:"fileName"`

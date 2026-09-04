@@ -34,7 +34,7 @@ func TestNumSizeOffsetDefaults(t *testing.T) {
 	}
 }
 
-// TestOrderByMatchesJavaSemantics 对齐 Java 端 PageQuery 的排序用法。
+// TestOrderByMatchesJavaSemantics 验证排序子句的拼装用法。
 func TestOrderByMatchesJavaSemantics(t *testing.T) {
 	tests := []struct {
 		name    string

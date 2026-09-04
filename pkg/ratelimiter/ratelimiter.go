@@ -1,9 +1,9 @@
-// Package ratelimiter 接口限流注解（装饰器），对照 Java @RateLimiter + RateLimiterAspect。
+// Package ratelimiter 接口限流注解（装饰器）。
 //
-// 与 Java 的有意差异：
-//   - 滑动窗口用自写 Lua(ZSET) 单次 EVAL 原子完成（Go 无 Redisson 等价库）。
-//   - 动态 key 用闭包 RateLimiterWithKeyFunc 替代 SpEL（Go 无 SpEL，编译期安全、无反射）。
-//   - 每次按当前参数计算，count/time 改动立即生效（不复刻 Java hsetnx 缓存配置的坑）。
+// 取舍：
+//   - 滑动窗口用自写 Lua(ZSET) 单次 EVAL 原子完成（无 Redisson 等价库）。
+//   - 动态 key 用闭包 RateLimiterWithKeyFunc 替代 SpEL（无 SpEL，编译期安全、无反射）。
+//   - 每次按当前参数计算，count/time 改动立即生效（不复刻 hsetnx 缓存配置的坑）。
 package ratelimiter
 
 import (
@@ -114,7 +114,6 @@ func RateLimiter(window time.Duration, count int, limitType LimitType, timeout t
 
 // RateLimiterWithKeyFunc 带动态维度的限流注解：fn 从请求里取维度值（如手机号），返回空串表示不带动态维度。零值取默认。
 // 固定 LimitTypeGlobal：维度以 fn 的返回值为准，不再叠加 IP / 实例。
-// fn 与 RateLimiter 的 limitType 同位，便于对照。
 //
 // 用法：ratelimiter.RateLimiterWithKeyFunc(60*time.Second, 1, func(c *gin.Context) string { return c.Query("phoneNumber") }, 0, "")
 func RateLimiterWithKeyFunc(window time.Duration, count int, fn func(*gin.Context) string, timeout time.Duration, message string) gin.HandlerFunc {
@@ -135,7 +134,7 @@ func (l *Limiter) run(c *gin.Context, o *options) {
 	key := l.combineKey(c, o)
 	remain, err := l.acquire(c.Request.Context(), key, o)
 	if err != nil {
-		// Redis 异常时放行：可用性优先（与 Java 阻断有意不同），异常已记日志。
+		// Redis 异常时放行：可用性优先，异常已记日志。
 		log.Printf("[ratelimiter] %s %s 限流判定异常,已放行: %v",
 			c.Request.Method, c.Request.URL.Path, err)
 		c.Next()

@@ -1,7 +1,6 @@
 // Command resource 资源模块进程入口，监听端口见 configs/resource.yaml。
 //
-// 承载 Java 侧 /resource/* 的全部接口：OSS 文件上传/下载/列表/删除、
-// 对象存储配置 CRUD、消息盒子、以及 SSE/WebSocket 推送连接。
+// 承载 /resource/* 的全部接口：OSS 上传/下载/列表/删除、对象存储配置 CRUD、消息盒子、SSE/WebSocket 推送连接。
 // 消息盒子的业务逻辑仍在 internal/system/service（公告发消息那条路径在 system 进程内），
 // 本进程只提供 HTTP 入口，同进程函数调用，不走 HTTP。
 package main
