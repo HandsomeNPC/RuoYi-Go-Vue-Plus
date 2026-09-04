@@ -13,6 +13,7 @@
 
 - **原作者 (Java版 6.X)**：[RuoYi-Vue-Plus](https://gitee.com/dromara/RuoYi-Vue-Plus)（Java 版，dromara / 若依团队）。
 - **UI地址 (适配原项目UI 6.X)**: [https://gitee.com/JavaLionLi/plus-ui](https://gitee.com/JavaLionLi/plus-ui)
+- **项目文档**: 还在整理
 - **语言 / 框架**：Go 1.26+ 、Gin、GORM、go-redis。
 - **数据库 / 缓存**：MySQL+ Redis
 - **主要优势**: golang启动更快 (毫秒级),占用资源更少
