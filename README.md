@@ -29,7 +29,6 @@
 - **项目文档**: <https://plus-go-doc.chenziwen.top>
 - **语言 / 框架**：Go 1.26+ 、Gin、GORM、go-redis。
 - **数据库 / 缓存**：MySQL+ Redis
-- **主要优势**: golang启动更快 (毫秒级),占用资源更少
 
 ## ✨ 亮点
 
