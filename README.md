@@ -7,6 +7,19 @@
   <img src="docs/ruoyi-go-vue-plus-banner.png" alt="RuoYi-Go-Vue-Plus Banner"/>
 </p>
 
+<p align="center">
+  <a href="https://github.com/HandsomeNPC/RuoYi-Go-Vue-Plus/stargazers">
+    <img src="https://img.shields.io/github/stars/HandsomeNPC/RuoYi-Go-Vue-Plus?style=social" alt="GitHub Stars"/>
+  </a>
+  <img src="https://img.shields.io/github/license/HandsomeNPC/RuoYi-Go-Vue-Plus" alt="License"/>
+  <img src="https://img.shields.io/github/last-commit/HandsomeNPC/RuoYi-Go-Vue-Plus" alt="Last Commit"/>
+  <img src="https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white" alt="Go"/>
+  <img src="https://img.shields.io/badge/Gin-framework-00B96B" alt="Gin"/>
+  <img src="https://img.shields.io/badge/MySQL+Redis-ready-4479A1" alt="MySQL+Redis"/>
+</p>
+
+> 如果这个项目对你有帮助，欢迎点个 ⭐ 让更多人看到，也欢迎 [承接定制开发 / 私有化部署](#联系方式)。
+
 > 本仓库基于RuoYi-Go-Vue-Plus 6.X的 Go (Gin) 重写版，致敬原项目作者「疯狂的狮子Li」及若依开源社区。前端项目适配RuoYi-Plus-UI-6.X
 
 ## 项目介绍
@@ -17,6 +30,30 @@
 - **语言 / 框架**：Go 1.26+ 、Gin、GORM、go-redis。
 - **数据库 / 缓存**：MySQL+ Redis
 - **主要优势**: golang启动更快 (毫秒级),占用资源更少
+
+## ✨ 亮点
+
+把 Java 侧一个成熟的后台框架 **独立**用 Go 重写一遍，语义对齐、功能不打折，换取 Go 的工程红利：
+
+| 维度     | Java 版          | 本项目 (Go)                                  |
+|----------|------------------|----------------------------------------------|
+| 启动     | JVM 预热，秒级   | 编译成原生二进制，**毫秒级启动**             |
+| 资源占用 | JVM 常驻，吃内存 | 静态二进制，**内存/CPU 显著更低**            |
+| 部署     | 需 JVM 运行时    | **单二进制** + alpine 镜像，丢上去就跑       |
+| 扩展     | 单体为主         | **多模块拆进程 + nginx 负载均衡**，可水平扩  |
+| 迁移成本 | —                | 分层与模板对照 Java 侧，**不熟 Go 也能上手** |
+
+- **多模块拆进程**：auth / system / monitor / resource 四模块各编译独立二进制，nginx 按前缀分流剥前缀；另提供 `standalone`
+  单体入口便于本地调试。
+- **复刻 Java 侧核心机制**：sa-token 鉴权（JWT + Redis 存会话）、操作日志注解、防重提交、限流、接口加解密、雪花 ID
+  编解码，一一对照原项目语义。
+- **严格三层分层**：`handler → service → repository → model` 单向依赖，结构清晰、职责单一。
+- **统一响应与错误兜底**：一律 `response.R[T]` / `PageResult[T]`，HTTP 恒 200，错误经 middleware 统一渲染。
+
+## 📸 演示
+
+> 演示 GIF 录制中，将补充登录、用户/角色/权限、在线用户、OSS 等流程。可先访问 [在线文档](https://plus-go-doc.chenziwen.top/)
+> 了解全貌。
 
 ## 环境准备
 
@@ -274,9 +311,25 @@ docs/CRUD-SPEC.md             增删改查落地模板与踩坑点（写 CRUD �
 
 本项目基于 [MIT License](LICENSE) 开源，转载 / 二次开发请注明原作者与出处。
 
+## 承接定制开发
+
+作者承接基于本项目或类似后台系统的：
+
+- **私有化部署**：内网/云上部署、配置调优、压测
+- **二次开发**：业务模块定制、接口对接、数据迁移
+- **全新定制**：从零搭建后台系统、微服务拆分
+
+需求描述越具体报价越准。详见 [个人网站 · 商务合作](https://chenziwen.top/about)。
+
 ## 联系方式
 
-- 邮箱：<401030526@qq.com>
-- QQ：401030526
+- 🌐 个人网站：<https://chenziwen.top>
+- 📧 邮箱：<401030526@qq.com>
+- 💬 QQ：401030526
+- 🐙 GitHub：[@HandsomeNPC](https://github.com/HandsomeNPC)
 
+## 作者其它项目
+
+本仓库是作者作品集的一部分，更多开源作品与文章见 [chenziwen.top/projects](https://chenziwen.top/projects/)。
+后续项目发布后会在该主页同步更新，欢迎收藏。
 
