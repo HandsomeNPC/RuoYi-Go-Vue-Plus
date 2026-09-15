@@ -295,7 +295,11 @@ func (a *UserApi) AuthRole(c *gin.Context) {
 // InsertAuthRole 用户授权角色。
 // userId、roleIds 走表单字段；roleIds 兼容重复键与逗号串两种形态。
 func (a *UserApi) InsertAuthRole(c *gin.Context) {
-	userID, err := strconv.ParseInt(c.PostForm("userId"), 10, 64)
+	rawUserID := c.PostForm("userId")
+	if rawUserID == "" {
+		rawUserID = c.Query("userId")
+	}
+	userID, err := strconv.ParseInt(rawUserID, 10, 64)
 	if err != nil || userID <= 0 {
 		_ = c.Error(errs.New(response.CodeBadRequest, "主键不能为空", c.PostForm("userId")))
 		return
@@ -350,6 +354,9 @@ func (a *UserApi) ListByDept(c *gin.Context) {
 // 任一段非法即整体拒绝——静默丢弃会授权成部分成功。
 func parseFormIDArray(c *gin.Context, field string) ([]int64, error) {
 	values := c.PostFormArray(field)
+	if len(values) == 0 {
+		values = c.QueryArray(field)
+	}
 	out := make([]int64, 0, len(values))
 	for _, s := range values {
 		for _, part := range strings.Split(s, ",") {

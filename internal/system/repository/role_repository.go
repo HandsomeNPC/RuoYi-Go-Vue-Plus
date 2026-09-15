@@ -384,7 +384,7 @@ func (r *RoleRepository) SelectDeptIDsByRoleID(ctx context.Context,
 	}
 	err := r.db.WithContext(ctx).
 		Table("sys_dept AS d").
-		Select("DISTINCT d.dept_id, d.parent_id").
+		Select("DISTINCT d.dept_id, d.parent_id, d.order_num").
 		Joins("JOIN sys_role_dept srd ON srd.dept_id = d.dept_id").
 		Joins("JOIN sys_role sr ON sr.role_id = srd.role_id").
 		Where("srd.role_id = ?", roleID).
