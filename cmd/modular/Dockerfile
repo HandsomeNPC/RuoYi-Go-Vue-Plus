@@ -12,7 +12,7 @@
 # (-v ./configs/system-2.yaml:/app/configs/system.yaml:ro)，环境变量无效
 # —— pkg/config 没开 viper.AutomaticEnv。
 
-FROM golang:1.26-alpine AS builder
+FROM registry.cn-shanghai.aliyuncs.com/chen-zi-wen/golang:1.26-alpine AS builder
 
 ARG MODULE
 WORKDIR /src
@@ -27,7 +27,7 @@ COPY . .
 RUN test -d ./cmd/modular/${MODULE} || { echo "MODULE 无效: '${MODULE}'"; exit 1; } \
     && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /app/server ./cmd/modular/${MODULE}
 
-FROM alpine:3.20
+FROM registry.cn-shanghai.aliyuncs.com/chen-zi-wen/alpine:3.22.0
 
 # ca-certificates：对象存储 / 阿里云短信 / 三方登录都是 HTTPS 出站调用。
 # tzdata：DSN 用了 loc=Local，容器缺 tzdata 会按 UTC 写库，时间字段整体差 8 小时。

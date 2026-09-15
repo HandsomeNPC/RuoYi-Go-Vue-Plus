@@ -8,7 +8,7 @@
 #   -v ./configs:/app/configs:ro
 # 或只覆盖某一个文件。环境变量改不了配置 —— pkg/config 没开 viper.AutomaticEnv。
 
-FROM golang:1.26-alpine AS builder
+FROM registry.cn-shanghai.aliyuncs.com/chen-zi-wen/golang:1.26-alpine AS builder
 
 WORKDIR /src
 
@@ -21,7 +21,7 @@ COPY . .
 # -trimpath 去掉构建机绝对路径，-s -w 砍掉符号表(内嵌了 10MB 的 ip2region 库，能省一点是一点)。
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /app/server ./cmd/standalone
 
-FROM alpine:3.20
+FROM registry.cn-shanghai.aliyuncs.com/chen-zi-wen/alpine:3.22.0
 
 # ca-certificates：对象存储 / 阿里云短信 / 三方登录都是 HTTPS 出站调用。
 # tzdata：DSN 用了 loc=Local，容器缺 tzdata 会按 UTC 写库，时间字段整体差 8 小时。
