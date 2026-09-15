@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"log"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -32,6 +33,7 @@ import (
 )
 
 func main() {
+	startAt := time.Now()
 	config.Load("configs/application.yaml", "configs/standalone.yaml")
 
 	// 须在首个 c.JSON / 参数绑定之前接管 gin 的 JSON codec(雪花 id 按值转字符串)。
@@ -94,6 +96,8 @@ func main() {
 
 	cfg := config.Get()
 	log.Printf("[%s] 监听 %s (auth + system standalone)", cfg.Server.Name, cfg.Server.Addr)
+	cost := time.Since(startAt)
+	log.Printf("[standalone] 启动完成，耗时: %s", cost)
 	if err := r.Run(cfg.Server.Addr); err != nil {
 		log.Fatal(err)
 	}
