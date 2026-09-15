@@ -26,6 +26,7 @@
 
 - **原作者 (Java版 6.X)**：[RuoYi-Vue-Plus](https://gitee.com/dromara/RuoYi-Vue-Plus)（Java 版，dromara / 若依团队）。
 - **UI地址 (适配原项目UI 6.X)**: [https://gitee.com/JavaLionLi/plus-ui](https://gitee.com/JavaLionLi/plus-ui)
+- **演示地址 (便宜服务器经不起压测)**: [https://ruoyi-plus.chenziwen.top](https://ruoyi-plus.chenziwen.top)
 - **项目文档**: <https://plus-go-doc.chenziwen.top>
 - **语言 / 框架**：Go 1.26+ 、Gin、GORM、go-redis。
 - **数据库 / 缓存**：MySQL+ Redis
