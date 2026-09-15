@@ -17,6 +17,8 @@ FROM registry.cn-shanghai.aliyuncs.com/chen-zi-wen/golang:1.26-alpine AS builder
 ARG MODULE
 WORKDIR /src
 
+ENV GOPROXY=https://goproxy.cn,direct
+
 COPY go.mod go.sum ./
 RUN go mod download
 
