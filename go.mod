@@ -97,13 +97,10 @@ require (
 
 tool github.com/jmattheis/goverter/cmd/goverter
 
-// sa-token-go 是多 module 仓库，goproxy 未缓存、github 直连受限，
-// 故以本地检出版本 replace（路径指向本机 sa-token-go-main 检出目录）。
-// 上线/换机时若可直连 proxy，删掉此 replace 块并改 go get 即可。
 replace (
-	github.com/sa-tokens/sa-token-go/core => E:/WorkSpace/sa-token-go-main/core
-	github.com/sa-tokens/sa-token-go/integrations/gin => E:/WorkSpace/sa-token-go-main/integrations/gin
-	github.com/sa-tokens/sa-token-go/storage/memory => E:/WorkSpace/sa-token-go-main/storage/memory
-	github.com/sa-tokens/sa-token-go/storage/redis => E:/WorkSpace/sa-token-go-main/storage/redis
-	github.com/sa-tokens/sa-token-go/stputil => E:/WorkSpace/sa-token-go-main/stputil
+	github.com/sa-tokens/sa-token-go/core => github.com/sa-tokens/sa-token-go/core v0.2.4-0.20260909081128-8270b63ab78e
+	github.com/sa-tokens/sa-token-go/integrations/gin => github.com/sa-tokens/sa-token-go/integrations/gin v0.2.4-0.20260909081128-8270b63ab78e
+	github.com/sa-tokens/sa-token-go/storage/memory => github.com/sa-tokens/sa-token-go/storage/memory v0.2.4-0.20260909081128-8270b63ab78e
+	github.com/sa-tokens/sa-token-go/storage/redis => github.com/sa-tokens/sa-token-go/storage/redis v0.2.4-0.20260909081128-8270b63ab78e
+	github.com/sa-tokens/sa-token-go/stputil => github.com/sa-tokens/sa-token-go/stputil v0.2.4-0.20260909081128-8270b63ab78e
 )
