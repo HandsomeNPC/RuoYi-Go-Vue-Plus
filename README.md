@@ -1,3 +1,5 @@
+
+
 # RuoYi-Go-Vue-Plus
 
 - **GitHub 地址**：<https://github.com/HandsomeNPC/RuoYi-Go-Vue-Plus>
@@ -20,7 +22,7 @@
 
 > 如果这个项目对你有帮助，欢迎点个 ⭐ 让更多人看到，也欢迎 [承接定制开发 / 私有化部署](#联系方式)。
 
-> 本仓库基于RuoYi-Go-Vue-Plus 6.X的 Go (Gin) 重写版，致敬原项目作者「疯狂的狮子Li」及若依开源社区。前端项目适配RuoYi-Plus-UI-6.X
+> 本仓库基于RuoYi-Vue-Plus 6.X的 Go (Gin) 重写版，致敬原项目作者「疯狂的狮子Li」及若依开源社区。前端项目适配RuoYi-Plus-UI-6.X
 
 ## 项目介绍
 
@@ -332,4 +334,3 @@ docs/CRUD-SPEC.md             增删改查落地模板与踩坑点（写 CRUD �
 
 本仓库是作者作品集的一部分，更多开源作品与文章见 [chenziwen.top/projects](https://chenziwen.top/projects/)。
 后续项目发布后会在该主页同步更新，欢迎收藏。
-
