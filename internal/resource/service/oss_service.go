@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/resource/model"
 	"ruoyi-go-vue-plus/internal/resource/model/bo"
 	"ruoyi-go-vue-plus/internal/resource/model/vo"
@@ -20,7 +21,6 @@ import (
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/oss"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
-	"ruoyi-go-vue-plus/pkg/snowflake"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/jsonx"
 )

@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	"ruoyi-go-vue-plus/internal/system/repository"
@@ -23,7 +24,6 @@ import (
 	"ruoyi-go-vue-plus/pkg/redis"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
-	"ruoyi-go-vue-plus/pkg/snowflake"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/treeutil"
 )

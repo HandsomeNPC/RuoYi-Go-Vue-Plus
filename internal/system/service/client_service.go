@@ -7,6 +7,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
@@ -15,7 +16,6 @@ import (
 	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/database"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
-	"ruoyi-go-vue-plus/pkg/snowflake"
 )
 
 var ErrClientNotFound = errors.New("service: 客户端不存在")

@@ -2,6 +2,7 @@
 package main
 
 import (
+	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system"
 	systemservice "ruoyi-go-vue-plus/internal/system/service"
 	"ruoyi-go-vue-plus/pkg/config"
@@ -12,7 +13,6 @@ import (
 	"ruoyi-go-vue-plus/pkg/redis"
 	"ruoyi-go-vue-plus/pkg/repeatsubmit"
 	"ruoyi-go-vue-plus/pkg/satoken"
-	"ruoyi-go-vue-plus/pkg/snowflake"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/jsonx"
 )

@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/auth"
 	"ruoyi-go-vue-plus/internal/monitor"
 	"ruoyi-go-vue-plus/internal/resource"
@@ -27,7 +28,6 @@ import (
 	"ruoyi-go-vue-plus/pkg/repeatsubmit"
 	"ruoyi-go-vue-plus/pkg/satoken"
 	"ruoyi-go-vue-plus/pkg/sms"
-	"ruoyi-go-vue-plus/pkg/snowflake"
 	"ruoyi-go-vue-plus/pkg/social"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/jsonx"

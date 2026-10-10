@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	"ruoyi-go-vue-plus/internal/system/repository"
@@ -11,7 +12,6 @@ import (
 	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/database"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
-	"ruoyi-go-vue-plus/pkg/snowflake"
 )
 
 var ErrDictDataNotFound = errors.New("service: 字典数据不存在")

@@ -6,6 +6,7 @@ import (
 	"log"
 	"strconv"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/resource/model/bo"
 	"ruoyi-go-vue-plus/internal/resource/model/vo"
 	"ruoyi-go-vue-plus/internal/resource/repository"
@@ -16,7 +17,6 @@ import (
 	"ruoyi-go-vue-plus/pkg/oss"
 	pkgredis "ruoyi-go-vue-plus/pkg/redis"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
-	"ruoyi-go-vue-plus/pkg/snowflake"
 )
 
 var ErrOssConfigNotFound = errors.New("service: 对象存储配置不存在")

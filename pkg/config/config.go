@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/viper"
 
-	"ruoyi-go-vue-plus/pkg/snowflake"
+	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 )
 
 // Config 应用完整配置。

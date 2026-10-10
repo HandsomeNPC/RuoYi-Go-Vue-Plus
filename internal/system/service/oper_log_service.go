@@ -6,11 +6,11 @@ import (
 	"log"
 	"time"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/repository"
 	"ruoyi-go-vue-plus/pkg/database"
 	"ruoyi-go-vue-plus/pkg/oplog"
-	"ruoyi-go-vue-plus/pkg/snowflake"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ip"
 )

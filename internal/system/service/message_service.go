@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/dto"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
@@ -14,7 +15,6 @@ import (
 	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/database"
 	"ruoyi-go-vue-plus/pkg/push"
-	"ruoyi-go-vue-plus/pkg/snowflake"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/jsonx"
 )

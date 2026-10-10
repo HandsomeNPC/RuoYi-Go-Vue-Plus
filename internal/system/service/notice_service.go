@@ -6,6 +6,7 @@ import (
 	"log"
 	"strconv"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/dto"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
@@ -14,7 +15,6 @@ import (
 	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/database"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
-	"ruoyi-go-vue-plus/pkg/snowflake"
 )
 
 var ErrNoticeNotFound = errors.New("service: 通知公告不存在")

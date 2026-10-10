@@ -9,6 +9,7 @@ import (
 	"context"
 	"log"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/resource"
 	resourceservice "ruoyi-go-vue-plus/internal/resource/service"
 	systemservice "ruoyi-go-vue-plus/internal/system/service"
@@ -22,7 +23,6 @@ import (
 	"ruoyi-go-vue-plus/pkg/repeatsubmit"
 	"ruoyi-go-vue-plus/pkg/satoken"
 	"ruoyi-go-vue-plus/pkg/sms"
-	"ruoyi-go-vue-plus/pkg/snowflake"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/jsonx"
 )
