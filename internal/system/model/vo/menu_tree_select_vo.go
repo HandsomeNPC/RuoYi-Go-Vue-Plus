@@ -1,7 +1,7 @@
 package vo
 
 import (
-	"ruoyi-go-vue-plus/pkg/tree"
+	"ruoyi-go-vue-plus/pkg/treeutil"
 )
 
 // MenuTreeSelectVo 角色菜单树及其选中节点。
@@ -10,6 +10,6 @@ import (
 // 两个字段都不加 omitempty——前端按 checkedKeys.length 与 menus 遍历，
 // 缺键会变成 undefined 而非空数组。
 type MenuTreeSelectVo struct {
-	CheckedKeys []int64             `json:"checkedKeys"`
-	Menus       []*tree.Tree[int64] `json:"menus"`
+	CheckedKeys []int64                 `json:"checkedKeys"`
+	Menus       []*treeutil.Tree[int64] `json:"menus"`
 }

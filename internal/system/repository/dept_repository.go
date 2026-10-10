@@ -49,7 +49,7 @@ func (r *DeptRepository) SelectByID(ctx context.Context, deptID int64) (*model.S
 func (r *DeptRepository) SelectList(ctx context.Context, q bo.SysDeptQueryBo) ([]*model.SysDept, error) {
 	// Model 不能省：del_flag 过滤由 LogicDelete 挂在字段类型上，须先解析出实体 schema 才生效。
 	db := applyDeptQuery(r.db.WithContext(ctx).Model(&model.SysDept{}), q)
-	// 祖先链在前保证父节点先于子节点出现，前端 listToTree 与 tree.BuildInPlace 都依赖这个顺序。
+	// 祖先链在前保证父节点先于子节点出现，前端 listToTree 与 treeutil.AssembleTree 都依赖这个顺序。
 	db = db.Order("ancestors").Order("parent_id").Order("order_num").Order("dept_id")
 
 	var rows []*model.SysDept

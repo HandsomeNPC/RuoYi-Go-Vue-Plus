@@ -17,7 +17,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/response"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 	"ruoyi-go-vue-plus/pkg/snowflake"
-	"ruoyi-go-vue-plus/pkg/tree"
+	"ruoyi-go-vue-plus/pkg/treeutil"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/strutil"
 )
@@ -73,8 +73,8 @@ func (s *MenuService) SelectMenuPermsByRoleIds(ctx context.Context, roleIDs []in
 }
 
 // SelectMenuTreeByUserId 按用户ID查菜单树。
-// 超管拿全量目录+菜单，其余用户按角色过滤。扁平结果就地组装成树：走 tree.BuildInPlace
-// 而非 tree.Build，顺序已由 SQL 的 ORDER BY parent_id, order_num 定好且无需再排，节点是
+// 超管拿全量目录+菜单，其余用户按角色过滤。扁平结果就地组装成树：走 treeutil.AssembleTree
+// 而非 treeutil.BuildTree，顺序已由 SQL 的 ORDER BY parent_id, order_num 定好且无需再排，节点是
 // SysMenu 实体本身而非独立树节点。
 func (s *MenuService) SelectMenuTreeByUserId(ctx context.Context, userID int64) ([]*model.SysMenu, error) {
 	repo := repository.NewMenuRepository(database.DB())
@@ -91,7 +91,7 @@ func (s *MenuService) SelectMenuTreeByUserId(ctx context.Context, userID int64) 
 	if err != nil {
 		return nil, err
 	}
-	return tree.BuildInPlace(menus, constant.ConstantTopParentID,
+	return treeutil.AssembleTree(menus, constant.ConstantTopParentID,
 		func(m *model.SysMenu) int64 { return m.MenuID },
 		func(m *model.SysMenu) int64 { return m.ParentID },
 		func(m *model.SysMenu, children []*model.SysMenu) { m.Children = children }), nil
@@ -189,12 +189,12 @@ func (s *MenuService) QueryByID(ctx context.Context, menuID int64) (*vo.SysMenuV
 
 // BuildMenuTreeSelect 把菜单列表构造成前端下拉树。
 //
-// 走 tree.Build 而非 BuildInPlace：树节点是独立的 Tree[int64]（含 label/weight 与
+// 走 treeutil.BuildTree 而非 AssembleTree：树节点是独立的 Tree[int64]（含 label/weight 与
 // 四个 Extra 键），不是 SysMenuVo 本身。根节点固定取 0——菜单列表按 parent_id 升序，
 // 首元素必是顶级菜单。
-func (s *MenuService) BuildMenuTreeSelect(menus []*vo.SysMenuVo) []*tree.Tree[int64] {
-	return tree.Build(menus, constant.ConstantTopParentID,
-		func(m *vo.SysMenuVo, node *tree.Tree[int64]) {
+func (s *MenuService) BuildMenuTreeSelect(menus []*vo.SysMenuVo) []*treeutil.Tree[int64] {
+	return treeutil.BuildTree(menus, constant.ConstantTopParentID,
+		func(m *vo.SysMenuVo, node *treeutil.Tree[int64]) {
 			node.ID = m.MenuID
 			node.ParentID = m.ParentID
 			node.Name = m.MenuName

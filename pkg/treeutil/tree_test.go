@@ -1,4 +1,4 @@
-package tree
+package treeutil
 
 import (
 	"encoding/json"
@@ -20,15 +20,14 @@ func parseDept(d dept, n *Tree[int64]) {
 	n.SetExtra("disabled", d.disabled)
 }
 
-// TestMarshalJSONMatchesHutool 断言序列化结果与 hutool 5.8.28 实跑输出一致。
-// 期望值取自 TreeUtil.build(list, 0L, DEFAULT_CONFIG.setNameKey("label"), parser)。
+// TestMarshalJSONMatchesHutool 断言序列化结果与 hutool 实跑输出一致。
 func TestMarshalJSONMatchesHutool(t *testing.T) {
 	list := []dept{
 		{1, 0, "HQ", 1, false},
 		{2, 1, "RD", 2, true},
 		{3, 1, "Sales", 1, false},
 	}
-	got, err := json.Marshal(Build(list, int64(0), parseDept))
+	got, err := json.Marshal(BuildTree(list, int64(0), parseDept))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +42,7 @@ func TestMarshalJSONMatchesHutool(t *testing.T) {
 
 // TestLeafOmitsChildrenKey 叶子节点不能出现 children 键：前端靠键的有无判叶子。
 func TestLeafOmitsChildrenKey(t *testing.T) {
-	got, err := json.Marshal(Build([]dept{{1, 0, "leaf", 1, false}}, int64(0), parseDept))
+	got, err := json.Marshal(BuildTree([]dept{{1, 0, "leaf", 1, false}}, int64(0), parseDept))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,17 +72,13 @@ func TestExtraKeysSorted(t *testing.T) {
 // TestSortByWeight 同层按 weight 升序，根层级同样参与排序。
 func TestSortByWeight(t *testing.T) {
 	list := []dept{{10, 0, "B-root", 5, false}, {11, 0, "A-root", 2, false}}
-	roots := Build(list, int64(0), parseDept)
+	roots := BuildTree(list, int64(0), parseDept)
 	if len(roots) != 2 || roots[0].ID != 11 || roots[1].ID != 10 {
 		t.Errorf("根节点未按 weight 排序: %v", ids(roots))
 	}
 }
 
 // TestSortStable weight 相同时保持插入序。
-//
-// 规模和 weight 分布是刻意选的：Go 的 pdqsort 对小切片走插入排序，全等元素也不会乱序，
-// 用三五个节点测不出稳定性差异。要让不稳定排序真的搬动元素，需要 16+ 个节点、
-// 且重复 weight 穿插在不同 weight 之间（已验证 SortFunc 在此规模下会打乱组内顺序）。
 func TestSortStable(t *testing.T) {
 	const size = 24
 	list := make([]dept, 0, size)
@@ -91,7 +86,7 @@ func TestSortStable(t *testing.T) {
 		list = append(list, dept{id: int64(i), pid: 0, order: i % 3})
 	}
 
-	roots := Build(list, int64(0), parseDept)
+	roots := BuildTree(list, int64(0), parseDept)
 	if len(roots) != size {
 		t.Fatalf("根节点数 = %d, 期望 %d", len(roots), size)
 	}
@@ -108,7 +103,7 @@ func TestSortStable(t *testing.T) {
 // TestBuildOrphanDropped 父节点不在集合内的子树不应冒到顶层。
 func TestBuildOrphanDropped(t *testing.T) {
 	list := []dept{{1, 0, "root", 1, false}, {100, 1, "child", 1, false}, {200, 77, "orphan", 1, false}}
-	roots := Build(list, int64(0), parseDept)
+	roots := BuildTree(list, int64(0), parseDept)
 	if len(roots) != 1 || roots[0].ID != 1 {
 		t.Fatalf("顶层节点 = %v, 期望仅 id=1", ids(roots))
 	}
@@ -119,9 +114,9 @@ func TestBuildOrphanDropped(t *testing.T) {
 
 // TestBuildEmpty 空输入返回空切片而非 nil，保证序列化成 [] 而非 null。
 func TestBuildEmpty(t *testing.T) {
-	got := Build(nil, int64(0), parseDept)
+	got := BuildTree(nil, int64(0), parseDept)
 	if got == nil || len(got) != 0 {
-		t.Fatalf("Build(nil) = %v, 期望空切片", got)
+		t.Fatalf("BuildTree(nil) = %v, 期望空切片", got)
 	}
 	if b, _ := json.Marshal(got); string(b) != "[]" {
 		t.Errorf("空树序列化 = %s, 期望 []", b)
@@ -136,10 +131,7 @@ func TestBuildMultiRoot(t *testing.T) {
 		{2, 200, "b", 1, false},
 		{3, 1, "a-child", 1, false},
 	}
-	roots := BuildMultiRoot(list,
-		func(d dept) int64 { return d.id },
-		func(d dept) int64 { return d.pid },
-		parseDept)
+	roots := BuildMultiRootTree(list, parseDept)
 
 	if got, want := ids(roots), []int64{1, 2}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("多根 = %v, 期望 %v", got, want)
@@ -154,28 +146,25 @@ func TestBuildMultiRootOrderStable(t *testing.T) {
 	list := []dept{{1, 900, "a", 1, false}, {2, 800, "b", 1, false}, {3, 700, "c", 1, false}}
 	want := []int64{1, 2, 3}
 	for i := 0; i < 20; i++ {
-		got := ids(BuildMultiRoot(list,
-			func(d dept) int64 { return d.id },
-			func(d dept) int64 { return d.pid },
-			parseDept))
+		got := ids(BuildMultiRootTree(list, parseDept))
 		if !reflect.DeepEqual(got, want) {
 			t.Fatalf("第 %d 次多根顺序 = %v, 期望 %v", i, got, want)
 		}
 	}
 }
 
-// menu 测试 BuildInPlace 用的自引用类型。
+// menu 测试 AssembleTree 用的自引用类型。
 type menu struct {
 	id, pid  int64
 	order    int
 	children []*menu
 }
 
-// TestBuildInPlaceKeepsInputOrder BuildInPlace 不排序，完全保留入参顺序。
-func TestBuildInPlaceKeepsInputOrder(t *testing.T) {
+// TestAssembleTreeKeepsInputOrder AssembleTree 不排序，完全保留入参顺序。
+func TestAssembleTreeKeepsInputOrder(t *testing.T) {
 	// order 故意逆序：若误加了排序，结果会变成 30/20/10。
 	items := []*menu{{id: 1, pid: 0, order: 30}, {id: 2, pid: 0, order: 20}, {id: 3, pid: 0, order: 10}}
-	roots := BuildInPlace(items, int64(0),
+	roots := AssembleTree(items, int64(0),
 		func(m *menu) int64 { return m.id },
 		func(m *menu) int64 { return m.pid },
 		func(m *menu, c []*menu) { m.children = c })
@@ -187,10 +176,10 @@ func TestBuildInPlaceKeepsInputOrder(t *testing.T) {
 	}
 }
 
-// TestBuildInPlaceOrphanDropped 就地构树同样不让孤儿子树冒顶。
-func TestBuildInPlaceOrphanDropped(t *testing.T) {
+// TestAssembleTreeOrphanDropped 就地构树同样不让孤儿子树冒顶。
+func TestAssembleTreeOrphanDropped(t *testing.T) {
 	items := []*menu{{id: 1, pid: 0}, {id: 100, pid: 1}, {id: 200, pid: 99}}
-	roots := BuildInPlace(items, int64(0),
+	roots := AssembleTree(items, int64(0),
 		func(m *menu) int64 { return m.id },
 		func(m *menu) int64 { return m.pid },
 		func(m *menu, c []*menu) { m.children = c })
@@ -203,14 +192,14 @@ func TestBuildInPlaceOrphanDropped(t *testing.T) {
 	}
 }
 
-// TestBuildInPlaceEmpty 空输入返回空切片。
-func TestBuildInPlaceEmpty(t *testing.T) {
-	got := BuildInPlace(nil, int64(0),
+// TestAssembleTreeEmpty 空输入返回空切片。
+func TestAssembleTreeEmpty(t *testing.T) {
+	got := AssembleTree(nil, int64(0),
 		func(m *menu) int64 { return m.id },
 		func(m *menu) int64 { return m.pid },
 		func(m *menu, c []*menu) { m.children = c })
 	if got == nil || len(got) != 0 {
-		t.Errorf("BuildInPlace(nil) = %v, 期望空切片", got)
+		t.Errorf("AssembleTree(nil) = %v, 期望空切片", got)
 	}
 }
 
@@ -224,17 +213,13 @@ func ids[K comparable](nodes []*Tree[K]) []K {
 }
 
 // TestMarshalJSONSnowflakeIDAsString 雪花 id 须与其他接口一样转成字符串。
-//
-// MarshalJSON 内部若用 encoding/json 就会绕过全局注册的 int64 编码器，
-// 使树接口的 id 是裸数字而列表接口是字符串——前端拿树节点 id 提交必丢精度。
-// 上面几个用例的 id 都是个位数，落在安全范围内，两种写法都能过，故单列此例守住。
 func TestMarshalJSONSnowflakeIDAsString(t *testing.T) {
 	// 父为根(0，安全范围内)，子为雪花值：同一份 JSON 里两种形态并存。
 	list := []dept{
 		{1761000000000000100, 0, "HQ", 1, false},
 		{1761000000000000101, 1761000000000000100, "RD", 2, false},
 	}
-	got, err := json.Marshal(Build(list, int64(0), parseDept))
+	got, err := json.Marshal(BuildTree(list, int64(0), parseDept))
 	if err != nil {
 		t.Fatal(err)
 	}

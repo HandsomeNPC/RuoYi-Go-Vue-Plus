@@ -16,7 +16,7 @@ import (
 	"ruoyi-go-vue-plus/pkg/response"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 	"ruoyi-go-vue-plus/pkg/snowflake"
-	"ruoyi-go-vue-plus/pkg/tree"
+	"ruoyi-go-vue-plus/pkg/treeutil"
 )
 
 var ErrDeptNotFound = errors.New("service: 部门不存在")
@@ -98,18 +98,17 @@ func (s *DeptService) QueryListExcludeChild(ctx context.Context,
 
 // SelectDeptTreeList 按条件查部门并组装成前端下拉树。
 //
-// 走 tree.BuildMultiRoot 而非 Build：按条件过滤后祖先可能不在结果集内，悬空父级要当根挂接。
+// 走 treeutil.BuildMultiRootTree 而非 BuildTree：按条件过滤后祖先可能不在结果集内，悬空父级要当根挂接。
 // disabled 按状态回填，前端据此灰掉停用部门。
 func (s *DeptService) SelectDeptTreeList(ctx context.Context,
-	q bo.SysDeptQueryBo) ([]*tree.Tree[int64], error) {
+	q bo.SysDeptQueryBo) ([]*treeutil.Tree[int64], error) {
 
 	rows, err := s.QueryList(ctx, q)
 	if err != nil {
 		return nil, err
 	}
-	return tree.BuildMultiRoot(rows, func(d *vo.SysDeptVo) int64 { return d.DeptID },
-		func(d *vo.SysDeptVo) int64 { return d.ParentID },
-		func(d *vo.SysDeptVo, node *tree.Tree[int64]) {
+	return treeutil.BuildMultiRootTree(rows,
+		func(d *vo.SysDeptVo, node *treeutil.Tree[int64]) {
 			node.ID = d.DeptID
 			node.ParentID = d.ParentID
 			node.Name = d.DeptName

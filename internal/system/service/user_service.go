@@ -24,7 +24,7 @@ import (
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 	"ruoyi-go-vue-plus/pkg/snowflake"
-	"ruoyi-go-vue-plus/pkg/tree"
+	"ruoyi-go-vue-plus/pkg/treeutil"
 )
 
 var ErrUserPhoneExists = errors.New("service: 手机号已存在")
@@ -929,7 +929,7 @@ func (s *UserService) InsertUserAuth(ctx context.Context, userID int64,
 
 // DeptTree 取用户筛选用的部门树，透传部门 service。
 func (s *UserService) DeptTree(ctx context.Context,
-	q bo.SysDeptQueryBo) ([]*tree.Tree[int64], error) {
+	q bo.SysDeptQueryBo) ([]*treeutil.Tree[int64], error) {
 
 	return DeptSvcApp.SelectDeptTreeList(ctx, q)
 }
