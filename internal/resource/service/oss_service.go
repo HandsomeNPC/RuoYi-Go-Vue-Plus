@@ -18,10 +18,11 @@ import (
 	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/database"
 	"ruoyi-go-vue-plus/pkg/errs"
-	"ruoyi-go-vue-plus/pkg/jsonx"
 	"ruoyi-go-vue-plus/pkg/oss"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 	"ruoyi-go-vue-plus/pkg/snowflake"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/jsonx"
 )
 
 var ErrOssNotFound = errors.New("service: 文件数据不存在")

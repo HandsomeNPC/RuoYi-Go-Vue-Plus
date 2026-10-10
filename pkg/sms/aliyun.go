@@ -16,7 +16,8 @@ import (
 	"github.com/google/uuid"
 
 	"ruoyi-go-vue-plus/pkg/config"
-	"ruoyi-go-vue-plus/pkg/jsonx"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/jsonx"
 )
 
 // 阿里云 SendSms 的固定参数，取自 sms4j AlibabaConfig 的默认值。

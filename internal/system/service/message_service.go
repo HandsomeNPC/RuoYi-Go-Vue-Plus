@@ -13,9 +13,10 @@ import (
 	"ruoyi-go-vue-plus/internal/system/repository"
 	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/database"
-	"ruoyi-go-vue-plus/pkg/jsonx"
 	"ruoyi-go-vue-plus/pkg/push"
 	"ruoyi-go-vue-plus/pkg/snowflake"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/jsonx"
 )
 
 // 消息盒子的展示口径：每类最多 boxLimit 条、最近 boxDays 天。

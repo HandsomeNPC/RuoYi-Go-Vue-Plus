@@ -10,8 +10,9 @@ import (
 	systemdto "ruoyi-go-vue-plus/internal/system/model/dto"
 	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/constant"
-	"ruoyi-go-vue-plus/pkg/jsonx"
 	pkgredis "ruoyi-go-vue-plus/pkg/redis"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/jsonx"
 )
 
 // 客户端/服务端约定的控制消息。

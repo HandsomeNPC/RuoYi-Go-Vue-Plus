@@ -62,7 +62,7 @@ import `internal`（注解层落库等场景用 Recorder 回调让 internal 反�
    **禁止**堆砌“对照 Java XxxAspect.doBefore / 对照 Xxx.yyy”这类方法级映射说明，也不在函数 上方写逐行重复实现步骤的流水账。包/函数
    doc 一句话点明职责即可，复杂逻辑用一两句说清动机。
 8. **雪花 ID 的 JSON 形态由全局 codec 兜住**：VO/BO/entity 的 ID 字段一律用 **裸 `int64`**， **不要**加 `,string`
-   tag，也不要为它套自定义类型。`pkg/jsonx` 已接管 gin 的 JSON codec， 按值判断——超出 JS
+   tag，也不要为它套自定义类型。`github.com/HandsomeNPC/ruoyi-common-go/jsonx` 已接管 gin 的 JSON codec， 按值判断——超出 JS
    安全整数范围（±9007199254740991）自动转字符串出参、且入参同时认字符串与数字， 与 Java `BigNumberSerializer` 等价。加
    `,string` 反而会 **拒收数字**形态。 新增进程入口须在 `main()` 开头调 `jsonx.OverrideGinCodec()`；自定义 `MarshalJSON`
    内部用

@@ -7,13 +7,14 @@ import (
 	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/database"
 	"ruoyi-go-vue-plus/pkg/encrypt"
-	"ruoyi-go-vue-plus/pkg/jsonx"
 	"ruoyi-go-vue-plus/pkg/oplog"
 	"ruoyi-go-vue-plus/pkg/push"
 	"ruoyi-go-vue-plus/pkg/redis"
 	"ruoyi-go-vue-plus/pkg/repeatsubmit"
 	"ruoyi-go-vue-plus/pkg/satoken"
 	"ruoyi-go-vue-plus/pkg/snowflake"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/jsonx"
 )
 
 func main() {

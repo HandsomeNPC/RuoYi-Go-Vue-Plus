@@ -10,7 +10,6 @@ require (
 	github.com/gin-gonic/gin v1.12.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
-	github.com/json-iterator/go v1.1.12
 	github.com/mojocn/base64Captcha v1.3.8
 	github.com/redis/go-redis/v9 v9.22.0
 	github.com/sa-tokens/sa-token-go/core v0.2.4
@@ -59,6 +58,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jmattheis/goverter v1.9.4 // indirect
+	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/lionsoul2014/ip2region/binding/golang v0.0.0-20261008081544-02f04aa559ac // indirect

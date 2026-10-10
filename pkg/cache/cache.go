@@ -13,8 +13,9 @@ import (
 	goredis "github.com/redis/go-redis/v9"
 	"golang.org/x/sync/singleflight"
 
-	"ruoyi-go-vue-plus/pkg/jsonx"
 	"ruoyi-go-vue-plus/pkg/redis"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/jsonx"
 )
 
 var sf singleflight.Group

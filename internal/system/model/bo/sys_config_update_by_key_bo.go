@@ -1,6 +1,6 @@
 package bo
 
-import "ruoyi-go-vue-plus/pkg/jsonx"
+import "github.com/HandsomeNPC/ruoyi-common-go/jsonx"
 
 // SysConfigUpdateByKeyBo 按参数键名改配置的入参。
 //

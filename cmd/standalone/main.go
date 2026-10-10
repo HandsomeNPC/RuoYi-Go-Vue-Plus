@@ -18,7 +18,6 @@ import (
 	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/database"
 	"ruoyi-go-vue-plus/pkg/encrypt"
-	"ruoyi-go-vue-plus/pkg/jsonx"
 	"ruoyi-go-vue-plus/pkg/mail"
 	"ruoyi-go-vue-plus/pkg/middleware"
 	"ruoyi-go-vue-plus/pkg/oplog"
@@ -30,6 +29,8 @@ import (
 	"ruoyi-go-vue-plus/pkg/sms"
 	"ruoyi-go-vue-plus/pkg/snowflake"
 	"ruoyi-go-vue-plus/pkg/social"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/jsonx"
 )
 
 func main() {

@@ -28,10 +28,11 @@ import (
 	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/enum"
 	"ruoyi-go-vue-plus/pkg/errs"
-	"ruoyi-go-vue-plus/pkg/jsonx"
 	"ruoyi-go-vue-plus/pkg/middleware"
 	"ruoyi-go-vue-plus/pkg/response"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/jsonx"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ip"
 )
