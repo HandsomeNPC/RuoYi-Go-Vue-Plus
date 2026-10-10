@@ -17,6 +17,8 @@ import (
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 	"ruoyi-go-vue-plus/pkg/response"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/strutil"
 )
 
 // UserApi 用户信息接口。
@@ -185,7 +187,7 @@ func (a *UserApi) Edit(c *gin.Context) {
 
 // Remove 删除用户。当前登录用户不得在删除集合内。
 func (a *UserApi) Remove(c *gin.Context) {
-	ids, err := parseIDs(c.Param("userIds"))
+	ids, err := strutil.ParseIDList(c.Param("userIds"))
 	if err != nil {
 		_ = c.Error(errs.New(response.CodeBadRequest, "主键不能为空", err.Error()))
 		return
@@ -203,7 +205,7 @@ func (a *UserApi) Remove(c *gin.Context) {
 func (a *UserApi) OptionSelect(c *gin.Context) {
 	var userIds []int64
 	if raw := c.Query("userIds"); raw != "" {
-		ids, err := parseIDs(raw)
+		ids, err := strutil.ParseIDList(raw)
 		if err != nil {
 			_ = c.Error(errs.New(response.CodeBadRequest, "用户ID串非法", err.Error()))
 			return

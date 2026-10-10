@@ -14,6 +14,8 @@ import (
 	"ruoyi-go-vue-plus/pkg/excel"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 	"ruoyi-go-vue-plus/pkg/response"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/strutil"
 )
 
 // ConfigApi 参数配置接口。
@@ -180,7 +182,7 @@ func (a *ConfigApi) UpdateByKey(c *gin.Context) {
 
 // Remove 批量删除参数配置。主键串以逗号分隔。
 func (a *ConfigApi) Remove(c *gin.Context) {
-	ids, err := parseIDs(c.Param("configIds"))
+	ids, err := strutil.ParseIDList(c.Param("configIds"))
 	if err != nil {
 		_ = c.Error(errs.New(response.CodeBadRequest, "参数主键不能为空", c.Param("configIds")))
 		return

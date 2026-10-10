@@ -14,6 +14,8 @@ import (
 	"ruoyi-go-vue-plus/pkg/excel"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 	"ruoyi-go-vue-plus/pkg/response"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/strutil"
 )
 
 // DictTypeApi 字典类型接口。
@@ -154,7 +156,7 @@ func (a *DictTypeApi) Edit(c *gin.Context) {
 
 // Remove 批量删除字典类型。主键串以逗号分隔。
 func (a *DictTypeApi) Remove(c *gin.Context) {
-	ids, err := parseIDs(c.Param("dictIds"))
+	ids, err := strutil.ParseIDList(c.Param("dictIds"))
 	if err != nil {
 		_ = c.Error(errs.New(response.CodeBadRequest, "字典主键不能为空", c.Param("dictIds")))
 		return

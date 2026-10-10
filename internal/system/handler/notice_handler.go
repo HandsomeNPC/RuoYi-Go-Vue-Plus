@@ -12,6 +12,8 @@ import (
 	"ruoyi-go-vue-plus/pkg/errs"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 	"ruoyi-go-vue-plus/pkg/response"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/strutil"
 )
 
 // NoticeApi 通知公告接口。
@@ -103,7 +105,7 @@ func (a *NoticeApi) Edit(c *gin.Context) {
 
 // Remove 批量删除通知公告。主键串以逗号分隔。
 func (a *NoticeApi) Remove(c *gin.Context) {
-	ids, err := parseIDs(c.Param("noticeIds"))
+	ids, err := strutil.ParseIDList(c.Param("noticeIds"))
 	if err != nil {
 		_ = c.Error(errs.New(response.CodeBadRequest, "公告主键不能为空", c.Param("noticeIds")))
 		return

@@ -2,10 +2,7 @@
 package handler
 
 import (
-	"fmt"
 	"net/http"
-	"strconv"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -15,6 +12,8 @@ import (
 	"ruoyi-go-vue-plus/pkg/excel"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 	"ruoyi-go-vue-plus/pkg/response"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/strutil"
 )
 
 // LoginInfoApi 登录日志监控接口。
@@ -67,7 +66,7 @@ func (a *LoginInfoApi) Export(c *gin.Context) {
 
 // Remove 批量删除登录日志。主键串以逗号分隔。
 func (a *LoginInfoApi) Remove(c *gin.Context) {
-	ids, err := parseIDs(c.Param("infoIds"))
+	ids, err := strutil.ParseIDList(c.Param("infoIds"))
 	if err != nil {
 		_ = c.Error(errs.New(response.CodeBadRequest, "参数主键不能为空", c.Param("infoIds")))
 		return
@@ -100,22 +99,4 @@ func (a *LoginInfoApi) Unlock(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, response.OkVoid())
-}
-
-// parseIDs 切分逗号分隔的主键串。任一段非法即整体拒绝——静默丢弃会删成部分成功。
-// 与 internal/system/handler 的同名函数同实现：本包是独立的 monitor handler 包，取不到那个。
-func parseIDs(raw string) ([]int64, error) {
-	parts := strings.Split(raw, ",")
-	ids := make([]int64, 0, len(parts))
-	for _, p := range parts {
-		id, err := strconv.ParseInt(strings.TrimSpace(p), 10, 64)
-		if err != nil || id <= 0 {
-			return nil, fmt.Errorf("handler: 非法主键 %q", p)
-		}
-		ids = append(ids, id)
-	}
-	if len(ids) == 0 {
-		return nil, fmt.Errorf("handler: 主键为空")
-	}
-	return ids, nil
 }

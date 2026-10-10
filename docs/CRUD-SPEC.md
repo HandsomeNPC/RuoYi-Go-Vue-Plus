@@ -343,12 +343,11 @@ if err != nil || id <= 0 {
 	return
 }
 
-ids, err := parseIDs(c.Param("xxxIds"))   // 批量：复用 handler 包内已有的 parseIDs
+ids, err := strutil.ParseIDList(c.Param("xxxIds"))   // 批量：复用 github.com/HandsomeNPC/ruoyi-common-go/strutil
 ```
 
-`parseIDs` 已在 `internal/system/handler/client_handler.go:185` 定义（ **同包共用，别重复定义**）：
-逗号分隔，任一段非法即整体拒绝——静默丢弃会删成部分成功。 其他模块的 handler 包（如 `internal/auth/handler`） **没有**
-这个函数，需要时在各自包内补一个。
+`strutil.ParseIDList` 定义在 `github.com/HandsomeNPC/ruoyi-common-go/strutil`（ **跨仓共用**，import 即用）：
+逗号分隔，任一段非法即整体拒绝——静默丢弃会删成部分成功。
 
 ### 写接口：绑 JSON + 翻译哨兵错误
 

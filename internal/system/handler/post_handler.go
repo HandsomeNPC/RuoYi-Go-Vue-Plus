@@ -15,6 +15,8 @@ import (
 	"ruoyi-go-vue-plus/pkg/excel"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 	"ruoyi-go-vue-plus/pkg/response"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/strutil"
 )
 
 // PostApi 岗位信息接口。
@@ -157,7 +159,7 @@ func (a *PostApi) Edit(c *gin.Context) {
 
 // Remove 批量删除岗位。主键串以逗号分隔。
 func (a *PostApi) Remove(c *gin.Context) {
-	ids, err := parseIDs(c.Param("postIds"))
+	ids, err := strutil.ParseIDList(c.Param("postIds"))
 	if err != nil {
 		_ = c.Error(errs.New(response.CodeBadRequest, "岗位主键不能为空", c.Param("postIds")))
 		return
@@ -181,7 +183,7 @@ func (a *PostApi) OptionSelect(c *gin.Context) {
 	// 数组既可能以
 	// postIds=1&postIds=2 下发，也可能是 postIds=1,2，两种都要吃下。
 	if raw := strings.Join(c.QueryArray("postIds"), ","); strings.Trim(raw, ",") != "" {
-		parsed, err := parseIDs(raw)
+		parsed, err := strutil.ParseIDList(raw)
 		if err != nil {
 			_ = c.Error(errs.New(response.CodeBadRequest, "岗位主键有误", raw))
 			return

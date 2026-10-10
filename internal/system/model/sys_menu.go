@@ -4,7 +4,8 @@ import (
 	"strings"
 
 	"ruoyi-go-vue-plus/pkg/constant"
-	"ruoyi-go-vue-plus/pkg/strutil"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/strutil"
 )
 
 // SysMenu 菜单权限表（sys_menu）。

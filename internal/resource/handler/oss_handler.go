@@ -16,6 +16,8 @@ import (
 	"ruoyi-go-vue-plus/pkg/errs"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 	"ruoyi-go-vue-plus/pkg/response"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/strutil"
 )
 
 // maxUploadSize 单文件大小上限。
@@ -54,7 +56,7 @@ func (a *OssApi) List(c *gin.Context) {
 
 // ListByIDs 按主键串查 OSS 对象。
 func (a *OssApi) ListByIDs(c *gin.Context) {
-	ids, err := parseIDs(c.Param("ossIds"))
+	ids, err := strutil.ParseIDList(c.Param("ossIds"))
 	if err != nil {
 		_ = c.Error(errs.New(response.CodeBadRequest, "主键不能为空", c.Param("ossIds")))
 		return
@@ -146,7 +148,7 @@ func (a *OssApi) Download(c *gin.Context) {
 
 // Remove 批量删除 OSS 对象。
 func (a *OssApi) Remove(c *gin.Context) {
-	ids, err := parseIDs(c.Param("ossIds"))
+	ids, err := strutil.ParseIDList(c.Param("ossIds"))
 	if err != nil {
 		_ = c.Error(errs.New(response.CodeBadRequest, "主键不能为空", c.Param("ossIds")))
 		return

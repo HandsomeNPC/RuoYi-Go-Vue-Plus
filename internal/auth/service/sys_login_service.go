@@ -25,9 +25,9 @@ import (
 	"ruoyi-go-vue-plus/pkg/redis"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 	"ruoyi-go-vue-plus/pkg/social"
-	"ruoyi-go-vue-plus/pkg/useragent"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ip"
+	"github.com/HandsomeNPC/ruoyi-common-go/useragent"
 )
 
 // SysLoginService 登录态组装。

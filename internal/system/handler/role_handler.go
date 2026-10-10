@@ -18,6 +18,8 @@ import (
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 	"ruoyi-go-vue-plus/pkg/response"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/strutil"
 )
 
 // RoleApi 角色信息接口。
@@ -215,7 +217,7 @@ func (a *RoleApi) ChangeStatus(c *gin.Context) {
 
 // Remove 批量删除角色。主键串以逗号分隔。
 func (a *RoleApi) Remove(c *gin.Context) {
-	ids, err := parseIDs(c.Param("roleIds"))
+	ids, err := strutil.ParseIDList(c.Param("roleIds"))
 	if err != nil {
 		_ = c.Error(errs.New(response.CodeBadRequest, "角色主键不能为空", c.Param("roleIds")))
 		return
@@ -237,7 +239,7 @@ func (a *RoleApi) Remove(c *gin.Context) {
 func (a *RoleApi) OptionSelect(c *gin.Context) {
 	var roleIDs []int64
 	if raw := strings.Join(c.QueryArray("roleIds"), ","); strings.Trim(raw, ",") != "" {
-		parsed, err := parseIDs(raw)
+		parsed, err := strutil.ParseIDList(raw)
 		if err != nil {
 			_ = c.Error(errs.New(response.CodeBadRequest, "角色主键有误", raw))
 			return
@@ -434,7 +436,7 @@ func parseUserIDsQuery(c *gin.Context) ([]int64, bool) {
 	if strings.Trim(raw, ",") == "" {
 		return nil, true
 	}
-	userIDs, err := parseIDs(raw)
+	userIDs, err := strutil.ParseIDList(raw)
 	if err != nil {
 		_ = c.Error(errs.New(response.CodeBadRequest, "用户主键有误", raw))
 		return nil, false

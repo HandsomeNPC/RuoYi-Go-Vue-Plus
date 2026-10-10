@@ -14,6 +14,8 @@ import (
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/response"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/strutil"
 )
 
 // DeptApi 部门信息接口。
@@ -86,7 +88,7 @@ func (a *DeptApi) OptionSelect(c *gin.Context) {
 	// deptIds=1&deptIds=2 下发，也可能是 deptIds=1,2，两种都要吃下。
 	// 空值（?deptIds=）按缺省处理，不当成非法入参。
 	if raw := strings.Join(c.QueryArray("deptIds"), ","); strings.Trim(raw, ",") != "" {
-		parsed, err := parseIDs(raw)
+		parsed, err := strutil.ParseIDList(raw)
 		if err != nil {
 			_ = c.Error(errs.New(response.CodeBadRequest, "部门主键有误", raw))
 			return

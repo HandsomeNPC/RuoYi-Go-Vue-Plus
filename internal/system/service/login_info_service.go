@@ -11,9 +11,9 @@ import (
 	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/database"
 	"ruoyi-go-vue-plus/pkg/snowflake"
-	"ruoyi-go-vue-plus/pkg/useragent"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ip"
+	"github.com/HandsomeNPC/ruoyi-common-go/useragent"
 )
 
 // LoginInfoService 系统访问记录业务逻辑。

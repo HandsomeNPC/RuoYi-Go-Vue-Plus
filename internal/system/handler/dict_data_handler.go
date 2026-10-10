@@ -14,6 +14,8 @@ import (
 	"ruoyi-go-vue-plus/pkg/excel"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 	"ruoyi-go-vue-plus/pkg/response"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/strutil"
 )
 
 // DictDataApi 字典数据接口。
@@ -161,7 +163,7 @@ func (a *DictDataApi) Edit(c *gin.Context) {
 
 // Remove 批量删除字典数据。主键串以逗号分隔。
 func (a *DictDataApi) Remove(c *gin.Context) {
-	ids, err := parseIDs(c.Param("dictCodes"))
+	ids, err := strutil.ParseIDList(c.Param("dictCodes"))
 	if err != nil {
 		_ = c.Error(errs.New(response.CodeBadRequest, "字典编码不能为空", c.Param("dictCodes")))
 		return

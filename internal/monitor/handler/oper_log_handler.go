@@ -12,6 +12,8 @@ import (
 	"ruoyi-go-vue-plus/pkg/excel"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 	"ruoyi-go-vue-plus/pkg/response"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/strutil"
 )
 
 // OperLogApi 操作日志监控接口。
@@ -64,7 +66,7 @@ func (a *OperLogApi) Export(c *gin.Context) {
 
 // Remove 批量删除操作日志。主键串以逗号分隔。
 func (a *OperLogApi) Remove(c *gin.Context) {
-	ids, err := parseIDs(c.Param("operIds"))
+	ids, err := strutil.ParseIDList(c.Param("operIds"))
 	if err != nil {
 		_ = c.Error(errs.New(response.CodeBadRequest, "参数主键不能为空", c.Param("operIds")))
 		return

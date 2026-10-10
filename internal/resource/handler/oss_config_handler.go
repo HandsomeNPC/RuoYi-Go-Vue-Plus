@@ -13,6 +13,8 @@ import (
 	"ruoyi-go-vue-plus/pkg/errs"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 	"ruoyi-go-vue-plus/pkg/response"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/strutil"
 )
 
 // OssConfigApi 对象存储配置接口。
@@ -132,7 +134,7 @@ func (a *OssConfigApi) ChangeStatus(c *gin.Context) {
 
 // Remove 批量删除配置。
 func (a *OssConfigApi) Remove(c *gin.Context) {
-	ids, err := parseIDs(c.Param("ossConfigIds"))
+	ids, err := strutil.ParseIDList(c.Param("ossConfigIds"))
 	if err != nil {
 		_ = c.Error(errs.New(response.CodeBadRequest, "主键不能为空", c.Param("ossConfigIds")))
 		return

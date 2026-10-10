@@ -17,8 +17,9 @@ import (
 	"ruoyi-go-vue-plus/pkg/response"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 	"ruoyi-go-vue-plus/pkg/snowflake"
-	"ruoyi-go-vue-plus/pkg/strutil"
 	"ruoyi-go-vue-plus/pkg/tree"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/strutil"
 )
 
 var ErrMenuNotFound = errors.New("service: 菜单不存在")

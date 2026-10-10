@@ -1,6 +1,6 @@
 package vo
 
-import "ruoyi-go-vue-plus/pkg/strutil"
+import "github.com/HandsomeNPC/ruoyi-common-go/strutil"
 
 // MetaVo 路由显示信息视图对象。
 type MetaVo struct {

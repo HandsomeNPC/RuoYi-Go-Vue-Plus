@@ -14,6 +14,8 @@ import (
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/response"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/strutil"
 )
 
 // MenuApi 菜单信息接口。
@@ -194,7 +196,7 @@ func (a *MenuApi) Remove(c *gin.Context) {
 // CascadeRemove 批量级联删除菜单，同时清理角色授权。
 // 主键串以逗号分隔。
 func (a *MenuApi) CascadeRemove(c *gin.Context) {
-	ids, err := parseIDs(c.Param("menuIds"))
+	ids, err := strutil.ParseIDList(c.Param("menuIds"))
 	if err != nil {
 		_ = c.Error(errs.New(response.CodeBadRequest, "菜单主键不能为空", c.Param("menuIds")))
 		return
