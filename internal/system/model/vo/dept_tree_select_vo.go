@@ -1,7 +1,7 @@
 package vo
 
 import (
-	"ruoyi-go-vue-plus/pkg/treeutil"
+	"github.com/HandsomeNPC/ruoyi-common-go/treeutil"
 )
 
 // DeptTreeSelectVo 角色部门树及其选中节点。

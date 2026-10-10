@@ -24,7 +24,8 @@ import (
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 	"ruoyi-go-vue-plus/pkg/snowflake"
-	"ruoyi-go-vue-plus/pkg/treeutil"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/treeutil"
 )
 
 var ErrUserPhoneExists = errors.New("service: 手机号已存在")

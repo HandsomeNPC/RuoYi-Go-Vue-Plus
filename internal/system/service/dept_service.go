@@ -16,7 +16,8 @@ import (
 	"ruoyi-go-vue-plus/pkg/response"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 	"ruoyi-go-vue-plus/pkg/snowflake"
-	"ruoyi-go-vue-plus/pkg/treeutil"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/treeutil"
 )
 
 var ErrDeptNotFound = errors.New("service: 部门不存在")

@@ -1,7 +1,7 @@
 package vo
 
 import (
-	"ruoyi-go-vue-plus/pkg/treeutil"
+	"github.com/HandsomeNPC/ruoyi-common-go/treeutil"
 )
 
 // MenuTreeSelectVo 角色菜单树及其选中节点。
