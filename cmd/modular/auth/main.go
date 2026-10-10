@@ -33,7 +33,7 @@ func main() {
 	satoken.Init()
 	encrypt.Init()
 	// 主键发号器，落库前必须就绪(登录日志插入用)。
-	snowflake.Init()
+	snowflake.Init(config.Get().Snowflake)
 	// 依赖 redis(验证码存 Redis)，须在 redis.Init 之后。
 	captcha.Init()
 	// 依赖 redis(限流计数存 Redis)，须在 redis.Init 之后。

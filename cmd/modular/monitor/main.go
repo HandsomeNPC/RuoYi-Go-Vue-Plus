@@ -37,7 +37,7 @@ func main() {
 	satoken.Init()
 
 	// oplog 落 sys_oper_log 的主键发号器，须在 oplog.Init 之前就绪。
-	snowflake.Init()
+	snowflake.Init(config.Get().Snowflake)
 	// 操作日志落库实现反向注册给 pkg/oplog(pkg 不依赖 internal/service)，
 	// 依赖 database 与 snowflake。
 	oplog.Init(systemservice.OperLogSvcApp.RecordOper)

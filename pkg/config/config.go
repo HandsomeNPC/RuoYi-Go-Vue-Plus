@@ -6,28 +6,30 @@ import (
 	"sync"
 
 	"github.com/spf13/viper"
+
+	"ruoyi-go-vue-plus/pkg/snowflake"
 )
 
 // Config 应用完整配置。
 type Config struct {
-	Server         ServerConfig         `mapstructure:"server"`
-	Datasource     DatasourceConfig     `mapstructure:"datasource"`
-	Redis          RedisConfig          `mapstructure:"redis"`
-	SAToken        SATokenConfig        `mapstructure:"satoken"`
-	CORS           CORSConfig           `mapstructure:"cors"`
-	XSS            XSSConfig            `mapstructure:"xss"`
-	AccessLog      AccessLogConfig      `mapstructure:"accessLog"`
-	TraceID        TraceIDConfig        `mapstructure:"traceId"`
-	RepeatableBody RepeatableBodyConfig `mapstructure:"repeatableBody"`
-	I18n           I18nConfig           `mapstructure:"i18n"`
-	APIEncrypt     APIEncryptConfig     `mapstructure:"apiEncrypt"`
-	User           UserConfig           `mapstructure:"user"`
-	Captcha        CaptchaConfig        `mapstructure:"captcha"`
-	Snowflake      SnowflakeConfig      `mapstructure:"snowflake"`
-	Push           PushConfig           `mapstructure:"push"`
-	Mail           MailConfig           `mapstructure:"mail"`
-	SMS            SMSConfig            `mapstructure:"sms"`
-	Social         SocialConfig         `mapstructure:"social"`
+	Server         ServerConfig              `mapstructure:"server"`
+	Datasource     DatasourceConfig          `mapstructure:"datasource"`
+	Redis          RedisConfig               `mapstructure:"redis"`
+	SAToken        SATokenConfig             `mapstructure:"satoken"`
+	CORS           CORSConfig                `mapstructure:"cors"`
+	XSS            XSSConfig                 `mapstructure:"xss"`
+	AccessLog      AccessLogConfig           `mapstructure:"accessLog"`
+	TraceID        TraceIDConfig             `mapstructure:"traceId"`
+	RepeatableBody RepeatableBodyConfig      `mapstructure:"repeatableBody"`
+	I18n           I18nConfig                `mapstructure:"i18n"`
+	APIEncrypt     APIEncryptConfig          `mapstructure:"apiEncrypt"`
+	User           UserConfig                `mapstructure:"user"`
+	Captcha        CaptchaConfig             `mapstructure:"captcha"`
+	Snowflake      snowflake.SnowflakeConfig `mapstructure:"snowflake"`
+	Push           PushConfig                `mapstructure:"push"`
+	Mail           MailConfig                `mapstructure:"mail"`
+	SMS            SMSConfig                 `mapstructure:"sms"`
+	Social         SocialConfig              `mapstructure:"social"`
 }
 
 // Load 按顺序读取并合并多个 yaml 配置文件，后者覆盖前者，随后写入包级实例。
@@ -49,7 +51,6 @@ func Load(paths ...string) {
 	DefaultSAToken().setDefaults(v)
 	DefaultUser().setDefaults(v)
 	DefaultCaptcha().setDefaults(v)
-	DefaultSnowflake().setDefaults(v)
 	DefaultPush().setDefaults(v)
 	DefaultMail().setDefaults(v)
 	DefaultSMS().setDefaults(v)
@@ -113,7 +114,6 @@ func (c *Config) validate() error {
 		c.APIEncrypt.validate,
 		c.User.validate,
 		c.Captcha.validate,
-		c.Snowflake.validate,
 		c.Push.validate,
 		c.Mail.validate,
 		c.SMS.validate,

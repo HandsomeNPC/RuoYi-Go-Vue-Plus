@@ -49,7 +49,7 @@ func main() {
 	satoken.Init()
 	encrypt.Init()
 	// 主键发号器，各业务表主键无 auto_increment，插入前必须就绪。
-	snowflake.Init()
+	snowflake.Init(config.Get().Snowflake)
 	// 依赖 redis(验证码存 Redis)，须在 redis.Init 之后。
 	captcha.Init()
 	// 依赖 redis(限流计数存 Redis)，须在 redis.Init 之后。

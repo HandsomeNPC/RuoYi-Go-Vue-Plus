@@ -32,7 +32,7 @@ func main() {
 	satoken.Init()
 	encrypt.Init()
 	// 主键发号器，各业务表主键无 auto_increment，插入前必须就绪。
-	snowflake.Init()
+	snowflake.Init(config.Get().Snowflake)
 	// 依赖 redis(防重键存 Redis)，须在 redis.Init 之后。
 	repeatsubmit.Init()
 	// 操作日志落库实现反向注册给 pkg/oplog(pkg 不依赖 internal/service)，

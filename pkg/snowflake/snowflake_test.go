@@ -18,8 +18,8 @@ func TestNewRejectsOutOfRangeIDs(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if _, err := New(c.workerID, c.datacenterID); err == nil {
-				t.Errorf("New(%d, %d) 未报错，期望越界错误", c.workerID, c.datacenterID)
+			if _, err := NewGenerator(SnowflakeConfig{c.workerID, c.datacenterID}); err == nil {
+				t.Errorf("NewGenerator(%d, %d) 未报错，期望越界错误", c.workerID, c.datacenterID)
 			}
 		})
 	}
@@ -28,8 +28,8 @@ func TestNewRejectsOutOfRangeIDs(t *testing.T) {
 // TestNewAcceptsBoundaryIDs 上下边界值应被接受。
 func TestNewAcceptsBoundaryIDs(t *testing.T) {
 	for _, c := range [][2]int64{{0, 0}, {maxWorkerID, maxDatacenterID}} {
-		if _, err := New(c[0], c[1]); err != nil {
-			t.Errorf("New(%d, %d) 报错: %v", c[0], c[1], err)
+		if _, err := NewGenerator(SnowflakeConfig{c[0], c[1]}); err != nil {
+			t.Errorf("NewGenerator(%d, %d) 报错: %v", c[0], c[1], err)
 		}
 	}
 }
@@ -37,9 +37,9 @@ func TestNewAcceptsBoundaryIDs(t *testing.T) {
 // TestNextIsMonotonicAndUnique 连续发号应严格递增且不重复。
 // 数量取 10000 > 4096(单毫秒序列上限)，以覆盖序列号用尽后跨毫秒的分支。
 func TestNextIsMonotonicAndUnique(t *testing.T) {
-	g, err := New(1, 1)
+	g, err := NewGenerator(SnowflakeConfig{1, 1})
 	if err != nil {
-		t.Fatalf("New 报错: %v", err)
+		t.Fatalf("NewGenerator 报错: %v", err)
 	}
 
 	const n = 10000
@@ -63,9 +63,9 @@ func TestNextIsMonotonicAndUnique(t *testing.T) {
 
 // TestNextConcurrentUnique 并发发号不应撞号（验证锁有效）。
 func TestNextConcurrentUnique(t *testing.T) {
-	g, err := New(2, 3)
+	g, err := NewGenerator(SnowflakeConfig{2, 3})
 	if err != nil {
-		t.Fatalf("New 报错: %v", err)
+		t.Fatalf("NewGenerator 报错: %v", err)
 	}
 
 	const goroutines, perGoroutine = 20, 500
@@ -99,9 +99,9 @@ func TestNextConcurrentUnique(t *testing.T) {
 // TestNextEncodesMachineIDs 发出的 ID 应能还原出配置的机器号。
 func TestNextEncodesMachineIDs(t *testing.T) {
 	const workerID, datacenterID int64 = 7, 11
-	g, err := New(workerID, datacenterID)
+	g, err := NewGenerator(SnowflakeConfig{workerID, datacenterID})
 	if err != nil {
-		t.Fatalf("New 报错: %v", err)
+		t.Fatalf("NewGenerator 报错: %v", err)
 	}
 
 	id := g.Next()
@@ -116,13 +116,13 @@ func TestNextEncodesMachineIDs(t *testing.T) {
 // TestDifferentWorkersDoNotCollide 不同 workerId 在同一毫秒内不应发出相同 ID。
 // 这是多进程共库的前提，故单独断言。
 func TestDifferentWorkersDoNotCollide(t *testing.T) {
-	g1, err := New(1, 0)
+	g1, err := NewGenerator(SnowflakeConfig{1, 0})
 	if err != nil {
-		t.Fatalf("New 报错: %v", err)
+		t.Fatalf("NewGenerator 报错: %v", err)
 	}
-	g2, err := New(2, 0)
+	g2, err := NewGenerator(SnowflakeConfig{2, 0})
 	if err != nil {
-		t.Fatalf("New 报错: %v", err)
+		t.Fatalf("NewGenerator 报错: %v", err)
 	}
 
 	ids := make(map[int64]struct{}, 2000)
@@ -138,14 +138,10 @@ func TestDifferentWorkersDoNotCollide(t *testing.T) {
 
 // TestNextPanicsWithoutInit 未 Init 就调包级 Next 应 panic。
 func TestNextPanicsWithoutInit(t *testing.T) {
-	mu.Lock()
-	saved := defaultGenerator
-	defaultGenerator = nil
-	mu.Unlock()
+	saved := instance.Load()
+	instance.Store(nil)
 	t.Cleanup(func() {
-		mu.Lock()
-		defaultGenerator = saved
-		mu.Unlock()
+		instance.Store(saved)
 	})
 
 	defer func() {

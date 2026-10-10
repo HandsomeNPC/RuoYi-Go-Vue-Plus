@@ -41,7 +41,7 @@ func main() {
 
 	satoken.Init()
 	// 主键发号器，sys_oss/sys_oss_config 主键无 auto_increment，插入前必须就绪。
-	snowflake.Init()
+	snowflake.Init(config.Get().Snowflake)
 	// 依赖 redis(防重键存 Redis)，须在 redis.Init 之后。
 	repeatsubmit.Init()
 	// 依赖 redis(限流计数存 Redis)：短信/邮箱验证码两个端点按手机号/邮箱限流。
