@@ -24,7 +24,7 @@ func main() {
 	config.Load("configs/application.yaml", "configs/monitor.yaml")
 
 	// 须在首个 c.JSON / 参数绑定之前接管 gin 的 JSON codec(雪花 id 按值转字符串)。
-	jsonx.Init()
+	jsonx.OverrideGinCodec()
 
 	redis.Init()
 	defer redis.CloseDefault()

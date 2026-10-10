@@ -469,7 +469,7 @@ xxx.DELETE("/:xxxIds", satoken.CheckPermission("system:xxx:remove"),
 
 ```go
 config.Load(...)
-jsonx.Init()        // 必须在首个 c.JSON / 参数绑定之前接管 gin codec
+jsonx.OverrideGinCodec()        // 必须在首个 c.JSON / 参数绑定之前接管 gin codec
 database.Init(); redis.Init(); satoken.Init(); encrypt.Init()
 snowflake.Init()    // 主键发号器，插入前必须就绪
 captcha.Init(); ratelimiter.Init(); repeatsubmit.Init()   // 三者都依赖 redis

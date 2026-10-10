@@ -24,7 +24,7 @@ type payload struct {
 // newEngine 装配一个回显 payload 的引擎，模拟真实 handler 的绑定+响应两段。
 func newEngine() *gin.Engine {
 	gin.SetMode(gin.TestMode)
-	jsonx.Init()
+	jsonx.OverrideGinCodec()
 
 	r := gin.New()
 	r.POST("/echo", func(c *gin.Context) {

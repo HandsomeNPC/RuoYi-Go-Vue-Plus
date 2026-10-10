@@ -10,7 +10,7 @@ import (
 )
 
 // idHolder 覆盖三类字段：裸 int64、int64 切片、omitempty 的 int64。
-// int64 编解码器由包 init 注册，无需在测试里显式调 Init。
+// int64 编解码器由包 init 注册，无需在测试里显式调 OverrideGinCodec。
 type idHolder struct {
 	ID       int64   `json:"id"`
 	ParentID int64   `json:"parentId"`
@@ -98,7 +98,7 @@ func TestDecodeAcceptsBothShapes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var got idHolder
-			if err := api.Unmarshal([]byte(tt.in), &got); err != nil {
+			if err := Unmarshal([]byte(tt.in), &got); err != nil {
 				t.Fatalf("Unmarshal(%s): %v", tt.in, err)
 			}
 			if got.ID != tt.want {
@@ -127,7 +127,7 @@ func TestDecodeSliceBothShapes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var got idHolder
-			if err := api.Unmarshal([]byte(tt.in), &got); err != nil {
+			if err := Unmarshal([]byte(tt.in), &got); err != nil {
 				t.Fatalf("Unmarshal(%s): %v", tt.in, err)
 			}
 			if !reflect.DeepEqual(got.RoleIDs, tt.want) {
@@ -140,7 +140,7 @@ func TestDecodeSliceBothShapes(t *testing.T) {
 // TestDecodeRejectsNonNumericString 非数字串必须报错，不能静默当零值放过去。
 func TestDecodeRejectsNonNumericString(t *testing.T) {
 	var got idHolder
-	err := api.Unmarshal([]byte(`{"id":"abc"}`), &got)
+	err := Unmarshal([]byte(`{"id":"abc"}`), &got)
 	if err == nil {
 		t.Fatal("非数字字符串应返回错误")
 	}
@@ -158,7 +158,7 @@ func TestRoundTrip(t *testing.T) {
 		t.Fatalf("Marshal: %v", err)
 	}
 	var back idHolder
-	if err := api.Unmarshal(body, &back); err != nil {
+	if err := Unmarshal(body, &back); err != nil {
 		t.Fatalf("Unmarshal(%s): %v", body, err)
 	}
 	if !reflect.DeepEqual(src, back) {
@@ -216,33 +216,33 @@ func TestIntNotAffected(t *testing.T) {
 	}
 }
 
-// TestRegisteredAtPackageInit 注册必须发生在包 init，不能挪进 Init()。
+// TestRegisteredAtPackageInit 注册必须发生在包 init，不能挪进 OverrideGinCodec()。
 //
 // jsoniter 按类型缓存 encoder（frozenConfig.encoderCache），某类型一旦被编码过其
-// encoder 即固化，之后再 RegisterTypeEncoder 也挤不掉。若把注册挪进 Init()，
-// 任何在 Init() 之前发生的 Marshal 都会把该类型钉死成裸数字形态。
-// 本用例故意不调 Init()，直接编码就应看到字符串形态。
+// encoder 即固化，之后再 RegisterTypeEncoder 也挤不掉。若把注册挪进 OverrideGinCodec()，
+// 任何在 OverrideGinCodec() 之前发生的 Marshal 都会把该类型钉死成裸数字形态。
+// 本用例故意不调 OverrideGinCodec()，直接编码就应看到字符串形态。
 func TestRegisteredAtPackageInit(t *testing.T) {
 	got, err := Marshal(idHolder{ID: 1762000000000000001})
 	if err != nil {
 		t.Fatalf("Marshal: %v", err)
 	}
 	if !strings.Contains(string(got), `"id":"1762000000000000001"`) {
-		t.Errorf("Marshal = %s\n未调 Init 也应生效(注册在包 init)", got)
+		t.Errorf("Marshal = %s\n未调 OverrideGinCodec 也应生效(注册在包 init)", got)
 	}
 }
 
-// TestInitTakesOverGinAPI Init 须把 gin 的全局 codec 换成本包实现，
+// TestOverrideGinCodecTakesOverAPI OverrideGinCodec 须把 gin 的全局 codec 换成本包实现，
 // 因为 c.JSON 与参数绑定走的都是 ginjson.API。
-func TestInitTakesOverGinAPI(t *testing.T) {
-	Init()
+func TestOverrideGinCodecTakesOverAPI(t *testing.T) {
+	OverrideGinCodec()
 
 	got, err := ginjson.API.Marshal(idHolder{ID: 1762000000000000001})
 	if err != nil {
 		t.Fatalf("ginjson.API.Marshal: %v", err)
 	}
 	if !strings.Contains(string(got), `"id":"1762000000000000001"`) {
-		t.Errorf("ginjson.API.Marshal = %s\nInit 后应由本包接管", got)
+		t.Errorf("ginjson.API.Marshal = %s\nOverrideGinCodec 后应由本包接管", got)
 	}
 
 	var back idHolder
