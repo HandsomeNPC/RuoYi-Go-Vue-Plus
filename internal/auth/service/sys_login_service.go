@@ -21,12 +21,13 @@ import (
 	"ruoyi-go-vue-plus/pkg/enum"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/i18n"
-	"ruoyi-go-vue-plus/pkg/ip"
 	authmodel "ruoyi-go-vue-plus/pkg/model"
 	"ruoyi-go-vue-plus/pkg/redis"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 	"ruoyi-go-vue-plus/pkg/social"
 	"ruoyi-go-vue-plus/pkg/useragent"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/ip"
 )
 
 // SysLoginService 登录态组装。
@@ -47,10 +48,10 @@ func (*SysLoginService) BuildLoginUser(req *http.Request, user *systemvo.SysUser
 
 	// 终端信息
 	if loginUser.IPAddr == "" {
-		loginUser.IPAddr = ip.ClientIP(req)
+		loginUser.IPAddr = ip.ResolveClientIP(req)
 	}
 	if loginUser.LoginLocation == "" && loginUser.IPAddr != "" {
-		loginUser.LoginLocation = ip.RealAddressByIP(loginUser.IPAddr)
+		loginUser.LoginLocation = ip.ResolveRealAddressByIP(loginUser.IPAddr)
 	}
 	if loginUser.Browser == "" || loginUser.OS == "" {
 		browser, osName := useragent.Parse(req.Header.Get("User-Agent"))
@@ -244,7 +245,7 @@ func (*SysLoginService) RecordLoginInfo(req *http.Request, username, status, mes
 	}
 	ctx := context.Background()
 	if req != nil {
-		evt.IP = ip.ClientIP(req)
+		evt.IP = ip.ResolveClientIP(req)
 		evt.UserAgent = req.Header.Get("User-Agent")
 		evt.ClientID = req.Header.Get(constant.ClientIDHeader)
 		ctx = context.WithoutCancel(req.Context())

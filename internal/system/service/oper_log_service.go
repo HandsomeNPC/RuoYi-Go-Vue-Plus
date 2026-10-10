@@ -9,9 +9,10 @@ import (
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/repository"
 	"ruoyi-go-vue-plus/pkg/database"
-	"ruoyi-go-vue-plus/pkg/ip"
 	"ruoyi-go-vue-plus/pkg/oplog"
 	"ruoyi-go-vue-plus/pkg/snowflake"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/ip"
 )
 
 // OperLogService 操作日志业务逻辑。
@@ -60,7 +61,7 @@ func (s *OperLogService) recordOper(ctx context.Context, evt *oplog.Event) error
 		OperURL:       evt.OperURL,
 		OperIP:        evt.OperIP,
 		// 归属地在消费侧补，注解侧只带原始 IP。
-		OperLocation: ip.RealAddressByIP(evt.OperIP),
+		OperLocation: ip.ResolveRealAddressByIP(evt.OperIP),
 		OperParam:    evt.OperParam,
 		JSONResult:   evt.JSONResult,
 		Status:       evt.Status,

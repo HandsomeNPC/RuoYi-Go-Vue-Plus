@@ -19,8 +19,9 @@ import (
 
 	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/errs"
-	"ruoyi-go-vue-plus/pkg/ip"
 	"ruoyi-go-vue-plus/pkg/redis"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/ip"
 )
 
 // LimitType 限流类型。
@@ -160,7 +161,7 @@ func (l *Limiter) combineKey(c *gin.Context, o *options) string {
 
 	switch o.limitType {
 	case LimitTypeIP:
-		sb.WriteString(ip.ClientIP(c.Request))
+		sb.WriteString(ip.ResolveClientIP(c.Request))
 		sb.WriteByte(':')
 	case LimitTypeCluster:
 		sb.WriteString(l.instanceID)

@@ -3,6 +3,7 @@ module ruoyi-go-vue-plus
 go 1.26.5
 
 require (
+	github.com/HandsomeNPC/ruoyi-common-go v0.0.0-00010101000000-000000000000
 	github.com/aws/aws-sdk-go-v2 v1.45.1
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.2
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.110.0
@@ -10,7 +11,6 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/json-iterator/go v1.1.12
-	github.com/lionsoul2014/ip2region/binding/golang v0.0.0-20260814054437-800d19424237
 	github.com/mojocn/base64Captcha v1.3.8
 	github.com/mssola/useragent v1.0.0
 	github.com/redis/go-redis/v9 v9.22.0
@@ -62,6 +62,7 @@ require (
 	github.com/jmattheis/goverter v1.9.4 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
+	github.com/lionsoul2014/ip2region/binding/golang v0.0.0-20261008081544-02f04aa559ac // indirect
 	github.com/mattn/go-isatty v0.0.22 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
@@ -98,6 +99,7 @@ require (
 tool github.com/jmattheis/goverter/cmd/goverter
 
 replace (
+	github.com/HandsomeNPC/ruoyi-common-go => E:/WorkSpace/RuoYi-Plus/ruoyi-common-go
 	github.com/sa-tokens/sa-token-go/core => github.com/sa-tokens/sa-token-go/core v0.2.4-0.20260909081128-8270b63ab78e
 	github.com/sa-tokens/sa-token-go/integrations/gin => github.com/sa-tokens/sa-token-go/integrations/gin v0.2.4-0.20260909081128-8270b63ab78e
 	github.com/sa-tokens/sa-token-go/storage/memory => github.com/sa-tokens/sa-token-go/storage/memory v0.2.4-0.20260909081128-8270b63ab78e

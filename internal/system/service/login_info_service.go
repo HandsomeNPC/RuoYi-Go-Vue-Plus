@@ -10,9 +10,10 @@ import (
 	"ruoyi-go-vue-plus/internal/system/repository"
 	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/database"
-	"ruoyi-go-vue-plus/pkg/ip"
 	"ruoyi-go-vue-plus/pkg/snowflake"
 	"ruoyi-go-vue-plus/pkg/useragent"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/ip"
 )
 
 // LoginInfoService 系统访问记录业务逻辑。
@@ -47,7 +48,7 @@ func (s *LoginInfoService) recordLoginInfo(ctx context.Context, evt *dto.LoginIn
 	b := &bo.SysLoginInfoBo{
 		UserName:      evt.Username,
 		IPAddr:        evt.IP,
-		LoginLocation: ip.RealAddressByIP(evt.IP),
+		LoginLocation: ip.ResolveRealAddressByIP(evt.IP),
 		Msg:           evt.Message,
 		Status:        mapLoginStatus(evt.Status),
 	}

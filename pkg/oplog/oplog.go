@@ -28,11 +28,12 @@ import (
 	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/enum"
 	"ruoyi-go-vue-plus/pkg/errs"
-	"ruoyi-go-vue-plus/pkg/ip"
 	"ruoyi-go-vue-plus/pkg/jsonx"
 	"ruoyi-go-vue-plus/pkg/middleware"
 	"ruoyi-go-vue-plus/pkg/response"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/ip"
 )
 
 // 各字段的落库长度上限，与 sys_oper_log 列宽对应。maxNameLength/maxIPLength 是补的：严格模式下超长会让整条日志插入失败。
@@ -166,7 +167,7 @@ func run(c *gin.Context, title string, businessType enum.BusinessType, o *option
 		RequestMethod: c.Request.Method,
 		OperURL:       limit(c.Request.URL.Path, maxURLLength),
 		// X-Forwarded-For 可伪造且不校验格式，长度必须自己兜。
-		OperIP:    limit(ip.ClientIP(c.Request), maxIPLength),
+		OperIP:    limit(ip.ResolveClientIP(c.Request), maxIPLength),
 		ClientKey: limit(c.GetHeader(constant.ClientIDHeader), maxClientKeyLength),
 		Status:    enum.BusinessStatusSuccess.Int(),
 	}
