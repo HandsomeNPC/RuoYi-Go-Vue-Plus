@@ -12,11 +12,13 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
-	"ruoyi-go-vue-plus/internal/system/repository"
+	"ruoyi-go-vue-plus/internal/system/repository/dept"
+	"ruoyi-go-vue-plus/internal/system/repository/post"
+	"ruoyi-go-vue-plus/internal/system/repository/role"
+	"ruoyi-go-vue-plus/internal/system/repository/user"
 	"ruoyi-go-vue-plus/pkg/bcrypt"
 	"ruoyi-go-vue-plus/pkg/cache"
 	"ruoyi-go-vue-plus/pkg/constant"
-	"ruoyi-go-vue-plus/pkg/database"
 	"ruoyi-go-vue-plus/pkg/enum"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/excel"
@@ -56,9 +58,9 @@ var UserSvcApp = new(UserService)
 
 // LoadUserByUsername 按用户名加载可登录用户，并校验是否存在或被停用。
 func (*UserService) LoadUserByUsername(ctx context.Context, username string) (*vo.SysUserVo, error) {
-	entity, err := repository.NewUserRepository(database.DB()).SelectByUserName(ctx, username)
+	entity, err := user.SelectByUserName(ctx, username)
 	if err != nil {
-		if errors.Is(err, repository.ErrUserNotFound) {
+		if errors.Is(err, user.ErrUserNotFound) {
 			log.Printf("[auth] 登录用户: %s 不存在", username)
 			return nil, errs.New(0, i18n.Msg(ctx, "user.not.exists", username), "")
 		}
@@ -74,9 +76,9 @@ func (*UserService) LoadUserByUsername(ctx context.Context, username string) (*v
 
 // LoadUserByPhone 按手机号加载可登录用户，并校验是否存在或被停用。
 func (*UserService) LoadUserByPhone(ctx context.Context, phone string) (*vo.SysUserVo, error) {
-	entity, err := repository.NewUserRepository(database.DB()).SelectByPhone(ctx, phone)
+	entity, err := user.SelectByPhone(ctx, phone)
 	if err != nil {
-		if errors.Is(err, repository.ErrUserNotFound) {
+		if errors.Is(err, user.ErrUserNotFound) {
 			log.Printf("[auth] 登录用户: %s 不存在", phone)
 			return nil, errs.New(0, i18n.Msg(ctx, "user.not.exists", phone), "")
 		}
@@ -92,9 +94,9 @@ func (*UserService) LoadUserByPhone(ctx context.Context, phone string) (*vo.SysU
 
 // LoadUserByEmail 按邮箱加载可登录用户，并校验是否存在或被停用。
 func (*UserService) LoadUserByEmail(ctx context.Context, email string) (*vo.SysUserVo, error) {
-	entity, err := repository.NewUserRepository(database.DB()).SelectByEmail(ctx, email)
+	entity, err := user.SelectByEmail(ctx, email)
 	if err != nil {
-		if errors.Is(err, repository.ErrUserNotFound) {
+		if errors.Is(err, user.ErrUserNotFound) {
 			log.Printf("[auth] 登录用户: %s 不存在", email)
 			return nil, errs.New(0, i18n.Msg(ctx, "user.not.exists", email), "")
 		}
@@ -111,9 +113,9 @@ func (*UserService) LoadUserByEmail(ctx context.Context, email string) (*vo.SysU
 // LoadUserByID 按用户ID加载可登录用户，并校验是否存在或被停用。
 // 供三方登录按绑定关系回查系统用户。
 func (*UserService) LoadUserByID(ctx context.Context, userID int64) (*vo.SysUserVo, error) {
-	entity, err := repository.NewUserRepository(database.DB()).SelectByUserID(ctx, userID)
+	entity, err := user.SelectByUserID(ctx, userID)
 	if err != nil {
-		if errors.Is(err, repository.ErrUserNotFound) {
+		if errors.Is(err, user.ErrUserNotFound) {
 			log.Printf("[auth] 登录用户: %d 不存在", userID)
 			return nil, errs.New(0, i18n.Msg(ctx, "user.not.exists", ""), "")
 		}
@@ -130,9 +132,9 @@ func (*UserService) LoadUserByID(ctx context.Context, userID int64) (*vo.SysUser
 // SelectUserByID 按用户ID查用户并回填角色。
 // 数据权限尚未落地，此处直接查库。用户不存在返回 (nil, nil)，由 handler 转成"没有权限访问用户数据"。
 func (*UserService) SelectUserByID(ctx context.Context, userID int64) (*vo.SysUserVo, error) {
-	entity, err := repository.NewUserRepository(database.DB()).SelectByUserID(ctx, userID)
+	entity, err := user.SelectByUserID(ctx, userID)
 	if err != nil {
-		if errors.Is(err, repository.ErrUserNotFound) {
+		if errors.Is(err, user.ErrUserNotFound) {
 			return nil, nil
 		}
 		return nil, err
@@ -153,9 +155,9 @@ func (*UserService) SelectUserByID(ctx context.Context, userID int64) (*vo.SysUs
 func (*UserService) SelectUserProfile(ctx context.Context,
 	userID int64) (*vo.ProfileVo, error) {
 
-	entity, err := repository.NewUserRepository(database.DB()).SelectByUserID(ctx, userID)
+	entity, err := user.SelectByUserID(ctx, userID)
 	if err != nil {
-		if errors.Is(err, repository.ErrUserNotFound) {
+		if errors.Is(err, user.ErrUserNotFound) {
 			return nil, nil
 		}
 		return nil, err
@@ -165,10 +167,9 @@ func (*UserService) SelectUserProfile(ctx context.Context,
 	// 回填部门名：Go 无翻译层，手动查。
 	// 父级不存在（如根部门）时留空，不算错。
 	if user.DeptID > 0 {
-		if dept, err := repository.NewDeptRepository(database.DB()).
-			SelectByID(ctx, user.DeptID); err == nil {
-			user.DeptName = dept.DeptName
-		} else if !errors.Is(err, repository.ErrDeptNotFound) {
+		if d, err := dept.SelectByID(ctx, user.DeptID); err == nil {
+			user.DeptName = d.DeptName
+		} else if !errors.Is(err, dept.ErrDeptNotFound) {
 			return nil, err
 		}
 	}
@@ -221,8 +222,7 @@ func (*UserService) SelectUserPostGroup(ctx context.Context, userID int64) (stri
 func (*UserService) CheckPhoneUnique(ctx context.Context, phone string,
 	excludeID int64) (bool, error) {
 
-	exists, err := repository.NewUserRepository(database.DB()).
-		ExistsByPhone(ctx, phone, excludeID)
+	exists, err := user.ExistsByPhone(ctx, phone, excludeID)
 	if err != nil {
 		return false, err
 	}
@@ -234,8 +234,7 @@ func (*UserService) CheckPhoneUnique(ctx context.Context, phone string,
 func (*UserService) CheckEmailUnique(ctx context.Context, email string,
 	excludeID int64) (bool, error) {
 
-	exists, err := repository.NewUserRepository(database.DB()).
-		ExistsByEmail(ctx, email, excludeID)
+	exists, err := user.ExistsByEmail(ctx, email, excludeID)
 	if err != nil {
 		return false, err
 	}
@@ -272,8 +271,7 @@ func (*UserService) UpdateUserProfile(ctx context.Context, userID int64,
 	}
 
 	columns := buildUserProfileColumns(b)
-	rows, err := repository.NewUserRepository(database.DB()).
-		UpdateProfile(ctx, userID, columns)
+	rows, err := user.UpdateProfile(ctx, userID, columns)
 	if err != nil {
 		return err
 	}
@@ -317,8 +315,7 @@ func (*UserService) ResetUserPwd(ctx context.Context, userID int64,
 	if err != nil {
 		return err
 	}
-	rows, err := repository.NewUserRepository(database.DB()).
-		UpdatePassword(ctx, userID, hashed)
+	rows, err := user.UpdatePassword(ctx, userID, hashed)
 	if err != nil {
 		return err
 	}
@@ -334,10 +331,10 @@ func (*UserService) ResetUserPwd(ctx context.Context, userID int64,
 func (*UserService) ChangeUserPassword(ctx context.Context, userID int64,
 	oldPassword, newPassword string) error {
 
-	entity, err := repository.NewUserRepository(database.DB()).SelectByUserID(ctx, userID)
+	entity, err := user.SelectByUserID(ctx, userID)
 	if err != nil {
 		// 当前登录用户查不到属异常态，按旧密码错误兜底，避免泄露用户存在性。
-		if errors.Is(err, repository.ErrUserNotFound) {
+		if errors.Is(err, user.ErrUserNotFound) {
 			return ErrUserPasswordWrong
 		}
 		return err
@@ -359,8 +356,7 @@ func (*UserService) ChangeUserPassword(ctx context.Context, userID int64,
 func (*UserService) SelectAllocatedList(ctx context.Context, q bo.SysUserQueryBo,
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysUserVo], error) {
 
-	res, err := repository.NewUserRepository(database.DB()).
-		SelectAllocatedList(ctx, q, page)
+	res, err := user.SelectAllocatedList(ctx, q, page)
 	if err != nil {
 		return pkgrepo.EmptyPage[*vo.SysUserVo](), err
 	}
@@ -372,13 +368,11 @@ func (*UserService) SelectAllocatedList(ctx context.Context, q bo.SysUserQueryBo
 func (*UserService) SelectUnallocatedList(ctx context.Context, q bo.SysUserQueryBo,
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysUserVo], error) {
 
-	excludeUserIDs, err := repository.NewRoleRepository(database.DB()).
-		SelectUserIDsByRoleID(ctx, q.RoleID)
+	excludeUserIDs, err := role.SelectUserIDsByRoleID(ctx, q.RoleID)
 	if err != nil {
 		return pkgrepo.EmptyPage[*vo.SysUserVo](), err
 	}
-	res, err := repository.NewUserRepository(database.DB()).
-		SelectUnallocatedList(ctx, q, excludeUserIDs, page)
+	res, err := user.SelectUnallocatedList(ctx, q, excludeUserIDs, page)
 	if err != nil {
 		return pkgrepo.EmptyPage[*vo.SysUserVo](), err
 	}
@@ -390,7 +384,7 @@ func (s *UserService) resolveDeptIDs(ctx context.Context, q *bo.SysUserQueryBo) 
 	if q.DeptID <= 0 {
 		return nil
 	}
-	ids, err := repository.NewDeptRepository(database.DB()).SelectDeptAndChildIDs(ctx, q.DeptID)
+	ids, err := dept.SelectDeptAndChildIDs(ctx, q.DeptID)
 	if err != nil {
 		return err
 	}
@@ -405,7 +399,7 @@ func (s *UserService) QueryPageList(ctx context.Context, q bo.SysUserQueryBo,
 	if err := s.resolveDeptIDs(ctx, &q); err != nil {
 		return pkgrepo.EmptyPage[*vo.SysUserVo](), err
 	}
-	res, err := repository.NewUserRepository(database.DB()).SelectPageList(ctx, q, page)
+	res, err := user.SelectPageList(ctx, q, page)
 	if err != nil {
 		return pkgrepo.EmptyPage[*vo.SysUserVo](), err
 	}
@@ -422,7 +416,7 @@ func (s *UserService) QueryExportList(ctx context.Context, q bo.SysUserQueryBo,
 	if err := s.resolveDeptIDs(ctx, &q); err != nil {
 		return nil, err
 	}
-	rows, err := repository.NewUserRepository(database.DB()).SelectExportList(ctx, q, limit)
+	rows, err := user.SelectExportList(ctx, q, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -444,7 +438,6 @@ func fillExportDeptLeader(ctx context.Context, rows []*vo.SysUserExportVo) {
 		return
 	}
 
-	deptRepo := repository.NewDeptRepository(database.DB())
 	type deptInfo struct {
 		name   string
 		leader int64
@@ -452,9 +445,9 @@ func fillExportDeptLeader(ctx context.Context, rows []*vo.SysUserExportVo) {
 	deptMap := make(map[int64]deptInfo, len(deptIDs))
 	leaderSet := make(map[int64]struct{})
 	for did := range deptIDs {
-		d, err := deptRepo.SelectByID(ctx, did)
+		d, err := dept.SelectByID(ctx, did)
 		if err != nil {
-			if errors.Is(err, repository.ErrDeptNotFound) {
+			if errors.Is(err, dept.ErrDeptNotFound) {
 				continue
 			}
 			return // 查询出错时整组留空，不阻断导出
@@ -469,7 +462,7 @@ func fillExportDeptLeader(ctx context.Context, rows []*vo.SysUserExportVo) {
 	for lid := range leaderSet {
 		leaders = append(leaders, lid)
 	}
-	names, err := repository.NewUserRepository(database.DB()).SelectUserNamesByIDs(ctx, leaders)
+	names, err := user.SelectUserNamesByIDs(ctx, leaders)
 	if err != nil {
 		return
 	}
@@ -512,8 +505,8 @@ func (s *UserService) ImportUsers(ctx context.Context, r io.Reader,
 			continue
 		}
 
-		existing, err := repository.NewUserRepository(database.DB()).SelectByUserName(ctx, userName)
-		if err != nil && !errors.Is(err, repository.ErrUserNotFound) {
+		existing, err := user.SelectByUserName(ctx, userName)
+		if err != nil && !errors.Is(err, user.ErrUserNotFound) {
 			failureNum++
 			failureMsg.WriteString(fmt.Sprintf("\n%d、账号 %s 导入失败：%s",
 				failureNum, userName, err.Error()))
@@ -578,8 +571,7 @@ func (s *UserService) ImportUsers(ctx context.Context, r io.Reader,
 func (s *UserService) CheckUserNameUnique(ctx context.Context, userName string,
 	excludeID int64) (bool, error) {
 
-	exists, err := repository.NewUserRepository(database.DB()).
-		ExistsByUserName(ctx, userName, excludeID)
+	exists, err := user.ExistsByUserName(ctx, userName, excludeID)
 	if err != nil {
 		return false, err
 	}
@@ -606,7 +598,7 @@ func (s *UserService) CheckUserDataScope(ctx context.Context, userID int64) erro
 	if loginhelper.IsSuperAdmin(loginhelperFromCtx(ctx)) {
 		return nil
 	}
-	count, err := repository.NewUserRepository(database.DB()).CountByUserID(ctx, userID)
+	count, err := user.CountByUserID(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -655,8 +647,7 @@ func (s *UserService) InsertUser(ctx context.Context, b *bo.SysUserBo) error {
 	add.Password = hashed
 	// 审计字段不在此处填：由 pkg/repository 的插入回调统一注入。
 
-	repo := repository.NewUserRepository(database.DB())
-	if err := repo.Insert(ctx, add); err != nil {
+	if err := user.Insert(ctx, add); err != nil {
 		return err
 	}
 	b.UserID = add.UserID
@@ -710,8 +701,7 @@ func (s *UserService) UpdateUser(ctx context.Context, b *bo.SysUserBo) error {
 	if err := s.insertUserPost(ctx, b.UserID, b.PostIDs, true); err != nil {
 		return err
 	}
-	rows, err := repository.NewUserRepository(database.DB()).
-		UpdateByID(ctx, b.UserID, buildUserUpdateColumns(b))
+	rows, err := user.UpdateByID(ctx, b.UserID, buildUserUpdateColumns(b))
 	if err != nil {
 		return err
 	}
@@ -768,14 +758,13 @@ func (s *UserService) DeleteUserByIDs(ctx context.Context, currentUserID int64,
 		}
 	}
 
-	repo := repository.NewUserRepository(database.DB())
-	if _, err := repo.DeleteUserRolesByUserIDs(ctx, ids); err != nil {
+	if _, err := user.DeleteUserRolesByUserIDs(ctx, ids); err != nil {
 		return err
 	}
-	if _, err := repo.DeleteUserPostsByUserIDs(ctx, ids); err != nil {
+	if _, err := user.DeleteUserPostsByUserIDs(ctx, ids); err != nil {
 		return err
 	}
-	rows, err := repo.DeleteByIDs(ctx, ids)
+	rows, err := user.DeleteByIDs(ctx, ids)
 	if err != nil {
 		return err
 	}
@@ -789,7 +778,7 @@ func (s *UserService) DeleteUserByIDs(ctx context.Context, currentUserID int64,
 func (s *UserService) SelectByIDs(ctx context.Context, userIds []int64,
 	deptID int64) ([]*vo.SysUserVo, error) {
 
-	rows, err := repository.NewUserRepository(database.DB()).SelectByIDs(ctx, userIds, deptID)
+	rows, err := user.SelectByIDs(ctx, userIds, deptID)
 	if err != nil {
 		return nil, err
 	}
@@ -825,8 +814,7 @@ func (s *UserService) UpdateUserStatusWithCheck(ctx context.Context,
 	if err := s.CheckUserDataScope(ctx, b.UserID); err != nil {
 		return err
 	}
-	rows, err := repository.NewUserRepository(database.DB()).
-		UpdateStatus(ctx, b.UserID, b.Status)
+	rows, err := user.UpdateStatus(ctx, b.UserID, b.Status)
 	if err != nil {
 		return err
 	}
@@ -939,7 +927,7 @@ func (s *UserService) DeptTree(ctx context.Context,
 func (s *UserService) SelectListByDept(ctx context.Context,
 	deptID int64) ([]*vo.SysUserVo, error) {
 
-	rows, err := repository.NewUserRepository(database.DB()).SelectListByDept(ctx, deptID)
+	rows, err := user.SelectListByDept(ctx, deptID)
 	if err != nil {
 		return nil, err
 	}
@@ -969,20 +957,19 @@ func (s *UserService) insertUserRole(ctx context.Context, userID int64,
 		return errs.New(0, "不允许为普通用户分配超级管理员角色，请至少选择一个其他角色", "")
 	}
 	// 数据权限校验：可见角色数与传入数不等即越权。
-	count, err := repository.NewRoleRepository(database.DB()).CountByRoleIDs(ctx, roleIDs)
+	count, err := role.CountByRoleIDs(ctx, roleIDs)
 	if err != nil {
 		return err
 	}
 	if count != int64(len(roleIDs)) {
 		return errs.New(0, "没有权限访问角色的数据", "")
 	}
-	repo := repository.NewUserRepository(database.DB())
 	if clear {
-		if _, err := repo.DeleteUserRolesByUserID(ctx, userID); err != nil {
+		if _, err := user.DeleteUserRolesByUserID(ctx, userID); err != nil {
 			return err
 		}
 	}
-	return repo.InsertUserRoles(ctx, userID, roleIDs)
+	return user.InsertUserRoles(ctx, userID, roleIDs)
 }
 
 // insertUserPost 写用户-岗位关联。
@@ -994,20 +981,19 @@ func (s *UserService) insertUserPost(ctx context.Context, userID int64,
 	if len(postIDs) == 0 {
 		return nil
 	}
-	count, err := repository.NewPostRepository(database.DB()).CountByIDs(ctx, postIDs)
+	count, err := post.CountByIDs(ctx, postIDs)
 	if err != nil {
 		return err
 	}
 	if count != int64(len(postIDs)) {
 		return errs.New(0, "没有权限访问岗位的数据", "")
 	}
-	repo := repository.NewUserRepository(database.DB())
 	if clear {
-		if _, err := repo.DeleteUserPostsByUserID(ctx, userID); err != nil {
+		if _, err := user.DeleteUserPostsByUserID(ctx, userID); err != nil {
 			return err
 		}
 	}
-	return repo.InsertUserPosts(ctx, userID, postIDs)
+	return user.InsertUserPosts(ctx, userID, postIDs)
 }
 
 // filterSuperAdminRoles 过滤掉超管角色。

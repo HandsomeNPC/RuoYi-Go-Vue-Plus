@@ -1,4 +1,4 @@
-package repository
+package menu
 
 import (
 	"context"
@@ -10,19 +10,11 @@ import (
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/pkg/constant"
+	"ruoyi-go-vue-plus/pkg/database"
+	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
 var ErrMenuNotFound = errors.New("repository: 菜单不存在")
-
-// MenuRepository sys_menu 数据访问。
-type MenuRepository struct {
-	db *gorm.DB
-}
-
-// NewMenuRepository 构造菜单 repository。
-func NewMenuRepository(db *gorm.DB) *MenuRepository {
-	return &MenuRepository{db: db}
-}
 
 // RoleMenuPerm 角色-菜单权限投影行。
 // 非表实体，仅用于联表查询结果承载。
@@ -34,13 +26,13 @@ type RoleMenuPerm struct {
 // SelectMenuPermsByUserId 按用户ID查菜单权限标识。
 // 路径：sys_menu m ← sys_role_menu srm ← sys_user_role sur（sur.role_id=srm.role_id）→ sys_role sr。
 // 仅取正常角色（status=0、未删除）且 perms 非空的去重标识。
-func (r *MenuRepository) SelectMenuPermsByUserId(ctx context.Context, userID int64) ([]string, error) {
+func SelectMenuPermsByUserId(ctx context.Context, userID int64) ([]string, error) {
 	if userID <= 0 {
 		return nil, nil
 	}
 
 	var rows []RoleMenuPerm
-	err := r.db.WithContext(ctx).
+	err := database.DB().WithContext(ctx).
 		Table("sys_menu AS m").
 		Distinct("m.perms").
 		Joins("JOIN sys_role_menu srm ON srm.menu_id = m.menu_id").
@@ -64,13 +56,13 @@ func (r *MenuRepository) SelectMenuPermsByUserId(ctx context.Context, userID int
 
 // SelectMenuPermsByRoleIds 按角色ID集合批量查权限。
 // 返回 (roleId, perms) 行序列，由 service 汇总成 map[roleId][]perms。
-func (r *MenuRepository) SelectMenuPermsByRoleIds(ctx context.Context, roleIDs []int64) ([]RoleMenuPerm, error) {
+func SelectMenuPermsByRoleIds(ctx context.Context, roleIDs []int64) ([]RoleMenuPerm, error) {
 	if len(roleIDs) == 0 {
 		return nil, nil
 	}
 
 	var rows []RoleMenuPerm
-	err := r.db.WithContext(ctx).
+	err := database.DB().WithContext(ctx).
 		Table("sys_role_menu AS srm").
 		Select("srm.role_id, m.perms").
 		Distinct().
@@ -89,9 +81,9 @@ func (r *MenuRepository) SelectMenuPermsByRoleIds(ctx context.Context, roleIDs [
 
 // SelectMenuTreeAll 查全部正常状态的目录和菜单。
 // 排序 parent_id, order_num 是构树前提：service 依赖同级节点已按 order_num 有序。
-func (r *MenuRepository) SelectMenuTreeAll(ctx context.Context) ([]*model.SysMenu, error) {
+func SelectMenuTreeAll(ctx context.Context) ([]*model.SysMenu, error) {
 	var menus []*model.SysMenu
-	err := r.db.WithContext(ctx).
+	err := database.DB().WithContext(ctx).
 		Where("menu_type IN ?", []string{constant.MenuTypeDir, constant.MenuTypeMenu}).
 		Where("status = ?", constant.StatusNormal).
 		Order("parent_id").
@@ -104,13 +96,13 @@ func (r *MenuRepository) SelectMenuTreeAll(ctx context.Context) ([]*model.SysMen
 }
 
 // SelectMenuTreeByUserId 按用户ID查其可见的目录和菜单。
-func (r *MenuRepository) SelectMenuTreeByUserId(ctx context.Context, userID int64) ([]*model.SysMenu, error) {
+func SelectMenuTreeByUserId(ctx context.Context, userID int64) ([]*model.SysMenu, error) {
 	if userID <= 0 {
 		return nil, nil
 	}
 
 	var menus []*model.SysMenu
-	err := r.db.WithContext(ctx).
+	err := database.DB().WithContext(ctx).
 		Model(&model.SysMenu{}).
 		Distinct("sys_menu.*").
 		Joins("JOIN sys_role_menu srm ON srm.menu_id = sys_menu.menu_id").
@@ -131,13 +123,13 @@ func (r *MenuRepository) SelectMenuTreeByUserId(ctx context.Context, userID int6
 }
 
 // SelectByID 按主键查菜单，不存在时返回 ErrMenuNotFound。
-func (r *MenuRepository) SelectByID(ctx context.Context, menuID int64) (*model.SysMenu, error) {
+func SelectByID(ctx context.Context, menuID int64) (*model.SysMenu, error) {
 	if menuID <= 0 {
 		return nil, ErrMenuNotFound
 	}
 
 	var menu model.SysMenu
-	err := r.db.WithContext(ctx).
+	err := database.DB().WithContext(ctx).
 		Where("menu_id = ?", menuID).
 		First(&menu).Error
 	if err != nil {
@@ -151,8 +143,8 @@ func (r *MenuRepository) SelectByID(ctx context.Context, menuID int64) (*model.S
 
 // SelectList 按条件查全部菜单。
 // 菜单总量有限（前端按树整体渲染、无分页），故不分页也不限行数。
-func (r *MenuRepository) SelectList(ctx context.Context, q bo.SysMenuQueryBo) ([]*model.SysMenu, error) {
-	db := applyMenuQuery(r.db.WithContext(ctx).Model(&model.SysMenu{}), q)
+func SelectList(ctx context.Context, q bo.SysMenuQueryBo) ([]*model.SysMenu, error) {
+	db := applyMenuQuery(database.DB().WithContext(ctx).Model(&model.SysMenu{}), q)
 	// parent_id, order_num 是构树前提：service 依赖同级节点已按 order_num 有序。
 	db = db.Order("parent_id").Order("order_num")
 
@@ -165,14 +157,14 @@ func (r *MenuRepository) SelectList(ctx context.Context, q bo.SysMenuQueryBo) ([
 
 // SelectListByUserId 按条件查用户可见的菜单。
 // 经 sys_role_menu / sys_user_role 关联，仅取正常状态角色下的菜单。
-func (r *MenuRepository) SelectListByUserId(ctx context.Context, q bo.SysMenuQueryBo,
+func SelectListByUserId(ctx context.Context, q bo.SysMenuQueryBo,
 	userID int64) ([]*model.SysMenu, error) {
 
 	if userID <= 0 {
 		return nil, nil
 	}
 
-	db := r.db.WithContext(ctx).Model(&model.SysMenu{}).
+	db := database.DB().WithContext(ctx).Model(&model.SysMenu{}).
 		Distinct("sys_menu.*").
 		Joins("LEFT JOIN sys_role_menu srm ON srm.menu_id = sys_menu.menu_id").
 		Joins("LEFT JOIN sys_user_role sur ON sur.role_id = srm.role_id").
@@ -202,7 +194,7 @@ func applyMenuQuery(db *gorm.DB, q bo.SysMenuQueryBo) *gorm.DB {
 // 否则过滤逻辑改一处漏一处。
 func applyMenuQueryWithAlias(db *gorm.DB, q bo.SysMenuQueryBo, prefix string) *gorm.DB {
 	if q.MenuName != "" {
-		db = db.Where(prefix+"menu_name LIKE ?", "%"+escapeLike(q.MenuName)+"%")
+		db = db.Where(prefix+"menu_name LIKE ?", "%"+pkgrepo.EscapeLike(q.MenuName)+"%")
 	}
 	if q.Visible != "" {
 		db = db.Where(prefix+"visible = ?", q.Visible)
@@ -223,7 +215,7 @@ func applyMenuQueryWithAlias(db *gorm.DB, q bo.SysMenuQueryBo, prefix string) *g
 //
 // menuCheckStrictly 为 true 时剔除"同时又是别的选中项之父"的节点：前端树组件
 // 在父子联动模式下，父节点勾选态由子节点推导，回传父节点会让它显示成全选。
-func (r *MenuRepository) SelectMenuIDsByRoleID(ctx context.Context, roleID int64,
+func SelectMenuIDsByRoleID(ctx context.Context, roleID int64,
 	menuCheckStrictly bool) ([]int64, error) {
 
 	if roleID <= 0 {
@@ -238,7 +230,7 @@ func (r *MenuRepository) SelectMenuIDsByRoleID(ctx context.Context, roleID int64
 		ParentID int64 `gorm:"column:parent_id"`
 	}
 	var rows []menuIDRow
-	err := r.db.WithContext(ctx).
+	err := database.DB().WithContext(ctx).
 		Table("sys_menu AS m").
 		Select("m.menu_id, m.parent_id, m.order_num").
 		Distinct().
@@ -272,11 +264,11 @@ func (r *MenuRepository) SelectMenuIDsByRoleID(ctx context.Context, roleID int64
 // Insert 插入一条菜单。
 // menu_id 无 auto_increment，主键须由调用方（service 层）预先填好；
 // 审计字段由 pkg/repository 的插入回调统一填充。
-func (r *MenuRepository) Insert(ctx context.Context, menu *model.SysMenu) error {
+func Insert(ctx context.Context, menu *model.SysMenu) error {
 	if menu == nil {
 		return fmt.Errorf("repository: 菜单为空")
 	}
-	if err := r.db.WithContext(ctx).Create(menu).Error; err != nil {
+	if err := database.DB().WithContext(ctx).Create(menu).Error; err != nil {
 		return fmt.Errorf("repository: 插入菜单失败: %w", err)
 	}
 	return nil
@@ -286,7 +278,7 @@ func (r *MenuRepository) Insert(ctx context.Context, menu *model.SysMenu) error 
 //
 // 走 map 而非实体：Updates(struct) 跳过零值，会让「清空权限标识/路由参数」写不进库。
 // update_by/update_time 由 pkg/repository 的更新回调补齐，调用方不必带。
-func (r *MenuRepository) UpdateByID(ctx context.Context, menuID int64,
+func UpdateByID(ctx context.Context, menuID int64,
 	columns map[string]any) (int64, error) {
 
 	if menuID <= 0 {
@@ -296,7 +288,7 @@ func (r *MenuRepository) UpdateByID(ctx context.Context, menuID int64,
 		return 0, fmt.Errorf("repository: 菜单更新列为空")
 	}
 
-	res := r.db.WithContext(ctx).
+	res := database.DB().WithContext(ctx).
 		Model(&model.SysMenu{}).
 		Where("menu_id = ?", menuID).
 		Updates(columns)
@@ -308,12 +300,12 @@ func (r *MenuRepository) UpdateByID(ctx context.Context, menuID int64,
 
 // DeleteByIDs 按主键批量删除，返回受影响行数。
 // sys_menu 无 del_flag，这是物理删除。
-func (r *MenuRepository) DeleteByIDs(ctx context.Context, ids []int64) (int64, error) {
+func DeleteByIDs(ctx context.Context, ids []int64) (int64, error) {
 	if len(ids) == 0 {
 		return 0, fmt.Errorf("repository: 菜单主键为空")
 	}
 
-	res := r.db.WithContext(ctx).
+	res := database.DB().WithContext(ctx).
 		Where("menu_id IN ?", ids).
 		Delete(&model.SysMenu{})
 	if res.Error != nil {
@@ -326,13 +318,13 @@ func (r *MenuRepository) DeleteByIDs(ctx context.Context, ids []int64) (int64, e
 //
 // 排除 ids 自身：级联删除时父子可能同批提交，此时子菜单会随父一起删掉，不该算"存在子菜单"。
 // 传单个 id 时 NOT IN 自身恒真，退化成单参重载。
-func (r *MenuRepository) ExistsByParentIDs(ctx context.Context, ids []int64) (bool, error) {
+func ExistsByParentIDs(ctx context.Context, ids []int64) (bool, error) {
 	if len(ids) == 0 {
 		return false, nil
 	}
 
 	var count int64
-	err := r.db.WithContext(ctx).Model(&model.SysMenu{}).
+	err := database.DB().WithContext(ctx).Model(&model.SysMenu{}).
 		Where("parent_id IN ?", ids).
 		Where("menu_id NOT IN ?", ids).
 		Count(&count).Error
@@ -344,14 +336,14 @@ func (r *MenuRepository) ExistsByParentIDs(ctx context.Context, ids []int64) (bo
 
 // ExistsByMenuName 判断同一上级下的菜单名称是否已被占用，excludeID > 0 时排除该主键
 // （名称 + 父级两列共同判重，供修改场景排除自身）。
-func (r *MenuRepository) ExistsByMenuName(ctx context.Context, menuName string,
+func ExistsByMenuName(ctx context.Context, menuName string,
 	parentID, excludeID int64) (bool, error) {
 
 	if menuName == "" {
 		return false, nil
 	}
 
-	db := r.db.WithContext(ctx).Model(&model.SysMenu{}).
+	db := database.DB().WithContext(ctx).Model(&model.SysMenu{}).
 		Where("menu_name = ?", menuName).
 		Where("parent_id = ?", parentID)
 	if excludeID > 0 {
@@ -369,11 +361,11 @@ func (r *MenuRepository) ExistsByMenuName(ctx context.Context, menuName string,
 //
 // 只捞候选、不在 SQL 里判冲突：冲突规则要比对 parent_id 与 menu_type 的多种组合，
 // 放 service 里逐条判定比拼一个大 WHERE 可读得多。
-func (r *MenuRepository) SelectRouteConflictCandidates(ctx context.Context,
+func SelectRouteConflictCandidates(ctx context.Context,
 	path, routeName string) ([]*model.SysMenu, error) {
 
 	var menus []*model.SysMenu
-	err := r.db.WithContext(ctx).Model(&model.SysMenu{}).
+	err := database.DB().WithContext(ctx).Model(&model.SysMenu{}).
 		Where("menu_type IN ?", []string{constant.MenuTypeDir, constant.MenuTypeMenu}).
 		Where("path = ? OR path = ?", path, routeName).
 		Find(&menus).Error

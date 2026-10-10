@@ -1,4 +1,4 @@
-package repository
+package social
 
 import (
 	"context"
@@ -8,23 +8,14 @@ import (
 	"gorm.io/gorm"
 
 	"ruoyi-go-vue-plus/internal/system/model"
+	"ruoyi-go-vue-plus/pkg/database"
 )
 
 var ErrSocialNotFound = errors.New("repository: 社会化关系不存在")
 
-// SocialRepository sys_social 数据访问。
-type SocialRepository struct {
-	db *gorm.DB
-}
-
-// NewSocialRepository 构造社会化关系 repository。
-func NewSocialRepository(db *gorm.DB) *SocialRepository {
-	return &SocialRepository{db: db}
-}
-
 // SelectByUserID 按用户ID查其绑定的社会化授权列表。
 // sys_social 未映射 del_flag，这里直接物理查询。
-func (r *SocialRepository) SelectByUserID(ctx context.Context,
+func SelectByUserID(ctx context.Context,
 	userID int64) ([]*model.SysSocial, error) {
 
 	if userID <= 0 {
@@ -32,7 +23,7 @@ func (r *SocialRepository) SelectByUserID(ctx context.Context,
 	}
 
 	var rows []*model.SysSocial
-	if err := r.db.WithContext(ctx).
+	if err := database.DB().WithContext(ctx).
 		Where("user_id = ?", userID).
 		Order("id").
 		Find(&rows).Error; err != nil {
@@ -42,13 +33,13 @@ func (r *SocialRepository) SelectByUserID(ctx context.Context,
 }
 
 // SelectByID 按主键查一条社会化绑定，不存在时返回 ErrSocialNotFound。
-func (r *SocialRepository) SelectByID(ctx context.Context, id int64) (*model.SysSocial, error) {
+func SelectByID(ctx context.Context, id int64) (*model.SysSocial, error) {
 	if id <= 0 {
 		return nil, ErrSocialNotFound
 	}
 
 	var row model.SysSocial
-	err := r.db.WithContext(ctx).Where("id = ?", id).First(&row).Error
+	err := database.DB().WithContext(ctx).Where("id = ?", id).First(&row).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrSocialNotFound
@@ -61,7 +52,7 @@ func (r *SocialRepository) SelectByID(ctx context.Context, id int64) (*model.Sys
 // SelectByAuthID 按 auth_id 查绑定关系。
 //
 // 返回 slice 而非单条：调用方按「非空即已被绑定」判定。
-func (r *SocialRepository) SelectByAuthID(ctx context.Context,
+func SelectByAuthID(ctx context.Context,
 	authID string) ([]*model.SysSocial, error) {
 
 	if authID == "" {
@@ -69,7 +60,7 @@ func (r *SocialRepository) SelectByAuthID(ctx context.Context,
 	}
 
 	var rows []*model.SysSocial
-	if err := r.db.WithContext(ctx).
+	if err := database.DB().WithContext(ctx).
 		Where("auth_id = ?", authID).
 		Order("id").
 		Find(&rows).Error; err != nil {
@@ -79,7 +70,7 @@ func (r *SocialRepository) SelectByAuthID(ctx context.Context,
 }
 
 // SelectByUserIDAndSource 查某用户在某平台的绑定关系。
-func (r *SocialRepository) SelectByUserIDAndSource(ctx context.Context, userID int64,
+func SelectByUserIDAndSource(ctx context.Context, userID int64,
 	source string) ([]*model.SysSocial, error) {
 
 	if userID <= 0 || source == "" {
@@ -87,7 +78,7 @@ func (r *SocialRepository) SelectByUserIDAndSource(ctx context.Context, userID i
 	}
 
 	var rows []*model.SysSocial
-	if err := r.db.WithContext(ctx).
+	if err := database.DB().WithContext(ctx).
 		Where("user_id = ? AND source = ?", userID, source).
 		Order("id").
 		Find(&rows).Error; err != nil {
@@ -99,11 +90,11 @@ func (r *SocialRepository) SelectByUserIDAndSource(ctx context.Context, userID i
 // Insert 插入一条社会化绑定。
 // id 无 auto_increment，主键须由 service 层预先填好；
 // 审计字段由 pkg/repository 的插入回调统一填充。
-func (r *SocialRepository) Insert(ctx context.Context, e *model.SysSocial) error {
+func Insert(ctx context.Context, e *model.SysSocial) error {
 	if e == nil {
 		return fmt.Errorf("repository: 社会化关系为空")
 	}
-	if err := r.db.WithContext(ctx).Create(e).Error; err != nil {
+	if err := database.DB().WithContext(ctx).Create(e).Error; err != nil {
 		return fmt.Errorf("repository: 插入社会化绑定失败: %w", err)
 	}
 	return nil
@@ -113,7 +104,7 @@ func (r *SocialRepository) Insert(ctx context.Context, e *model.SysSocial) error
 //
 // 走 map 而非实体：Updates(struct) 跳过零值，会让「平台不再返回 refresh_token」
 // 这类清空写不进库。update_by/update_time 由 pkg/repository 的更新回调补齐。
-func (r *SocialRepository) UpdateByID(ctx context.Context, id int64,
+func UpdateByID(ctx context.Context, id int64,
 	columns map[string]any) (int64, error) {
 
 	if id <= 0 {
@@ -123,7 +114,7 @@ func (r *SocialRepository) UpdateByID(ctx context.Context, id int64,
 		return 0, fmt.Errorf("repository: 社会化关系更新列为空")
 	}
 
-	res := r.db.WithContext(ctx).
+	res := database.DB().WithContext(ctx).
 		Model(&model.SysSocial{}).
 		Where("id = ?", id).
 		Updates(columns)
@@ -137,12 +128,12 @@ func (r *SocialRepository) UpdateByID(ctx context.Context, id int64,
 //
 // 物理删除：SysSocial 未嵌 repository.LogicDelete
 // （SysSocial 上没有 @TableLogic，只有 SysUser/SysRole/SysDept 等才有）。
-func (r *SocialRepository) DeleteByID(ctx context.Context, id int64) (int64, error) {
+func DeleteByID(ctx context.Context, id int64) (int64, error) {
 	if id <= 0 {
 		return 0, fmt.Errorf("repository: 社会化关系主键无效: %d", id)
 	}
 
-	res := r.db.WithContext(ctx).Where("id = ?", id).Delete(&model.SysSocial{})
+	res := database.DB().WithContext(ctx).Where("id = ?", id).Delete(&model.SysSocial{})
 	if res.Error != nil {
 		return 0, fmt.Errorf("repository: 删除社会化绑定 id=%d 失败: %w", id, res.Error)
 	}

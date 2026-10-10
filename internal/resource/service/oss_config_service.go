@@ -9,10 +9,9 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/resource/model/bo"
 	"ruoyi-go-vue-plus/internal/resource/model/vo"
-	"ruoyi-go-vue-plus/internal/resource/repository"
+	"ruoyi-go-vue-plus/internal/resource/repository/ossconfig"
 	"ruoyi-go-vue-plus/pkg/cache"
 	"ruoyi-go-vue-plus/pkg/constant"
-	"ruoyi-go-vue-plus/pkg/database"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/oss"
 	pkgredis "ruoyi-go-vue-plus/pkg/redis"
@@ -42,7 +41,7 @@ var OssConfigSvcApp = new(OssConfigService)
 // 必须在进程启动时跑一次：上传走 oss.InstanceDefault，它只认缓存与
 // OssDefaultConfigKey，不预热的话第一次上传直接失败。
 func (s *OssConfigService) InitCache(ctx context.Context) error {
-	rows, err := repository.NewOssConfigRepository(database.DB()).SelectAll(ctx)
+	rows, err := ossconfig.SelectAll(ctx)
 	if err != nil {
 		return err
 	}
@@ -73,7 +72,7 @@ func (s *OssConfigService) setDefaultConfigKey(ctx context.Context, configKey st
 func (s *OssConfigService) QueryPageList(ctx context.Context, q bo.SysOssConfigQueryBo,
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysOssConfigVo], error) {
 
-	res, err := repository.NewOssConfigRepository(database.DB()).SelectPageList(ctx, q, page)
+	res, err := ossconfig.SelectPageList(ctx, q, page)
 	if err != nil {
 		return pkgrepo.EmptyPage[*vo.SysOssConfigVo](), err
 	}
@@ -85,9 +84,9 @@ func (s *OssConfigService) QueryPageList(ctx context.Context, q bo.SysOssConfigQ
 func (s *OssConfigService) QueryByID(ctx context.Context,
 	ossConfigID int64) (*vo.SysOssConfigVo, error) {
 
-	cfg, err := repository.NewOssConfigRepository(database.DB()).SelectByID(ctx, ossConfigID)
+	cfg, err := ossconfig.SelectByID(ctx, ossConfigID)
 	if err != nil {
-		if errors.Is(err, repository.ErrOssConfigNotFound) {
+		if errors.Is(err, ossconfig.ErrOssConfigNotFound) {
 			return nil, ErrOssConfigNotFound
 		}
 		return nil, err
@@ -100,7 +99,7 @@ func (s *OssConfigService) QueryByID(ctx context.Context,
 func (s *OssConfigService) CheckConfigKeyUnique(ctx context.Context, configKey string,
 	excludeID int64) (bool, error) {
 
-	exists, err := repository.NewOssConfigRepository(database.DB()).
+	exists, err := ossconfig.
 		ExistsByConfigKey(ctx, configKey, excludeID)
 	if err != nil {
 		return false, err
@@ -126,7 +125,7 @@ func (s *OssConfigService) InsertConfig(ctx context.Context, b *bo.SysOssConfigB
 	add.OssConfigID = snowflake.Next() // oss_config_id 无 auto_increment
 	// 审计字段不在此处填：由 pkg/repository 的插入回调统一注入。
 
-	if err := repository.NewOssConfigRepository(database.DB()).Insert(ctx, add); err != nil {
+	if err := ossconfig.Insert(ctx, add); err != nil {
 		return err
 	}
 	b.OssConfigID = add.OssConfigID
@@ -152,19 +151,18 @@ func (s *OssConfigService) UpdateConfig(ctx context.Context, b *bo.SysOssConfigB
 		return ErrOssConfigKeyExists
 	}
 
-	repo := repository.NewOssConfigRepository(database.DB())
 	// 先取原记录定存在性，不靠 UpdateByID 的受影响行数：值与库中完全相同时
 	// MySQL 报 0 行，会把一次幂等的重复保存误报成"配置不存在"。
 	// 顺带拿到旧配置键，改名时要清掉旧缓存。
-	old, err := repo.SelectByID(ctx, b.OssConfigID)
+	old, err := ossconfig.SelectByID(ctx, b.OssConfigID)
 	if err != nil {
-		if errors.Is(err, repository.ErrOssConfigNotFound) {
+		if errors.Is(err, ossconfig.ErrOssConfigNotFound) {
 			return ErrOssConfigNotFound
 		}
 		return err
 	}
 
-	if _, err := repo.UpdateByID(ctx, b.OssConfigID, buildOssConfigUpdateColumns(b)); err != nil {
+	if _, err := ossconfig.UpdateByID(ctx, b.OssConfigID, buildOssConfigUpdateColumns(b)); err != nil {
 		return err
 	}
 	s.refreshConfigCache(ctx, b.OssConfigID, b.ConfigKey, old.ConfigKey)
@@ -216,7 +214,7 @@ func (s *OssConfigService) refreshConfigCache(ctx context.Context, ossConfigID i
 		oss.Remove(oldConfigKey)
 	}
 
-	cfg, err := repository.NewOssConfigRepository(database.DB()).SelectByID(ctx, ossConfigID)
+	cfg, err := ossconfig.SelectByID(ctx, ossConfigID)
 	if err != nil {
 		log.Printf("[oss] 回读配置 id=%d 失败，缓存未刷新: %v", ossConfigID, err)
 		return
@@ -232,8 +230,7 @@ func (s *OssConfigService) refreshConfigCache(ctx context.Context, ossConfigID i
 
 // DeleteConfigs 批量删除配置，内置配置不可删。
 func (s *OssConfigService) DeleteConfigs(ctx context.Context, ids []int64) error {
-	repo := repository.NewOssConfigRepository(database.DB())
-	rows, err := repo.SelectByIDs(ctx, ids)
+	rows, err := ossconfig.SelectByIDs(ctx, ids)
 	if err != nil {
 		return err
 	}
@@ -246,7 +243,7 @@ func (s *OssConfigService) DeleteConfigs(ctx context.Context, ids []int64) error
 		}
 	}
 
-	if _, err := repo.DeleteByIDs(ctx, ids); err != nil {
+	if _, err := ossconfig.DeleteByIDs(ctx, ids); err != nil {
 		return err
 	}
 	// 删除后再失效：提前清会让删除失败时白丢一批热配置。
@@ -268,16 +265,15 @@ func (s *OssConfigService) UpdateConfigStatus(ctx context.Context,
 		return errors.New("service: 对象存储配置状态入参为空")
 	}
 
-	repo := repository.NewOssConfigRepository(database.DB())
-	old, err := repo.SelectByID(ctx, b.OssConfigID)
+	old, err := ossconfig.SelectByID(ctx, b.OssConfigID)
 	if err != nil {
-		if errors.Is(err, repository.ErrOssConfigNotFound) {
+		if errors.Is(err, ossconfig.ErrOssConfigNotFound) {
 			return ErrOssConfigNotFound
 		}
 		return err
 	}
 
-	if err := repo.UpdateStatus(ctx, b.OssConfigID, b.Status); err != nil {
+	if err := ossconfig.UpdateStatus(ctx, b.OssConfigID, b.Status); err != nil {
 		return err
 	}
 

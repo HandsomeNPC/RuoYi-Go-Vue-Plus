@@ -8,9 +8,8 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/dto"
-	"ruoyi-go-vue-plus/internal/system/repository"
+	"ruoyi-go-vue-plus/internal/system/repository/logininfo"
 	"ruoyi-go-vue-plus/pkg/constant"
-	"ruoyi-go-vue-plus/pkg/database"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ip"
 	"github.com/HandsomeNPC/ruoyi-common-go/useragent"
@@ -79,7 +78,7 @@ func (s *LoginInfoService) InsertLoginInfo(ctx context.Context, b *bo.SysLoginIn
 	now := time.Now()
 	info.LoginTime = &now
 	info.InfoID = snowflake.Next()
-	return repository.NewLoginInfoRepository(database.DB()).Insert(ctx, info)
+	return logininfo.Insert(ctx, info)
 }
 
 // mapLoginStatus 把事件里的操作类型映射成 sys_login_info.status 的落表值：

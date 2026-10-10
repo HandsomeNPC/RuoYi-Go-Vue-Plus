@@ -1,4 +1,4 @@
-package repository
+package logininfo
 
 import (
 	"context"
@@ -8,36 +8,27 @@ import (
 
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
+	"ruoyi-go-vue-plus/pkg/database"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
-// LoginInfoRepository sys_login_info 数据访问。
-type LoginInfoRepository struct {
-	db *gorm.DB
-}
-
-// NewLoginInfoRepository 构造登录日志 repository。
-func NewLoginInfoRepository(db *gorm.DB) *LoginInfoRepository {
-	return &LoginInfoRepository{db: db}
-}
-
 // Insert 插入一条登录日志。
 // info_id 无 auto_increment，主键须由调用方（service 层）预先填好。
-func (r *LoginInfoRepository) Insert(ctx context.Context, info *model.SysLoginInfo) error {
+func Insert(ctx context.Context, info *model.SysLoginInfo) error {
 	if info == nil {
 		return fmt.Errorf("repository: 登录日志为空")
 	}
-	if err := r.db.WithContext(ctx).Create(info).Error; err != nil {
+	if err := database.DB().WithContext(ctx).Create(info).Error; err != nil {
 		return fmt.Errorf("repository: 插入登录日志失败: %w", err)
 	}
 	return nil
 }
 
 // SelectPageList 按条件分页查登录日志。
-func (r *LoginInfoRepository) SelectPageList(ctx context.Context, q bo.SysLoginInfoQueryBo,
+func SelectPageList(ctx context.Context, q bo.SysLoginInfoQueryBo,
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysLoginInfo], error) {
 
-	db := applyLoginInfoQuery(r.db.WithContext(ctx).Model(&model.SysLoginInfo{}), q)
+	db := applyLoginInfoQuery(database.DB().WithContext(ctx).Model(&model.SysLoginInfo{}), q)
 	// 仅在调用方未指定排序时按主键降序兜底。
 	if !page.HasOrder() {
 		db = db.Order("info_id DESC")
@@ -51,10 +42,10 @@ func (r *LoginInfoRepository) SelectPageList(ctx context.Context, q bo.SysLoginI
 // limit <= 0 表示不限制；超限由调用方通过多取一行来判定，避免先捞完再拒绝。
 //
 // 与 SelectPageList 共用 applyLoginInfoQuery，保证两种路径的过滤条件永不漂移。
-func (r *LoginInfoRepository) SelectList(ctx context.Context, q bo.SysLoginInfoQueryBo,
+func SelectList(ctx context.Context, q bo.SysLoginInfoQueryBo,
 	limit int) ([]*model.SysLoginInfo, error) {
 
-	db := applyLoginInfoQuery(r.db.WithContext(ctx).Model(&model.SysLoginInfo{}), q)
+	db := applyLoginInfoQuery(database.DB().WithContext(ctx).Model(&model.SysLoginInfo{}), q)
 	// 导出不是翻页，没有"调用方另指定排序"一说，固定按主键降序，保证输出顺序稳定。
 	db = db.Order("info_id DESC")
 	if limit > 0 {
@@ -74,10 +65,10 @@ func (r *LoginInfoRepository) SelectList(ctx context.Context, q bo.SysLoginInfoQ
 // escapeLike 复用 config_repository.go 同包定义。
 func applyLoginInfoQuery(db *gorm.DB, q bo.SysLoginInfoQueryBo) *gorm.DB {
 	if q.IPAddr != "" {
-		db = db.Where("ipaddr LIKE ?", "%"+escapeLike(q.IPAddr)+"%")
+		db = db.Where("ipaddr LIKE ?", "%"+pkgrepo.EscapeLike(q.IPAddr)+"%")
 	}
 	if q.UserName != "" {
-		db = db.Where("user_name LIKE ?", "%"+escapeLike(q.UserName)+"%")
+		db = db.Where("user_name LIKE ?", "%"+pkgrepo.EscapeLike(q.UserName)+"%")
 	}
 	if q.Status != "" {
 		db = db.Where("status = ?", q.Status)
@@ -92,12 +83,12 @@ func applyLoginInfoQuery(db *gorm.DB, q bo.SysLoginInfoQueryBo) *gorm.DB {
 
 // DeleteByIDs 按主键批量删除，返回受影响行数。
 // sys_login_info 无 del_flag，这是物理删除。
-func (r *LoginInfoRepository) DeleteByIDs(ctx context.Context, ids []int64) (int64, error) {
+func DeleteByIDs(ctx context.Context, ids []int64) (int64, error) {
 	if len(ids) == 0 {
 		return 0, fmt.Errorf("repository: 登录日志主键为空")
 	}
 
-	res := r.db.WithContext(ctx).
+	res := database.DB().WithContext(ctx).
 		Where("info_id IN ?", ids).
 		Delete(&model.SysLoginInfo{})
 	if res.Error != nil {
@@ -107,8 +98,8 @@ func (r *LoginInfoRepository) DeleteByIDs(ctx context.Context, ids []int64) (int
 }
 
 // Clean 清空全部登录日志。
-func (r *LoginInfoRepository) Clean(ctx context.Context) error {
-	if err := r.db.WithContext(ctx).Where("1 = 1").Delete(&model.SysLoginInfo{}).Error; err != nil {
+func Clean(ctx context.Context) error {
+	if err := database.DB().WithContext(ctx).Where("1 = 1").Delete(&model.SysLoginInfo{}).Error; err != nil {
 		return fmt.Errorf("repository: 清空登录日志失败: %w", err)
 	}
 	return nil

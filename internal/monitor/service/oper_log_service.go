@@ -7,8 +7,7 @@ import (
 
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
-	systemrepo "ruoyi-go-vue-plus/internal/system/repository"
-	"ruoyi-go-vue-plus/pkg/database"
+	"ruoyi-go-vue-plus/internal/system/repository/operlog"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
@@ -22,7 +21,7 @@ var OperLogSvcApp = new(OperLogSvc)
 func (s *OperLogSvc) QueryPageList(ctx context.Context, q bo.SysOperLogQueryBo,
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysOperLogVo], error) {
 
-	res, err := systemrepo.NewOperLogRepository(database.DB()).SelectPageList(ctx, q, page)
+	res, err := operlog.SelectPageList(ctx, q, page)
 	if err != nil {
 		return pkgrepo.EmptyPage[*vo.SysOperLogVo](), err
 	}
@@ -35,7 +34,7 @@ func (s *OperLogSvc) QueryPageList(ctx context.Context, q bo.SysOperLogQueryBo,
 func (s *OperLogSvc) QueryList(ctx context.Context, q bo.SysOperLogQueryBo,
 	limit int) ([]*vo.SysOperLogVo, error) {
 
-	rows, err := systemrepo.NewOperLogRepository(database.DB()).SelectList(ctx, q, limit)
+	rows, err := operlog.SelectList(ctx, q, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +46,7 @@ func (s *OperLogSvc) DeleteByIDs(ctx context.Context, ids []int64) error {
 	if len(ids) == 0 {
 		return fmt.Errorf("service: 操作日志主键不能为空")
 	}
-	if _, err := systemrepo.NewOperLogRepository(database.DB()).DeleteByIDs(ctx, ids); err != nil {
+	if _, err := operlog.DeleteByIDs(ctx, ids); err != nil {
 		return err
 	}
 	return nil
@@ -58,5 +57,5 @@ func (s *OperLogSvc) DeleteByIDs(ctx context.Context, ids []int64) error {
 // 未挂分布式锁：clean 是全表 delete，幂等——并发两次只是第二次受影响 0 行，
 // 结果一致，故省去锁。
 func (s *OperLogSvc) Clean(ctx context.Context) error {
-	return systemrepo.NewOperLogRepository(database.DB()).Clean(ctx)
+	return operlog.Clean(ctx)
 }

@@ -7,10 +7,9 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
-	"ruoyi-go-vue-plus/internal/system/repository"
+	"ruoyi-go-vue-plus/internal/system/repository/dictdata"
 	"ruoyi-go-vue-plus/pkg/cache"
 	"ruoyi-go-vue-plus/pkg/constant"
-	"ruoyi-go-vue-plus/pkg/database"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
@@ -28,7 +27,7 @@ var DictDataSvcApp = new(DictDataService)
 func (s *DictDataService) QueryPageList(ctx context.Context, q bo.SysDictDataQueryBo,
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysDictDataVo], error) {
 
-	res, err := repository.NewDictDataRepository(database.DB()).SelectPageList(ctx, q, page)
+	res, err := dictdata.SelectPageList(ctx, q, page)
 	if err != nil {
 		return pkgrepo.EmptyPage[*vo.SysDictDataVo](), err
 	}
@@ -41,7 +40,7 @@ func (s *DictDataService) QueryPageList(ctx context.Context, q bo.SysDictDataQue
 func (s *DictDataService) QueryList(ctx context.Context, q bo.SysDictDataQueryBo,
 	limit int) ([]*vo.SysDictDataVo, error) {
 
-	rows, err := repository.NewDictDataRepository(database.DB()).SelectList(ctx, q, limit)
+	rows, err := dictdata.SelectList(ctx, q, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -51,9 +50,9 @@ func (s *DictDataService) QueryList(ctx context.Context, q bo.SysDictDataQueryBo
 // QueryByID 按字典编码查字典数据，
 // 不存在时返回 ErrDictDataNotFound。
 func (s *DictDataService) QueryByID(ctx context.Context, dictCode int64) (*vo.SysDictDataVo, error) {
-	data, err := repository.NewDictDataRepository(database.DB()).SelectByID(ctx, dictCode)
+	data, err := dictdata.SelectByID(ctx, dictCode)
 	if err != nil {
-		if errors.Is(err, repository.ErrDictDataNotFound) {
+		if errors.Is(err, dictdata.ErrDictDataNotFound) {
 			return nil, ErrDictDataNotFound
 		}
 		return nil, err
@@ -66,7 +65,7 @@ func (s *DictDataService) QueryByID(ctx context.Context, dictCode int64) (*vo.Sy
 func (s *DictDataService) CheckDictDataUnique(ctx context.Context, dictType, dictValue string,
 	excludeID int64) (bool, error) {
 
-	exists, err := repository.NewDictDataRepository(database.DB()).
+	exists, err := dictdata.
 		ExistsByTypeAndValue(ctx, dictType, dictValue, excludeID)
 	if err != nil {
 		return false, err
@@ -93,7 +92,7 @@ func (s *DictDataService) InsertDictData(ctx context.Context, b *bo.SysDictDataB
 	add.DictCode = snowflake.Next() // dict_code 无 auto_increment
 	// 审计字段不在此处填：由 pkg/repository 的插入回调统一注入。
 
-	if err := repository.NewDictDataRepository(database.DB()).Insert(ctx, add); err != nil {
+	if err := dictdata.Insert(ctx, add); err != nil {
 		return err
 	}
 	b.DictCode = add.DictCode
@@ -119,19 +118,18 @@ func (s *DictDataService) UpdateDictData(ctx context.Context, b *bo.SysDictDataB
 		return ErrDictDataValueExists
 	}
 
-	repo := repository.NewDictDataRepository(database.DB())
 	// 先取原记录定存在性，不靠 UpdateByID 的受影响行数：值与库中完全相同时
 	// MySQL 报 0 行（update_time 是秒精度，同秒内重复提交连它都不变），
 	// 那会把一次幂等的重复保存误报成"字典数据不存在"。
-	old, err := repo.SelectByID(ctx, b.DictCode)
+	old, err := dictdata.SelectByID(ctx, b.DictCode)
 	if err != nil {
-		if errors.Is(err, repository.ErrDictDataNotFound) {
+		if errors.Is(err, dictdata.ErrDictDataNotFound) {
 			return ErrDictDataNotFound
 		}
 		return err
 	}
 
-	if _, err := repo.UpdateByID(ctx, b.DictCode, buildDictDataUpdateColumns(b)); err != nil {
+	if _, err := dictdata.UpdateByID(ctx, b.DictCode, buildDictDataUpdateColumns(b)); err != nil {
 		return err
 	}
 
@@ -170,14 +168,13 @@ func (s *DictDataService) DeleteDictDataByIDs(ctx context.Context, ids []int64) 
 		return errors.New("service: 字典数据主键不能为空")
 	}
 
-	repo := repository.NewDictDataRepository(database.DB())
 	// 先取回待删行，删除后才知道该刷哪些类型的缓存。
-	rows, err := repo.SelectByIDs(ctx, ids)
+	rows, err := dictdata.SelectByIDs(ctx, ids)
 	if err != nil {
 		return err
 	}
 
-	if _, err := repo.DeleteByIDs(ctx, ids); err != nil {
+	if _, err := dictdata.DeleteByIDs(ctx, ids); err != nil {
 		return err
 	}
 	// 删除后再刷新：提前清缓存会让删除失败时白丢一批热数据。

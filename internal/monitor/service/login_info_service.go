@@ -8,9 +8,8 @@ import (
 
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
-	systemrepo "ruoyi-go-vue-plus/internal/system/repository"
+	"ruoyi-go-vue-plus/internal/system/repository/logininfo"
 	"ruoyi-go-vue-plus/pkg/constant"
-	"ruoyi-go-vue-plus/pkg/database"
 	pkgredis "ruoyi-go-vue-plus/pkg/redis"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
@@ -27,7 +26,7 @@ var LoginInfoSvcApp = new(LoginInfoSvc)
 func (s *LoginInfoSvc) QueryPageList(ctx context.Context, q bo.SysLoginInfoQueryBo,
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysLoginInfoVo], error) {
 
-	res, err := systemrepo.NewLoginInfoRepository(database.DB()).SelectPageList(ctx, q, page)
+	res, err := logininfo.SelectPageList(ctx, q, page)
 	if err != nil {
 		return pkgrepo.EmptyPage[*vo.SysLoginInfoVo](), err
 	}
@@ -40,7 +39,7 @@ func (s *LoginInfoSvc) QueryPageList(ctx context.Context, q bo.SysLoginInfoQuery
 func (s *LoginInfoSvc) QueryList(ctx context.Context, q bo.SysLoginInfoQueryBo,
 	limit int) ([]*vo.SysLoginInfoVo, error) {
 
-	rows, err := systemrepo.NewLoginInfoRepository(database.DB()).SelectList(ctx, q, limit)
+	rows, err := logininfo.SelectList(ctx, q, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +51,7 @@ func (s *LoginInfoSvc) DeleteByIDs(ctx context.Context, ids []int64) error {
 	if len(ids) == 0 {
 		return fmt.Errorf("service: 登录日志主键不能为空")
 	}
-	if _, err := systemrepo.NewLoginInfoRepository(database.DB()).DeleteByIDs(ctx, ids); err != nil {
+	if _, err := logininfo.DeleteByIDs(ctx, ids); err != nil {
 		return err
 	}
 	return nil
@@ -60,7 +59,7 @@ func (s *LoginInfoSvc) DeleteByIDs(ctx context.Context, ids []int64) error {
 
 // Clean 清空全部登录日志。
 func (s *LoginInfoSvc) Clean(ctx context.Context) error {
-	return systemrepo.NewLoginInfoRepository(database.DB()).Clean(ctx)
+	return logininfo.Clean(ctx)
 }
 
 // Unlock 清除指定用户的登录失败锁定状态。

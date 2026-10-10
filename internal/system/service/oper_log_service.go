@@ -8,8 +8,7 @@ import (
 
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
-	"ruoyi-go-vue-plus/internal/system/repository"
-	"ruoyi-go-vue-plus/pkg/database"
+	"ruoyi-go-vue-plus/internal/system/repository/operlog"
 	"ruoyi-go-vue-plus/pkg/oplog"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ip"
@@ -81,5 +80,5 @@ func (s *OperLogService) InsertOperLog(ctx context.Context, b *bo.SysOperLogBo) 
 	now := time.Now()
 	l.OperTime = &now
 	l.OperID = snowflake.Next()
-	return repository.NewOperLogRepository(database.DB()).Insert(ctx, l)
+	return operlog.Insert(ctx, l)
 }

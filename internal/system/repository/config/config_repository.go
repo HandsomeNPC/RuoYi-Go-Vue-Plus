@@ -1,38 +1,28 @@
-package repository
+package config
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"gorm.io/gorm"
 
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
+	"ruoyi-go-vue-plus/pkg/database"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
 var ErrConfigNotFound = errors.New("repository: 参数配置不存在")
 
-// ConfigRepository sys_config 数据访问。
-type ConfigRepository struct {
-	db *gorm.DB
-}
-
-// NewConfigRepository 构造参数配置 repository。
-func NewConfigRepository(db *gorm.DB) *ConfigRepository {
-	return &ConfigRepository{db: db}
-}
-
 // SelectByID 按主键查参数配置，不存在时返回 ErrConfigNotFound。
-func (r *ConfigRepository) SelectByID(ctx context.Context, configID int64) (*model.SysConfig, error) {
+func SelectByID(ctx context.Context, configID int64) (*model.SysConfig, error) {
 	if configID <= 0 {
 		return nil, ErrConfigNotFound
 	}
 
 	var cfg model.SysConfig
-	err := r.db.WithContext(ctx).
+	err := database.DB().WithContext(ctx).
 		Where("config_id = ?", configID).
 		First(&cfg).Error
 	if err != nil {
@@ -45,13 +35,13 @@ func (r *ConfigRepository) SelectByID(ctx context.Context, configID int64) (*mod
 }
 
 // SelectByKey 按参数键名查参数配置，不存在时返回 ErrConfigNotFound。
-func (r *ConfigRepository) SelectByKey(ctx context.Context, configKey string) (*model.SysConfig, error) {
+func SelectByKey(ctx context.Context, configKey string) (*model.SysConfig, error) {
 	if configKey == "" {
 		return nil, ErrConfigNotFound
 	}
 
 	var cfg model.SysConfig
-	err := r.db.WithContext(ctx).
+	err := database.DB().WithContext(ctx).
 		Where("config_key = ?", configKey).
 		First(&cfg).Error
 	if err != nil {
@@ -64,23 +54,23 @@ func (r *ConfigRepository) SelectByKey(ctx context.Context, configKey string) (*
 }
 
 // SelectByIDs 按主键批量查参数配置，返回实际命中的行（缺失主键静默跳过，由调用方比对数量）。
-func (r *ConfigRepository) SelectByIDs(ctx context.Context, ids []int64) ([]*model.SysConfig, error) {
+func SelectByIDs(ctx context.Context, ids []int64) ([]*model.SysConfig, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
 
 	var rows []*model.SysConfig
-	if err := r.db.WithContext(ctx).Where("config_id IN ?", ids).Find(&rows).Error; err != nil {
+	if err := database.DB().WithContext(ctx).Where("config_id IN ?", ids).Find(&rows).Error; err != nil {
 		return nil, fmt.Errorf("repository: 查询参数配置 %v 失败: %w", ids, err)
 	}
 	return rows, nil
 }
 
 // SelectPageList 按条件分页查参数配置。
-func (r *ConfigRepository) SelectPageList(ctx context.Context, q bo.SysConfigQueryBo,
+func SelectPageList(ctx context.Context, q bo.SysConfigQueryBo,
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysConfig], error) {
 
-	db := applyConfigQuery(r.db.WithContext(ctx).Model(&model.SysConfig{}), q)
+	db := applyConfigQuery(database.DB().WithContext(ctx).Model(&model.SysConfig{}), q)
 	// 仅在调用方未指定排序时按主键升序兜底。
 	// 不能无条件追加：GORM 合并排序子句时先注册的排在前，主键唯一会让后来的排序列失效。
 	if !page.HasOrder() {
@@ -95,10 +85,10 @@ func (r *ConfigRepository) SelectPageList(ctx context.Context, q bo.SysConfigQue
 // limit <= 0 表示不限制；超限由调用方通过多取一行来判定，避免先捞完再拒绝。
 //
 // 与 SelectPageList 共用 applyConfigQuery，保证两种路径的过滤条件永不漂移。
-func (r *ConfigRepository) SelectList(ctx context.Context, q bo.SysConfigQueryBo,
+func SelectList(ctx context.Context, q bo.SysConfigQueryBo,
 	limit int) ([]*model.SysConfig, error) {
 
-	db := applyConfigQuery(r.db.WithContext(ctx).Model(&model.SysConfig{}), q)
+	db := applyConfigQuery(database.DB().WithContext(ctx).Model(&model.SysConfig{}), q)
 	// 导出不是翻页，没有"调用方另指定排序"一说，固定按主键升序，保证输出顺序稳定。
 	db = db.Order("config_id")
 	if limit > 0 {
@@ -117,10 +107,10 @@ func (r *ConfigRepository) SelectList(ctx context.Context, q bo.SysConfigQueryBo
 // 分页与导出两条路径必须共用它，否则过滤逻辑改一处漏一处。
 func applyConfigQuery(db *gorm.DB, q bo.SysConfigQueryBo) *gorm.DB {
 	if q.ConfigName != "" {
-		db = db.Where("config_name LIKE ?", "%"+escapeLike(q.ConfigName)+"%")
+		db = db.Where("config_name LIKE ?", "%"+pkgrepo.EscapeLike(q.ConfigName)+"%")
 	}
 	if q.ConfigKey != "" {
-		db = db.Where("config_key LIKE ?", "%"+escapeLike(q.ConfigKey)+"%")
+		db = db.Where("config_key LIKE ?", "%"+pkgrepo.EscapeLike(q.ConfigKey)+"%")
 	}
 	if q.ConfigType != "" {
 		db = db.Where("config_type = ?", q.ConfigType)
@@ -133,24 +123,14 @@ func applyConfigQuery(db *gorm.DB, q bo.SysConfigQueryBo) *gorm.DB {
 	return db
 }
 
-// likeEscaper 转义 LIKE 模式里的元字符，使入参按字面量匹配。
-// 不转义的话搜 "%" 会命中全表、"_" 会变成任意单字符通配。
-// 反斜杠必须排在最前：否则会把后两条刚补上的转义符再转一次。
-var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
-
-// escapeLike 见 likeEscaper。
-func escapeLike(s string) string {
-	return likeEscaper.Replace(s)
-}
-
 // Insert 插入一条参数配置。
 // config_id 无 auto_increment，主键须由调用方（service 层）预先填好；
 // 审计字段由 pkg/repository 的插入回调统一填充。
-func (r *ConfigRepository) Insert(ctx context.Context, cfg *model.SysConfig) error {
+func Insert(ctx context.Context, cfg *model.SysConfig) error {
 	if cfg == nil {
 		return fmt.Errorf("repository: 参数配置为空")
 	}
-	if err := r.db.WithContext(ctx).Create(cfg).Error; err != nil {
+	if err := database.DB().WithContext(ctx).Create(cfg).Error; err != nil {
 		return fmt.Errorf("repository: 插入参数配置失败: %w", err)
 	}
 	return nil
@@ -160,7 +140,7 @@ func (r *ConfigRepository) Insert(ctx context.Context, cfg *model.SysConfig) err
 //
 // 走 map 而非实体：Updates(struct) 跳过零值，会让「清空备注」写不进库。
 // update_by/update_time 由 pkg/repository 的更新回调补齐，调用方不必带。
-func (r *ConfigRepository) UpdateByID(ctx context.Context, configID int64,
+func UpdateByID(ctx context.Context, configID int64,
 	columns map[string]any) (int64, error) {
 
 	if configID <= 0 {
@@ -170,7 +150,7 @@ func (r *ConfigRepository) UpdateByID(ctx context.Context, configID int64,
 		return 0, fmt.Errorf("repository: 参数配置更新列为空")
 	}
 
-	res := r.db.WithContext(ctx).
+	res := database.DB().WithContext(ctx).
 		Model(&model.SysConfig{}).
 		Where("config_id = ?", configID).
 		Updates(columns)
@@ -181,7 +161,7 @@ func (r *ConfigRepository) UpdateByID(ctx context.Context, configID int64,
 }
 
 // UpdateByKey 按参数键名更新指定列，返回受影响行数（0 表示键名不存在）。
-func (r *ConfigRepository) UpdateByKey(ctx context.Context, configKey string,
+func UpdateByKey(ctx context.Context, configKey string,
 	columns map[string]any) (int64, error) {
 
 	if configKey == "" {
@@ -191,7 +171,7 @@ func (r *ConfigRepository) UpdateByKey(ctx context.Context, configKey string,
 		return 0, fmt.Errorf("repository: 参数配置更新列为空")
 	}
 
-	res := r.db.WithContext(ctx).
+	res := database.DB().WithContext(ctx).
 		Model(&model.SysConfig{}).
 		Where("config_key = ?", configKey).
 		Updates(columns)
@@ -203,12 +183,12 @@ func (r *ConfigRepository) UpdateByKey(ctx context.Context, configKey string,
 
 // DeleteByIDs 按主键批量删除，返回受影响行数。
 // sys_config 无 del_flag，这是物理删除。
-func (r *ConfigRepository) DeleteByIDs(ctx context.Context, ids []int64) (int64, error) {
+func DeleteByIDs(ctx context.Context, ids []int64) (int64, error) {
 	if len(ids) == 0 {
 		return 0, fmt.Errorf("repository: 参数配置主键为空")
 	}
 
-	res := r.db.WithContext(ctx).
+	res := database.DB().WithContext(ctx).
 		Where("config_id IN ?", ids).
 		Delete(&model.SysConfig{})
 	if res.Error != nil {
@@ -219,14 +199,14 @@ func (r *ConfigRepository) DeleteByIDs(ctx context.Context, ids []int64) (int64,
 
 // ExistsByConfigKey 判断 config_key 是否已被占用，excludeID > 0 时排除该主键
 // （供修改场景排除自身）。
-func (r *ConfigRepository) ExistsByConfigKey(ctx context.Context, configKey string,
+func ExistsByConfigKey(ctx context.Context, configKey string,
 	excludeID int64) (bool, error) {
 
 	if configKey == "" {
 		return false, nil
 	}
 
-	db := r.db.WithContext(ctx).Model(&model.SysConfig{}).Where("config_key = ?", configKey)
+	db := database.DB().WithContext(ctx).Model(&model.SysConfig{}).Where("config_key = ?", configKey)
 	if excludeID > 0 {
 		db = db.Where("config_id <> ?", excludeID)
 	}

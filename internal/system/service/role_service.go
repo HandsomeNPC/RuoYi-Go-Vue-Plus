@@ -11,10 +11,9 @@ import (
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
-	"ruoyi-go-vue-plus/internal/system/repository"
+	rolerepo "ruoyi-go-vue-plus/internal/system/repository/role"
 	"ruoyi-go-vue-plus/pkg/cache"
 	"ruoyi-go-vue-plus/pkg/constant"
-	"ruoyi-go-vue-plus/pkg/database"
 	"ruoyi-go-vue-plus/pkg/errs"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
@@ -33,7 +32,7 @@ var RoleSvcApp = new(RoleService)
 
 // SelectRolesByUserId 按用户ID查角色列表。
 func (s *RoleService) SelectRolesByUserId(ctx context.Context, userID int64) ([]*vo.SysRoleVo, error) {
-	roles, err := repository.NewRoleRepository(database.DB()).SelectRolesByUserId(ctx, userID)
+	roles, err := rolerepo.SelectRolesByUserId(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +42,7 @@ func (s *RoleService) SelectRolesByUserId(ctx context.Context, userID int64) ([]
 // SelectRolePermissionByUserId 按用户ID查角色权限标识。
 // 复用 selectRolesByUserId 结果，再对每个 roleKey 按逗号切分去重。
 func (s *RoleService) SelectRolePermissionByUserId(ctx context.Context, userID int64) ([]string, error) {
-	roles, err := repository.NewRoleRepository(database.DB()).SelectRolesByUserId(ctx, userID)
+	roles, err := rolerepo.SelectRolesByUserId(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +80,7 @@ func splitRoleKeys(roles []*model.SysRole) []string {
 func (s *RoleService) QueryPageList(ctx context.Context, q bo.SysRoleQueryBo,
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysRoleVo], error) {
 
-	res, err := repository.NewRoleRepository(database.DB()).SelectPageList(ctx, q, page)
+	res, err := rolerepo.SelectPageList(ctx, q, page)
 	if err != nil {
 		return pkgrepo.EmptyPage[*vo.SysRoleVo](), err
 	}
@@ -94,7 +93,7 @@ func (s *RoleService) QueryPageList(ctx context.Context, q bo.SysRoleQueryBo,
 func (s *RoleService) QueryList(ctx context.Context, q bo.SysRoleQueryBo,
 	limit int) ([]*vo.SysRoleVo, error) {
 
-	rows, err := repository.NewRoleRepository(database.DB()).SelectList(ctx, q, limit)
+	rows, err := rolerepo.SelectList(ctx, q, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -103,9 +102,9 @@ func (s *RoleService) QueryList(ctx context.Context, q bo.SysRoleQueryBo,
 
 // QueryByID 按主键查角色，不存在时返回 ErrRoleNotFound。
 func (s *RoleService) QueryByID(ctx context.Context, roleID int64) (*vo.SysRoleVo, error) {
-	role, err := repository.NewRoleRepository(database.DB()).SelectByID(ctx, roleID)
+	role, err := rolerepo.SelectByID(ctx, roleID)
 	if err != nil {
-		if errors.Is(err, repository.ErrRoleNotFound) {
+		if errors.Is(err, rolerepo.ErrRoleNotFound) {
 			return nil, ErrRoleNotFound
 		}
 		return nil, err
@@ -118,7 +117,7 @@ func (s *RoleService) QueryByID(ctx context.Context, roleID int64) (*vo.SysRoleV
 func (s *RoleService) SelectByIDs(ctx context.Context,
 	ids []int64) ([]*vo.SysRoleVo, error) {
 
-	rows, err := repository.NewRoleRepository(database.DB()).SelectNormalByIDs(ctx, ids)
+	rows, err := rolerepo.SelectNormalByIDs(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
@@ -131,15 +130,14 @@ func (s *RoleService) SelectByIDs(ctx context.Context,
 func (s *RoleService) SelectDeptIDsByRoleID(ctx context.Context,
 	roleID int64) ([]int64, error) {
 
-	role, err := repository.NewRoleRepository(database.DB()).SelectByID(ctx, roleID)
+	role, err := rolerepo.SelectByID(ctx, roleID)
 	if err != nil {
-		if errors.Is(err, repository.ErrRoleNotFound) {
+		if errors.Is(err, rolerepo.ErrRoleNotFound) {
 			return nil, ErrRoleNotFound
 		}
 		return nil, err
 	}
-	return repository.NewRoleRepository(database.DB()).
-		SelectDeptIDsByRoleID(ctx, roleID, role.DeptCheckStrictly)
+	return rolerepo.SelectDeptIDsByRoleID(ctx, roleID, role.DeptCheckStrictly)
 }
 
 // CheckRoleNameUnique 校验角色名称是否可用（唯一即 true）。
@@ -147,8 +145,7 @@ func (s *RoleService) SelectDeptIDsByRoleID(ctx context.Context,
 func (s *RoleService) CheckRoleNameUnique(ctx context.Context, roleName string,
 	excludeID int64) (bool, error) {
 
-	exists, err := repository.NewRoleRepository(database.DB()).
-		ExistsByRoleName(ctx, roleName, excludeID)
+	exists, err := rolerepo.ExistsByRoleName(ctx, roleName, excludeID)
 	if err != nil {
 		return false, err
 	}
@@ -160,8 +157,7 @@ func (s *RoleService) CheckRoleNameUnique(ctx context.Context, roleName string,
 func (s *RoleService) CheckRoleKeyUnique(ctx context.Context, roleKey string,
 	excludeID int64) (bool, error) {
 
-	exists, err := repository.NewRoleRepository(database.DB()).
-		ExistsByRoleKey(ctx, roleKey, excludeID)
+	exists, err := rolerepo.ExistsByRoleKey(ctx, roleKey, excludeID)
 	if err != nil {
 		return false, err
 	}
@@ -186,9 +182,9 @@ func (s *RoleService) CheckRoleAllowed(ctx context.Context, b *bo.SysRoleBo) err
 		return nil
 	}
 	// 修改：标识符变化时校验新旧两端都不是超管。
-	existing, err := repository.NewRoleRepository(database.DB()).SelectByID(ctx, b.RoleID)
+	existing, err := rolerepo.SelectByID(ctx, b.RoleID)
 	if err != nil {
-		if errors.Is(err, repository.ErrRoleNotFound) {
+		if errors.Is(err, rolerepo.ErrRoleNotFound) {
 			return ErrRoleNotFound
 		}
 		return err
@@ -216,8 +212,7 @@ func (s *RoleService) CheckRoleDataScope(ctx context.Context, userID, roleID int
 	if loginhelper.IsSuperAdmin(userID) {
 		return nil
 	}
-	count, err := repository.NewRoleRepository(database.DB()).
-		CountByRoleIDs(ctx, []int64{roleID})
+	count, err := rolerepo.CountByRoleIDs(ctx, []int64{roleID})
 	if err != nil {
 		return err
 	}
@@ -248,15 +243,14 @@ func (s *RoleService) InsertRole(ctx context.Context, b *bo.SysRoleBo) error {
 		return ErrRoleKeyExists
 	}
 
-	repo := repository.NewRoleRepository(database.DB())
 	add := bo.Conv.ConvertToSysRole(b)
 	add.RoleID = snowflake.Next() // role_id 无 auto_increment
 	// 审计字段不在此处填：由 pkg/repository 的插入回调统一注入。
-	if err := repo.Insert(ctx, add); err != nil {
+	if err := rolerepo.Insert(ctx, add); err != nil {
 		return err
 	}
 	b.RoleID = add.RoleID
-	return s.insertRoleMenu(ctx, repo, b.RoleID, b.MenuIDs)
+	return s.insertRoleMenu(ctx, b.RoleID, b.MenuIDs)
 }
 
 // UpdateRoleBaseInfo 修改角色基础信息。
@@ -276,12 +270,11 @@ func (s *RoleService) UpdateRoleBaseInfo(ctx context.Context,
 		return 0, err
 	}
 
-	repo := repository.NewRoleRepository(database.DB())
 	// 先取原记录定存在性，不靠 UpdateByID 的受影响行数：值与库中完全相同时
 	// MySQL 报 0 行（update_time 秒精度，同秒内重复提交连它都不变），
 	// 那会把一次幂等的重复保存误报成"修改失败"。
-	if _, err := repo.SelectByID(ctx, b.RoleID); err != nil {
-		if errors.Is(err, repository.ErrRoleNotFound) {
+	if _, err := rolerepo.SelectByID(ctx, b.RoleID); err != nil {
+		if errors.Is(err, rolerepo.ErrRoleNotFound) {
 			return 0, ErrRoleNotFound
 		}
 		return 0, err
@@ -299,7 +292,7 @@ func (s *RoleService) UpdateRoleBaseInfo(ctx context.Context,
 	}
 	// 停用前确认没有用户引用：否则会让已分配该角色的用户挂在停用角色上。
 	if b.Status == constant.StatusDisable {
-		count, err := repo.CountUserRoleByRoleID(ctx, b.RoleID)
+		count, err := rolerepo.CountUserRoleByRoleID(ctx, b.RoleID)
 		if err != nil {
 			return 0, err
 		}
@@ -308,11 +301,11 @@ func (s *RoleService) UpdateRoleBaseInfo(ctx context.Context,
 		}
 	}
 
-	rows, err := repo.UpdateByID(ctx, b.RoleID, buildRoleBaseUpdateColumns(b))
+	rows, err := rolerepo.UpdateByID(ctx, b.RoleID, buildRoleBaseUpdateColumns(b))
 	if err != nil {
 		return 0, err
 	}
-	// 仅在确实改了行时踢在线用户：no-op 重复保存不该把人踢下线。
+	// 仅在确实改了行时踢在线用户：no-op 重复提交不该把人踢下线。
 	if rows > 0 {
 		s.cleanOnlineUserByRole(ctx, b.RoleID)
 	}
@@ -335,9 +328,8 @@ func (s *RoleService) UpdateRolePermission(ctx context.Context,
 		return 0, err
 	}
 
-	repo := repository.NewRoleRepository(database.DB())
-	if _, err := repo.SelectByID(ctx, b.RoleID); err != nil {
-		if errors.Is(err, repository.ErrRoleNotFound) {
+	if _, err := rolerepo.SelectByID(ctx, b.RoleID); err != nil {
+		if errors.Is(err, rolerepo.ErrRoleNotFound) {
 			return 0, ErrRoleNotFound
 		}
 		return 0, err
@@ -348,21 +340,21 @@ func (s *RoleService) UpdateRolePermission(ctx context.Context,
 		"menu_check_strictly": b.MenuCheckStrictly,
 		"dept_check_strictly": b.DeptCheckStrictly,
 	}
-	if _, err := repo.UpdateByID(ctx, b.RoleID, columns); err != nil {
+	if _, err := rolerepo.UpdateByID(ctx, b.RoleID, columns); err != nil {
 		return 0, err
 	}
 	// 先清理旧菜单/部门关联再重建：清旧失败而重建成功会留下"旧授权未清掉"的脏状态，
 	// 但此处无事务包裹，按原执行序——重建失败则旧授权已成空，重试即可收敛。
-	if _, err := repo.DeleteRoleMenuByRoleIDs(ctx, []int64{b.RoleID}); err != nil {
+	if _, err := rolerepo.DeleteRoleMenuByRoleIDs(ctx, []int64{b.RoleID}); err != nil {
 		return 0, err
 	}
-	if err := s.insertRoleMenu(ctx, repo, b.RoleID, b.MenuIDs); err != nil {
+	if err := s.insertRoleMenu(ctx, b.RoleID, b.MenuIDs); err != nil {
 		return 0, err
 	}
-	if _, err := repo.DeleteRoleDeptByRoleIDs(ctx, []int64{b.RoleID}); err != nil {
+	if _, err := rolerepo.DeleteRoleDeptByRoleIDs(ctx, []int64{b.RoleID}); err != nil {
 		return 0, err
 	}
-	if err := s.insertRoleDept(ctx, repo, b.RoleID, b.DeptIDs); err != nil {
+	if err := s.insertRoleDept(ctx, b.RoleID, b.DeptIDs); err != nil {
 		return 0, err
 	}
 	// 数据权限缓存按角色失效。
@@ -385,9 +377,8 @@ func (s *RoleService) UpdateRoleStatus(ctx context.Context,
 	if roleID <= 0 {
 		return 0, errors.New("service: 角色主键不能为空")
 	}
-	repo := repository.NewRoleRepository(database.DB())
 	if status == constant.StatusDisable {
-		count, err := repo.CountUserRoleByRoleID(ctx, roleID)
+		count, err := rolerepo.CountUserRoleByRoleID(ctx, roleID)
 		if err != nil {
 			return 0, err
 		}
@@ -396,7 +387,7 @@ func (s *RoleService) UpdateRoleStatus(ctx context.Context,
 		}
 	}
 
-	rows, err := repo.UpdateByID(ctx, roleID, map[string]any{"status": status})
+	rows, err := rolerepo.UpdateByID(ctx, roleID, map[string]any{"status": status})
 	if err != nil {
 		return 0, err
 	}
@@ -420,8 +411,7 @@ func (s *RoleService) DeleteRoleByIDs(ctx context.Context, userID int64,
 		return err
 	}
 
-	repo := repository.NewRoleRepository(database.DB())
-	rows, err := repo.SelectByIDs(ctx, roleIDs)
+	rows, err := rolerepo.SelectByIDs(ctx, roleIDs)
 	if err != nil {
 		return err
 	}
@@ -429,7 +419,7 @@ func (s *RoleService) DeleteRoleByIDs(ctx context.Context, userID int64,
 		if err := s.CheckRoleAllowed(ctx, roleToBo(role)); err != nil {
 			return err
 		}
-		count, err := repo.CountUserRoleByRoleID(ctx, role.RoleID)
+		count, err := rolerepo.CountUserRoleByRoleID(ctx, role.RoleID)
 		if err != nil {
 			return err
 		}
@@ -440,13 +430,13 @@ func (s *RoleService) DeleteRoleByIDs(ctx context.Context, userID int64,
 
 	// 先清关联再删主行：反序一旦中途失败会留下"角色已删、关联残留"的脏状态，
 	// 但残留几行 sys_role_menu/role_dept 重新走一次级联删即可收敛，比反方向更易修。
-	if _, err := repo.DeleteRoleMenuByRoleIDs(ctx, roleIDs); err != nil {
+	if _, err := rolerepo.DeleteRoleMenuByRoleIDs(ctx, roleIDs); err != nil {
 		return err
 	}
-	if _, err := repo.DeleteRoleDeptByRoleIDs(ctx, roleIDs); err != nil {
+	if _, err := rolerepo.DeleteRoleDeptByRoleIDs(ctx, roleIDs); err != nil {
 		return err
 	}
-	if _, err := repo.DeleteByIDs(ctx, roleIDs); err != nil {
+	if _, err := rolerepo.DeleteByIDs(ctx, roleIDs); err != nil {
 		return err
 	}
 	// 批量删除整组清空数据权限缓存。
@@ -463,8 +453,7 @@ func (s *RoleService) DeleteAuthUser(ctx context.Context, currentUserID,
 	if userID == currentUserID {
 		return 0, errs.New(0, "不允许修改当前用户角色!", "")
 	}
-	rows, err := repository.NewRoleRepository(database.DB()).
-		DeleteUserRole(ctx, roleID, userID)
+	rows, err := rolerepo.DeleteUserRole(ctx, roleID, userID)
 	if err != nil {
 		return 0, err
 	}
@@ -482,8 +471,7 @@ func (s *RoleService) DeleteAuthUsers(ctx context.Context, currentUserID,
 	if containsInt64(userIDs, currentUserID) {
 		return 0, errs.New(0, "不允许修改当前用户角色!", "")
 	}
-	rows, err := repository.NewRoleRepository(database.DB()).
-		DeleteUserRolesByRoleID(ctx, roleID, userIDs)
+	rows, err := rolerepo.DeleteUserRolesByRoleID(ctx, roleID, userIDs)
 	if err != nil {
 		return 0, err
 	}
@@ -507,8 +495,7 @@ func (s *RoleService) InsertAuthUsers(ctx context.Context, roleID int64,
 	if currentUserID != 0 && containsInt64(userIDs, currentUserID) {
 		return 0, errs.New(0, "不允许修改当前用户角色!", "")
 	}
-	repo := repository.NewRoleRepository(database.DB())
-	if err := repo.InsertUserRoles(ctx, roleID, userIDs); err != nil {
+	if err := rolerepo.InsertUserRoles(ctx, roleID, userIDs); err != nil {
 		return 0, err
 	}
 	if len(userIDs) > 0 {
@@ -520,7 +507,7 @@ func (s *RoleService) InsertAuthUsers(ctx context.Context, roleID int64,
 // insertRoleMenu 批量写角色-菜单关联。
 // 空 list 直接返回：不勾任何菜单是合法用法。
 func (s *RoleService) insertRoleMenu(ctx context.Context,
-	repo *repository.RoleRepository, roleID int64, menuIDs []int64) error {
+	roleID int64, menuIDs []int64) error {
 
 	if len(menuIDs) == 0 {
 		return nil
@@ -529,13 +516,13 @@ func (s *RoleService) insertRoleMenu(ctx context.Context,
 	for _, mid := range menuIDs {
 		list = append(list, model.SysRoleMenu{RoleID: roleID, MenuID: mid})
 	}
-	return repo.InsertRoleMenuBatch(ctx, list)
+	return rolerepo.InsertRoleMenuBatch(ctx, list)
 }
 
 // insertRoleDept 批量写角色-部门（数据权限）关联。
 // 空 list 直接返回：dataScope 非「自定义」的角色本就没有部门勾选。
 func (s *RoleService) insertRoleDept(ctx context.Context,
-	repo *repository.RoleRepository, roleID int64, deptIDs []int64) error {
+	roleID int64, deptIDs []int64) error {
 
 	if len(deptIDs) == 0 {
 		return nil
@@ -544,7 +531,7 @@ func (s *RoleService) insertRoleDept(ctx context.Context,
 	for _, did := range deptIDs {
 		list = append(list, model.SysRoleDept{RoleID: roleID, DeptID: did})
 	}
-	return repo.InsertRoleDeptBatch(ctx, list)
+	return rolerepo.InsertRoleDeptBatch(ctx, list)
 }
 
 // checkRoleDataScopeAll 批量数据权限校验。
@@ -555,8 +542,7 @@ func (s *RoleService) checkRoleDataScopeAll(ctx context.Context, userID int64,
 	if len(roleIDs) == 0 || loginhelper.IsSuperAdmin(userID) {
 		return nil
 	}
-	count, err := repository.NewRoleRepository(database.DB()).
-		CountByRoleIDs(ctx, roleIDs)
+	count, err := rolerepo.CountByRoleIDs(ctx, roleIDs)
 	if err != nil {
 		return err
 	}
@@ -568,8 +554,7 @@ func (s *RoleService) checkRoleDataScopeAll(ctx context.Context, userID int64,
 
 // cleanOnlineUserByRole 踢掉拥有该角色的在线用户，先取角色下的用户集合再逐个注销会话。
 func (s *RoleService) cleanOnlineUserByRole(ctx context.Context, roleID int64) {
-	userIDs, err := repository.NewRoleRepository(database.DB()).
-		SelectUserIDsByRoleID(ctx, roleID)
+	userIDs, err := rolerepo.SelectUserIDsByRoleID(ctx, roleID)
 	if err != nil {
 		return
 	}
@@ -644,7 +629,7 @@ func loginhelperFromCtx(ctx context.Context) int64 {
 func (s *RoleService) SelectRoleList(ctx context.Context,
 	q bo.SysRoleQueryBo) ([]*vo.SysRoleVo, error) {
 
-	rows, err := repository.NewRoleRepository(database.DB()).SelectList(ctx, q, 0)
+	rows, err := rolerepo.SelectList(ctx, q, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -660,7 +645,7 @@ func (s *RoleService) SelectRoleAll(ctx context.Context) ([]*vo.SysRoleVo, error
 func (s *RoleService) SelectRoleListByUserId(ctx context.Context,
 	userID int64) ([]int64, error) {
 
-	roles, err := repository.NewRoleRepository(database.DB()).SelectRolesByUserId(ctx, userID)
+	roles, err := rolerepo.SelectRolesByUserId(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -678,7 +663,7 @@ func (s *RoleService) SelectRoleListByUserId(ctx context.Context,
 func (s *RoleService) SelectRolesAuthByUserId(ctx context.Context,
 	userID int64) ([]*vo.SysRoleVo, error) {
 
-	userRoles, err := repository.NewRoleRepository(database.DB()).SelectRolesByUserId(ctx, userID)
+	userRoles, err := rolerepo.SelectRolesByUserId(ctx, userID)
 	if err != nil {
 		return nil, err
 	}

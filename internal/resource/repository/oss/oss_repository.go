@@ -1,4 +1,4 @@
-package repository
+package oss
 
 import (
 	"context"
@@ -9,29 +9,20 @@ import (
 
 	"ruoyi-go-vue-plus/internal/resource/model"
 	"ruoyi-go-vue-plus/internal/resource/model/bo"
+	"ruoyi-go-vue-plus/pkg/database"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
 var ErrOssNotFound = errors.New("repository: OSS 对象不存在")
 
-// OssRepository sys_oss 数据访问。
-type OssRepository struct {
-	db *gorm.DB
-}
-
-// NewOssRepository 构造 OSS repository。
-func NewOssRepository(db *gorm.DB) *OssRepository {
-	return &OssRepository{db: db}
-}
-
 // SelectByID 按主键查 OSS 对象，不存在时返回 ErrOssNotFound。
-func (r *OssRepository) SelectByID(ctx context.Context, ossID int64) (*model.SysOss, error) {
+func SelectByID(ctx context.Context, ossID int64) (*model.SysOss, error) {
 	if ossID <= 0 {
 		return nil, ErrOssNotFound
 	}
 
 	var oss model.SysOss
-	err := r.db.WithContext(ctx).Where("oss_id = ?", ossID).First(&oss).Error
+	err := database.DB().WithContext(ctx).Where("oss_id = ?", ossID).First(&oss).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrOssNotFound
@@ -42,23 +33,23 @@ func (r *OssRepository) SelectByID(ctx context.Context, ossID int64) (*model.Sys
 }
 
 // SelectByIDs 按主键批量查，返回实际命中的行（缺失主键静默跳过，由调用方比对数量）。
-func (r *OssRepository) SelectByIDs(ctx context.Context, ids []int64) ([]*model.SysOss, error) {
+func SelectByIDs(ctx context.Context, ids []int64) ([]*model.SysOss, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
 
 	var rows []*model.SysOss
-	if err := r.db.WithContext(ctx).Where("oss_id IN ?", ids).Find(&rows).Error; err != nil {
+	if err := database.DB().WithContext(ctx).Where("oss_id IN ?", ids).Find(&rows).Error; err != nil {
 		return nil, fmt.Errorf("repository: 查询 OSS 对象 %v 失败: %w", ids, err)
 	}
 	return rows, nil
 }
 
 // SelectPageList 按条件分页查 OSS 对象。
-func (r *OssRepository) SelectPageList(ctx context.Context, q bo.SysOssQueryBo,
+func SelectPageList(ctx context.Context, q bo.SysOssQueryBo,
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysOss], error) {
 
-	db := applyOssQuery(r.db.WithContext(ctx).Model(&model.SysOss{}), q)
+	db := applyOssQuery(database.DB().WithContext(ctx).Model(&model.SysOss{}), q)
 	// 仅在调用方未指定排序时按主键升序兜底。
 	// 不能无条件追加：GORM 合并排序子句时先注册的排在前，主键唯一会让后来的排序列失效。
 	if !page.HasOrder() {
@@ -73,10 +64,10 @@ func (r *OssRepository) SelectPageList(ctx context.Context, q bo.SysOssQueryBo,
 // 文件名/原名走 like，后缀/URL/服务商走 eq，上传人走 eq，上传时间走闭区间；空值一概不筛。
 func applyOssQuery(db *gorm.DB, q bo.SysOssQueryBo) *gorm.DB {
 	if q.FileName != "" {
-		db = db.Where("file_name LIKE ?", "%"+escapeLike(q.FileName)+"%")
+		db = db.Where("file_name LIKE ?", "%"+pkgrepo.EscapeLike(q.FileName)+"%")
 	}
 	if q.OriginalName != "" {
-		db = db.Where("original_name LIKE ?", "%"+escapeLike(q.OriginalName)+"%")
+		db = db.Where("original_name LIKE ?", "%"+pkgrepo.EscapeLike(q.OriginalName)+"%")
 	}
 	if q.FileSuffix != "" {
 		db = db.Where("file_suffix = ?", q.FileSuffix)
@@ -102,11 +93,11 @@ func applyOssQuery(db *gorm.DB, q bo.SysOssQueryBo) *gorm.DB {
 // Insert 插入一条 OSS 记录。
 // oss_id 无 auto_increment，主键须由调用方（service 层）预先填好；
 // 审计字段由 pkg/repository 的插入回调统一填充。
-func (r *OssRepository) Insert(ctx context.Context, oss *model.SysOss) error {
+func Insert(ctx context.Context, oss *model.SysOss) error {
 	if oss == nil {
 		return fmt.Errorf("repository: OSS 对象为空")
 	}
-	if err := r.db.WithContext(ctx).Create(oss).Error; err != nil {
+	if err := database.DB().WithContext(ctx).Create(oss).Error; err != nil {
 		return fmt.Errorf("repository: 插入 OSS 对象失败: %w", err)
 	}
 	return nil
@@ -114,12 +105,12 @@ func (r *OssRepository) Insert(ctx context.Context, oss *model.SysOss) error {
 
 // DeleteByIDs 按主键批量删除，返回受影响行数。
 // sys_oss 无 del_flag，这是物理删除。
-func (r *OssRepository) DeleteByIDs(ctx context.Context, ids []int64) (int64, error) {
+func DeleteByIDs(ctx context.Context, ids []int64) (int64, error) {
 	if len(ids) == 0 {
 		return 0, fmt.Errorf("repository: OSS 对象主键为空")
 	}
 
-	res := r.db.WithContext(ctx).Where("oss_id IN ?", ids).Delete(&model.SysOss{})
+	res := database.DB().WithContext(ctx).Where("oss_id IN ?", ids).Delete(&model.SysOss{})
 	if res.Error != nil {
 		return 0, fmt.Errorf("repository: 删除 OSS 对象 %v 失败: %w", ids, res.Error)
 	}

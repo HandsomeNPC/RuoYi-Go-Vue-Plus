@@ -1,4 +1,4 @@
-package repository
+package user
 
 import (
 	"context"
@@ -12,29 +12,20 @@ import (
 
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
+	"ruoyi-go-vue-plus/pkg/database"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
 var ErrUserNotFound = errors.New("repository: 用户不存在")
 
-// UserRepository sys_user 数据访问。
-type UserRepository struct {
-	db *gorm.DB
-}
-
-// NewUserRepository 构造用户 repository。
-func NewUserRepository(db *gorm.DB) *UserRepository {
-	return &UserRepository{db: db}
-}
-
 // SelectByUserID 按用户ID查用户，不存在时返回 ErrUserNotFound。
-func (r *UserRepository) SelectByUserID(ctx context.Context, userID int64) (*model.SysUser, error) {
+func SelectByUserID(ctx context.Context, userID int64) (*model.SysUser, error) {
 	if userID == 0 {
 		return nil, ErrUserNotFound
 	}
 
 	var user model.SysUser
-	err := r.db.WithContext(ctx).
+	err := database.DB().WithContext(ctx).
 		Where("user_id = ?", userID).
 		First(&user).Error
 	if err != nil {
@@ -47,13 +38,13 @@ func (r *UserRepository) SelectByUserID(ctx context.Context, userID int64) (*mod
 }
 
 // SelectByUserName 按用户账号查用户，不存在时返回 ErrUserNotFound。
-func (r *UserRepository) SelectByUserName(ctx context.Context, userName string) (*model.SysUser, error) {
+func SelectByUserName(ctx context.Context, userName string) (*model.SysUser, error) {
 	if userName == "" {
 		return nil, ErrUserNotFound
 	}
 
 	var user model.SysUser
-	err := r.db.WithContext(ctx).
+	err := database.DB().WithContext(ctx).
 		Where("user_name = ?", userName).
 		First(&user).Error
 	if err != nil {
@@ -66,13 +57,13 @@ func (r *UserRepository) SelectByUserName(ctx context.Context, userName string) 
 }
 
 // SelectByPhone 按手机号查用户，不存在时返回 ErrUserNotFound。
-func (r *UserRepository) SelectByPhone(ctx context.Context, phone string) (*model.SysUser, error) {
+func SelectByPhone(ctx context.Context, phone string) (*model.SysUser, error) {
 	if phone == "" {
 		return nil, ErrUserNotFound
 	}
 
 	var user model.SysUser
-	err := r.db.WithContext(ctx).
+	err := database.DB().WithContext(ctx).
 		Where("phone_number = ?", phone).
 		First(&user).Error
 	if err != nil {
@@ -85,13 +76,13 @@ func (r *UserRepository) SelectByPhone(ctx context.Context, phone string) (*mode
 }
 
 // SelectByEmail 按邮箱查用户，不存在时返回 ErrUserNotFound。
-func (r *UserRepository) SelectByEmail(ctx context.Context, email string) (*model.SysUser, error) {
+func SelectByEmail(ctx context.Context, email string) (*model.SysUser, error) {
 	if email == "" {
 		return nil, ErrUserNotFound
 	}
 
 	var user model.SysUser
-	err := r.db.WithContext(ctx).
+	err := database.DB().WithContext(ctx).
 		Where("email = ?", email).
 		First(&user).Error
 	if err != nil {
@@ -107,7 +98,7 @@ func (r *UserRepository) SelectByEmail(ctx context.Context, email string) (*mode
 //
 // 一次 IN 查询而非逐个查：列表页每行都要翻译创建人，单查会打出 N+1。
 // 缺失的 ID 不出现在结果里，由调用方按空串兜底。
-func (r *UserRepository) SelectUserNamesByIDs(ctx context.Context,
+func SelectUserNamesByIDs(ctx context.Context,
 	userIDs []int64) (map[int64]string, error) {
 
 	if len(userIDs) == 0 {
@@ -119,7 +110,7 @@ func (r *UserRepository) SelectUserNamesByIDs(ctx context.Context,
 		UserID   int64
 		UserName string
 	}
-	err := r.db.WithContext(ctx).Model(&model.SysUser{}).
+	err := database.DB().WithContext(ctx).Model(&model.SysUser{}).
 		Select("user_id", "user_name").
 		Where("user_id IN ?", userIDs).
 		Find(&rows).Error
@@ -135,14 +126,14 @@ func (r *UserRepository) SelectUserNamesByIDs(ctx context.Context,
 }
 
 // ExistsByDeptID 判断部门下是否已分配用户。
-func (r *UserRepository) ExistsByDeptID(ctx context.Context, deptID int64) (bool, error) {
+func ExistsByDeptID(ctx context.Context, deptID int64) (bool, error) {
 	if deptID <= 0 {
 		return false, nil
 	}
 
 	// Model 不能省：del_flag 过滤由 LogicDelete 挂在字段类型上，须先解析出实体 schema 才生效。
 	var count int64
-	err := r.db.WithContext(ctx).Model(&model.SysUser{}).
+	err := database.DB().WithContext(ctx).Model(&model.SysUser{}).
 		Where("dept_id = ?", deptID).
 		Count(&count).Error
 	if err != nil {
@@ -152,13 +143,13 @@ func (r *UserRepository) ExistsByDeptID(ctx context.Context, deptID int64) (bool
 }
 
 // UpdateLoginInfo 更新最后登录 IP 与时间。
-func (r *UserRepository) UpdateLoginInfo(ctx context.Context, userID int64, ip string) error {
+func UpdateLoginInfo(ctx context.Context, userID int64, ip string) error {
 	if userID == 0 {
 		return errors.New("repository: userID 不能为 0")
 	}
 
 	now := time.Now()
-	err := r.db.WithContext(ctx).
+	err := database.DB().WithContext(ctx).
 		Model(&model.SysUser{}).
 		Where("user_id = ?", userID).
 		Updates(map[string]any{
@@ -175,14 +166,14 @@ func (r *UserRepository) UpdateLoginInfo(ctx context.Context, userID int64, ip s
 
 // ExistsByPhone 判断手机号是否已被占用，excludeID > 0 时排除该主键
 // （供个人中心改资料排除自身）。
-func (r *UserRepository) ExistsByPhone(ctx context.Context, phone string,
+func ExistsByPhone(ctx context.Context, phone string,
 	excludeID int64) (bool, error) {
 
 	if phone == "" {
 		return false, nil
 	}
 
-	db := r.db.WithContext(ctx).Model(&model.SysUser{}).Where("phone_number = ?", phone)
+	db := database.DB().WithContext(ctx).Model(&model.SysUser{}).Where("phone_number = ?", phone)
 	if excludeID > 0 {
 		db = db.Where("user_id <> ?", excludeID)
 	}
@@ -196,14 +187,14 @@ func (r *UserRepository) ExistsByPhone(ctx context.Context, phone string,
 
 // ExistsByEmail 判断邮箱是否已被占用，excludeID > 0 时排除该主键
 // （供个人中心改资料排除自身）。
-func (r *UserRepository) ExistsByEmail(ctx context.Context, email string,
+func ExistsByEmail(ctx context.Context, email string,
 	excludeID int64) (bool, error) {
 
 	if email == "" {
 		return false, nil
 	}
 
-	db := r.db.WithContext(ctx).Model(&model.SysUser{}).Where("email = ?", email)
+	db := database.DB().WithContext(ctx).Model(&model.SysUser{}).Where("email = ?", email)
 	if excludeID > 0 {
 		db = db.Where("user_id <> ?", excludeID)
 	}
@@ -219,7 +210,7 @@ func (r *UserRepository) ExistsByEmail(ctx context.Context, email string,
 //
 // 走 map 且仅写非空字段：个人资料表单字段全可选，
 // 漏传的字段不该把线上的昵称/邮箱刷成空串。update_by/update_time 由回调补齐。
-func (r *UserRepository) UpdateProfile(ctx context.Context, userID int64,
+func UpdateProfile(ctx context.Context, userID int64,
 	columns map[string]any) (int64, error) {
 
 	if userID == 0 {
@@ -229,7 +220,7 @@ func (r *UserRepository) UpdateProfile(ctx context.Context, userID int64,
 		return 0, errors.New("repository: 个人资料更新列为空")
 	}
 
-	res := r.db.WithContext(ctx).
+	res := database.DB().WithContext(ctx).
 		Model(&model.SysUser{}).
 		Where("user_id = ?", userID).
 		Updates(columns)
@@ -240,14 +231,14 @@ func (r *UserRepository) UpdateProfile(ctx context.Context, userID int64,
 }
 
 // UpdatePassword 按主键重置密码。
-func (r *UserRepository) UpdatePassword(ctx context.Context, userID int64,
+func UpdatePassword(ctx context.Context, userID int64,
 	password string) (int64, error) {
 
 	if userID == 0 {
 		return 0, errors.New("repository: userID 不能为 0")
 	}
 
-	res := r.db.WithContext(ctx).
+	res := database.DB().WithContext(ctx).
 		Model(&model.SysUser{}).
 		Where("user_id = ?", userID).
 		Update("password", password)
@@ -264,10 +255,10 @@ func (r *UserRepository) UpdatePassword(ctx context.Context, userID int64,
 // （联表会因用户的多角色把同一用户拉成多行）。userName/status/phoneNumber 走共用过滤。
 // 数据权限的部门/创建人隔离条件尚未落地，此处只按业务条件查——
 // 等数据权限落地后挂上过滤，调用点不必改。
-func (r *UserRepository) SelectAllocatedList(ctx context.Context, q bo.SysUserQueryBo,
+func SelectAllocatedList(ctx context.Context, q bo.SysUserQueryBo,
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysUser], error) {
 
-	db := r.applyUserAuthQuery(r.db.WithContext(ctx).Model(&model.SysUser{}), q)
+	db := applyUserAuthQuery(database.DB().WithContext(ctx).Model(&model.SysUser{}), q)
 	if q.RoleID > 0 {
 		db = db.
 			Joins("JOIN sys_user_role sur ON sur.user_id = sys_user.user_id").
@@ -287,10 +278,10 @@ func (r *UserRepository) SelectAllocatedList(ctx context.Context, q bo.SysUserQu
 // 不联 sys_user_role：联表会让多角色用户拉成多行，而 GORM 的 Count 不识别 DISTINCT
 // 会把总数错算成去重前。直接 NOT IN 主键集合即可——每用户一行，Count 与 Find 一致。
 // 与 LEFT JOIN sur 行为一致：没有任何角色授权的用户也会出现在未分配列表里。
-func (r *UserRepository) SelectUnallocatedList(ctx context.Context, q bo.SysUserQueryBo,
+func SelectUnallocatedList(ctx context.Context, q bo.SysUserQueryBo,
 	excludeUserIDs []int64, page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysUser], error) {
 
-	db := r.applyUserAuthQuery(r.db.WithContext(ctx).Model(&model.SysUser{}), q)
+	db := applyUserAuthQuery(database.DB().WithContext(ctx).Model(&model.SysUser{}), q)
 	if len(excludeUserIDs) > 0 {
 		db = db.Where("sys_user.user_id NOT IN ?", excludeUserIDs)
 	}
@@ -306,15 +297,15 @@ func (r *UserRepository) SelectUnallocatedList(ctx context.Context, q bo.SysUser
 // 基表是 sys_user（无别名），条件均以 sys_user 前缀限定，避免与联表同名列冲突。
 // 不在此处加 JOIN：两条路径的联表结构不同（allocated 联 sur、unallocated 不联），
 // 各自在调用方补，共用此函数只承载过滤条件。
-func (r *UserRepository) applyUserAuthQuery(db *gorm.DB, q bo.SysUserQueryBo) *gorm.DB {
+func applyUserAuthQuery(db *gorm.DB, q bo.SysUserQueryBo) *gorm.DB {
 	if q.UserName != "" {
-		db = db.Where("sys_user.user_name LIKE ?", "%"+escapeLike(q.UserName)+"%")
+		db = db.Where("sys_user.user_name LIKE ?", "%"+pkgrepo.EscapeLike(q.UserName)+"%")
 	}
 	if q.Status != "" {
 		db = db.Where("sys_user.status = ?", q.Status)
 	}
 	if q.PhoneNumber != "" {
-		db = db.Where("sys_user.phone_number LIKE ?", "%"+escapeLike(q.PhoneNumber)+"%")
+		db = db.Where("sys_user.phone_number LIKE ?", "%"+pkgrepo.EscapeLike(q.PhoneNumber)+"%")
 	}
 	return db
 }
@@ -348,18 +339,18 @@ func splitInt64s(s string) []int64 {
 //
 // 与 applyUserAuthQuery 分开：列表过滤更全且基表不联 sur，授权页过滤是其子集。
 // 分页与导出两条路径必须共用本函数，否则过滤逻辑改一处漏一处。
-func (r *UserRepository) applyUserListQuery(db *gorm.DB, q bo.SysUserQueryBo) *gorm.DB {
+func applyUserListQuery(db *gorm.DB, q bo.SysUserQueryBo) *gorm.DB {
 	if q.UserName != "" { // 空串不筛
-		db = db.Where("sys_user.user_name LIKE ?", "%"+escapeLike(q.UserName)+"%")
+		db = db.Where("sys_user.user_name LIKE ?", "%"+pkgrepo.EscapeLike(q.UserName)+"%")
 	}
 	if q.NickName != "" {
-		db = db.Where("sys_user.nick_name LIKE ?", "%"+escapeLike(q.NickName)+"%")
+		db = db.Where("sys_user.nick_name LIKE ?", "%"+pkgrepo.EscapeLike(q.NickName)+"%")
 	}
 	if q.Status != "" { // 空串不筛
 		db = db.Where("sys_user.status = ?", q.Status)
 	}
 	if q.PhoneNumber != "" {
-		db = db.Where("sys_user.phone_number LIKE ?", "%"+escapeLike(q.PhoneNumber)+"%")
+		db = db.Where("sys_user.phone_number LIKE ?", "%"+pkgrepo.EscapeLike(q.PhoneNumber)+"%")
 	}
 	if q.UserID > 0 { // 0 不筛
 		db = db.Where("sys_user.user_id = ?", q.UserID)
@@ -386,10 +377,10 @@ func (r *UserRepository) applyUserListQuery(db *gorm.DB, q bo.SysUserQueryBo) *g
 //
 // 数据权限的部门/角色数据隔离条件尚未落地，此处只按业务条件查——
 // 等数据权限落地后挂上过滤，调用点不必改。
-func (r *UserRepository) SelectPageList(ctx context.Context, q bo.SysUserQueryBo,
+func SelectPageList(ctx context.Context, q bo.SysUserQueryBo,
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysUser], error) {
 
-	db := r.applyUserListQuery(r.db.WithContext(ctx).Model(&model.SysUser{}), q)
+	db := applyUserListQuery(database.DB().WithContext(ctx).Model(&model.SysUser{}), q)
 	if !page.HasOrder() {
 		db = db.Order("sys_user.user_id")
 	}
@@ -399,10 +390,10 @@ func (r *UserRepository) SelectPageList(ctx context.Context, q bo.SysUserQueryBo
 
 // SelectExportList 按条件查导出列表，limit <= 0 不限制；导出方应传 excel.MaxRows+1
 // 以提前判定超限，见 pkg/excel 的说明。
-func (r *UserRepository) SelectExportList(ctx context.Context, q bo.SysUserQueryBo,
+func SelectExportList(ctx context.Context, q bo.SysUserQueryBo,
 	limit int) ([]*model.SysUser, error) {
 
-	db := r.applyUserListQuery(r.db.WithContext(ctx).Model(&model.SysUser{}), q)
+	db := applyUserListQuery(database.DB().WithContext(ctx).Model(&model.SysUser{}), q)
 	// 导出不是翻页，没有"调用方另指定排序"一说，固定排序保证输出顺序稳定。
 	db = db.Order("sys_user.user_id")
 	if limit > 0 {
@@ -418,11 +409,11 @@ func (r *UserRepository) SelectExportList(ctx context.Context, q bo.SysUserQuery
 // SelectByIDs 按用户ID串/部门取基础信息。
 // 仅取 user_id/user_name/nick_name 三列，固定 status='0'（启用），
 // userIds 非空时按 IN 过滤、deptID > 0 时按部门精确过滤。两者皆空则返回全部启用用户。
-func (r *UserRepository) SelectByIDs(ctx context.Context, userIds []int64,
+func SelectByIDs(ctx context.Context, userIds []int64,
 	deptID int64) ([]*model.SysUser, error) {
 
 	// Model 不能省：del_flag 过滤由 LogicDelete 挂在字段类型上，须先解析出实体 schema 才生效。
-	db := r.db.WithContext(ctx).Model(&model.SysUser{}).
+	db := database.DB().WithContext(ctx).Model(&model.SysUser{}).
 		Select("user_id", "user_name", "nick_name").
 		Where("status = ?", "0")
 	if len(userIds) > 0 {
@@ -442,13 +433,13 @@ func (r *UserRepository) SelectByIDs(ctx context.Context, userIds []int64,
 
 // ExistsByUserName 判断用户账号是否已被占用，excludeID > 0 时排除该主键
 // （供修改场景排除自身）。
-func (r *UserRepository) ExistsByUserName(ctx context.Context, userName string,
+func ExistsByUserName(ctx context.Context, userName string,
 	excludeID int64) (bool, error) {
 
 	if userName == "" {
 		return false, nil
 	}
-	db := r.db.WithContext(ctx).Model(&model.SysUser{}).Where("user_name = ?", userName)
+	db := database.DB().WithContext(ctx).Model(&model.SysUser{}).Where("user_name = ?", userName)
 	if excludeID > 0 {
 		db = db.Where("user_id <> ?", excludeID)
 	}
@@ -465,12 +456,12 @@ func (r *UserRepository) ExistsByUserName(ctx context.Context, userName string,
 // 数据权限的隔离条件尚未落地：超管在 service 层短路，非超管传入的 userId
 // 都是前端可见的，count 不等只能说明主键不存在。等数据权限落地后给这次 count
 // 挂上过滤即可，调用点不必改。
-func (r *UserRepository) CountByUserID(ctx context.Context, userID int64) (int64, error) {
+func CountByUserID(ctx context.Context, userID int64) (int64, error) {
 	if userID <= 0 {
 		return 0, nil
 	}
 	var count int64
-	if err := r.db.WithContext(ctx).Model(&model.SysUser{}).
+	if err := database.DB().WithContext(ctx).Model(&model.SysUser{}).
 		Where("user_id = ?", userID).
 		Count(&count).Error; err != nil {
 		return 0, fmt.Errorf("repository: 统计用户 %d 失败: %w", userID, err)
@@ -479,14 +470,14 @@ func (r *UserRepository) CountByUserID(ctx context.Context, userID int64) (int64
 }
 
 // SelectListByDept 按部门取全部用户。
-func (r *UserRepository) SelectListByDept(ctx context.Context,
+func SelectListByDept(ctx context.Context,
 	deptID int64) ([]*model.SysUser, error) {
 
 	if deptID <= 0 {
 		return nil, nil
 	}
 	var rows []*model.SysUser
-	if err := r.db.WithContext(ctx).Model(&model.SysUser{}).
+	if err := database.DB().WithContext(ctx).Model(&model.SysUser{}).
 		Where("dept_id = ?", deptID).
 		Order("user_id").
 		Find(&rows).Error; err != nil {
@@ -498,11 +489,11 @@ func (r *UserRepository) SelectListByDept(ctx context.Context,
 // Insert 插入一条用户。
 // user_id 无 auto_increment，主键须由调用方（service 层）预先填好；
 // 审计字段由 pkg/repository 的插入回调统一填充。
-func (r *UserRepository) Insert(ctx context.Context, user *model.SysUser) error {
+func Insert(ctx context.Context, user *model.SysUser) error {
 	if user == nil {
 		return fmt.Errorf("repository: 用户为空")
 	}
-	if err := r.db.WithContext(ctx).Create(user).Error; err != nil {
+	if err := database.DB().WithContext(ctx).Create(user).Error; err != nil {
 		return fmt.Errorf("repository: 插入用户失败: %w", err)
 	}
 	return nil
@@ -512,7 +503,7 @@ func (r *UserRepository) Insert(ctx context.Context, user *model.SysUser) error 
 //
 // 走 map 而非实体：Updates(struct) 跳过零值，会让「清空备注」写不进库。
 // update_by/update_time 由 pkg/repository 的更新回调补齐，调用方不必带。
-func (r *UserRepository) UpdateByID(ctx context.Context, userID int64,
+func UpdateByID(ctx context.Context, userID int64,
 	columns map[string]any) (int64, error) {
 
 	if userID <= 0 {
@@ -521,7 +512,7 @@ func (r *UserRepository) UpdateByID(ctx context.Context, userID int64,
 	if len(columns) == 0 {
 		return 0, fmt.Errorf("repository: 用户更新列为空")
 	}
-	res := r.db.WithContext(ctx).
+	res := database.DB().WithContext(ctx).
 		Model(&model.SysUser{}).
 		Where("user_id = ?", userID).
 		Updates(columns)
@@ -532,19 +523,19 @@ func (r *UserRepository) UpdateByID(ctx context.Context, userID int64,
 }
 
 // UpdateStatus 按主键更新账号状态。
-func (r *UserRepository) UpdateStatus(ctx context.Context, userID int64,
+func UpdateStatus(ctx context.Context, userID int64,
 	status string) (int64, error) {
 
-	return r.UpdateByID(ctx, userID, map[string]any{"status": status})
+	return UpdateByID(ctx, userID, map[string]any{"status": status})
 }
 
 // DeleteByIDs 按主键批量逻辑删除，返回受影响行数。
 // SysUser 嵌了 LogicDelete，Delete 会被改写成 UPDATE ... SET del_flag = '1'。
-func (r *UserRepository) DeleteByIDs(ctx context.Context, ids []int64) (int64, error) {
+func DeleteByIDs(ctx context.Context, ids []int64) (int64, error) {
 	if len(ids) == 0 {
 		return 0, fmt.Errorf("repository: 用户主键为空")
 	}
-	res := r.db.WithContext(ctx).
+	res := database.DB().WithContext(ctx).
 		Where("user_id IN ?", ids).
 		Delete(&model.SysUser{})
 	if res.Error != nil {
@@ -555,7 +546,7 @@ func (r *UserRepository) DeleteByIDs(ctx context.Context, ids []int64) (int64, e
 
 // InsertUserRoles 批量写入用户-角色关联。
 // 空 list 直接返回：不勾任何角色走不到这里（service 已校验非空），保留幂等。
-func (r *UserRepository) InsertUserRoles(ctx context.Context, userID int64,
+func InsertUserRoles(ctx context.Context, userID int64,
 	roleIDs []int64) error {
 
 	if userID <= 0 || len(roleIDs) == 0 {
@@ -565,7 +556,7 @@ func (r *UserRepository) InsertUserRoles(ctx context.Context, userID int64,
 	for _, rid := range roleIDs {
 		list = append(list, model.SysUserRole{UserID: userID, RoleID: rid})
 	}
-	if err := r.db.WithContext(ctx).CreateInBatches(list, len(list)).Error; err != nil {
+	if err := database.DB().WithContext(ctx).CreateInBatches(list, len(list)).Error; err != nil {
 		return fmt.Errorf("repository: 批量插入用户 %d 的角色关联失败: %w", userID, err)
 	}
 	return nil
@@ -573,13 +564,13 @@ func (r *UserRepository) InsertUserRoles(ctx context.Context, userID int64,
 
 // DeleteUserRolesByUserID 清理用户的全部角色关联。
 // sys_user_role 无 del_flag，物理删除。
-func (r *UserRepository) DeleteUserRolesByUserID(ctx context.Context,
+func DeleteUserRolesByUserID(ctx context.Context,
 	userID int64) (int64, error) {
 
 	if userID <= 0 {
 		return 0, nil
 	}
-	res := r.db.WithContext(ctx).
+	res := database.DB().WithContext(ctx).
 		Where("user_id = ?", userID).
 		Delete(&model.SysUserRole{})
 	if res.Error != nil {
@@ -589,7 +580,7 @@ func (r *UserRepository) DeleteUserRolesByUserID(ctx context.Context,
 }
 
 // InsertUserPosts 批量写入用户-岗位关联。
-func (r *UserRepository) InsertUserPosts(ctx context.Context, userID int64,
+func InsertUserPosts(ctx context.Context, userID int64,
 	postIDs []int64) error {
 
 	if userID <= 0 || len(postIDs) == 0 {
@@ -599,7 +590,7 @@ func (r *UserRepository) InsertUserPosts(ctx context.Context, userID int64,
 	for _, pid := range postIDs {
 		list = append(list, model.SysUserPost{UserID: userID, PostID: pid})
 	}
-	if err := r.db.WithContext(ctx).CreateInBatches(list, len(list)).Error; err != nil {
+	if err := database.DB().WithContext(ctx).CreateInBatches(list, len(list)).Error; err != nil {
 		return fmt.Errorf("repository: 批量插入用户 %d 的岗位关联失败: %w", userID, err)
 	}
 	return nil
@@ -607,13 +598,13 @@ func (r *UserRepository) InsertUserPosts(ctx context.Context, userID int64,
 
 // DeleteUserPostsByUserID 清理用户的全部岗位关联。
 // sys_user_post 无 del_flag，物理删除。
-func (r *UserRepository) DeleteUserPostsByUserID(ctx context.Context,
+func DeleteUserPostsByUserID(ctx context.Context,
 	userID int64) (int64, error) {
 
 	if userID <= 0 {
 		return 0, nil
 	}
-	res := r.db.WithContext(ctx).
+	res := database.DB().WithContext(ctx).
 		Where("user_id = ?", userID).
 		Delete(&model.SysUserPost{})
 	if res.Error != nil {
@@ -623,13 +614,13 @@ func (r *UserRepository) DeleteUserPostsByUserID(ctx context.Context,
 }
 
 // DeleteUserRolesByUserIDs 批量清理给定用户的角色关联。
-func (r *UserRepository) DeleteUserRolesByUserIDs(ctx context.Context,
+func DeleteUserRolesByUserIDs(ctx context.Context,
 	userIDs []int64) (int64, error) {
 
 	if len(userIDs) == 0 {
 		return 0, nil
 	}
-	res := r.db.WithContext(ctx).
+	res := database.DB().WithContext(ctx).
 		Where("user_id IN ?", userIDs).
 		Delete(&model.SysUserRole{})
 	if res.Error != nil {
@@ -639,13 +630,13 @@ func (r *UserRepository) DeleteUserRolesByUserIDs(ctx context.Context,
 }
 
 // DeleteUserPostsByUserIDs 批量清理给定用户的岗位关联。
-func (r *UserRepository) DeleteUserPostsByUserIDs(ctx context.Context,
+func DeleteUserPostsByUserIDs(ctx context.Context,
 	userIDs []int64) (int64, error) {
 
 	if len(userIDs) == 0 {
 		return 0, nil
 	}
-	res := r.db.WithContext(ctx).
+	res := database.DB().WithContext(ctx).
 		Where("user_id IN ?", userIDs).
 		Delete(&model.SysUserPost{})
 	if res.Error != nil {

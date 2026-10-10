@@ -8,10 +8,9 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
-	"ruoyi-go-vue-plus/internal/system/repository"
+	"ruoyi-go-vue-plus/internal/system/repository/config"
 	"ruoyi-go-vue-plus/pkg/cache"
 	"ruoyi-go-vue-plus/pkg/constant"
-	"ruoyi-go-vue-plus/pkg/database"
 	"ruoyi-go-vue-plus/pkg/errs"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
@@ -29,7 +28,7 @@ var ConfigSvcApp = new(ConfigService)
 func (s *ConfigService) QueryPageList(ctx context.Context, q bo.SysConfigQueryBo,
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysConfigVo], error) {
 
-	res, err := repository.NewConfigRepository(database.DB()).SelectPageList(ctx, q, page)
+	res, err := config.SelectPageList(ctx, q, page)
 	if err != nil {
 		return pkgrepo.EmptyPage[*vo.SysConfigVo](), err
 	}
@@ -42,7 +41,7 @@ func (s *ConfigService) QueryPageList(ctx context.Context, q bo.SysConfigQueryBo
 func (s *ConfigService) QueryList(ctx context.Context, q bo.SysConfigQueryBo,
 	limit int) ([]*vo.SysConfigVo, error) {
 
-	rows, err := repository.NewConfigRepository(database.DB()).SelectList(ctx, q, limit)
+	rows, err := config.SelectList(ctx, q, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -51,9 +50,9 @@ func (s *ConfigService) QueryList(ctx context.Context, q bo.SysConfigQueryBo,
 
 // QueryByID 按主键查参数配置，不存在时返回 ErrConfigNotFound。
 func (s *ConfigService) QueryByID(ctx context.Context, configID int64) (*vo.SysConfigVo, error) {
-	cfg, err := repository.NewConfigRepository(database.DB()).SelectByID(ctx, configID)
+	cfg, err := config.SelectByID(ctx, configID)
 	if err != nil {
-		if errors.Is(err, repository.ErrConfigNotFound) {
+		if errors.Is(err, config.ErrConfigNotFound) {
 			return nil, ErrConfigNotFound
 		}
 		return nil, err
@@ -73,8 +72,8 @@ func (s *ConfigService) SelectConfigByKey(ctx context.Context, configKey string)
 	}
 
 	value := ""
-	cfg, err := repository.NewConfigRepository(database.DB()).SelectByKey(ctx, configKey)
-	if err != nil && !errors.Is(err, repository.ErrConfigNotFound) {
+	cfg, err := config.SelectByKey(ctx, configKey)
+	if err != nil && !errors.Is(err, config.ErrConfigNotFound) {
 		return "", err
 	}
 	if cfg != nil {
@@ -90,7 +89,7 @@ func (s *ConfigService) SelectConfigByKey(ctx context.Context, configKey string)
 func (s *ConfigService) CheckConfigKeyUnique(ctx context.Context, configKey string,
 	excludeID int64) (bool, error) {
 
-	exists, err := repository.NewConfigRepository(database.DB()).
+	exists, err := config.
 		ExistsByConfigKey(ctx, configKey, excludeID)
 	if err != nil {
 		return false, err
@@ -117,7 +116,7 @@ func (s *ConfigService) InsertConfig(ctx context.Context, b *bo.SysConfigBo) err
 	add.ConfigID = snowflake.Next() // config_id 无 auto_increment
 	// 审计字段不在此处填：由 pkg/repository 的插入回调统一注入。
 
-	if err := repository.NewConfigRepository(database.DB()).Insert(ctx, add); err != nil {
+	if err := config.Insert(ctx, add); err != nil {
 		return err
 	}
 	b.ConfigID = add.ConfigID
@@ -145,14 +144,12 @@ func (s *ConfigService) UpdateConfig(ctx context.Context, b *bo.SysConfigBo) err
 		return ErrConfigKeyExists
 	}
 
-	repo := repository.NewConfigRepository(database.DB())
-
 	// 先取原记录定存在性，不靠 UpdateByID 的受影响行数：值与库中完全相同时
 	// MySQL 报 0 行（update_time 是秒精度，同秒内重复提交连它都不变），
 	// 那会把一次幂等的重复保存误报成"配置不存在"。
-	old, err := repo.SelectByID(ctx, b.ConfigID)
+	old, err := config.SelectByID(ctx, b.ConfigID)
 	if err != nil {
-		if errors.Is(err, repository.ErrConfigNotFound) {
+		if errors.Is(err, config.ErrConfigNotFound) {
 			return ErrConfigNotFound
 		}
 		return err
@@ -162,7 +159,7 @@ func (s *ConfigService) UpdateConfig(ctx context.Context, b *bo.SysConfigBo) err
 		_ = cache.Evict(ctx, constant.CacheSysConfig, old.ConfigKey)
 	}
 
-	if _, err := repo.UpdateByID(ctx, b.ConfigID, buildConfigUpdateColumns(b)); err != nil {
+	if _, err := config.UpdateByID(ctx, b.ConfigID, buildConfigUpdateColumns(b)); err != nil {
 		return err
 	}
 	_ = cache.Put(ctx, constant.CacheSysConfig, b.ConfigKey, b.ConfigValue,
@@ -200,10 +197,9 @@ func (s *ConfigService) UpdateConfigByKey(ctx context.Context, b *bo.SysConfigUp
 		return errors.New("service: 参数键名不能为空")
 	}
 
-	repo := repository.NewConfigRepository(database.DB())
 	// 先定存在性，同上：值未变时 UpdateByKey 会报 0 行，不能据此判定键名不存在。
-	if _, err := repo.SelectByKey(ctx, b.ConfigKey); err != nil {
-		if errors.Is(err, repository.ErrConfigNotFound) {
+	if _, err := config.SelectByKey(ctx, b.ConfigKey); err != nil {
+		if errors.Is(err, config.ErrConfigNotFound) {
 			return ErrConfigNotFound
 		}
 		return err
@@ -216,7 +212,7 @@ func (s *ConfigService) UpdateConfigByKey(ctx context.Context, b *bo.SysConfigUp
 	// 在此处收成 string，不把 LooseString 带进 repository 与缓存：
 	// 那个宽容类型只为兼容入参形态而存在，落库与缓存都该是普通字符串。
 	configValue := b.ConfigValue.String()
-	if _, err := repo.UpdateByKey(ctx, b.ConfigKey,
+	if _, err := config.UpdateByKey(ctx, b.ConfigKey,
 		map[string]any{"config_value": configValue}); err != nil {
 		return err
 	}
@@ -232,8 +228,7 @@ func (s *ConfigService) DeleteConfigByIDs(ctx context.Context, ids []int64) erro
 		return errors.New("service: 参数配置主键不能为空")
 	}
 
-	repo := repository.NewConfigRepository(database.DB())
-	rows, err := repo.SelectByIDs(ctx, ids)
+	rows, err := config.SelectByIDs(ctx, ids)
 	if err != nil {
 		return err
 	}
@@ -246,7 +241,7 @@ func (s *ConfigService) DeleteConfigByIDs(ctx context.Context, ids []int64) erro
 		}
 	}
 
-	if _, err := repo.DeleteByIDs(ctx, ids); err != nil {
+	if _, err := config.DeleteByIDs(ctx, ids); err != nil {
 		return err
 	}
 	// 删除后再失效：提前清缓存会让删除失败时白丢一批热数据。

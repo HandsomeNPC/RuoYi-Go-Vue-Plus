@@ -10,10 +10,10 @@ import (
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/dto"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
-	"ruoyi-go-vue-plus/internal/system/repository"
+	"ruoyi-go-vue-plus/internal/system/repository/notice"
+	"ruoyi-go-vue-plus/internal/system/repository/user"
 	"ruoyi-go-vue-plus/pkg/cache"
 	"ruoyi-go-vue-plus/pkg/constant"
-	"ruoyi-go-vue-plus/pkg/database"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
@@ -42,7 +42,7 @@ func (s *NoticeService) QueryPageList(ctx context.Context, q bo.SysNoticeQueryBo
 		return pkgrepo.EmptyPage[*vo.SysNoticeVo](), err
 	}
 
-	res, err := repository.NewNoticeRepository(database.DB()).
+	res, err := notice.
 		SelectPageList(ctx, q, createBy, page)
 	if err != nil {
 		return pkgrepo.EmptyPage[*vo.SysNoticeVo](), err
@@ -63,15 +63,15 @@ func (s *NoticeService) resolveCreateBy(ctx context.Context, createByName string
 		return 0, nil
 	}
 
-	user, err := repository.NewUserRepository(database.DB()).
+	u, err := user.
 		SelectByUserName(ctx, createByName)
 	if err != nil {
-		if errors.Is(err, repository.ErrUserNotFound) {
+		if errors.Is(err, user.ErrUserNotFound) {
 			return noticeCreateByNoMatch, nil
 		}
 		return 0, err
 	}
-	return user.UserID, nil
+	return u.UserID, nil
 }
 
 // fillCreateByNames 批量回填创建人名称。
@@ -104,7 +104,7 @@ func (s *NoticeService) fillCreateByNames(ctx context.Context, rows []*vo.SysNot
 	}
 
 	if len(pending) > 0 {
-		found, err := repository.NewUserRepository(database.DB()).
+		found, err := user.
 			SelectUserNamesByIDs(ctx, pending)
 		if err != nil {
 			return err
@@ -129,15 +129,15 @@ func userNameCacheKey(userID int64) string {
 
 // QueryByID 按主键查通知公告，不存在返回 ErrNoticeNotFound。
 func (s *NoticeService) QueryByID(ctx context.Context, noticeID int64) (*vo.SysNoticeVo, error) {
-	notice, err := repository.NewNoticeRepository(database.DB()).SelectByID(ctx, noticeID)
+	n, err := notice.SelectByID(ctx, noticeID)
 	if err != nil {
-		if errors.Is(err, repository.ErrNoticeNotFound) {
+		if errors.Is(err, notice.ErrNoticeNotFound) {
 			return nil, ErrNoticeNotFound
 		}
 		return nil, err
 	}
 
-	out := vo.Conv.ConvertToSysNoticeVo(notice)
+	out := vo.Conv.ConvertToSysNoticeVo(n)
 	if err := s.fillCreateByNames(ctx, []*vo.SysNoticeVo{out}); err != nil {
 		return nil, err
 	}
@@ -158,7 +158,7 @@ func (s *NoticeService) InsertNotice(ctx context.Context, b *bo.SysNoticeBo) err
 	add.NoticeID = snowflake.Next() // notice_id 无 auto_increment
 	// 审计字段不在此处填：由 pkg/repository 的插入回调统一注入。
 
-	if err := repository.NewNoticeRepository(database.DB()).Insert(ctx, add); err != nil {
+	if err := notice.Insert(ctx, add); err != nil {
 		return err
 	}
 	b.NoticeID = add.NoticeID
@@ -223,18 +223,17 @@ func (s *NoticeService) UpdateNotice(ctx context.Context, b *bo.SysNoticeBo) err
 		return errors.New("service: 通知公告主键不能为空")
 	}
 
-	repo := repository.NewNoticeRepository(database.DB())
 	// 先取原记录定存在性，不靠 UpdateByID 的受影响行数：值与库中完全相同时
 	// MySQL 报 0 行（update_time 是秒精度，同秒内重复提交连它都不变），
 	// 那会把一次幂等的重复保存误报成"公告不存在"。
-	if _, err := repo.SelectByID(ctx, b.NoticeID); err != nil {
-		if errors.Is(err, repository.ErrNoticeNotFound) {
+	if _, err := notice.SelectByID(ctx, b.NoticeID); err != nil {
+		if errors.Is(err, notice.ErrNoticeNotFound) {
 			return ErrNoticeNotFound
 		}
 		return err
 	}
 
-	if _, err := repo.UpdateByID(ctx, b.NoticeID, buildNoticeUpdateColumns(b)); err != nil {
+	if _, err := notice.UpdateByID(ctx, b.NoticeID, buildNoticeUpdateColumns(b)); err != nil {
 		return err
 	}
 	return nil
@@ -266,7 +265,7 @@ func (s *NoticeService) DeleteNoticeByIDs(ctx context.Context, ids []int64) erro
 		return errors.New("service: 通知公告主键不能为空")
 	}
 
-	affected, err := repository.NewNoticeRepository(database.DB()).DeleteByIDs(ctx, ids)
+	affected, err := notice.DeleteByIDs(ctx, ids)
 	if err != nil {
 		return err
 	}

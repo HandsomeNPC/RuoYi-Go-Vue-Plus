@@ -11,9 +11,8 @@ import (
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/dto"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
-	"ruoyi-go-vue-plus/internal/system/repository"
+	"ruoyi-go-vue-plus/internal/system/repository/message"
 	"ruoyi-go-vue-plus/pkg/constant"
-	"ruoyi-go-vue-plus/pkg/database"
 	"ruoyi-go-vue-plus/pkg/push"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/jsonx"
@@ -68,7 +67,7 @@ func (s *MessageService) selectBoxList(ctx context.Context, category string,
 	userID int64) ([]*vo.SysMessageVo, error) {
 
 	since := time.Now().AddDate(0, 0, -boxDays)
-	rows, err := repository.NewMessageRepository(database.DB()).
+	rows, err := message.
 		SelectBoxList(ctx, category, userID, since, boxLimit)
 	if err != nil {
 		return nil, err
@@ -141,7 +140,7 @@ func (s *MessageService) storeMessage(ctx context.Context, userIDs []int64,
 	}
 
 	msg := buildMessage(userIDs, payload)
-	if err := repository.NewMessageRepository(database.DB()).Insert(ctx, msg); err != nil {
+	if err := message.Insert(ctx, msg); err != nil {
 		return err
 	}
 	// 回填给调用方：前端拿 messageId 标记已读、跳详情。

@@ -10,8 +10,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
-	"ruoyi-go-vue-plus/internal/system/repository"
-	"ruoyi-go-vue-plus/pkg/database"
+	"ruoyi-go-vue-plus/internal/system/repository/social"
 	"ruoyi-go-vue-plus/pkg/redis"
 )
 
@@ -36,7 +35,7 @@ const socialRegisterLockKey = "global:lock:social_register:"
 func (s *SocialService) QueryListByUserId(ctx context.Context,
 	userID int64) ([]*vo.SysSocialVo, error) {
 
-	rows, err := repository.NewSocialRepository(database.DB()).SelectByUserID(ctx, userID)
+	rows, err := social.SelectByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +46,7 @@ func (s *SocialService) QueryListByUserId(ctx context.Context,
 func (s *SocialService) SelectByAuthId(ctx context.Context,
 	authID string) ([]*vo.SysSocialVo, error) {
 
-	rows, err := repository.NewSocialRepository(database.DB()).SelectByAuthID(ctx, authID)
+	rows, err := social.SelectByAuthID(ctx, authID)
 	if err != nil {
 		return nil, err
 	}
@@ -73,10 +72,8 @@ func (s *SocialService) SaveOrUpdate(ctx context.Context, b *bo.SysSocialBo) err
 	}
 	defer unlock()
 
-	repo := repository.NewSocialRepository(database.DB())
-
 	// 已被绑定就拒绝——包括被自己绑定：同一账号重复点绑定按「已绑定」提示，而非静默续绑。
-	bound, err := repo.SelectByAuthID(ctx, b.AuthID)
+	bound, err := social.SelectByAuthID(ctx, b.AuthID)
 	if err != nil {
 		return err
 	}
@@ -85,12 +82,12 @@ func (s *SocialService) SaveOrUpdate(ctx context.Context, b *bo.SysSocialBo) err
 	}
 
 	// 同一用户在同平台已有绑定则更新那条（换了三方账号重新授权的情形），否则新增。
-	existing, err := repo.SelectByUserIDAndSource(ctx, b.UserID, b.Source)
+	existing, err := social.SelectByUserIDAndSource(ctx, b.UserID, b.Source)
 	if err != nil {
 		return err
 	}
 	if len(existing) > 0 {
-		_, err = repo.UpdateByID(ctx, existing[0].ID, buildSocialUpdateColumns(b))
+		_, err = social.UpdateByID(ctx, existing[0].ID, buildSocialUpdateColumns(b))
 		return err
 	}
 
@@ -98,14 +95,14 @@ func (s *SocialService) SaveOrUpdate(ctx context.Context, b *bo.SysSocialBo) err
 	// 各业务表主键均无 auto_increment，须自行发号。
 	add.ID = snowflake.Next()
 	// 审计字段不在此处填：由 pkg/repository 的插入回调统一注入。
-	return repo.Insert(ctx, add)
+	return social.Insert(ctx, add)
 }
 
 // DeleteWithValidById 删除一条社会化绑定，返回是否删到。
 //
 // 受影响行数为 0 即视为失败，是删除类接口的既定口径（见 docs/CRUD-SPEC.md 第 4 节例外）。
 func (s *SocialService) DeleteWithValidById(ctx context.Context, id int64) (bool, error) {
-	affected, err := repository.NewSocialRepository(database.DB()).DeleteByID(ctx, id)
+	affected, err := social.DeleteByID(ctx, id)
 	if err != nil {
 		return false, err
 	}
@@ -115,9 +112,9 @@ func (s *SocialService) DeleteWithValidById(ctx context.Context, id int64) (bool
 // FindOwnerUserID 取某条绑定所属的用户ID，不存在时返回 ErrSocialNotFound。
 // 供解绑接口校验归属用。
 func (s *SocialService) FindOwnerUserID(ctx context.Context, id int64) (int64, error) {
-	row, err := repository.NewSocialRepository(database.DB()).SelectByID(ctx, id)
+	row, err := social.SelectByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, repository.ErrSocialNotFound) {
+		if errors.Is(err, social.ErrSocialNotFound) {
 			return 0, ErrSocialNotFound
 		}
 		return 0, err

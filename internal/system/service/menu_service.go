@@ -11,9 +11,9 @@ import (
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
-	"ruoyi-go-vue-plus/internal/system/repository"
+	"ruoyi-go-vue-plus/internal/system/repository/menu"
+	"ruoyi-go-vue-plus/internal/system/repository/role"
 	"ruoyi-go-vue-plus/pkg/constant"
-	"ruoyi-go-vue-plus/pkg/database"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/response"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
@@ -39,13 +39,13 @@ var MenuSvcApp = new(MenuService)
 
 // SelectMenuPermsByUserId 按用户ID查菜单权限标识。
 func (s *MenuService) SelectMenuPermsByUserId(ctx context.Context, userID int64) ([]string, error) {
-	return repository.NewMenuRepository(database.DB()).SelectMenuPermsByUserId(ctx, userID)
+	return menu.SelectMenuPermsByUserId(ctx, userID)
 }
 
 // SelectMenuPermsByRoleIds 按角色ID集合查权限。
 // 返回 map[roleId]perms，每个角色的 perms 去重且保序。
 func (s *MenuService) SelectMenuPermsByRoleIds(ctx context.Context, roleIDs []int64) (map[int64][]string, error) {
-	rows, err := repository.NewMenuRepository(database.DB()).SelectMenuPermsByRoleIds(ctx, roleIDs)
+	rows, err := menu.SelectMenuPermsByRoleIds(ctx, roleIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -77,16 +77,14 @@ func (s *MenuService) SelectMenuPermsByRoleIds(ctx context.Context, roleIDs []in
 // 而非 treeutil.BuildTree，顺序已由 SQL 的 ORDER BY parent_id, order_num 定好且无需再排，节点是
 // SysMenu 实体本身而非独立树节点。
 func (s *MenuService) SelectMenuTreeByUserId(ctx context.Context, userID int64) ([]*model.SysMenu, error) {
-	repo := repository.NewMenuRepository(database.DB())
-
 	var (
 		menus []*model.SysMenu
 		err   error
 	)
 	if loginhelper.IsSuperAdmin(userID) {
-		menus, err = repo.SelectMenuTreeAll(ctx)
+		menus, err = menu.SelectMenuTreeAll(ctx)
 	} else {
-		menus, err = repo.SelectMenuTreeByUserId(ctx, userID)
+		menus, err = menu.SelectMenuTreeByUserId(ctx, userID)
 	}
 	if err != nil {
 		return nil, err
@@ -158,16 +156,14 @@ func (s *MenuService) BuildMenus(menus []*model.SysMenu) []*vo.RouterVo {
 func (s *MenuService) QueryList(ctx context.Context, q bo.SysMenuQueryBo,
 	userID int64) ([]*vo.SysMenuVo, error) {
 
-	repo := repository.NewMenuRepository(database.DB())
-
 	var (
 		menus []*model.SysMenu
 		err   error
 	)
 	if loginhelper.IsSuperAdmin(userID) {
-		menus, err = repo.SelectList(ctx, q)
+		menus, err = menu.SelectList(ctx, q)
 	} else {
-		menus, err = repo.SelectListByUserId(ctx, q, userID)
+		menus, err = menu.SelectListByUserId(ctx, q, userID)
 	}
 	if err != nil {
 		return nil, err
@@ -177,14 +173,14 @@ func (s *MenuService) QueryList(ctx context.Context, q bo.SysMenuQueryBo,
 
 // QueryByID 按主键查菜单，不存在时返回 ErrMenuNotFound。
 func (s *MenuService) QueryByID(ctx context.Context, menuID int64) (*vo.SysMenuVo, error) {
-	menu, err := repository.NewMenuRepository(database.DB()).SelectByID(ctx, menuID)
+	m, err := menu.SelectByID(ctx, menuID)
 	if err != nil {
-		if errors.Is(err, repository.ErrMenuNotFound) {
+		if errors.Is(err, menu.ErrMenuNotFound) {
 			return nil, ErrMenuNotFound
 		}
 		return nil, err
 	}
-	return vo.Conv.ConvertToSysMenuVo(menu), nil
+	return vo.Conv.ConvertToSysMenuVo(m), nil
 }
 
 // BuildMenuTreeSelect 把菜单列表构造成前端下拉树。
@@ -209,15 +205,15 @@ func (s *MenuService) BuildMenuTreeSelect(menus []*vo.SysMenuVo) []*treeutil.Tre
 // SelectMenuIDsByRoleID 按角色查其选中的菜单主键。
 // 角色不存在时返回 ErrRoleNotFound。
 func (s *MenuService) SelectMenuIDsByRoleID(ctx context.Context, roleID int64) ([]int64, error) {
-	role, err := repository.NewRoleRepository(database.DB()).SelectByID(ctx, roleID)
+	r, err := role.SelectByID(ctx, roleID)
 	if err != nil {
-		if errors.Is(err, repository.ErrRoleNotFound) {
+		if errors.Is(err, role.ErrRoleNotFound) {
 			return nil, ErrRoleNotFound
 		}
 		return nil, err
 	}
-	return repository.NewMenuRepository(database.DB()).
-		SelectMenuIDsByRoleID(ctx, roleID, role.MenuCheckStrictly)
+	return menu.
+		SelectMenuIDsByRoleID(ctx, roleID, r.MenuCheckStrictly)
 }
 
 // CheckMenuNameUnique 校验同一上级下的菜单名称是否可用（唯一即 true）。
@@ -225,7 +221,7 @@ func (s *MenuService) SelectMenuIDsByRoleID(ctx context.Context, roleID int64) (
 func (s *MenuService) CheckMenuNameUnique(ctx context.Context, menuName string,
 	parentID, excludeID int64) (bool, error) {
 
-	exists, err := repository.NewMenuRepository(database.DB()).
+	exists, err := menu.
 		ExistsByMenuName(ctx, menuName, parentID, excludeID)
 	if err != nil {
 		return false, err
@@ -246,7 +242,7 @@ func (s *MenuService) InsertMenu(ctx context.Context, b *bo.SysMenuBo) error {
 	add.MenuID = snowflake.Next() // menu_id 无 auto_increment
 	// 审计字段不在此处填：由 pkg/repository 的插入回调统一注入。
 
-	if err := repository.NewMenuRepository(database.DB()).Insert(ctx, add); err != nil {
+	if err := menu.Insert(ctx, add); err != nil {
 		return err
 	}
 	b.MenuID = add.MenuID
@@ -264,19 +260,17 @@ func (s *MenuService) UpdateMenu(ctx context.Context, b *bo.SysMenuBo) error {
 	if err := s.validateMenu(ctx, b, b.MenuID); err != nil {
 		return err
 	}
-
-	repo := repository.NewMenuRepository(database.DB())
 	// 先取原记录定存在性，不靠 UpdateByID 的受影响行数：值与库中完全相同时
 	// MySQL 报 0 行（update_time 是秒精度，同秒内重复提交连它都不变），
 	// 那会把一次幂等的重复保存误报成"菜单不存在"。
-	if _, err := repo.SelectByID(ctx, b.MenuID); err != nil {
-		if errors.Is(err, repository.ErrMenuNotFound) {
+	if _, err := menu.SelectByID(ctx, b.MenuID); err != nil {
+		if errors.Is(err, menu.ErrMenuNotFound) {
 			return ErrMenuNotFound
 		}
 		return err
 	}
 
-	_, err := repo.UpdateByID(ctx, b.MenuID, buildMenuUpdateColumns(b))
+	_, err := menu.UpdateByID(ctx, b.MenuID, buildMenuUpdateColumns(b))
 	return err
 }
 
@@ -320,7 +314,7 @@ func (s *MenuService) checkRouteConfigUnique(ctx context.Context, b *bo.SysMenuB
 
 	// routeName 缺省时以 path 代之，两者都参与候选集匹配。
 	routeName := menuRouteName(b.Path, b.MenuType, b.ParentID)
-	candidates, err := repository.NewMenuRepository(database.DB()).
+	candidates, err := menu.
 		SelectRouteConflictCandidates(ctx, b.Path, routeName)
 	if err != nil {
 		return false, err
@@ -425,9 +419,7 @@ func (s *MenuService) DeleteMenuByID(ctx context.Context, menuID int64) error {
 	if menuID <= 0 {
 		return errors.New("service: 菜单主键不能为空")
 	}
-
-	repo := repository.NewMenuRepository(database.DB())
-	hasChild, err := repo.ExistsByParentIDs(ctx, []int64{menuID})
+	hasChild, err := menu.ExistsByParentIDs(ctx, []int64{menuID})
 	if err != nil {
 		return err
 	}
@@ -437,7 +429,7 @@ func (s *MenuService) DeleteMenuByID(ctx context.Context, menuID int64) error {
 
 	// 已分配给角色的菜单直接删会留下悬空的 sys_role_menu 行；单删不做级联清理，
 	// 要连带清理请走 DeleteMenuByIDs。
-	assigned, err := repository.NewRoleRepository(database.DB()).
+	assigned, err := role.
 		ExistsRoleMenuByMenuID(ctx, menuID)
 	if err != nil {
 		return err
@@ -446,7 +438,7 @@ func (s *MenuService) DeleteMenuByID(ctx context.Context, menuID int64) error {
 		return errs.New(response.CodeWarn, "菜单已分配,不允许删除", "")
 	}
 
-	affected, err := repo.DeleteByIDs(ctx, []int64{menuID})
+	affected, err := menu.DeleteByIDs(ctx, []int64{menuID})
 	if err != nil {
 		return err
 	}
@@ -464,9 +456,7 @@ func (s *MenuService) DeleteMenuByIDs(ctx context.Context, ids []int64) error {
 	if len(ids) == 0 {
 		return errors.New("service: 菜单主键不能为空")
 	}
-
-	repo := repository.NewMenuRepository(database.DB())
-	hasChild, err := repo.ExistsByParentIDs(ctx, ids)
+	hasChild, err := menu.ExistsByParentIDs(ctx, ids)
 	if err != nil {
 		return err
 	}
@@ -474,12 +464,12 @@ func (s *MenuService) DeleteMenuByIDs(ctx context.Context, ids []int64) error {
 		return errs.New(response.CodeWarn, "存在子菜单,不允许删除", "")
 	}
 
-	if _, err := repo.DeleteByIDs(ctx, ids); err != nil {
+	if _, err := menu.DeleteByIDs(ctx, ids); err != nil {
 		return err
 	}
 	// 先删菜单再清关联：这里没有事务包裹，反序一旦中途失败会留下"授权已丢、菜单还在"
 	// 的状态——那比残留几行 sys_role_menu 更难修，后者重新走一次级联删即可收敛。
-	if _, err := repository.NewRoleRepository(database.DB()).
+	if _, err := role.
 		DeleteRoleMenuByMenuIDs(ctx, ids); err != nil {
 		return err
 	}

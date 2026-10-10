@@ -1,4 +1,4 @@
-package repository
+package post
 
 import (
 	"context"
@@ -9,30 +9,21 @@ import (
 
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
+	"ruoyi-go-vue-plus/pkg/database"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
 var ErrPostNotFound = errors.New("repository: 岗位不存在")
 
-// PostRepository sys_post 数据访问。
-type PostRepository struct {
-	db *gorm.DB
-}
-
-// NewPostRepository 构造岗位 repository。
-func NewPostRepository(db *gorm.DB) *PostRepository {
-	return &PostRepository{db: db}
-}
-
 // CountByDeptID 统计部门下的岗位数。
-func (r *PostRepository) CountByDeptID(ctx context.Context, deptID int64) (int64, error) {
+func CountByDeptID(ctx context.Context, deptID int64) (int64, error) {
 	if deptID <= 0 {
 		return 0, nil
 	}
 
 	// Model 不能省：del_flag 过滤由 LogicDelete 挂在字段类型上，须先解析出实体 schema 才生效。
 	var count int64
-	err := r.db.WithContext(ctx).Model(&model.SysPost{}).
+	err := database.DB().WithContext(ctx).Model(&model.SysPost{}).
 		Where("dept_id = ?", deptID).
 		Count(&count).Error
 	if err != nil {
@@ -43,13 +34,13 @@ func (r *PostRepository) CountByDeptID(ctx context.Context, deptID int64) (int64
 
 // SelectPostsByUserId 按用户ID查其关联岗位。
 // 经 sys_user_post 关联，sys_post 的逻辑删除由实体自动过滤；不按岗位状态过滤。
-func (r *PostRepository) SelectPostsByUserId(ctx context.Context, userID int64) ([]*model.SysPost, error) {
+func SelectPostsByUserId(ctx context.Context, userID int64) ([]*model.SysPost, error) {
 	if userID <= 0 {
 		return nil, nil
 	}
 
 	var posts []*model.SysPost
-	err := r.db.WithContext(ctx).
+	err := database.DB().WithContext(ctx).
 		Joins("JOIN sys_user_post sup ON sup.post_id = sys_post.post_id").
 		Where("sup.user_id = ?", userID).
 		Order("sys_post.post_sort").
@@ -61,13 +52,13 @@ func (r *PostRepository) SelectPostsByUserId(ctx context.Context, userID int64) 
 }
 
 // SelectByID 按主键查岗位，不存在时返回 ErrPostNotFound。
-func (r *PostRepository) SelectByID(ctx context.Context, postID int64) (*model.SysPost, error) {
+func SelectByID(ctx context.Context, postID int64) (*model.SysPost, error) {
 	if postID <= 0 {
 		return nil, ErrPostNotFound
 	}
 
 	var post model.SysPost
-	err := r.db.WithContext(ctx).Where("post_id = ?", postID).First(&post).Error
+	err := database.DB().WithContext(ctx).Where("post_id = ?", postID).First(&post).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrPostNotFound
@@ -78,23 +69,23 @@ func (r *PostRepository) SelectByID(ctx context.Context, postID int64) (*model.S
 }
 
 // SelectByIDs 按主键批量查，返回实际命中的行（缺失主键静默跳过，由调用方比对数量）。
-func (r *PostRepository) SelectByIDs(ctx context.Context, ids []int64) ([]*model.SysPost, error) {
+func SelectByIDs(ctx context.Context, ids []int64) ([]*model.SysPost, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
 
 	var rows []*model.SysPost
-	if err := r.db.WithContext(ctx).Where("post_id IN ?", ids).Find(&rows).Error; err != nil {
+	if err := database.DB().WithContext(ctx).Where("post_id IN ?", ids).Find(&rows).Error; err != nil {
 		return nil, fmt.Errorf("repository: 查询岗位 %v 失败: %w", ids, err)
 	}
 	return rows, nil
 }
 
 // SelectPageList 按条件分页查岗位。
-func (r *PostRepository) SelectPageList(ctx context.Context, q bo.SysPostQueryBo,
+func SelectPageList(ctx context.Context, q bo.SysPostQueryBo,
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysPost], error) {
 
-	db := applyPostQuery(r.db.WithContext(ctx).Model(&model.SysPost{}), q)
+	db := applyPostQuery(database.DB().WithContext(ctx).Model(&model.SysPost{}), q)
 	// 仅在调用方未指定排序时按 post_sort 升序兜底。
 	// 不能无条件追加：GORM 合并排序子句时先注册的排在前，主键唯一会让后来的排序列失效。
 	if !page.HasOrder() {
@@ -109,10 +100,10 @@ func (r *PostRepository) SelectPageList(ctx context.Context, q bo.SysPostQueryBo
 // limit <= 0 表示不限制；超限由调用方通过多取一行来判定，避免先捞完再拒绝。
 //
 // 与 SelectPageList 共用 applyPostQuery，保证两种路径的过滤条件永不漂移。
-func (r *PostRepository) SelectList(ctx context.Context, q bo.SysPostQueryBo,
+func SelectList(ctx context.Context, q bo.SysPostQueryBo,
 	limit int) ([]*model.SysPost, error) {
 
-	db := applyPostQuery(r.db.WithContext(ctx).Model(&model.SysPost{}), q)
+	db := applyPostQuery(database.DB().WithContext(ctx).Model(&model.SysPost{}), q)
 	// 导出不是翻页，没有"调用方另指定排序"一说，固定按 post_sort 升序，保证输出顺序稳定。
 	db = db.Order("post_sort")
 	if limit > 0 {
@@ -128,8 +119,8 @@ func (r *PostRepository) SelectList(ctx context.Context, q bo.SysPostQueryBo,
 
 // SelectNormalByIDs 查启用状态的岗位，ids 非空时按主键过滤
 // （ids 为空即不加 IN 条件，退化成查全部启用岗位）。
-func (r *PostRepository) SelectNormalByIDs(ctx context.Context, ids []int64) ([]*model.SysPost, error) {
-	db := r.db.WithContext(ctx).Model(&model.SysPost{}).Where("status = ?", "0")
+func SelectNormalByIDs(ctx context.Context, ids []int64) ([]*model.SysPost, error) {
+	db := database.DB().WithContext(ctx).Model(&model.SysPost{}).Where("status = ?", "0")
 	if len(ids) > 0 {
 		db = db.Where("post_id IN ?", ids)
 	}
@@ -148,13 +139,13 @@ func (r *PostRepository) SelectNormalByIDs(ctx context.Context, ids []int64) ([]
 // 分页与导出两条路径必须共用它，否则过滤逻辑改一处漏一处。
 func applyPostQuery(db *gorm.DB, q bo.SysPostQueryBo) *gorm.DB {
 	if q.PostCode != "" {
-		db = db.Where("post_code LIKE ?", "%"+escapeLike(q.PostCode)+"%")
+		db = db.Where("post_code LIKE ?", "%"+pkgrepo.EscapeLike(q.PostCode)+"%")
 	}
 	if q.PostCategory != "" {
-		db = db.Where("post_category LIKE ?", "%"+escapeLike(q.PostCategory)+"%")
+		db = db.Where("post_category LIKE ?", "%"+pkgrepo.EscapeLike(q.PostCategory)+"%")
 	}
 	if q.PostName != "" {
-		db = db.Where("post_name LIKE ?", "%"+escapeLike(q.PostName)+"%")
+		db = db.Where("post_name LIKE ?", "%"+pkgrepo.EscapeLike(q.PostName)+"%")
 	}
 	if q.Status != "" {
 		db = db.Where("status = ?", q.Status)
@@ -177,11 +168,11 @@ func applyPostQuery(db *gorm.DB, q bo.SysPostQueryBo) *gorm.DB {
 // Insert 插入一条岗位。
 // post_id 无 auto_increment，主键须由调用方（service 层）预先填好；
 // 审计字段由 pkg/repository 的插入回调统一填充。
-func (r *PostRepository) Insert(ctx context.Context, post *model.SysPost) error {
+func Insert(ctx context.Context, post *model.SysPost) error {
 	if post == nil {
 		return fmt.Errorf("repository: 岗位为空")
 	}
-	if err := r.db.WithContext(ctx).Create(post).Error; err != nil {
+	if err := database.DB().WithContext(ctx).Create(post).Error; err != nil {
 		return fmt.Errorf("repository: 插入岗位失败: %w", err)
 	}
 	return nil
@@ -191,7 +182,7 @@ func (r *PostRepository) Insert(ctx context.Context, post *model.SysPost) error 
 //
 // 走 map 而非实体：Updates(struct) 跳过零值，会让「清空备注」写不进库。
 // update_by/update_time 由 pkg/repository 的更新回调补齐，调用方不必带。
-func (r *PostRepository) UpdateByID(ctx context.Context, postID int64,
+func UpdateByID(ctx context.Context, postID int64,
 	columns map[string]any) (int64, error) {
 
 	if postID <= 0 {
@@ -201,7 +192,7 @@ func (r *PostRepository) UpdateByID(ctx context.Context, postID int64,
 		return 0, fmt.Errorf("repository: 岗位更新列为空")
 	}
 
-	res := r.db.WithContext(ctx).
+	res := database.DB().WithContext(ctx).
 		Model(&model.SysPost{}).
 		Where("post_id = ?", postID).
 		Updates(columns)
@@ -213,12 +204,12 @@ func (r *PostRepository) UpdateByID(ctx context.Context, postID int64,
 
 // DeleteByIDs 按主键批量逻辑删除，返回受影响行数。
 // SysPost 嵌了 LogicDelete，Delete 会被改写成 UPDATE ... SET del_flag = '1'。
-func (r *PostRepository) DeleteByIDs(ctx context.Context, ids []int64) (int64, error) {
+func DeleteByIDs(ctx context.Context, ids []int64) (int64, error) {
 	if len(ids) == 0 {
 		return 0, fmt.Errorf("repository: 岗位主键为空")
 	}
 
-	res := r.db.WithContext(ctx).
+	res := database.DB().WithContext(ctx).
 		Where("post_id IN ?", ids).
 		Delete(&model.SysPost{})
 	if res.Error != nil {
@@ -229,14 +220,14 @@ func (r *PostRepository) DeleteByIDs(ctx context.Context, ids []int64) (int64, e
 
 // ExistsByPostName 判断同一部门下的岗位名称是否已被占用，excludeID > 0 时排除该主键
 // （名称 + 部门两列共同判重，供修改场景排除自身）。
-func (r *PostRepository) ExistsByPostName(ctx context.Context, postName string,
+func ExistsByPostName(ctx context.Context, postName string,
 	deptID, excludeID int64) (bool, error) {
 
 	if postName == "" || deptID <= 0 {
 		return false, nil
 	}
 
-	db := r.db.WithContext(ctx).Model(&model.SysPost{}).
+	db := database.DB().WithContext(ctx).Model(&model.SysPost{}).
 		Where("post_name = ?", postName).
 		Where("dept_id = ?", deptID)
 	if excludeID > 0 {
@@ -252,14 +243,14 @@ func (r *PostRepository) ExistsByPostName(ctx context.Context, postName string,
 
 // ExistsByPostCode 判断岗位编码是否已被占用，excludeID > 0 时排除该主键
 // （编码全局判重，供修改场景排除自身）。
-func (r *PostRepository) ExistsByPostCode(ctx context.Context, postCode string,
+func ExistsByPostCode(ctx context.Context, postCode string,
 	excludeID int64) (bool, error) {
 
 	if postCode == "" {
 		return false, nil
 	}
 
-	db := r.db.WithContext(ctx).Model(&model.SysPost{}).Where("post_code = ?", postCode)
+	db := database.DB().WithContext(ctx).Model(&model.SysPost{}).Where("post_code = ?", postCode)
 	if excludeID > 0 {
 		db = db.Where("post_id <> ?", excludeID)
 	}
@@ -273,13 +264,13 @@ func (r *PostRepository) ExistsByPostCode(ctx context.Context, postCode string,
 
 // CountUserPostByID 统计已分配该岗位的用户数。
 // 走 sys_user_post 关联表，岗位被引用即不可删/不可禁用。
-func (r *PostRepository) CountUserPostByID(ctx context.Context, postID int64) (int64, error) {
+func CountUserPostByID(ctx context.Context, postID int64) (int64, error) {
 	if postID <= 0 {
 		return 0, nil
 	}
 
 	var count int64
-	err := r.db.WithContext(ctx).Model(&model.SysUserPost{}).
+	err := database.DB().WithContext(ctx).Model(&model.SysUserPost{}).
 		Where("post_id = ?", postID).
 		Count(&count).Error
 	if err != nil {
@@ -292,13 +283,13 @@ func (r *PostRepository) CountUserPostByID(ctx context.Context, postID int64) (i
 //
 // 数据权限的岗位数据隔离条件尚未落地，此处只按主键计数——
 // 等数据权限落地后挂上过滤，调用点不必改。
-func (r *PostRepository) CountByIDs(ctx context.Context, postIDs []int64) (int64, error) {
+func CountByIDs(ctx context.Context, postIDs []int64) (int64, error) {
 	if len(postIDs) == 0 {
 		return 0, nil
 	}
 	// Model 不能省：del_flag 过滤由 LogicDelete 挂在字段类型上，须先解析出实体 schema 才生效。
 	var count int64
-	if err := r.db.WithContext(ctx).Model(&model.SysPost{}).
+	if err := database.DB().WithContext(ctx).Model(&model.SysPost{}).
 		Where("post_id IN ?", postIDs).
 		Count(&count).Error; err != nil {
 		return 0, fmt.Errorf("repository: 统计岗位 %v 失败: %w", postIDs, err)

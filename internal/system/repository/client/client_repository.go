@@ -1,4 +1,4 @@
-package repository
+package client
 
 import (
 	"context"
@@ -9,29 +9,20 @@ import (
 
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
+	"ruoyi-go-vue-plus/pkg/database"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
 var ErrClientNotFound = errors.New("repository: 客户端不存在")
 
-// ClientRepository sys_client 数据访问。
-type ClientRepository struct {
-	db *gorm.DB
-}
-
-// NewClientRepository 构造客户端 repository。
-func NewClientRepository(db *gorm.DB) *ClientRepository {
-	return &ClientRepository{db: db}
-}
-
 // SelectByClientID 按客户端标识查客户端，不存在时返回 ErrClientNotFound。
-func (r *ClientRepository) SelectByClientID(ctx context.Context, clientID string) (*model.SysClient, error) {
+func SelectByClientID(ctx context.Context, clientID string) (*model.SysClient, error) {
 	if clientID == "" {
 		return nil, ErrClientNotFound
 	}
 
 	var client model.SysClient
-	err := r.db.WithContext(ctx).
+	err := database.DB().WithContext(ctx).
 		Where("client_id = ?", clientID).
 		First(&client).Error
 	if err != nil {
@@ -44,13 +35,13 @@ func (r *ClientRepository) SelectByClientID(ctx context.Context, clientID string
 }
 
 // SelectByID 按主键查客户端，不存在时返回 ErrClientNotFound。
-func (r *ClientRepository) SelectByID(ctx context.Context, id int64) (*model.SysClient, error) {
+func SelectByID(ctx context.Context, id int64) (*model.SysClient, error) {
 	if id <= 0 {
 		return nil, ErrClientNotFound
 	}
 
 	var client model.SysClient
-	err := r.db.WithContext(ctx).
+	err := database.DB().WithContext(ctx).
 		Where("id = ?", id).
 		First(&client).Error
 	if err != nil {
@@ -65,10 +56,10 @@ func (r *ClientRepository) SelectByID(ctx context.Context, id int64) (*model.Sys
 // SelectPageList 按条件分页查客户端。条件均为空串不筛。
 //
 // 返回实体而非 VO：SysClientVo 的三个 *List 字段无对应列，GORM 会按字段名拼进 SELECT。
-func (r *ClientRepository) SelectPageList(ctx context.Context, q bo.SysClientQueryBo,
+func SelectPageList(ctx context.Context, q bo.SysClientQueryBo,
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysClient], error) {
 
-	db := applyClientQuery(r.db.WithContext(ctx).Model(&model.SysClient{}), q)
+	db := applyClientQuery(database.DB().WithContext(ctx).Model(&model.SysClient{}), q)
 	// 仅在调用方未指定排序时按主键升序兜底，保证翻页稳定。
 	// 不能无条件追加：GORM 合并排序子句时先注册的排在前，id 唯一会让后来的排序列失效。
 	if !page.HasOrder() {
@@ -83,11 +74,11 @@ func (r *ClientRepository) SelectPageList(ctx context.Context, q bo.SysClientQue
 // limit <= 0 表示不限制；超限由调用方通过多取一行来判定，避免先捞完再拒绝。
 //
 // 与 SelectPageList 共用 applyClientQuery，保证两种路径的过滤条件永不漂移。
-func (r *ClientRepository) SelectList(ctx context.Context, q bo.SysClientQueryBo,
+func SelectList(ctx context.Context, q bo.SysClientQueryBo,
 	limit int) ([]*model.SysClient, error) {
 
 	// Model 不能省：del_flag 过滤由 LogicDelete 挂在字段类型上，须先解析出实体 schema 才生效。
-	db := applyClientQuery(r.db.WithContext(ctx).Model(&model.SysClient{}), q)
+	db := applyClientQuery(database.DB().WithContext(ctx).Model(&model.SysClient{}), q)
 	// 导出不是翻页，没有"调用方另指定排序"一说，固定按主键升序，保证输出顺序稳定。
 	db = db.Order("id")
 	if limit > 0 {
@@ -122,11 +113,11 @@ func applyClientQuery(db *gorm.DB, q bo.SysClientQueryBo) *gorm.DB {
 // Insert 插入一条客户端。
 // id 无 auto_increment，主键须由调用方（service 层）预先填好；
 // 审计字段由 pkg/repository 的插入回调统一填充。
-func (r *ClientRepository) Insert(ctx context.Context, client *model.SysClient) error {
+func Insert(ctx context.Context, client *model.SysClient) error {
 	if client == nil {
 		return fmt.Errorf("repository: 客户端为空")
 	}
-	if err := r.db.WithContext(ctx).Create(client).Error; err != nil {
+	if err := database.DB().WithContext(ctx).Create(client).Error; err != nil {
 		return fmt.Errorf("repository: 插入客户端失败: %w", err)
 	}
 	return nil
@@ -136,7 +127,7 @@ func (r *ClientRepository) Insert(ctx context.Context, client *model.SysClient) 
 //
 // 走 map 而非实体：Updates(struct) 跳过零值，会让「清空访问路径/IP 白名单」写不进库。
 // update_by/update_time 由 pkg/repository 的更新回调补齐，调用方不必带。
-func (r *ClientRepository) UpdateByID(ctx context.Context, id int64,
+func UpdateByID(ctx context.Context, id int64,
 	columns map[string]any) (int64, error) {
 
 	if id <= 0 {
@@ -146,7 +137,7 @@ func (r *ClientRepository) UpdateByID(ctx context.Context, id int64,
 		return 0, fmt.Errorf("repository: 客户端更新列为空")
 	}
 
-	res := r.db.WithContext(ctx).
+	res := database.DB().WithContext(ctx).
 		Model(&model.SysClient{}).
 		Where("id = ?", id).
 		Updates(columns)
@@ -157,14 +148,14 @@ func (r *ClientRepository) UpdateByID(ctx context.Context, id int64,
 }
 
 // UpdateStatusByClientID 按客户端标识改状态，返回受影响行数。
-func (r *ClientRepository) UpdateStatusByClientID(ctx context.Context, clientID,
+func UpdateStatusByClientID(ctx context.Context, clientID,
 	status string) (int64, error) {
 
 	if clientID == "" {
 		return 0, fmt.Errorf("repository: 客户端标识为空")
 	}
 
-	res := r.db.WithContext(ctx).
+	res := database.DB().WithContext(ctx).
 		Model(&model.SysClient{}).
 		Where("client_id = ?", clientID).
 		Update("status", status)
@@ -178,12 +169,12 @@ func (r *ClientRepository) UpdateStatusByClientID(ctx context.Context, clientID,
 //
 // SysClient 嵌了 LogicDelete，Delete 会被改写成 UPDATE ... SET del_flag = '1'，
 // 并自动带上 del_flag = '0'，重复删除同一批主键第二次即返回 0。
-func (r *ClientRepository) DeleteByIDs(ctx context.Context, ids []int64) (int64, error) {
+func DeleteByIDs(ctx context.Context, ids []int64) (int64, error) {
 	if len(ids) == 0 {
 		return 0, fmt.Errorf("repository: 客户端主键为空")
 	}
 
-	res := r.db.WithContext(ctx).
+	res := database.DB().WithContext(ctx).
 		Where("id IN ?", ids).
 		Delete(&model.SysClient{})
 	if res.Error != nil {
@@ -194,7 +185,7 @@ func (r *ClientRepository) DeleteByIDs(ctx context.Context, ids []int64) (int64,
 
 // ExistsByClientKey 判断 client_key 是否已被占用，excludeID > 0 时排除该主键
 // （供修改场景排除自身）。
-func (r *ClientRepository) ExistsByClientKey(ctx context.Context, clientKey string,
+func ExistsByClientKey(ctx context.Context, clientKey string,
 	excludeID int64) (bool, error) {
 
 	if clientKey == "" {
@@ -202,7 +193,7 @@ func (r *ClientRepository) ExistsByClientKey(ctx context.Context, clientKey stri
 	}
 
 	// Model 不能省：del_flag 过滤由 LogicDelete 挂在字段类型上，须先解析出实体 schema 才生效。
-	db := r.db.WithContext(ctx).Model(&model.SysClient{}).Where("client_key = ?", clientKey)
+	db := database.DB().WithContext(ctx).Model(&model.SysClient{}).Where("client_key = ?", clientKey)
 	if excludeID > 0 {
 		db = db.Where("id <> ?", excludeID)
 	}

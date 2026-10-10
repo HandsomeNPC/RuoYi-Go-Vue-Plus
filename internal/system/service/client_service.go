@@ -11,10 +11,9 @@ import (
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
-	"ruoyi-go-vue-plus/internal/system/repository"
+	"ruoyi-go-vue-plus/internal/system/repository/client"
 	"ruoyi-go-vue-plus/pkg/cache"
 	"ruoyi-go-vue-plus/pkg/constant"
-	"ruoyi-go-vue-plus/pkg/database"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
@@ -35,14 +34,14 @@ func (s *ClientService) QueryByClientID(ctx context.Context, clientID string) (*
 		return &out, nil
 	}
 
-	client, err := repository.NewClientRepository(database.DB()).SelectByClientID(ctx, clientID)
+	c, err := client.SelectByClientID(ctx, clientID)
 	if err != nil {
-		if errors.Is(err, repository.ErrClientNotFound) {
+		if errors.Is(err, client.ErrClientNotFound) {
 			return nil, ErrClientNotFound
 		}
 		return nil, err
 	}
-	ptr := vo.Conv.ConvertToSysClientVo(client)
+	ptr := vo.Conv.ConvertToSysClientVo(c)
 	s.fillRuleFields(ptr)
 	_ = cache.Put(ctx, constant.CacheSysClient, clientID, ptr, constant.CacheTTLSysClient)
 	return ptr, nil
@@ -51,14 +50,14 @@ func (s *ClientService) QueryByClientID(ctx context.Context, clientID string) (*
 // QueryByID 按主键查客户端，
 // 不存在时返回 ErrClientNotFound，返回填充好 *List 字段的 VO。
 func (s *ClientService) QueryByID(ctx context.Context, id int64) (*vo.SysClientVo, error) {
-	client, err := repository.NewClientRepository(database.DB()).SelectByID(ctx, id)
+	c, err := client.SelectByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, repository.ErrClientNotFound) {
+		if errors.Is(err, client.ErrClientNotFound) {
 			return nil, ErrClientNotFound
 		}
 		return nil, err
 	}
-	out := vo.Conv.ConvertToSysClientVo(client)
+	out := vo.Conv.ConvertToSysClientVo(c)
 	s.fillRuleFields(out)
 	return out, nil
 }
@@ -67,7 +66,7 @@ func (s *ClientService) QueryByID(ctx context.Context, id int64) (*vo.SysClientV
 func (s *ClientService) QueryPageList(ctx context.Context, q bo.SysClientQueryBo,
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysClientVo], error) {
 
-	res, err := repository.NewClientRepository(database.DB()).SelectPageList(ctx, q, page)
+	res, err := client.SelectPageList(ctx, q, page)
 	if err != nil {
 		return pkgrepo.EmptyPage[*vo.SysClientVo](), err
 	}
@@ -80,7 +79,7 @@ func (s *ClientService) QueryPageList(ctx context.Context, q bo.SysClientQueryBo
 func (s *ClientService) QueryList(ctx context.Context, q bo.SysClientQueryBo,
 	limit int) ([]*vo.SysClientVo, error) {
 
-	clients, err := repository.NewClientRepository(database.DB()).SelectList(ctx, q, limit)
+	clients, err := client.SelectList(ctx, q, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +91,7 @@ func (s *ClientService) QueryList(ctx context.Context, q bo.SysClientQueryBo,
 func (s *ClientService) CheckClientKeyUnique(ctx context.Context, clientKey string,
 	excludeID int64) (bool, error) {
 
-	exists, err := repository.NewClientRepository(database.DB()).
+	exists, err := client.
 		ExistsByClientKey(ctx, clientKey, excludeID)
 	if err != nil {
 		return false, err
@@ -124,7 +123,7 @@ func (s *ClientService) InsertByBo(ctx context.Context, b *bo.SysClientBo) error
 	add.IPWhitelist = resolveRuleValue(b.IPWhitelist, b.IPWhitelistList, nil)
 	// 审计字段不在此处填：由 pkg/repository 的插入回调统一注入。
 
-	if err := repository.NewClientRepository(database.DB()).Insert(ctx, add); err != nil {
+	if err := client.Insert(ctx, add); err != nil {
 		return err
 	}
 	b.ID = add.ID
@@ -153,7 +152,7 @@ func (s *ClientService) UpdateByBo(ctx context.Context, b *bo.SysClientBo) error
 	// 故不能用 Updates(struct)（它跳过零值，空串会被当成"未修改"而丢弃）。
 	columns := buildClientUpdateColumns(b)
 
-	affected, err := repository.NewClientRepository(database.DB()).UpdateByID(ctx, b.ID, columns)
+	affected, err := client.UpdateByID(ctx, b.ID, columns)
 	if err != nil {
 		return err
 	}
@@ -201,7 +200,7 @@ func (s *ClientService) UpdateClientStatus(ctx context.Context, clientID, status
 		return errors.New("service: 客户端标识不能为空")
 	}
 
-	affected, err := repository.NewClientRepository(database.DB()).
+	affected, err := client.
 		UpdateStatusByClientID(ctx, clientID, status)
 	if err != nil {
 		return err
@@ -221,7 +220,7 @@ func (s *ClientService) DeleteWithValidByIDs(ctx context.Context, ids []int64) e
 		return errors.New("service: 客户端主键不能为空")
 	}
 
-	affected, err := repository.NewClientRepository(database.DB()).DeleteByIDs(ctx, ids)
+	affected, err := client.DeleteByIDs(ctx, ids)
 	if err != nil {
 		return err
 	}

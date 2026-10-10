@@ -8,10 +8,10 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
-	"ruoyi-go-vue-plus/internal/system/repository"
+	"ruoyi-go-vue-plus/internal/system/repository/dictdata"
+	"ruoyi-go-vue-plus/internal/system/repository/dicttype"
 	"ruoyi-go-vue-plus/pkg/cache"
 	"ruoyi-go-vue-plus/pkg/constant"
-	"ruoyi-go-vue-plus/pkg/database"
 	"ruoyi-go-vue-plus/pkg/errs"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
@@ -29,7 +29,7 @@ var DictTypeSvcApp = new(DictTypeService)
 func (s *DictTypeService) QueryPageList(ctx context.Context, q bo.SysDictTypeQueryBo,
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysDictTypeVo], error) {
 
-	res, err := repository.NewDictTypeRepository(database.DB()).SelectPageList(ctx, q, page)
+	res, err := dicttype.SelectPageList(ctx, q, page)
 	if err != nil {
 		return pkgrepo.EmptyPage[*vo.SysDictTypeVo](), err
 	}
@@ -42,7 +42,7 @@ func (s *DictTypeService) QueryPageList(ctx context.Context, q bo.SysDictTypeQue
 func (s *DictTypeService) QueryList(ctx context.Context, q bo.SysDictTypeQueryBo,
 	limit int) ([]*vo.SysDictTypeVo, error) {
 
-	rows, err := repository.NewDictTypeRepository(database.DB()).SelectList(ctx, q, limit)
+	rows, err := dicttype.SelectList(ctx, q, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -56,9 +56,9 @@ func (s *DictTypeService) QueryAll(ctx context.Context) ([]*vo.SysDictTypeVo, er
 
 // QueryByID 按主键查字典类型，不存在时返回 ErrDictTypeNotFound。
 func (s *DictTypeService) QueryByID(ctx context.Context, dictID int64) (*vo.SysDictTypeVo, error) {
-	dict, err := repository.NewDictTypeRepository(database.DB()).SelectByID(ctx, dictID)
+	dict, err := dicttype.SelectByID(ctx, dictID)
 	if err != nil {
-		if errors.Is(err, repository.ErrDictTypeNotFound) {
+		if errors.Is(err, dicttype.ErrDictTypeNotFound) {
 			return nil, ErrDictTypeNotFound
 		}
 		return nil, err
@@ -81,7 +81,7 @@ func (s *DictTypeService) SelectDictDataByType(ctx context.Context,
 func (s *DictTypeService) CheckDictTypeUnique(ctx context.Context, dictType string,
 	excludeID int64) (bool, error) {
 
-	exists, err := repository.NewDictTypeRepository(database.DB()).
+	exists, err := dicttype.
 		ExistsByDictType(ctx, dictType, excludeID)
 	if err != nil {
 		return false, err
@@ -111,7 +111,7 @@ func (s *DictTypeService) InsertDictType(ctx context.Context, b *bo.SysDictTypeB
 	add.DictID = snowflake.Next() // dict_id 无 auto_increment
 	// 审计字段不在此处填：由 pkg/repository 的插入回调统一注入。
 
-	if err := repository.NewDictTypeRepository(database.DB()).Insert(ctx, add); err != nil {
+	if err := dicttype.Insert(ctx, add); err != nil {
 		return err
 	}
 	b.DictID = add.DictID
@@ -144,13 +144,12 @@ func (s *DictTypeService) UpdateDictType(ctx context.Context, b *bo.SysDictTypeB
 		return ErrDictTypeExists
 	}
 
-	repo := repository.NewDictTypeRepository(database.DB())
 	// 先取原记录定存在性，不靠 UpdateByID 的受影响行数：值与库中完全相同时
 	// MySQL 报 0 行（update_time 是秒精度，同秒内重复提交连它都不变），
 	// 那会把一次幂等的重复保存误报成"字典类型不存在"。
-	old, err := repo.SelectByID(ctx, b.DictID)
+	old, err := dicttype.SelectByID(ctx, b.DictID)
 	if err != nil {
-		if errors.Is(err, repository.ErrDictTypeNotFound) {
+		if errors.Is(err, dicttype.ErrDictTypeNotFound) {
 			return ErrDictTypeNotFound
 		}
 		return err
@@ -159,13 +158,13 @@ func (s *DictTypeService) UpdateDictType(ctx context.Context, b *bo.SysDictTypeB
 	// 先联动字典数据再改类型本身：这里没有事务包裹，反序一旦中途失败，
 	// 字典数据会挂在一个已不存在的类型名下且无从追溯原值。
 	if old.DictType != b.DictType {
-		if _, err := repository.NewDictDataRepository(database.DB()).
+		if _, err := dictdata.
 			UpdateTypeByType(ctx, old.DictType, b.DictType); err != nil {
 			return err
 		}
 	}
 
-	if _, err := repo.UpdateByID(ctx, b.DictID, buildDictTypeUpdateColumns(b)); err != nil {
+	if _, err := dicttype.UpdateByID(ctx, b.DictID, buildDictTypeUpdateColumns(b)); err != nil {
 		return err
 	}
 
@@ -200,17 +199,15 @@ func (s *DictTypeService) DeleteDictTypeByIDs(ctx context.Context, ids []int64) 
 		return errors.New("service: 字典类型主键不能为空")
 	}
 
-	repo := repository.NewDictTypeRepository(database.DB())
-	rows, err := repo.SelectByIDs(ctx, ids)
+	rows, err := dicttype.SelectByIDs(ctx, ids)
 	if err != nil {
 		return err
 	}
 
 	// 先整批校验再删，不边删边校验：这里没有事务包裹，
 	// 一旦先删了几行再撞上已分配的类型就会留下删一半的状态。
-	dataRepo := repository.NewDictDataRepository(database.DB())
 	for _, dict := range rows {
-		assigned, err := dataRepo.ExistsByType(ctx, dict.DictType)
+		assigned, err := dictdata.ExistsByType(ctx, dict.DictType)
 		if err != nil {
 			return err
 		}
@@ -219,7 +216,7 @@ func (s *DictTypeService) DeleteDictTypeByIDs(ctx context.Context, ids []int64) 
 		}
 	}
 
-	if _, err := repo.DeleteByIDs(ctx, ids); err != nil {
+	if _, err := dicttype.DeleteByIDs(ctx, ids); err != nil {
 		return err
 	}
 	// 删除后再失效：提前清缓存会让删除失败时白丢一批热数据。
@@ -272,7 +269,7 @@ func selectDictDataByTypeCached(ctx context.Context, dictType string) ([]*vo.Sys
 // selectDictDataByTypeUncached 直接查库取某类型下的字典数据，恒返回非 nil 切片
 // （同时保证 JSON 序列化成 [] 而非 null）。
 func selectDictDataByTypeUncached(ctx context.Context, dictType string) ([]*vo.SysDictDataVo, error) {
-	rows, err := repository.NewDictDataRepository(database.DB()).SelectByType(ctx, dictType)
+	rows, err := dictdata.SelectByType(ctx, dictType)
 	if err != nil {
 		return nil, err
 	}

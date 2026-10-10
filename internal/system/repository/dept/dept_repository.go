@@ -1,4 +1,4 @@
-package repository
+package dept
 
 import (
 	"context"
@@ -10,29 +10,21 @@ import (
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/pkg/constant"
+	"ruoyi-go-vue-plus/pkg/database"
+	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
 var ErrDeptNotFound = errors.New("repository: 部门不存在")
 
-// DeptRepository sys_dept 数据访问。
-type DeptRepository struct {
-	db *gorm.DB
-}
-
-// NewDeptRepository 构造部门 repository。
-func NewDeptRepository(db *gorm.DB) *DeptRepository {
-	return &DeptRepository{db: db}
-}
-
 // SelectByID 按主键查部门，不存在时返回 ErrDeptNotFound。
 // 仅取实体本身；父部门名等扩展字段由 service 层按需回填，buildLoginUser 只读 DeptName/DeptCategory。
-func (r *DeptRepository) SelectByID(ctx context.Context, deptID int64) (*model.SysDept, error) {
+func SelectByID(ctx context.Context, deptID int64) (*model.SysDept, error) {
 	if deptID <= 0 {
 		return nil, ErrDeptNotFound
 	}
 
 	var dept model.SysDept
-	err := r.db.WithContext(ctx).
+	err := database.DB().WithContext(ctx).
 		Where("dept_id = ?", deptID).
 		First(&dept).Error
 	if err != nil {
@@ -46,9 +38,9 @@ func (r *DeptRepository) SelectByID(ctx context.Context, deptID int64) (*model.S
 
 // SelectList 按条件查部门列表。
 // 部门总量有限（前端按树整体渲染、无分页），故不分页也不限行数。
-func (r *DeptRepository) SelectList(ctx context.Context, q bo.SysDeptQueryBo) ([]*model.SysDept, error) {
+func SelectList(ctx context.Context, q bo.SysDeptQueryBo) ([]*model.SysDept, error) {
 	// Model 不能省：del_flag 过滤由 LogicDelete 挂在字段类型上，须先解析出实体 schema 才生效。
-	db := applyDeptQuery(r.db.WithContext(ctx).Model(&model.SysDept{}), q)
+	db := applyDeptQuery(database.DB().WithContext(ctx).Model(&model.SysDept{}), q)
 	// 祖先链在前保证父节点先于子节点出现，前端 listToTree 与 treeutil.AssembleTree 都依赖这个顺序。
 	db = db.Order("ancestors").Order("parent_id").Order("order_num").Order("dept_id")
 
@@ -69,10 +61,10 @@ func applyDeptQuery(db *gorm.DB, q bo.SysDeptQueryBo) *gorm.DB {
 		db = db.Where("parent_id = ?", q.ParentID)
 	}
 	if q.DeptName != "" {
-		db = db.Where("dept_name LIKE ?", "%"+escapeLike(q.DeptName)+"%")
+		db = db.Where("dept_name LIKE ?", "%"+pkgrepo.EscapeLike(q.DeptName)+"%")
 	}
 	if q.DeptCategory != "" {
-		db = db.Where("dept_category LIKE ?", "%"+escapeLike(q.DeptCategory)+"%")
+		db = db.Where("dept_category LIKE ?", "%"+pkgrepo.EscapeLike(q.DeptCategory)+"%")
 	}
 	if q.Status != "" {
 		db = db.Where("status = ?", q.Status)
@@ -94,8 +86,8 @@ func applyDeptQuery(db *gorm.DB, q bo.SysDeptQueryBo) *gorm.DB {
 
 // SelectNormalByIDs 查启用状态的部门，ids 非空时按主键过滤
 // （ids 为空即不加 IN 条件，退化成查全部启用部门）。
-func (r *DeptRepository) SelectNormalByIDs(ctx context.Context, ids []int64) ([]*model.SysDept, error) {
-	db := r.db.WithContext(ctx).Model(&model.SysDept{}).
+func SelectNormalByIDs(ctx context.Context, ids []int64) ([]*model.SysDept, error) {
+	db := database.DB().WithContext(ctx).Model(&model.SysDept{}).
 		Where("status = ?", constant.StatusNormal)
 	if len(ids) > 0 {
 		db = db.Where("dept_id IN ?", ids)
@@ -113,7 +105,7 @@ func (r *DeptRepository) SelectNormalByIDs(ctx context.Context, ids []int64) ([]
 // SelectDeptAndChildIDs 取部门自身及其全部后代的ID集合
 // （供岗位按部门树搜索时 IN 过滤）。
 // 命中条件：自身 dept_id 命中，或祖先链 FIND_IN_SET 命中。
-func (r *DeptRepository) SelectDeptAndChildIDs(ctx context.Context,
+func SelectDeptAndChildIDs(ctx context.Context,
 	deptID int64) ([]int64, error) {
 
 	if deptID <= 0 {
@@ -121,7 +113,7 @@ func (r *DeptRepository) SelectDeptAndChildIDs(ctx context.Context,
 	}
 
 	var ids []int64
-	err := r.db.WithContext(ctx).Model(&model.SysDept{}).
+	err := database.DB().WithContext(ctx).Model(&model.SysDept{}).
 		Where("dept_id = ? OR FIND_IN_SET(?, ancestors) > 0", deptID, deptID).
 		Pluck("dept_id", &ids).Error
 	if err != nil {
@@ -131,7 +123,7 @@ func (r *DeptRepository) SelectDeptAndChildIDs(ctx context.Context,
 }
 
 // SelectChildrenByAncestor 查祖先链包含 deptID 的全部后代。
-func (r *DeptRepository) SelectChildrenByAncestor(ctx context.Context,
+func SelectChildrenByAncestor(ctx context.Context,
 	deptID int64) ([]*model.SysDept, error) {
 
 	if deptID <= 0 {
@@ -139,7 +131,7 @@ func (r *DeptRepository) SelectChildrenByAncestor(ctx context.Context,
 	}
 
 	var rows []*model.SysDept
-	err := r.db.WithContext(ctx).Model(&model.SysDept{}).
+	err := database.DB().WithContext(ctx).Model(&model.SysDept{}).
 		Where("FIND_IN_SET(?, ancestors) > 0", deptID).
 		Find(&rows).Error
 	if err != nil {
@@ -149,13 +141,13 @@ func (r *DeptRepository) SelectChildrenByAncestor(ctx context.Context,
 }
 
 // CountNormalChildren 统计 deptID 名下处于启用状态的后代数量。
-func (r *DeptRepository) CountNormalChildren(ctx context.Context, deptID int64) (int64, error) {
+func CountNormalChildren(ctx context.Context, deptID int64) (int64, error) {
 	if deptID <= 0 {
 		return 0, nil
 	}
 
 	var count int64
-	err := r.db.WithContext(ctx).Model(&model.SysDept{}).
+	err := database.DB().WithContext(ctx).Model(&model.SysDept{}).
 		Where("status = ?", constant.StatusNormal).
 		Where("FIND_IN_SET(?, ancestors) > 0", deptID).
 		Count(&count).Error
@@ -166,13 +158,13 @@ func (r *DeptRepository) CountNormalChildren(ctx context.Context, deptID int64) 
 }
 
 // ExistsByParentID 判断是否存在以 deptID 为直接上级的部门。
-func (r *DeptRepository) ExistsByParentID(ctx context.Context, deptID int64) (bool, error) {
+func ExistsByParentID(ctx context.Context, deptID int64) (bool, error) {
 	if deptID <= 0 {
 		return false, nil
 	}
 
 	var count int64
-	err := r.db.WithContext(ctx).Model(&model.SysDept{}).
+	err := database.DB().WithContext(ctx).Model(&model.SysDept{}).
 		Where("parent_id = ?", deptID).
 		Count(&count).Error
 	if err != nil {
@@ -183,14 +175,14 @@ func (r *DeptRepository) ExistsByParentID(ctx context.Context, deptID int64) (bo
 
 // ExistsByDeptName 判断同一上级下的部门名称是否已被占用，excludeID > 0 时排除该主键
 // （名称 + 父级两列共同判重，供修改场景排除自身）。
-func (r *DeptRepository) ExistsByDeptName(ctx context.Context, deptName string,
+func ExistsByDeptName(ctx context.Context, deptName string,
 	parentID, excludeID int64) (bool, error) {
 
 	if deptName == "" {
 		return false, nil
 	}
 
-	db := r.db.WithContext(ctx).Model(&model.SysDept{}).
+	db := database.DB().WithContext(ctx).Model(&model.SysDept{}).
 		Where("dept_name = ?", deptName).
 		Where("parent_id = ?", parentID)
 	if excludeID > 0 {
@@ -207,11 +199,11 @@ func (r *DeptRepository) ExistsByDeptName(ctx context.Context, deptName string,
 // Insert 插入一条部门。
 // dept_id 无 auto_increment，主键须由调用方（service 层）预先填好；
 // 审计字段由 pkg/repository 的插入回调统一填充。
-func (r *DeptRepository) Insert(ctx context.Context, dept *model.SysDept) error {
+func Insert(ctx context.Context, dept *model.SysDept) error {
 	if dept == nil {
 		return fmt.Errorf("repository: 部门为空")
 	}
-	if err := r.db.WithContext(ctx).Create(dept).Error; err != nil {
+	if err := database.DB().WithContext(ctx).Create(dept).Error; err != nil {
 		return fmt.Errorf("repository: 插入部门失败: %w", err)
 	}
 	return nil
@@ -221,7 +213,7 @@ func (r *DeptRepository) Insert(ctx context.Context, dept *model.SysDept) error 
 //
 // 走 map 而非实体：Updates(struct) 跳过零值，会让「清空联系电话/邮箱」写不进库。
 // update_by/update_time 由 pkg/repository 的更新回调补齐，调用方不必带。
-func (r *DeptRepository) UpdateByID(ctx context.Context, deptID int64,
+func UpdateByID(ctx context.Context, deptID int64,
 	columns map[string]any) (int64, error) {
 
 	if deptID <= 0 {
@@ -231,7 +223,7 @@ func (r *DeptRepository) UpdateByID(ctx context.Context, deptID int64,
 		return 0, fmt.Errorf("repository: 部门更新列为空")
 	}
 
-	res := r.db.WithContext(ctx).
+	res := database.DB().WithContext(ctx).
 		Model(&model.SysDept{}).
 		Where("dept_id = ?", deptID).
 		Updates(columns)
@@ -242,12 +234,12 @@ func (r *DeptRepository) UpdateByID(ctx context.Context, deptID int64,
 }
 
 // UpdateStatusNormalByIDs 把指定部门批量置为启用。
-func (r *DeptRepository) UpdateStatusNormalByIDs(ctx context.Context, ids []int64) (int64, error) {
+func UpdateStatusNormalByIDs(ctx context.Context, ids []int64) (int64, error) {
 	if len(ids) == 0 {
 		return 0, nil
 	}
 
-	res := r.db.WithContext(ctx).
+	res := database.DB().WithContext(ctx).
 		Model(&model.SysDept{}).
 		Where("dept_id IN ?", ids).
 		Update("status", constant.StatusNormal)
@@ -261,12 +253,12 @@ func (r *DeptRepository) UpdateStatusNormalByIDs(ctx context.Context, ids []int6
 //
 // SysDept 嵌了 LogicDelete，Delete 会被改写成 UPDATE ... SET del_flag = '1'，
 // 并自动带上 del_flag = '0'，重复删除同一主键第二次即返回 0。
-func (r *DeptRepository) DeleteByID(ctx context.Context, deptID int64) (int64, error) {
+func DeleteByID(ctx context.Context, deptID int64) (int64, error) {
 	if deptID <= 0 {
 		return 0, fmt.Errorf("repository: 部门主键无效: %d", deptID)
 	}
 
-	res := r.db.WithContext(ctx).
+	res := database.DB().WithContext(ctx).
 		Where("dept_id = ?", deptID).
 		Delete(&model.SysDept{})
 	if res.Error != nil {

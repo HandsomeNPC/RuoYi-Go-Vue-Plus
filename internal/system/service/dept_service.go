@@ -9,10 +9,11 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
-	"ruoyi-go-vue-plus/internal/system/repository"
+	"ruoyi-go-vue-plus/internal/system/repository/dept"
+	"ruoyi-go-vue-plus/internal/system/repository/post"
+	"ruoyi-go-vue-plus/internal/system/repository/user"
 	"ruoyi-go-vue-plus/pkg/cache"
 	"ruoyi-go-vue-plus/pkg/constant"
-	"ruoyi-go-vue-plus/pkg/database"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/response"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
@@ -44,20 +45,19 @@ func (s *DeptService) SelectByID(ctx context.Context, deptID int64) (*vo.SysDept
 		return &cached, nil
 	}
 
-	repo := repository.NewDeptRepository(database.DB())
-	dept, err := repo.SelectByID(ctx, deptID)
+	d, err := dept.SelectByID(ctx, deptID)
 	if err != nil {
-		if errors.Is(err, repository.ErrDeptNotFound) {
+		if errors.Is(err, dept.ErrDeptNotFound) {
 			return nil, nil
 		}
 		return nil, err
 	}
 
-	out := vo.Conv.ConvertToSysDeptVo(dept)
+	out := vo.Conv.ConvertToSysDeptVo(d)
 	// 父部门名单独查一趟；父级不存在（如根部门的 parent_id = 0）时留空，不算错。
-	if parent, err := repo.SelectByID(ctx, dept.ParentID); err == nil {
+	if parent, err := dept.SelectByID(ctx, d.ParentID); err == nil {
 		out.ParentName = parent.DeptName
-	} else if !errors.Is(err, repository.ErrDeptNotFound) {
+	} else if !errors.Is(err, dept.ErrDeptNotFound) {
 		return nil, err
 	}
 
@@ -68,7 +68,7 @@ func (s *DeptService) SelectByID(ctx context.Context, deptID int64) (*vo.SysDept
 // QueryList 按条件查部门列表。
 // 返回扁平列表而非树：前端拿到后自行 listToTree。
 func (s *DeptService) QueryList(ctx context.Context, q bo.SysDeptQueryBo) ([]*vo.SysDeptVo, error) {
-	rows, err := repository.NewDeptRepository(database.DB()).SelectList(ctx, q)
+	rows, err := dept.SelectList(ctx, q)
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +121,7 @@ func (s *DeptService) SelectDeptTreeList(ctx context.Context,
 // QueryByIDs 查启用状态的部门供选择框用。
 // ids 为空时返回全部启用部门。
 func (s *DeptService) QueryByIDs(ctx context.Context, ids []int64) ([]*vo.SysDeptVo, error) {
-	rows, err := repository.NewDeptRepository(database.DB()).SelectNormalByIDs(ctx, ids)
+	rows, err := dept.SelectNormalByIDs(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +133,7 @@ func (s *DeptService) QueryByIDs(ctx context.Context, ids []int64) ([]*vo.SysDep
 func (s *DeptService) CheckDeptNameUnique(ctx context.Context, deptName string,
 	parentID, excludeID int64) (bool, error) {
 
-	exists, err := repository.NewDeptRepository(database.DB()).
+	exists, err := dept.
 		ExistsByDeptName(ctx, deptName, parentID, excludeID)
 	if err != nil {
 		return false, err
@@ -153,8 +153,8 @@ func (s *DeptService) CheckDeptDataScope(ctx context.Context, userID, deptID int
 		return nil
 	}
 
-	if _, err := repository.NewDeptRepository(database.DB()).SelectByID(ctx, deptID); err != nil {
-		if errors.Is(err, repository.ErrDeptNotFound) {
+	if _, err := dept.SelectByID(ctx, deptID); err != nil {
+		if errors.Is(err, dept.ErrDeptNotFound) {
 			return errs.New(0, "没有权限访问部门数据！", "")
 		}
 		return err
@@ -177,10 +177,9 @@ func (s *DeptService) InsertDept(ctx context.Context, b *bo.SysDeptBo) error {
 		return ErrDeptNameExists
 	}
 
-	repo := repository.NewDeptRepository(database.DB())
-	parent, err := repo.SelectByID(ctx, b.ParentID)
+	parent, err := dept.SelectByID(ctx, b.ParentID)
 	if err != nil {
-		if errors.Is(err, repository.ErrDeptNotFound) {
+		if errors.Is(err, dept.ErrDeptNotFound) {
 			return errs.New(0, "父部门不存在", "")
 		}
 		return err
@@ -195,7 +194,7 @@ func (s *DeptService) InsertDept(ctx context.Context, b *bo.SysDeptBo) error {
 	add.Ancestors = parent.Ancestors + "," + strconv.FormatInt(parent.DeptID, 10)
 	// 审计字段不在此处填：由 pkg/repository 的插入回调统一注入。
 
-	if err := repo.Insert(ctx, add); err != nil {
+	if err := dept.Insert(ctx, add); err != nil {
 		return err
 	}
 	b.DeptID = add.DeptID
@@ -229,10 +228,9 @@ func (s *DeptService) UpdateDept(ctx context.Context, userID int64, b *bo.SysDep
 		return ErrDeptParentIsSelf
 	}
 
-	repo := repository.NewDeptRepository(database.DB())
-	old, err := repo.SelectByID(ctx, b.DeptID)
+	old, err := dept.SelectByID(ctx, b.DeptID)
 	if err != nil {
-		if errors.Is(err, repository.ErrDeptNotFound) {
+		if errors.Is(err, dept.ErrDeptNotFound) {
 			return ErrDeptNotFound
 		}
 		return err
@@ -251,9 +249,9 @@ func (s *DeptService) UpdateDept(ctx context.Context, userID int64, b *bo.SysDep
 		if err := s.CheckDeptDataScope(ctx, userID, b.ParentID); err != nil {
 			return err
 		}
-		newParent, err := repo.SelectByID(ctx, b.ParentID)
+		newParent, err := dept.SelectByID(ctx, b.ParentID)
 		if err != nil {
-			if errors.Is(err, repository.ErrDeptNotFound) {
+			if errors.Is(err, dept.ErrDeptNotFound) {
 				return errs.New(0, "父部门不存在", "")
 			}
 			return err
@@ -268,7 +266,7 @@ func (s *DeptService) UpdateDept(ctx context.Context, userID int64, b *bo.SysDep
 
 	columns := buildDeptUpdateColumns(b)
 	columns["ancestors"] = ancestors
-	if _, err := repo.UpdateByID(ctx, b.DeptID, columns); err != nil {
+	if _, err := dept.UpdateByID(ctx, b.DeptID, columns); err != nil {
 		return err
 	}
 	s.evictDept(ctx, b.DeptID)
@@ -306,7 +304,7 @@ func buildDeptUpdateColumns(b *bo.SysDeptBo) map[string]any {
 
 // checkDisableAllowed 校验部门是否允许停用。
 func (s *DeptService) checkDisableAllowed(ctx context.Context, deptID int64) error {
-	count, err := repository.NewDeptRepository(database.DB()).CountNormalChildren(ctx, deptID)
+	count, err := dept.CountNormalChildren(ctx, deptID)
 	if err != nil {
 		return err
 	}
@@ -314,7 +312,7 @@ func (s *DeptService) checkDisableAllowed(ctx context.Context, deptID int64) err
 		return errs.New(0, "该部门包含未停用的子部门!", "")
 	}
 
-	exist, err := repository.NewUserRepository(database.DB()).ExistsByDeptID(ctx, deptID)
+	exist, err := user.ExistsByDeptID(ctx, deptID)
 	if err != nil {
 		return err
 	}
@@ -328,8 +326,7 @@ func (s *DeptService) checkDisableAllowed(ctx context.Context, deptID int64) err
 func (s *DeptService) updateChildrenAncestors(ctx context.Context, deptID int64,
 	oldAncestors, newAncestors string) error {
 
-	repo := repository.NewDeptRepository(database.DB())
-	children, err := repo.SelectChildrenByAncestor(ctx, deptID)
+	children, err := dept.SelectChildrenByAncestor(ctx, deptID)
 	if err != nil {
 		return err
 	}
@@ -341,7 +338,7 @@ func (s *DeptService) updateChildrenAncestors(ctx context.Context, deptID int64,
 		if updated == child.Ancestors {
 			continue
 		}
-		if _, err := repo.UpdateByID(ctx, child.DeptID,
+		if _, err := dept.UpdateByID(ctx, child.DeptID,
 			map[string]any{"ancestors": updated}); err != nil {
 			return err
 		}
@@ -357,7 +354,7 @@ func (s *DeptService) enableAncestors(ctx context.Context, ancestors string) err
 		return nil
 	}
 
-	if _, err := repository.NewDeptRepository(database.DB()).
+	if _, err := dept.
 		UpdateStatusNormalByIDs(ctx, ids); err != nil {
 		return err
 	}
@@ -380,8 +377,7 @@ func (s *DeptService) DeleteDeptByID(ctx context.Context, userID, deptID int64) 
 		return errs.New(response.CodeWarn, "默认部门,不允许删除", "")
 	}
 
-	deptRepo := repository.NewDeptRepository(database.DB())
-	hasChild, err := deptRepo.ExistsByParentID(ctx, deptID)
+	hasChild, err := dept.ExistsByParentID(ctx, deptID)
 	if err != nil {
 		return err
 	}
@@ -389,7 +385,7 @@ func (s *DeptService) DeleteDeptByID(ctx context.Context, userID, deptID int64) 
 		return errs.New(response.CodeWarn, "存在下级部门,不允许删除", "")
 	}
 
-	existUser, err := repository.NewUserRepository(database.DB()).ExistsByDeptID(ctx, deptID)
+	existUser, err := user.ExistsByDeptID(ctx, deptID)
 	if err != nil {
 		return err
 	}
@@ -397,7 +393,7 @@ func (s *DeptService) DeleteDeptByID(ctx context.Context, userID, deptID int64) 
 		return errs.New(response.CodeWarn, "部门存在用户,不允许删除", "")
 	}
 
-	postCount, err := repository.NewPostRepository(database.DB()).CountByDeptID(ctx, deptID)
+	postCount, err := post.CountByDeptID(ctx, deptID)
 	if err != nil {
 		return err
 	}
@@ -409,7 +405,7 @@ func (s *DeptService) DeleteDeptByID(ctx context.Context, userID, deptID int64) 
 		return err
 	}
 
-	affected, err := deptRepo.DeleteByID(ctx, deptID)
+	affected, err := dept.DeleteByID(ctx, deptID)
 	if err != nil {
 		return err
 	}

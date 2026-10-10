@@ -8,9 +8,9 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
-	"ruoyi-go-vue-plus/internal/system/repository"
+	"ruoyi-go-vue-plus/internal/system/repository/dept"
+	postrepo "ruoyi-go-vue-plus/internal/system/repository/post"
 	"ruoyi-go-vue-plus/pkg/constant"
-	"ruoyi-go-vue-plus/pkg/database"
 	"ruoyi-go-vue-plus/pkg/errs"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
@@ -31,7 +31,7 @@ var PostSvcApp = new(PostService)
 
 // SelectPostsByUserId 按用户ID查岗位列表。
 func (s *PostService) SelectPostsByUserId(ctx context.Context, userID int64) ([]*vo.SysPostVo, error) {
-	posts, err := repository.NewPostRepository(database.DB()).SelectPostsByUserId(ctx, userID)
+	posts, err := postrepo.SelectPostsByUserId(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func (s *PostService) QueryPageList(ctx context.Context, q bo.SysPostQueryBo,
 		return pkgrepo.EmptyPage[*vo.SysPostVo](), err
 	}
 
-	res, err := repository.NewPostRepository(database.DB()).SelectPageList(ctx, q, page)
+	res, err := postrepo.SelectPageList(ctx, q, page)
 	if err != nil {
 		return pkgrepo.EmptyPage[*vo.SysPostVo](), err
 	}
@@ -62,7 +62,7 @@ func (s *PostService) QueryList(ctx context.Context, q bo.SysPostQueryBo,
 	if err := s.resolveDeptIDs(ctx, &q); err != nil {
 		return nil, err
 	}
-	rows, err := repository.NewPostRepository(database.DB()).SelectList(ctx, q, limit)
+	rows, err := postrepo.SelectList(ctx, q, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -71,9 +71,9 @@ func (s *PostService) QueryList(ctx context.Context, q bo.SysPostQueryBo,
 
 // QueryByID 按主键查岗位，不存在时返回 ErrPostNotFound。
 func (s *PostService) QueryByID(ctx context.Context, postID int64) (*vo.SysPostVo, error) {
-	post, err := repository.NewPostRepository(database.DB()).SelectByID(ctx, postID)
+	post, err := postrepo.SelectByID(ctx, postID)
 	if err != nil {
-		if errors.Is(err, repository.ErrPostNotFound) {
+		if errors.Is(err, postrepo.ErrPostNotFound) {
 			return nil, ErrPostNotFound
 		}
 		return nil, err
@@ -86,15 +86,14 @@ func (s *PostService) QueryByID(ctx context.Context, postID int64) (*vo.SysPostV
 func (s *PostService) OptionSelect(ctx context.Context, deptID int64,
 	postIDs []int64) ([]*vo.SysPostVo, error) {
 
-	repo := repository.NewPostRepository(database.DB())
 	if deptID > 0 {
-		rows, err := repo.SelectList(ctx, bo.SysPostQueryBo{DeptID: deptID}, 0)
+		rows, err := postrepo.SelectList(ctx, bo.SysPostQueryBo{DeptID: deptID}, 0)
 		if err != nil {
 			return nil, err
 		}
 		return vo.Conv.ConvertToSysPostVoList(rows), nil
 	}
-	rows, err := repo.SelectNormalByIDs(ctx, postIDs)
+	rows, err := postrepo.SelectNormalByIDs(ctx, postIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -106,8 +105,7 @@ func (s *PostService) OptionSelect(ctx context.Context, deptID int64,
 func (s *PostService) CheckPostNameUnique(ctx context.Context, postName string,
 	deptID, excludeID int64) (bool, error) {
 
-	exists, err := repository.NewPostRepository(database.DB()).
-		ExistsByPostName(ctx, postName, deptID, excludeID)
+	exists, err := postrepo.ExistsByPostName(ctx, postName, deptID, excludeID)
 	if err != nil {
 		return false, err
 	}
@@ -119,8 +117,7 @@ func (s *PostService) CheckPostNameUnique(ctx context.Context, postName string,
 func (s *PostService) CheckPostCodeUnique(ctx context.Context, postCode string,
 	excludeID int64) (bool, error) {
 
-	exists, err := repository.NewPostRepository(database.DB()).
-		ExistsByPostCode(ctx, postCode, excludeID)
+	exists, err := postrepo.ExistsByPostCode(ctx, postCode, excludeID)
 	if err != nil {
 		return false, err
 	}
@@ -129,7 +126,7 @@ func (s *PostService) CheckPostCodeUnique(ctx context.Context, postCode string,
 
 // CountUserPostByID 统计已分配该岗位的用户数。
 func (s *PostService) CountUserPostByID(ctx context.Context, postID int64) (int64, error) {
-	return repository.NewPostRepository(database.DB()).CountUserPostByID(ctx, postID)
+	return postrepo.CountUserPostByID(ctx, postID)
 }
 
 // InsertPost 新增岗位。名称/编码重复时返回对应哨兵错误。
@@ -153,7 +150,7 @@ func (s *PostService) InsertPost(ctx context.Context, b *bo.SysPostBo) error {
 	add.PostID = snowflake.Next() // post_id 无 auto_increment
 	// 审计字段不在此处填：由 pkg/repository 的插入回调统一注入。
 
-	if err := repository.NewPostRepository(database.DB()).Insert(ctx, add); err != nil {
+	if err := postrepo.Insert(ctx, add); err != nil {
 		return err
 	}
 	b.PostID = add.PostID
@@ -193,18 +190,17 @@ func (s *PostService) UpdatePost(ctx context.Context, b *bo.SysPostBo) error {
 		}
 	}
 
-	repo := repository.NewPostRepository(database.DB())
 	// 先取原记录定存在性，不靠 UpdateByID 的受影响行数：值与库中完全相同时
 	// MySQL 报 0 行（update_time 是秒精度，同秒内重复提交连它都不变），
 	// 那会把一次幂等的重复保存误报成"岗位不存在"。
-	if _, err := repo.SelectByID(ctx, b.PostID); err != nil {
-		if errors.Is(err, repository.ErrPostNotFound) {
+	if _, err := postrepo.SelectByID(ctx, b.PostID); err != nil {
+		if errors.Is(err, postrepo.ErrPostNotFound) {
 			return ErrPostNotFound
 		}
 		return err
 	}
 
-	if _, err := repo.UpdateByID(ctx, b.PostID, buildPostUpdateColumns(b)); err != nil {
+	if _, err := postrepo.UpdateByID(ctx, b.PostID, buildPostUpdateColumns(b)); err != nil {
 		return err
 	}
 	return nil
@@ -237,8 +233,7 @@ func (s *PostService) DeletePostByIDs(ctx context.Context, ids []int64) error {
 		return errors.New("service: 岗位主键不能为空")
 	}
 
-	repo := repository.NewPostRepository(database.DB())
-	rows, err := repo.SelectByIDs(ctx, ids)
+	rows, err := postrepo.SelectByIDs(ctx, ids)
 	if err != nil {
 		return err
 	}
@@ -246,7 +241,7 @@ func (s *PostService) DeletePostByIDs(ctx context.Context, ids []int64) error {
 	// 先整批校验再删，不边删边校验：这里没有事务包裹，
 	// 一旦先删了几行再撞上已分配的岗位就会留下删一半的状态。
 	for _, post := range rows {
-		count, err := repo.CountUserPostByID(ctx, post.PostID)
+		count, err := postrepo.CountUserPostByID(ctx, post.PostID)
 		if err != nil {
 			return err
 		}
@@ -255,7 +250,7 @@ func (s *PostService) DeletePostByIDs(ctx context.Context, ids []int64) error {
 		}
 	}
 
-	if _, err := repo.DeleteByIDs(ctx, ids); err != nil {
+	if _, err := postrepo.DeleteByIDs(ctx, ids); err != nil {
 		return err
 	}
 	return nil
@@ -267,8 +262,7 @@ func (s *PostService) resolveDeptIDs(ctx context.Context, q *bo.SysPostQueryBo) 
 	if q.DeptID > 0 || q.BelongDeptID <= 0 {
 		return nil
 	}
-	ids, err := repository.NewDeptRepository(database.DB()).
-		SelectDeptAndChildIDs(ctx, q.BelongDeptID)
+	ids, err := dept.SelectDeptAndChildIDs(ctx, q.BelongDeptID)
 	if err != nil {
 		return err
 	}
@@ -278,7 +272,7 @@ func (s *PostService) resolveDeptIDs(ctx context.Context, q *bo.SysPostQueryBo) 
 
 // SelectPostListByUserId 按用户ID取已授权岗位ID列表。
 func (s *PostService) SelectPostListByUserId(ctx context.Context, userID int64) ([]int64, error) {
-	posts, err := repository.NewPostRepository(database.DB()).SelectPostsByUserId(ctx, userID)
+	posts, err := postrepo.SelectPostsByUserId(ctx, userID)
 	if err != nil {
 		return nil, err
 	}

@@ -14,10 +14,9 @@ import (
 	"ruoyi-go-vue-plus/internal/resource/model"
 	"ruoyi-go-vue-plus/internal/resource/model/bo"
 	"ruoyi-go-vue-plus/internal/resource/model/vo"
-	"ruoyi-go-vue-plus/internal/resource/repository"
+	ossrepo "ruoyi-go-vue-plus/internal/resource/repository/oss"
 	"ruoyi-go-vue-plus/pkg/cache"
 	"ruoyi-go-vue-plus/pkg/constant"
-	"ruoyi-go-vue-plus/pkg/database"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/oss"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
@@ -58,7 +57,7 @@ func (d *DownloadResult) Close() error {
 func (s *OssService) QueryPageList(ctx context.Context, q bo.SysOssQueryBo,
 	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysOssVo], error) {
 
-	res, err := repository.NewOssRepository(database.DB()).SelectPageList(ctx, q, page)
+	res, err := ossrepo.SelectPageList(ctx, q, page)
 	if err != nil {
 		return pkgrepo.EmptyPage[*vo.SysOssVo](), err
 	}
@@ -96,9 +95,9 @@ func (s *OssService) getByID(ctx context.Context, ossID int64) (*vo.SysOssVo, er
 	var item vo.SysOssVo
 	err := cache.GetOrSet(ctx, constant.CacheSysOss, ossKey(ossID), constant.CacheTTLSysOss,
 		&item, func(ctx context.Context) (any, error) {
-			row, err := repository.NewOssRepository(database.DB()).SelectByID(ctx, ossID)
+			row, err := ossrepo.SelectByID(ctx, ossID)
 			if err != nil {
-				if errors.Is(err, repository.ErrOssNotFound) {
+				if errors.Is(err, ossrepo.ErrOssNotFound) {
 					return nil, ErrOssNotFound
 				}
 				return nil, err
@@ -183,7 +182,7 @@ func (s *OssService) Upload(ctx context.Context, header *multipart.FileHeader,
 	}
 	// 审计字段不在此处填：由 pkg/repository 的插入回调统一注入。
 
-	if err := repository.NewOssRepository(database.DB()).Insert(ctx, add); err != nil {
+	if err := ossrepo.Insert(ctx, add); err != nil {
 		return nil, err
 	}
 
@@ -216,9 +215,9 @@ func buildOssExt(ossExtJSON string, size int64, contentType string) string {
 
 // Download 取文件流。调用方须关闭返回的 DownloadResult。
 func (s *OssService) Download(ctx context.Context, ossID int64) (*DownloadResult, error) {
-	row, err := repository.NewOssRepository(database.DB()).SelectByID(ctx, ossID)
+	row, err := ossrepo.SelectByID(ctx, ossID)
 	if err != nil {
-		if errors.Is(err, repository.ErrOssNotFound) {
+		if errors.Is(err, ossrepo.ErrOssNotFound) {
 			return nil, ErrOssNotFound
 		}
 		return nil, err
@@ -246,8 +245,7 @@ func (s *OssService) Download(ctx context.Context, ossID int64) (*DownloadResult
 // 远端删除失败只记日志不中断：对象可能已被人工清理，卡在这里会让库里
 // 留下一条永远删不掉的记录。
 func (s *OssService) DeleteWithValidByIDs(ctx context.Context, ids []int64) error {
-	repo := repository.NewOssRepository(database.DB())
-	rows, err := repo.SelectByIDs(ctx, ids)
+	rows, err := ossrepo.SelectByIDs(ctx, ids)
 	if err != nil {
 		return err
 	}
@@ -263,7 +261,7 @@ func (s *OssService) DeleteWithValidByIDs(ctx context.Context, ids []int64) erro
 		}
 	}
 
-	if _, err := repo.DeleteByIDs(ctx, ids); err != nil {
+	if _, err := ossrepo.DeleteByIDs(ctx, ids); err != nil {
 		return err
 	}
 	// 删除后再失效，且必须失效：那份缓存 TTL 30 天，不清的话
