@@ -52,4 +52,4 @@ satoken:
   isShare: false                    # 多端登录是否共享同一 token
   jwtSecretKey: abcdefghijklmnopqrstuvwxyz # jwt秘钥
 
-# cors/xss/accessLog/traceId/repeatableBody/i18n 走 Go 默认（DefaultX 兜底），monitor 无富文本路由。
+# cors/xss/accessLog/traceId/repeatableBody 走 Go 默认（DefaultX 兜底），monitor 无富文本路由。

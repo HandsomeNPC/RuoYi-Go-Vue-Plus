@@ -84,4 +84,4 @@ sms:
     signName: ""              # 须与控制台已审核通过的签名完全一致
     templateCode: ""          # 形如 SMS_123456789，模板变量名须为 code
 
-# cors/xss/accessLog/traceId/repeatableBody/i18n 走 Go 默认（DefaultX 兜底），resource 无富文本路由。
+# cors/xss/accessLog/traceId/repeatableBody 走 Go 默认（DefaultX 兜底），resource 无富文本路由。

@@ -9,7 +9,6 @@ import (
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/i18n"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/social"
@@ -27,7 +26,7 @@ type socialAuthStrategy struct{}
 // Login 用三方授权码换用户资料、按绑定关系回查系统用户并签发令牌。
 // body 为原始 JSON 字节，解析成 SocialLoginBody（source/socialCode/socialState）。
 //
-// 与密码/短信/邮箱策略不同：三方登录不做重试计数（LoginTypeSocial 词条键为空），
+// 与密码/短信/邮箱策略不同：三方登录不做重试计数（LoginTypeSocial 重试模板为空），
 // 也不校验验证码——授权有效性由 state 单次有效与 code 换令牌两步兜住。
 // 错误映射对齐 auth_handler 的绑定回调：不支持的平台与失效的 state 各自一条文案。
 func (s *socialAuthStrategy) Login(req *http.Request, body []byte,
@@ -76,7 +75,7 @@ func (s *socialAuthStrategy) Login(req *http.Request, body []byte,
 
 	sysloginservice.RecordOnlineUser(loginUser, token)
 	sysloginservice.RecordLoginInfo(req, user.UserName,
-		constant.ConstantLoginSuccess, i18n.Msg(ctx, "user.login.success"))
+		constant.ConstantLoginSuccess, "登录成功")
 
 	return &authvo.LoginVo{
 		AccessToken: token,

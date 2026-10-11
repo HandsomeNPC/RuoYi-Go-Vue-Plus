@@ -16,7 +16,6 @@ import (
 	domain "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/domain"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/i18n"
 	authmodel "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
@@ -219,12 +218,7 @@ func Logout(req *http.Request, token string) {
 		return
 	}
 	if loginUser := loginhelper.GetLoginUserByToken(token); loginUser != nil {
-		ctx := context.Background()
-		if req != nil {
-			ctx = req.Context()
-		}
-		RecordLoginInfo(req, loginUser.Username, constant.ConstantLogout,
-			i18n.Msg(ctx, "user.logout.success"))
+		RecordLoginInfo(req, loginUser.Username, constant.ConstantLogout, "退出成功")
 	}
 	// 注销：删 token 信息、账号映射、token-session。
 	if err := sagin.LogoutByToken(token); err != nil {
@@ -279,7 +273,7 @@ func CheckLogin(req *http.Request, loginType enum.LoginType,
 	}
 	// 锁定时间内登录则踢出。
 	if errorNumber >= maxRetry {
-		msg := loginType.RetryExceedMsg(ctx, maxRetry, lockMinutes)
+		msg := loginType.RetryExceedMsg(maxRetry, lockMinutes)
 		RecordLoginInfo(req, username, constant.ConstantLoginFail, msg)
 		return errs.New(0, msg, "")
 	}
@@ -292,11 +286,11 @@ func CheckLogin(req *http.Request, loginType enum.LoginType,
 		}
 		if errorNumber >= maxRetry {
 			// 达上限则锁定。
-			msg := loginType.RetryExceedMsg(ctx, maxRetry, lockMinutes)
+			msg := loginType.RetryExceedMsg(maxRetry, lockMinutes)
 			RecordLoginInfo(req, username, constant.ConstantLoginFail, msg)
 			return errs.New(0, msg, "")
 		}
-		msg := loginType.RetryCountMsg(ctx, errorNumber)
+		msg := loginType.RetryCountMsg(errorNumber)
 		RecordLoginInfo(req, username, constant.ConstantLoginFail, msg)
 		return errs.New(0, msg, "")
 	}

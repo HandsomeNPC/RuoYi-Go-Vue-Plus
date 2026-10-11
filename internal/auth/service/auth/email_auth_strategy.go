@@ -11,7 +11,6 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/i18n"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
@@ -66,7 +65,7 @@ func (s *emailAuthStrategy) Login(req *http.Request, body []byte,
 
 	sysloginservice.RecordOnlineUser(loginUser, token)
 	sysloginservice.RecordLoginInfo(req, user.UserName,
-		constant.ConstantLoginSuccess, i18n.Msg(ctx, "user.login.success"))
+		constant.ConstantLoginSuccess, "登录成功")
 
 	return &authvo.LoginVo{
 		AccessToken: token,
@@ -90,7 +89,7 @@ func (s *emailAuthStrategy) validateEmailCode(req *http.Request, email, emailCod
 	}
 	if cached == "" {
 		// 验证码为空即过期。
-		msg := i18n.Msg(ctx, "user.jcaptcha.expire")
+		msg := "验证码已失效"
 		sysloginservice.RecordLoginInfo(req, email, constant.ConstantLoginFail, msg)
 		return false, errs.New(0, msg, "")
 	}

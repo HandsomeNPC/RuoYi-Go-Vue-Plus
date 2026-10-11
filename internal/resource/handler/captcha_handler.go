@@ -10,7 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/i18n"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/mail"
 	pkgredis "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
@@ -36,11 +35,9 @@ var CaptchaApiApp = new(CaptchaApi)
 // 出参用 response.Fail 而非 c.Error：返回的是 code=500 的正常响应体，
 // 不是抛异常走全局兜底。
 func (a *CaptchaApi) SmsCode(c *gin.Context) {
-	ctx := c.Request.Context()
-
 	phoneNumber := c.Query("phoneNumber")
 	if phoneNumber == "" {
-		c.JSON(http.StatusOK, response.Fail(i18n.Msg(ctx, "user.phonenumber.not.blank")))
+		c.JSON(http.StatusOK, response.Fail("用户手机号不能为空"))
 		return
 	}
 	if !constant.PatternMobile.MatchString(phoneNumber) {
@@ -78,7 +75,7 @@ func (a *CaptchaApi) EmailCode(c *gin.Context) {
 
 	email := c.Query("email")
 	if email == "" {
-		c.JSON(http.StatusOK, response.Fail(i18n.Msg(ctx, "user.email.not.blank")))
+		c.JSON(http.StatusOK, response.Fail("邮箱不能为空"))
 		return
 	}
 	// 开关判断排在格式校验之前：功能没开就没必要挑参数的错。

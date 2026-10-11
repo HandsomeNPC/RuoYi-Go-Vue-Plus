@@ -15,7 +15,6 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/excel"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/i18n"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
@@ -61,14 +60,14 @@ func LoadUserByUsername(ctx context.Context, username string) (*vo.SysUserVo, er
 	if err != nil {
 		if errors.Is(err, userrepository.ErrUserNotFound) {
 			log.Printf("[auth] 登录用户: %s 不存在", username)
-			return nil, errs.New(0, i18n.Msg(ctx, "user.not.exists", username), "")
+			return nil, errs.New(0, fmt.Sprintf("对不起, 您的账号：%v 不存在.", username), "")
 		}
 		return nil, err
 	}
 	user := vo.Conv.ConvertToSysUserVo(entity)
 	if user.Status == enum.UserStatusDisable.Code {
 		log.Printf("[auth] 登录用户: %s 已被停用", username)
-		return nil, errs.New(0, i18n.Msg(ctx, "user.blocked", username), "")
+		return nil, errs.New(0, fmt.Sprintf("对不起，您的账号：%v 已禁用，请联系管理员", username), "")
 	}
 	return user, nil
 }
@@ -79,14 +78,14 @@ func LoadUserByPhone(ctx context.Context, phone string) (*vo.SysUserVo, error) {
 	if err != nil {
 		if errors.Is(err, userrepository.ErrUserNotFound) {
 			log.Printf("[auth] 登录用户: %s 不存在", phone)
-			return nil, errs.New(0, i18n.Msg(ctx, "user.not.exists", phone), "")
+			return nil, errs.New(0, fmt.Sprintf("对不起, 您的账号：%v 不存在.", phone), "")
 		}
 		return nil, err
 	}
 	user := vo.Conv.ConvertToSysUserVo(entity)
 	if user.Status == enum.UserStatusDisable.Code {
 		log.Printf("[auth] 登录用户: %s 已被停用", phone)
-		return nil, errs.New(0, i18n.Msg(ctx, "user.blocked", phone), "")
+		return nil, errs.New(0, fmt.Sprintf("对不起，您的账号：%v 已禁用，请联系管理员", phone), "")
 	}
 	return user, nil
 }
@@ -97,14 +96,14 @@ func LoadUserByEmail(ctx context.Context, email string) (*vo.SysUserVo, error) {
 	if err != nil {
 		if errors.Is(err, userrepository.ErrUserNotFound) {
 			log.Printf("[auth] 登录用户: %s 不存在", email)
-			return nil, errs.New(0, i18n.Msg(ctx, "user.not.exists", email), "")
+			return nil, errs.New(0, fmt.Sprintf("对不起, 您的账号：%v 不存在.", email), "")
 		}
 		return nil, err
 	}
 	user := vo.Conv.ConvertToSysUserVo(entity)
 	if user.Status == enum.UserStatusDisable.Code {
 		log.Printf("[auth] 登录用户: %s 已被停用", email)
-		return nil, errs.New(0, i18n.Msg(ctx, "user.blocked", email), "")
+		return nil, errs.New(0, fmt.Sprintf("对不起，您的账号：%v 已禁用，请联系管理员", email), "")
 	}
 	return user, nil
 }
@@ -116,14 +115,14 @@ func LoadUserByID(ctx context.Context, userID int64) (*vo.SysUserVo, error) {
 	if err != nil {
 		if errors.Is(err, userrepository.ErrUserNotFound) {
 			log.Printf("[auth] 登录用户: %d 不存在", userID)
-			return nil, errs.New(0, i18n.Msg(ctx, "user.not.exists", ""), "")
+			return nil, errs.New(0, fmt.Sprintf("对不起, 您的账号：%v 不存在.", ""), "")
 		}
 		return nil, err
 	}
 	user := vo.Conv.ConvertToSysUserVo(entity)
 	if user.Status == enum.UserStatusDisable.Code {
 		log.Printf("[auth] 登录用户: %d 已被停用", userID)
-		return nil, errs.New(0, i18n.Msg(ctx, "user.blocked", ""), "")
+		return nil, errs.New(0, fmt.Sprintf("对不起，您的账号：%v 已禁用，请联系管理员", ""), "")
 	}
 	return user, nil
 }

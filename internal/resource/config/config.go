@@ -47,7 +47,6 @@ type Config struct {
 	AccessLog      middleware.AccessLogConfig      `mapstructure:"accessLog"`
 	TraceID        middleware.TraceIDConfig        `mapstructure:"traceId"`
 	RepeatableBody middleware.RepeatableBodyConfig `mapstructure:"repeatableBody"`
-	I18n           middleware.I18nConfig           `mapstructure:"i18n"`
 	Push           push.PushConfig                 `mapstructure:"push"`
 	Mail           mail.MailConfig                 `mapstructure:"mail"`
 	SMS            smshelper.SMSConfig             `mapstructure:"sms"`
@@ -70,7 +69,6 @@ func Load(path string) {
 	middleware.DefaultAccessLog().SetDefaults(v)
 	middleware.DefaultTraceID().SetDefaults(v)
 	middleware.DefaultRepeatableBody().SetDefaults(v)
-	middleware.DefaultI18n().SetDefaults(v)
 	push.DefaultPush().SetDefaults(v)
 	mail.DefaultMail().SetDefaults(v)
 
@@ -93,7 +91,6 @@ func Load(path string) {
 		cfg.AccessLog.Validate,
 		cfg.TraceID.Validate,
 		cfg.RepeatableBody.Validate,
-		cfg.I18n.Validate,
 		cfg.Push.Validate,
 		cfg.Mail.Validate,
 	} {

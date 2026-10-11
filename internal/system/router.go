@@ -383,7 +383,6 @@ func InitRouter() *gin.Engine {
 	r.Use(middleware.RepeatableBodyWithConfig(cfg.RepeatableBody))
 	r.Use(middleware.AccessLogWithConfig(cfg.AccessLog))
 	r.Use(middleware.XSSWithConfig(cfg.XSS))
-	r.Use(middleware.I18nWithConfig(cfg.I18n))
 
 	RegisterRoutes(r, "")
 

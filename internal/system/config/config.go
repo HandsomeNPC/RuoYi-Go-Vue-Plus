@@ -94,7 +94,6 @@ type Config struct {
 	AccessLog      middleware.AccessLogConfig      `mapstructure:"accessLog"`
 	TraceID        middleware.TraceIDConfig        `mapstructure:"traceId"`
 	RepeatableBody middleware.RepeatableBodyConfig `mapstructure:"repeatableBody"`
-	I18n           middleware.I18nConfig           `mapstructure:"i18n"`
 	APIEncrypt     encrypt.APIEncryptConfig        `mapstructure:"apiEncrypt"`
 	User           UserConfig                      `mapstructure:"user"`
 	Push           push.PushConfig                 `mapstructure:"push"`
@@ -117,7 +116,6 @@ func Load(path string) {
 	middleware.DefaultAccessLog().SetDefaults(v)
 	middleware.DefaultTraceID().SetDefaults(v)
 	middleware.DefaultRepeatableBody().SetDefaults(v)
-	middleware.DefaultI18n().SetDefaults(v)
 	encrypt.DefaultAPIEncrypt().SetDefaults(v)
 	DefaultUser().SetDefaults(v)
 	push.DefaultPush().SetDefaults(v)
@@ -141,7 +139,6 @@ func Load(path string) {
 		cfg.AccessLog.Validate,
 		cfg.TraceID.Validate,
 		cfg.RepeatableBody.Validate,
-		cfg.I18n.Validate,
 		cfg.APIEncrypt.Validate,
 		cfg.User.Validate,
 		cfg.Push.Validate,

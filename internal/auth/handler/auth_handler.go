@@ -14,7 +14,6 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/captcha"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/i18n"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/social"
@@ -52,11 +51,11 @@ func (a *AuthApi) Login(c *gin.Context) {
 	// 查询不到 client 或 client 内不包含 grantType
 	if grantType == "" || !slices.Contains(client.GrantTypeList, grantType) {
 		log.Printf("[auth] 客户端id: %s 认证类型: %s 异常", clientID, grantType)
-		_ = c.Error(errs.New(0, i18n.Msg(c.Request.Context(), "auth.grant.type.error"), ""))
+		_ = c.Error(errs.New(0, "认证权限类型错误", ""))
 		return
 	} else if client.Status != constant.StatusNormal {
 		// 客户端已停用
-		_ = c.Error(errs.New(0, i18n.Msg(c.Request.Context(), "auth.grant.type.blocked"), ""))
+		_ = c.Error(errs.New(0, "认证权限类型已禁用", ""))
 		return
 	}
 	vo, err := authservice.Login(c.Request, raw, grantType, client)
@@ -74,7 +73,7 @@ func (a *AuthApi) Logout(c *gin.Context) {
 	// token 由组级 TokenInterceptor 解析后存入 ctx；service 层不碰 *gin.Context，故在此取出传入。
 	sysloginservice.Logout(c.Request, sagin.GetTokenFromCtx(c))
 
-	c.JSON(http.StatusOK, response.OkMsg(i18n.Msg(c.Request.Context(), "user.logout.success")))
+	c.JSON(http.StatusOK, response.OkMsg("退出成功"))
 }
 
 // Code 获取图形验证码。

@@ -127,4 +127,4 @@ xss:
     - /warm-flow/save-json        # 流程定义 JSON，需原样存标签
   skipMethods: [ GET, DELETE ]
 
-# cors/accessLog/traceId/repeatableBody/i18n 走 Go 默认（DefaultX 兜底）。
+# cors/accessLog/traceId/repeatableBody 走 Go 默认（DefaultX 兜底）。

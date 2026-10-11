@@ -97,7 +97,6 @@ func main() {
 	r.Use(middleware.RepeatableBodyWithConfig(ac.RepeatableBody))
 	r.Use(middleware.AccessLogWithConfig(ac.AccessLog))
 	r.Use(middleware.XSSWithConfig(ac.XSS))
-	r.Use(middleware.I18nWithConfig(ac.I18n))
 
 	auth.RegisterRoutes(r, "/auth")
 	system.RegisterRoutes(r, "/system")

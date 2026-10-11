@@ -16,7 +16,6 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/i18n"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
@@ -71,7 +70,7 @@ func (s *passwordAuthStrategy) Login(req *http.Request, body []byte,
 	// 在线摘要须在 loginhelper.Login 返回后写（见 RecordOnlineUser 注释）。
 	sysloginservice.RecordOnlineUser(loginUser, token)
 	sysloginservice.RecordLoginInfo(req, loginBody.Username,
-		constant.ConstantLoginSuccess, i18n.Msg(ctx, "user.login.success"))
+		constant.ConstantLoginSuccess, "登录成功")
 
 	return &authvo.LoginVo{
 		AccessToken: token,
@@ -97,7 +96,7 @@ func (s *passwordAuthStrategy) validateCaptcha(req *http.Request, username, code
 	if err != nil {
 		if errors.Is(err, goredis.Nil) {
 			// 键不存在(过期或 uuid 无效)。
-			msg := i18n.Msg(ctx, "user.jcaptcha.expire")
+			msg := "验证码已失效"
 			sysloginservice.RecordLoginInfo(req, username, constant.ConstantLoginFail, msg)
 			return errs.New(0, msg, "")
 		}
@@ -106,7 +105,7 @@ func (s *passwordAuthStrategy) validateCaptcha(req *http.Request, username, code
 	}
 	// 算术答案大小写无关，字符验证码忽略大小写。
 	if !strings.EqualFold(strings.TrimSpace(code), answer) {
-		msg := i18n.Msg(ctx, "user.jcaptcha.error")
+		msg := "验证码错误"
 		sysloginservice.RecordLoginInfo(req, username, constant.ConstantLoginFail, msg)
 		return errs.New(0, msg, "")
 	}

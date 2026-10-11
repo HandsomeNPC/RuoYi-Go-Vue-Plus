@@ -5,7 +5,6 @@ import (
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/i18n"
 	authvo "ruoyi-go-vue-plus/internal/auth/model/vo"
 	systemvo "ruoyi-go-vue-plus/internal/system/model/vo"
 )
@@ -26,10 +25,9 @@ var authStrategies = map[string]AuthStrategy{
 // Login 登录
 func Login(req *http.Request, body []byte, grantType string,
 	client *systemvo.SysClientVo) (*authvo.LoginVo, error) {
-	ctx := req.Context()
 	strategy, ok := authStrategies[grantType]
 	if !ok {
-		return nil, errs.New(0, i18n.Msg(ctx, "auth.grant.type.error"), "")
+		return nil, errs.New(0, "认证权限类型错误", "")
 	}
 	return strategy.Login(req, body, client)
 }

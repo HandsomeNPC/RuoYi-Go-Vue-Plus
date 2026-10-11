@@ -43,7 +43,6 @@ type Config struct {
 	AccessLog      middleware.AccessLogConfig      `mapstructure:"accessLog"`
 	TraceID        middleware.TraceIDConfig        `mapstructure:"traceId"`
 	RepeatableBody middleware.RepeatableBodyConfig `mapstructure:"repeatableBody"`
-	I18n           middleware.I18nConfig           `mapstructure:"i18n"`
 }
 
 var (
@@ -63,7 +62,6 @@ func Load(path string) {
 	middleware.DefaultAccessLog().SetDefaults(v)
 	middleware.DefaultTraceID().SetDefaults(v)
 	middleware.DefaultRepeatableBody().SetDefaults(v)
-	middleware.DefaultI18n().SetDefaults(v)
 
 	if err := v.ReadInConfig(); err != nil {
 		panic(fmt.Errorf("monitor/config: 读取 %s 失败: %w", path, err))
@@ -84,7 +82,6 @@ func Load(path string) {
 		cfg.AccessLog.Validate,
 		cfg.TraceID.Validate,
 		cfg.RepeatableBody.Validate,
-		cfg.I18n.Validate,
 	} {
 		if err := fn(); err != nil {
 			panic(fmt.Errorf("monitor/config: %w", err))

@@ -96,4 +96,4 @@ social:
       redirectUri: http://localhost:80/social-callback?source=topiam
       scopes: [ openid, profile, email ]
 
-# cors/xss/accessLog/traceId/repeatableBody/i18n 走 Go 默认（DefaultX 兜底），auth 无富文本路由，无需 xss 覆盖。
+# cors/xss/accessLog/traceId/repeatableBody 走 Go 默认（DefaultX 兜底），auth 无富文本路由，无需 xss 覆盖。
