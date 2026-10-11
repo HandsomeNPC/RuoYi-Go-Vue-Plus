@@ -9,15 +9,13 @@ import (
 	"time"
 
 	goredis "github.com/redis/go-redis/v9"
-
-	"ruoyi-go-vue-plus/pkg/config"
 )
 
 // pingTimeout 启动时探活 Redis 的超时时间。
 const pingTimeout = 5 * time.Second
 
 // New 按配置建立 Redis 客户端并完成连接池设置。
-func New(cfg config.RedisConfig) (*goredis.Client, error) {
+func New(cfg RedisConfig) (*goredis.Client, error) {
 	client := goredis.NewClient(&goredis.Options{
 		Addr:            cfg.Addr(),
 		Password:        cfg.Password,
@@ -65,7 +63,7 @@ var (
 )
 
 // Init 建立连接并设置为包级默认实例。
-func Init(cfg config.RedisConfig) {
+func Init(cfg RedisConfig) {
 	client, err := New(cfg)
 	if err != nil {
 		panic(fmt.Errorf("redis: 初始化失败: %w", err))

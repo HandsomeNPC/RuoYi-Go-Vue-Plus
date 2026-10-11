@@ -478,15 +478,16 @@ xxx.DELETE("/:xxxIds", satoken.CheckPermission("system:xxx:remove"),
 顺序有依赖，照抄 `cmd/standalone/main.go`：
 
 ```go
-config.Load(...)
+<m>config.Load("configs/<m>.yaml")      // 各模块自行 viper 解析自包含 yaml
 jsonx.OverrideGinCodec()        // 必须在首个 c.JSON / 参数绑定之前接管 gin codec
-database.Init(); redis.Init(); satoken.Init(); encrypt.Init()
-snowflake.Init(config.Get().Snowflake)    // 主键发号器，插入前必须就绪
-captcha.Init(); ratelimiter.Init(); repeatsubmit.Init()   // 三者都依赖 redis
+cfg := <m>config.Get()
+database.Init(cfg.Datasource); redis.Init(cfg.Redis); satoken.Init(cfg.SAToken); encrypt.Init(cfg.APIEncrypt)
+snowflake.Init(cfg.Snowflake)    // 主键发号器，插入前必须就绪
+captcha.Init(cfg.Captcha); ratelimiter.Init(); repeatsubmit.Init(cfg.SAToken.TokenName)   // 三者都依赖 redis
 oplog.Init(operlogservice.RecordOper)        // 依赖 database + snowflake
 ```
 
-全局中间件：`Recover → CORS → TraceID → RepeatableBody → AccessLog → XSS → I18n`。
+全局中间件：`Recover → CORS → TraceID → RepeatableBody → AccessLog → XSS → I18n`， 均走 `XWithConfig(cfg.X)` 显式传参（无无参包装）。
 
 ---
 
@@ -526,9 +527,6 @@ go vet ./...      # 必过
 go test ./...     # 新增测试必过
 go mod tidy       # 引入新依赖后
 ```
-
-> `pkg/config` 的 `TestRealYAMLMatchesDefaults` **当前是已知失败**
-> （application.yaml 的 captcha.enable 与默认值不一致），与业务改动无关，不必修。
 > 但 **别把它当成"测试本来就红"的挡箭牌**——除它以外任何失败都要处理。
 
 ### 清单

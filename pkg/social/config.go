@@ -1,6 +1,10 @@
-package config
+package social
 
-import "github.com/spf13/viper"
+import (
+	"fmt"
+
+	"github.com/spf13/viper"
+)
 
 // SocialLoginConfig 单个三方平台的配置，对应 yaml social.type.<source>。
 //
@@ -43,28 +47,28 @@ func DefaultSocial() SocialConfig {
 	return SocialConfig{Type: map[string]SocialLoginConfig{}}
 }
 
-// setDefaults 把默认值铺给 viper。
-func (c SocialConfig) setDefaults(v *viper.Viper) {
+// SetDefaults 把默认值铺给 viper。
+func (c SocialConfig) SetDefaults(v *viper.Viper) {
 	v.SetDefault("social.type", c.Type)
 }
 
-// validate 校验三方登录配置。
+// Validate 校验三方登录配置。
 //
 // 只校验「填了一半」的平台：整项留空表示不启用，跳过即可；
 // 但配了 clientId 却漏了 secret/回调地址，是会在运行期才暴露的配置事故。
-func (c SocialConfig) validate() error {
+func (c SocialConfig) Validate() error {
 	for source, lc := range c.Type {
 		if lc.ClientID == "" && lc.ClientSecret == "" {
 			continue
 		}
 		if lc.ClientID == "" {
-			return errMissing("social.type." + source + ".clientId")
+			return fmt.Errorf("social.type.%s.clientId 未配置", source)
 		}
 		if lc.ClientSecret == "" {
-			return errMissing("social.type." + source + ".clientSecret")
+			return fmt.Errorf("social.type.%s.clientSecret 未配置", source)
 		}
 		if lc.RedirectURI == "" {
-			return errMissing("social.type." + source + ".redirectUri")
+			return fmt.Errorf("social.type.%s.redirectUri 未配置", source)
 		}
 	}
 	return nil

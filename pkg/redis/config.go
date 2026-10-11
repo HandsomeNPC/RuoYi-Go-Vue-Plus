@@ -1,11 +1,11 @@
-package config
+package redis
 
 import (
 	"fmt"
 	"time"
 )
 
-// Redis 缓存/会话/分布式锁配置。
+// RedisConfig Redis 缓存/会话/分布式锁配置，对应 yaml 的 redis 段。
 type RedisConfig struct {
 	Host     string `mapstructure:"host"`
 	Port     int    `mapstructure:"port"`
@@ -54,19 +54,19 @@ func msOrDefault(ms int, fallback time.Duration) time.Duration {
 	return time.Duration(ms) * time.Millisecond
 }
 
-// validate 校验 Redis 配置。
-func (r RedisConfig) validate() error {
+// Validate 校验 Redis 配置。
+func (r RedisConfig) Validate() error {
 	if r.Host == "" {
-		return errMissing("redis.host")
+		return fmt.Errorf("redis.host 未配置")
 	}
 	if r.Port <= 0 {
-		return errInvalid("redis.port", "必须大于 0")
+		return fmt.Errorf("redis.port 必须大于 0")
 	}
 	if r.DB < 0 {
-		return errInvalid("redis.db", "不能为负数")
+		return fmt.Errorf("redis.db 不能为负数")
 	}
 	if r.PoolSize > 0 && r.MinIdleConns > r.PoolSize {
-		return errInvalid("redis.minIdleConns", "不能大于 poolSize")
+		return fmt.Errorf("redis.minIdleConns 不能大于 poolSize")
 	}
 	return nil
 }

@@ -10,8 +10,6 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-
-	"ruoyi-go-vue-plus/pkg/config"
 )
 
 // reHTMLTag 匹配一个 HTML 标签。
@@ -19,11 +17,11 @@ var reHTMLTag = regexp.MustCompile(`<[^<]*?>`)
 
 // XSSWithConfig 请求清洗中间件：把请求里的 HTML 标签剔掉（保留标签内的文字）。
 // 必须注册在 RepeatableBody 之后、所有读参数的中间件与 handler 之前。
-func XSSWithConfig(cfg config.XSSConfig) gin.HandlerFunc {
+func XSSWithConfig(cfg XSSConfig) gin.HandlerFunc {
 	skip := make(map[string]struct{}, len(cfg.SkipMethods))
 	methods := cfg.SkipMethods
 	if len(methods) == 0 {
-		methods = config.DefaultXSS().SkipMethods
+		methods = DefaultXSS().SkipMethods
 	}
 	for _, m := range methods {
 		skip[strings.ToUpper(strings.TrimSpace(m))] = struct{}{}

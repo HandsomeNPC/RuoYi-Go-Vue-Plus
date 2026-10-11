@@ -7,12 +7,7 @@ import (
 	"math/rand/v2"
 
 	"github.com/gin-gonic/gin"
-
-	"ruoyi-go-vue-plus/pkg/config"
 )
-
-// TraceIDHeader 链路 id 的请求/响应头名。
-const TraceIDHeader = config.TraceIDHeader
 
 // TraceIDKey 存进 gin.Context 的键名。
 const TraceIDKey = "traceId"
@@ -24,7 +19,7 @@ type traceIDCtxKey struct{}
 const traceIDMaxLength = 64
 
 // TraceIDWithConfig 链路 id 中间件：取或生成 id，写进上下文与响应头。必须注册在 CORS 之后。
-func TraceIDWithConfig(cfg config.TraceIDConfig) gin.HandlerFunc {
+func TraceIDWithConfig(cfg TraceIDConfig) gin.HandlerFunc {
 	header := cfg.Header
 	if header == "" {
 		header = TraceIDHeader

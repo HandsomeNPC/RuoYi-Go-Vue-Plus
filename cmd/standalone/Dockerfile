@@ -6,7 +6,7 @@
 #
 # configs 已打进镜像，改配置有两种方式：挂载覆盖整个目录
 #   -v ./configs:/app/configs:ro
-# 或只覆盖某一个文件。环境变量改不了配置 —— pkg/config 没开 viper.AutomaticEnv。
+# 或只覆盖某一个文件。环境变量改不了配置 —— 各 owning pkg 的 Init(cfg) 直读 yaml，未开 viper.AutomaticEnv。
 
 FROM registry.cn-shanghai.aliyuncs.com/chen-zi-wen/golang:1.26-alpine AS builder
 

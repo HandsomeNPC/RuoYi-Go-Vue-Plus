@@ -8,18 +8,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/errs"
 )
 
-// ContentTypeJSON JSON 请求的 content-type 前缀。
-const ContentTypeJSON = config.ContentTypeJSON
-
 // RepeatableBodyWithConfig 可重复读请求体中间件。
-func RepeatableBodyWithConfig(cfg config.RepeatableBodyConfig) gin.HandlerFunc {
+func RepeatableBodyWithConfig(cfg RepeatableBodyConfig) gin.HandlerFunc {
 	maxSize := cfg.MaxBodySize
 	if maxSize <= 0 {
-		maxSize = config.DefaultRepeatableBody().MaxBodySize
+		maxSize = DefaultRepeatableBody().MaxBodySize
 	}
 	types := make([]string, 0, len(cfg.ContentTypes))
 	for _, t := range cfg.ContentTypes {

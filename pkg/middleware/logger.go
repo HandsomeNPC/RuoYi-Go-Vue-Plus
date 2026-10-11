@@ -6,15 +6,13 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-
-	"ruoyi-go-vue-plus/pkg/config"
 )
 
 // AccessLogWithConfig 请求日志中间件，必须注册在 RepeatableBody 之后。
-func AccessLogWithConfig(cfg config.AccessLogConfig) gin.HandlerFunc {
+func AccessLogWithConfig(cfg AccessLogConfig) gin.HandlerFunc {
 	maxLen := cfg.MaxParamLength
 	if maxLen <= 0 {
-		maxLen = config.DefaultMaxParamLength
+		maxLen = DefaultMaxParamLength
 	}
 	skip := make(map[string]struct{}, len(cfg.SkipPaths))
 	for _, p := range cfg.SkipPaths {

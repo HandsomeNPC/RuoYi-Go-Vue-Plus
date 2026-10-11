@@ -6,8 +6,6 @@ import (
 	"net/http"
 
 	"golang.org/x/oauth2"
-
-	"ruoyi-go-vue-plus/pkg/config"
 )
 
 // githubProvider GitHub。
@@ -17,7 +15,7 @@ import (
 // 且写在此处与其余平台形状统一(gitee/maxkey/topiam 都得自己写)。
 type githubProvider struct{}
 
-func (githubProvider) OAuth2Config(cfg config.SocialLoginConfig) (*oauth2.Config, error) {
+func (githubProvider) OAuth2Config(cfg SocialLoginConfig) (*oauth2.Config, error) {
 	return &oauth2.Config{
 		ClientID:     cfg.ClientID,
 		ClientSecret: cfg.ClientSecret,
@@ -31,7 +29,7 @@ func (githubProvider) OAuth2Config(cfg config.SocialLoginConfig) (*oauth2.Config
 	}, nil
 }
 
-func (githubProvider) FetchUser(ctx context.Context, _ config.SocialLoginConfig,
+func (githubProvider) FetchUser(ctx context.Context, _ SocialLoginConfig,
 	client *http.Client, tok *oauth2.Token) (*AuthUser, error) {
 
 	var u struct {

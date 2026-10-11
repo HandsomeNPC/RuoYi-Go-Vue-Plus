@@ -1,6 +1,10 @@
-package config
+package captcha
 
-import "github.com/spf13/viper"
+import (
+	"fmt"
+
+	"github.com/spf13/viper"
+)
 
 // 验证码类型常量。
 const (
@@ -38,16 +42,16 @@ func DefaultCaptcha() CaptchaConfig {
 	}
 }
 
-// setDefaults 把默认值铺给 viper。
-func (c CaptchaConfig) setDefaults(v *viper.Viper) {
+// SetDefaults 把默认值铺给 viper。
+func (c CaptchaConfig) SetDefaults(v *viper.Viper) {
 	v.SetDefault("captcha.enable", c.Enable)
 	v.SetDefault("captcha.type", c.Type)
 	v.SetDefault("captcha.numberLength", c.NumberLength)
 	v.SetDefault("captcha.charLength", c.CharLength)
 }
 
-// validate 校验验证码配置。
-func (c CaptchaConfig) validate() error {
+// Validate 校验验证码配置。
+func (c CaptchaConfig) Validate() error {
 	// 关闭时其余项无需校验。
 	if !c.Enable {
 		return nil
@@ -55,13 +59,13 @@ func (c CaptchaConfig) validate() error {
 	switch c.Type {
 	case CaptchaTypeMath, CaptchaTypeChar:
 	default:
-		return errInvalid("captcha.type", "只能是 math 或 char")
+		return fmt.Errorf("captcha.type 只能是 math 或 char")
 	}
 	if c.NumberLength <= 0 {
-		return errInvalid("captcha.numberLength", "必须为正整数")
+		return fmt.Errorf("captcha.numberLength 必须为正整数")
 	}
 	if c.CharLength <= 0 {
-		return errInvalid("captcha.charLength", "必须为正整数")
+		return fmt.Errorf("captcha.charLength 必须为正整数")
 	}
 	return nil
 }

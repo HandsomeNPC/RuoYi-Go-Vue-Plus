@@ -1,6 +1,7 @@
-package config
+package push
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -77,8 +78,8 @@ func (c PushConfig) Heartbeat() time.Duration {
 	return time.Duration(c.HeartbeatSeconds) * time.Second
 }
 
-// setDefaults 把默认值铺给 viper。
-func (c PushConfig) setDefaults(v *viper.Viper) {
+// SetDefaults 把默认值铺给 viper。
+func (c PushConfig) SetDefaults(v *viper.Viper) {
 	v.SetDefault("push.enabled", c.Enabled)
 	v.SetDefault("push.transport", c.Transport)
 	v.SetDefault("push.path", c.Path)
@@ -87,27 +88,27 @@ func (c PushConfig) setDefaults(v *viper.Viper) {
 	v.SetDefault("push.sendBuffer", c.SendBuffer)
 }
 
-// validate 校验推送配置。
-func (c PushConfig) validate() error {
+// Validate 校验推送配置。
+func (c PushConfig) Validate() error {
 	// 关闭时其余项无需校验。
 	if !c.Enabled {
 		return nil
 	}
 	if c.Path == "" {
-		return errMissing("push.path")
+		return fmt.Errorf("push.path 未配置")
 	}
 	// 相对路径注册到 gin 会 panic，且前端拼的是绝对路径。
 	if !strings.HasPrefix(c.Path, "/") {
-		return errInvalid("push.path", "必须以 / 开头")
+		return fmt.Errorf("push.path 必须以 / 开头")
 	}
 	if c.SSETimeoutSeconds <= 0 {
-		return errInvalid("push.sseTimeoutSeconds", "必须为正整数")
+		return fmt.Errorf("push.sseTimeoutSeconds 必须为正整数")
 	}
 	if c.HeartbeatSeconds <= 0 {
-		return errInvalid("push.heartbeatSeconds", "必须为正整数")
+		return fmt.Errorf("push.heartbeatSeconds 必须为正整数")
 	}
 	if c.SendBuffer <= 0 {
-		return errInvalid("push.sendBuffer", "必须为正整数")
+		return fmt.Errorf("push.sendBuffer 必须为正整数")
 	}
 	return nil
 }

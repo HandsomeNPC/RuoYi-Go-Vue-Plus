@@ -6,8 +6,6 @@ import (
 	"net/http"
 
 	"golang.org/x/oauth2"
-
-	"ruoyi-go-vue-plus/pkg/config"
 )
 
 // giteeDefaultScope 默认权限范围。
@@ -16,7 +14,7 @@ const giteeDefaultScope = "user_info"
 // giteeProvider Gitee。端点固定写死：x/oauth2/endpoints 的 52 个平台里没有 Gitee。
 type giteeProvider struct{}
 
-func (giteeProvider) OAuth2Config(cfg config.SocialLoginConfig) (*oauth2.Config, error) {
+func (giteeProvider) OAuth2Config(cfg SocialLoginConfig) (*oauth2.Config, error) {
 	scopes := cfg.Scopes
 	if len(scopes) == 0 {
 		scopes = []string{giteeDefaultScope}
@@ -35,7 +33,7 @@ func (giteeProvider) OAuth2Config(cfg config.SocialLoginConfig) (*oauth2.Config,
 	}, nil
 }
 
-func (giteeProvider) FetchUser(ctx context.Context, _ config.SocialLoginConfig,
+func (giteeProvider) FetchUser(ctx context.Context, _ SocialLoginConfig,
 	client *http.Client, tok *oauth2.Token) (*AuthUser, error) {
 
 	// id 用 json.Number 收：Gitee 返回的是数字，而 auth_id/open_id 是字符串列。

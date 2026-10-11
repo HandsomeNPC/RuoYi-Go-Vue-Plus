@@ -1,30 +1,49 @@
 // Package config monitor 进程的配置加载。
 //
-// 桥接期：Load 先调 pkg/config.Load 填充旧全局（中间件无参包装仍读它），
-// 再缓存本模块的子集视图；Get 返回子集。pkg/config 删除后，Load 改为自行 viper 解析。
+// 自行 viper 解析本模块自包含 yaml，按需只解析 monitor 用到的子配置（最瘦）。
 package config
 
 import (
+	"fmt"
 	"sync"
 
-	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
+	"github.com/spf13/viper"
 
-	pkgconfig "ruoyi-go-vue-plus/pkg/config"
+	"ruoyi-go-vue-plus/pkg/database"
+	"ruoyi-go-vue-plus/pkg/middleware"
+	"ruoyi-go-vue-plus/pkg/redis"
+	"ruoyi-go-vue-plus/pkg/satoken"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 )
+
+// ServerConfig monitor 进程的服务配置。
+type ServerConfig struct {
+	Name string `mapstructure:"name"`
+	Addr string `mapstructure:"addr"`
+}
+
+// Validate 校验服务配置。
+func (s ServerConfig) Validate() error {
+	if s.Addr == "" {
+		return fmt.Errorf("server.addr 未配置")
+	}
+	return nil
+}
 
 // Config monitor 进程用到的配置子集。最瘦：无 APIEncrypt/User/Captcha/Social/Push/Mail/SMS。
 type Config struct {
-	Server         pkgconfig.ServerConfig
-	Snowflake      snowflake.SnowflakeConfig
-	Datasource     pkgconfig.DatasourceConfig
-	Redis          pkgconfig.RedisConfig
-	SAToken        pkgconfig.SATokenConfig
-	CORS           pkgconfig.CORSConfig
-	XSS            pkgconfig.XSSConfig
-	AccessLog      pkgconfig.AccessLogConfig
-	TraceID        pkgconfig.TraceIDConfig
-	RepeatableBody pkgconfig.RepeatableBodyConfig
-	I18n           pkgconfig.I18nConfig
+	Server         ServerConfig                    `mapstructure:"server"`
+	Snowflake      snowflake.SnowflakeConfig       `mapstructure:"snowflake"`
+	Datasource     database.DatasourceConfig       `mapstructure:"datasource"`
+	Redis          redis.RedisConfig               `mapstructure:"redis"`
+	SAToken        satoken.SATokenConfig           `mapstructure:"satoken"`
+	CORS           middleware.CORSConfig           `mapstructure:"cors"`
+	XSS            middleware.XSSConfig            `mapstructure:"xss"`
+	AccessLog      middleware.AccessLogConfig      `mapstructure:"accessLog"`
+	TraceID        middleware.TraceIDConfig        `mapstructure:"traceId"`
+	RepeatableBody middleware.RepeatableBodyConfig `mapstructure:"repeatableBody"`
+	I18n           middleware.I18nConfig           `mapstructure:"i18n"`
 }
 
 var (
@@ -34,23 +53,46 @@ var (
 
 // Load 读取自包含 yaml 并缓存本模块配置子集。
 func Load(path string) {
-	pkgconfig.Load(path)
-	c := pkgconfig.Get()
-	cfg := &Config{
-		Server:         c.Server,
-		Snowflake:      c.Snowflake,
-		Datasource:     c.Datasource,
-		Redis:          c.Redis,
-		SAToken:        c.SAToken,
-		CORS:           c.CORS,
-		XSS:            c.XSS,
-		AccessLog:      c.AccessLog,
-		TraceID:        c.TraceID,
-		RepeatableBody: c.RepeatableBody,
-		I18n:           c.I18n,
+	v := viper.New()
+	v.SetConfigType("yaml")
+	v.SetConfigFile(path)
+
+	satoken.DefaultSAToken().SetDefaults(v)
+	middleware.DefaultCORS().SetDefaults(v)
+	middleware.DefaultXSS().SetDefaults(v)
+	middleware.DefaultAccessLog().SetDefaults(v)
+	middleware.DefaultTraceID().SetDefaults(v)
+	middleware.DefaultRepeatableBody().SetDefaults(v)
+	middleware.DefaultI18n().SetDefaults(v)
+
+	if err := v.ReadInConfig(); err != nil {
+		panic(fmt.Errorf("monitor/config: 读取 %s 失败: %w", path, err))
 	}
+
+	var cfg Config
+	if err := v.Unmarshal(&cfg); err != nil {
+		panic(fmt.Errorf("monitor/config: 解析配置失败: %w", err))
+	}
+
+	for _, fn := range []func() error{
+		cfg.Server.Validate,
+		cfg.Datasource.Validate,
+		cfg.Redis.Validate,
+		cfg.SAToken.Validate,
+		cfg.CORS.Validate,
+		cfg.XSS.Validate,
+		cfg.AccessLog.Validate,
+		cfg.TraceID.Validate,
+		cfg.RepeatableBody.Validate,
+		cfg.I18n.Validate,
+	} {
+		if err := fn(); err != nil {
+			panic(fmt.Errorf("monitor/config: %w", err))
+		}
+	}
+
 	mu.Lock()
-	current = cfg
+	current = &cfg
 	mu.Unlock()
 }
 

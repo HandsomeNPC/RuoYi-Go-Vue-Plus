@@ -8,8 +8,6 @@ import (
 	"strings"
 
 	"golang.org/x/oauth2"
-
-	"ruoyi-go-vue-plus/pkg/config"
 )
 
 // serverEndpoints 私有化部署平台的端点模板。
@@ -47,7 +45,7 @@ type serverProvider struct {
 	source string
 }
 
-func (p serverProvider) OAuth2Config(cfg config.SocialLoginConfig) (*oauth2.Config, error) {
+func (p serverProvider) OAuth2Config(cfg SocialLoginConfig) (*oauth2.Config, error) {
 	ep, ok := serverEndpoints[p.source]
 	if !ok {
 		return nil, fmt.Errorf("social: 平台 %s 无端点定义", p.source)
@@ -74,7 +72,7 @@ func (p serverProvider) OAuth2Config(cfg config.SocialLoginConfig) (*oauth2.Conf
 	}, nil
 }
 
-func (p serverProvider) FetchUser(ctx context.Context, cfg config.SocialLoginConfig,
+func (p serverProvider) FetchUser(ctx context.Context, cfg SocialLoginConfig,
 	client *http.Client, tok *oauth2.Token) (*AuthUser, error) {
 
 	base, err := normalizeServerURL(cfg.ServerURL)

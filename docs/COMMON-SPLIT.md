@@ -46,9 +46,16 @@ RuoYi-Go-Vue-Plus/
 
 ## 2. 核心规则：配置反转
 
-**唯一的结构性阻塞点是 `pkg/config`** —— 它是中心枢纽，25 个包里 12 个直接 import 它，用法是
-`config.Get()` 读全局单例。任何包只要碰 `config`，就连带拖进 viper + 其余 16 个兄弟配置结构体 +
-`i18n` + `snowflake`。这一条就让 `redis`/`database` 这类最该复用的包彻底不可复用。
+> **进度更新**：原"唯一结构性阻塞点 `pkg/config`"已解决——`pkg/config` 整包删除，
+> 19 个配置类型下沉到各 owning pkg（`pkg/redis`、`pkg/database`、`pkg/middleware` 等），
+> `Init(cfg)` 收参不读全局；项目侧组装在 `internal/<module>/config`（每模块一份自包含 yaml）。
+> **但下述四条规则仍适用于 common-go 外迁**：当前 owning pkg 仍保留 `Init(cfg)`+`Get()` 单例
+> （rule 2 要求只留 `New(cfg)`），且 `internal/<module>/config` 是按模块拆的、非 `internal/shared/config`，
+> 这些都要在外迁时再收敛。
+
+原阻塞点回放（已解决，存档备查）：`pkg/config` 曾是中心枢纽，25 个包里 12 个直接 import 它， 用法是 `config.Get()`
+读全局单例。任何包只要碰 `config`，就连带拖进 viper + 其余 16 个兄弟配置结构体 +
+`i18n` + `snowflake`，让 `redis`/`database` 这类最该复用的包彻底不可复用。
 
 解法已在 `ruoyi-common-go/captcha/config.go` 验证过。对比前后：
 
@@ -227,4 +234,5 @@ replace github.com/HandsomeNPC/ruoyi-common-go v0.0.0-00010101000000-00000000000
 - **`README.md`** 的目录树与对应关系表。
 - **`docs/CRUD-SPEC.md`** 六文件模板里的所有 `pkg/` 路径。
 - **`ruoyi-common-go/README.md`** 子包表格加新包（`bcrypt`/`regex`/`captcha` 均已补入）。
-- 两个 `Dockerfile` 与 `configs/application.yaml` 里提到 `pkg/config` 的注释。
+- 两个 `Dockerfile` 里提到 `pkg/config` 的注释（已随本次配置重构改为"各 owning pkg 的 Init (cfg)"，外迁时确认无残留）。
+  `configs/application.yaml` 已删除，各模块自包含 yaml。

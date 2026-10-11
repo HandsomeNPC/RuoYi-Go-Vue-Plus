@@ -146,7 +146,8 @@ go version          # go1.26.x
 1. **MySQL 8.x**，字符集 `utf8mb4`，时区配置正确（容器化部署依赖 `tzdata`，见 Docker 段）。
 2. **Redis 6.x 及以上**。
 3. **初始化数据库**：执行 `script/sql/ry_vue.sql`（建表 SQL 直接复用原 Java 项目，表结构一致）。
-4. **改连接配置**：修改 `configs/application.yaml` 里的 `datasource`、`redis` 为本机配置。
+4. **改连接配置**：每个模块一份自包含 yaml（`configs/<module>.yaml`），改其中的 `datasource`、`redis` 为本机配置。单体部署改
+   `configs/standalone.yaml` 即可；多模块部署各模块文件都要改（共用值按需复制，接受重复换隔离）。
 5. **sa-token-go 依赖**：以本地检出路径 `replace`（见 `go.mod` 末尾）：
 
    ```
@@ -214,7 +215,7 @@ docker run -d -p 8080:8080 ruoyi-go:standalone
 ```
 
 镜像内已打进 `configs`。改配置有两种方式：挂载覆盖整个目录 `-v ./configs:/app/configs:ro`，或只覆盖某个文件。
-**环境变量改不了配置**——`pkg/config` 没开 `viper.AutomaticEnv`。
+**环境变量改不了配置**——配置走各 owning pkg 的 `Init(cfg)` 直读 yaml，未开 `viper.AutomaticEnv`。
 
 健康检查内置 `GET /system/ping`。
 
@@ -297,9 +298,9 @@ internal/                     按模块组织，严格三层
     service/                  业务逻辑；system 的 service 导出供 auth 复用
     repository/               数据访问，只有这一层碰 GORM/DB
     model/                    entity(表) / dto(入参) / vo(出参)
-pkg/                          可复用公共库
-  response/config/database/redis/middleware/satoken/oplog/excel/tree/oss/push/...
-configs/                      application.yaml(公共) + <module>.yaml(各进程端口/雪花ID)
+pkg/                          可复用公共库（各 infra 包自带配置类型 + Init(cfg) 收参，无共享 config 包）
+  response/database/redis/middleware/satoken/oplog/excel/tree/oss/push/...
+configs/                      各模块自包含 <module>.yaml（无公共 application.yaml）
 script/sql/                   ry_vue.sql 建表 SQL（复用原项目表结构）
 docs/CRUD-SPEC.md             增删改查落地模板与踩坑点（写 CRUD 前先读）
 ```

@@ -33,9 +33,11 @@ internal/<module>/
   service/                  业务逻辑；system 的 service 导出供 auth 复用
   repository/               数据访问，只有这一层碰 GORM/DB
   model/                    entity(表) / dto(入参) / vo(出参)
-pkg/                        可复用公共库（response/config/database/redis/
-                            middleware/satoken/constant/oplog/excel/oss/push...）
-configs/                    application.yaml(公共) + <module>.yaml(各进程端口/雪花ID)
+pkg/                        可复用公共库（response/database/redis/middleware/
+                            satoken/constant/oplog/excel/oss/push...）
+                            各 infra 包自带配置类型 + Init(cfg) 收参，不再有共享 config 包
+configs/                    各模块自包含 <module>.yaml（server/snowflake/datasource/redis
+                            + 本模块用到的子配置）；无公共 application.yaml
 script/sql/                 ry_vue.sql 建表 SQL（复用原项目表结构）
 docs/                       CRUD-SPEC.md（写 CRUD 前先读）
 ```

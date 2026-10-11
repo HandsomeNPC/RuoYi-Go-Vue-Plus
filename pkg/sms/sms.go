@@ -11,8 +11,6 @@ import (
 	"errors"
 	"log"
 	"sync"
-
-	"ruoyi-go-vue-plus/pkg/config"
 )
 
 // ErrDisabled 短信功能未开启。由调用方翻译成给前端看的文案。
@@ -33,7 +31,7 @@ var (
 )
 
 // Init 按传入的 SMSConfig 构造并设包级默认发送器。须在 config.Load 之后调用。
-func Init(cfg config.SMSConfig) {
+func Init(cfg SMSConfig) {
 	mu.Lock()
 	if cfg.Enabled {
 		defaultSender = newAliyunSender(cfg)

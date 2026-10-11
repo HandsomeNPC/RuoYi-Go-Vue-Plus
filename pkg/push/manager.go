@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	systemdto "ruoyi-go-vue-plus/internal/system/model/dto"
-	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/constant"
 	pkgredis "ruoyi-go-vue-plus/pkg/redis"
 
@@ -27,7 +26,7 @@ const (
 
 // Manager 推送会话管理器。
 type Manager struct {
-	cfg      config.PushConfig
+	cfg      PushConfig
 	registry *registry
 	stop     chan struct{}
 	stopOnce sync.Once
@@ -41,7 +40,7 @@ var (
 
 // Init 按传入的 PushConfig 构建包级推送管理器并订阅 Redis 消息主题。
 // 依赖 pkg/redis，须在 redis.Init() 之后调用。
-func Init(cfg config.PushConfig) {
+func Init(cfg PushConfig) {
 	if !cfg.Enabled {
 		log.Printf("[push] 消息推送已关闭")
 		return
@@ -86,7 +85,7 @@ func Shutdown() {
 }
 
 // Config 返回本管理器的推送配置。
-func (m *Manager) Config() config.PushConfig {
+func (m *Manager) Config() PushConfig {
 	return m.cfg
 }
 

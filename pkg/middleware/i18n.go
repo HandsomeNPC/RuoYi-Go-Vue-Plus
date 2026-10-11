@@ -3,18 +3,14 @@ package middleware
 import (
 	"github.com/gin-gonic/gin"
 
-	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/i18n"
 )
-
-// LocaleHeader 解析语言的请求头名。
-const LocaleHeader = config.LocaleHeader
 
 // LocaleKey 语言存进 gin.Context 的键名。
 const LocaleKey = "locale"
 
 // I18nWithConfig 国际化中间件。必须注册在 Auth 之前。
-func I18nWithConfig(cfg config.I18nConfig) gin.HandlerFunc {
+func I18nWithConfig(cfg I18nConfig) gin.HandlerFunc {
 	header := cfg.Header
 	if header == "" {
 		header = LocaleHeader

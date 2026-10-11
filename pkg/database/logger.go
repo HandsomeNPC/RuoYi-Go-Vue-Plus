@@ -6,12 +6,10 @@ import (
 	"time"
 
 	gormlogger "gorm.io/gorm/logger"
-
-	"ruoyi-go-vue-plus/pkg/config"
 )
 
 // newLogger 按数据源配置构造 GORM 日志器。
-func newLogger(cfg config.DatasourceConfig) gormlogger.Interface {
+func newLogger(cfg DatasourceConfig) gormlogger.Interface {
 	return gormlogger.New(
 		log.New(os.Stdout, "[sql] ", log.LstdFlags),
 		gormlogger.Config{
@@ -26,11 +24,11 @@ func newLogger(cfg config.DatasourceConfig) gormlogger.Interface {
 // logLevel 把配置里的字符串级别映射为 GORM 级别，非法值兜底 Warn。
 func logLevel(level string) gormlogger.LogLevel {
 	switch level {
-	case config.LogLevelSilent:
+	case LogLevelSilent:
 		return gormlogger.Silent
-	case config.LogLevelError:
+	case LogLevelError:
 		return gormlogger.Error
-	case config.LogLevelInfo:
+	case LogLevelInfo:
 		return gormlogger.Info
 	default:
 		return gormlogger.Warn

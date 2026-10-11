@@ -19,8 +19,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"ruoyi-go-vue-plus/pkg/config"
 )
 
 // ErrDisabled 邮件功能未开启。由调用方翻译成给前端看的文案。
@@ -32,11 +30,11 @@ const dialTimeout = 10 * time.Second
 
 // Mailer 邮件发送器。
 type Mailer struct {
-	cfg config.MailConfig
+	cfg MailConfig
 }
 
 // New 按配置构造 Mailer。!Enabled 时返回 no-op（Send 直接返回 ErrDisabled）。
-func New(cfg config.MailConfig) *Mailer {
+func New(cfg MailConfig) *Mailer {
 	return &Mailer{cfg: cfg}
 }
 
@@ -47,7 +45,7 @@ var (
 )
 
 // Init 按传入的 MailConfig 构造并设包级默认实例。须在 config.Load 之后调用。
-func Init(cfg config.MailConfig) {
+func Init(cfg MailConfig) {
 	mu.Lock()
 	defaultMailer = New(cfg)
 	mu.Unlock()

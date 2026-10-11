@@ -29,8 +29,6 @@ import (
 	"time"
 
 	"golang.org/x/oauth2"
-
-	"ruoyi-go-vue-plus/pkg/config"
 )
 
 // 已接入的平台标识。取值即前端传来的 source，也是 sys_social.source 的落库值。
@@ -83,11 +81,11 @@ type AuthToken struct {
 type Provider interface {
 	// OAuth2Config 构造交给 x/oauth2 的配置：端点地址与默认 scope 由各平台定。
 	// serverUrl 非法等配置问题在此返回错误。
-	OAuth2Config(cfg config.SocialLoginConfig) (*oauth2.Config, error)
+	OAuth2Config(cfg SocialLoginConfig) (*oauth2.Config, error)
 
 	// FetchUser 用令牌换用户资料。
 	// RFC 6749 不覆盖这一步，故每个平台都得自己实现。
-	FetchUser(ctx context.Context, cfg config.SocialLoginConfig,
+	FetchUser(ctx context.Context, cfg SocialLoginConfig,
 		client *http.Client, tok *oauth2.Token) (*AuthUser, error)
 }
 
@@ -95,7 +93,7 @@ type Provider interface {
 // 让请求期的 lookup 不必再回读全局配置。
 type providerEntry struct {
 	provider Provider
-	cfg      config.SocialLoginConfig
+	cfg      SocialLoginConfig
 }
 
 // registry 已注册的平台。仅含配置齐全者，故「未注册」等价于「不支持」。
@@ -118,7 +116,7 @@ var providers = map[string]Provider{
 // 也归进「不支持该平台」。
 // 因此前端那个 wechat 按钮天然返回「暂不支持」：它不是合法 source，
 // 原项目只支持 wechat_open/wechat_mp/wechat_enterprise。
-func Init(cfg config.SocialConfig) {
+func Init(cfg SocialConfig) {
 	reg := make(map[string]providerEntry, len(providers))
 	for source, p := range providers {
 		lc, ok := cfg.Type[source]
@@ -142,12 +140,12 @@ func Init(cfg config.SocialConfig) {
 }
 
 // lookup 取平台实现与其配置，未注册时返回 ErrUnsupportedSource。
-func lookup(source string) (Provider, config.SocialLoginConfig, error) {
+func lookup(source string) (Provider, SocialLoginConfig, error) {
 	mu.RLock()
 	e, ok := registry[source]
 	mu.RUnlock()
 	if !ok {
-		return nil, config.SocialLoginConfig{}, ErrUnsupportedSource
+		return nil, SocialLoginConfig{}, ErrUnsupportedSource
 	}
 	return e.provider, e.cfg, nil
 }

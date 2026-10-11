@@ -26,13 +26,12 @@ import (
 	"github.com/mojocn/base64Captcha"
 	goredis "github.com/redis/go-redis/v9"
 
-	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/redis"
 )
 
 // 图片渲染参数。
-// 按 config.CaptchaConfig 的设计固定写死，不做配置项。
+// 按 CaptchaConfig 的设计固定写死，不做配置项。
 const (
 	imgWidth  = 160 // 图片宽度(像素)
 	imgHeight = 60  // 图片高度(像素)
@@ -66,7 +65,7 @@ type Vo struct {
 // Captcha 验证码器，持有解析后的绘图驱动。
 type Captcha struct {
 	enabled bool
-	// typ 验证码类型：config.CaptchaTypeMath / CaptchaTypeChar。
+	// typ 验证码类型：CaptchaTypeMath / CaptchaTypeChar。
 	typ string
 	// numberLength 算术验证码每个操作数的位数。
 	numberLength int
@@ -86,7 +85,7 @@ func (c *Captcha) client() *goredis.Client {
 
 // New 按配置构造 Captcha。!Enable 时返回 no-op（Generate 只回开关位，
 // Validate 直接放行）。对照 encrypt.New。
-func New(cfg config.CaptchaConfig) (*Captcha, error) {
+func New(cfg CaptchaConfig) (*Captcha, error) {
 	if !cfg.Enable {
 		return &Captcha{}, nil
 	}
@@ -97,12 +96,12 @@ func New(cfg config.CaptchaConfig) (*Captcha, error) {
 		numberLength: cfg.NumberLength,
 	}
 	switch cfg.Type {
-	case config.CaptchaTypeMath:
+	case CaptchaTypeMath:
 		// DriverMath 的取值范围写死在库里(加法 0-20 等)，不认 numberLength，
 		// 故只借它画图，题面与答案由 nextMath 自行生成。
 		c.driver = base64Captcha.NewDriverMath(
 			imgHeight, imgWidth, noiseCount, showLineOptions, nil, nil, nil)
-	case config.CaptchaTypeChar:
+	case CaptchaTypeChar:
 		c.driver = base64Captcha.NewDriverString(
 			imgHeight, imgWidth, noiseCount, showLineOptions,
 			cfg.CharLength, charSource, nil, nil, nil)
@@ -121,7 +120,7 @@ var (
 // Init 按传入的 CaptchaConfig 构造并设包级默认实例。
 // 必须在 config.Load 之后调用；因 Generate/Validate 要读写 Redis，
 // 还须在 redis.Init 之后调用。构造失败直接 panic（启动期 fail-fast）。
-func Init(cfg config.CaptchaConfig) {
+func Init(cfg CaptchaConfig) {
 	instance, err := New(cfg)
 	if err != nil {
 		panic(fmt.Errorf("captcha: 初始化失败: %w", err))
@@ -173,7 +172,7 @@ func Enabled() bool { return get().enabled }
 // next 出题，返回画在图上的题面与用于比对的答案。
 // 字符验证码题面即答案；算术验证码题面是表达式、答案是计算结果。
 func (c *Captcha) next() (question, answer string) {
-	if c.typ == config.CaptchaTypeMath {
+	if c.typ == CaptchaTypeMath {
 		return nextMath(c.numberLength)
 	}
 	// 返回值依次是 (id, 题面, 答案)；id 由本包用 uuid 另行生成，此处丢弃。

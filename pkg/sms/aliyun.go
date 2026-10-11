@@ -15,8 +15,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"ruoyi-go-vue-plus/pkg/config"
-
 	"github.com/HandsomeNPC/ruoyi-common-go/jsonx"
 )
 
@@ -40,12 +38,12 @@ const httpTimeout = 10 * time.Second
 // alibabacloud-go/dysmsapi 会连带拉进近十个 alibabacloud-go/* 包。
 // 签名算法须与实际在用的实现逐字一致。
 type aliyunSender struct {
-	cfg    config.SMSConfig
+	cfg    SMSConfig
 	client *http.Client
 }
 
 // newAliyunSender 构造阿里云发送器。
-func newAliyunSender(cfg config.SMSConfig) *aliyunSender {
+func newAliyunSender(cfg SMSConfig) *aliyunSender {
 	return &aliyunSender{
 		cfg:    cfg,
 		client: &http.Client{Timeout: httpTimeout},

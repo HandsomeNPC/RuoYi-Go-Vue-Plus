@@ -10,7 +10,7 @@
 # 同一模块起多副本时，configs/<module>.yaml 里的 snowflake.workerId 各进程必须
 # 互不相同，否则共用一个库会撞主键。副本要挂载各自的 yaml
 # (-v ./configs/system-2.yaml:/app/configs/system.yaml:ro)，环境变量无效
-# —— pkg/config 没开 viper.AutomaticEnv。
+# —— 各 owning pkg 的 Init(cfg) 直读 yaml，未开 viper.AutomaticEnv。
 
 FROM registry.cn-shanghai.aliyuncs.com/chen-zi-wen/golang:1.26-alpine AS builder
 

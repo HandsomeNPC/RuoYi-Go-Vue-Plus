@@ -6,12 +6,10 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-
-	"ruoyi-go-vue-plus/pkg/config"
 )
 
 // CORSWithConfig 跨域中间件。必须注册在 Auth 之前。
-func CORSWithConfig(cfg config.CORSConfig) gin.HandlerFunc {
+func CORSWithConfig(cfg CORSConfig) gin.HandlerFunc {
 	maxAge := strconv.FormatInt(int64(cfg.MaxAge().Seconds()), 10)
 	exposed := strings.Join(cfg.ExposedHeaders, ", ")
 

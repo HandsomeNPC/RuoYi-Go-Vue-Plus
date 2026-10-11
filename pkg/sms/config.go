@@ -1,6 +1,10 @@
-package config
+package sms
 
-import "github.com/spf13/viper"
+import (
+	"fmt"
+
+	"github.com/spf13/viper"
+)
 
 // 阿里云短信的接入点默认值。
 const (
@@ -39,8 +43,8 @@ func DefaultSMS() SMSConfig {
 	}
 }
 
-// setDefaults 把默认值铺给 viper。
-func (c SMSConfig) setDefaults(v *viper.Viper) {
+// SetDefaults 把默认值铺给 viper。
+func (c SMSConfig) SetDefaults(v *viper.Viper) {
 	v.SetDefault("sms.enabled", c.Enabled)
 	v.SetDefault("sms.accessKeyId", c.AccessKeyID)
 	v.SetDefault("sms.accessKeySecret", c.AccessKeySecret)
@@ -50,26 +54,26 @@ func (c SMSConfig) setDefaults(v *viper.Viper) {
 	v.SetDefault("sms.regionId", c.RegionID)
 }
 
-// validate 校验短信配置。
-func (c SMSConfig) validate() error {
+// Validate 校验短信配置。
+func (c SMSConfig) Validate() error {
 	// 关闭时其余项无需校验（同 mail/push）。
 	if !c.Enabled {
 		return nil
 	}
 	if c.AccessKeyID == "" {
-		return errMissing("sms.accessKeyId")
+		return fmt.Errorf("sms.accessKeyId 未配置")
 	}
 	if c.AccessKeySecret == "" {
-		return errMissing("sms.accessKeySecret")
+		return fmt.Errorf("sms.accessKeySecret 未配置")
 	}
 	if c.SignName == "" {
-		return errMissing("sms.signName")
+		return fmt.Errorf("sms.signName 未配置")
 	}
 	if c.TemplateCode == "" {
-		return errMissing("sms.templateCode")
+		return fmt.Errorf("sms.templateCode 未配置")
 	}
 	if c.Endpoint == "" {
-		return errMissing("sms.endpoint")
+		return fmt.Errorf("sms.endpoint 未配置")
 	}
 	return nil
 }

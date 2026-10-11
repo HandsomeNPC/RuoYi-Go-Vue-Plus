@@ -1,8 +1,12 @@
-package config
+package satoken
 
-import "github.com/spf13/viper"
+import (
+	"fmt"
 
-// SAToken sa-token-go 鉴权配置，对应 yaml 的 satoken 段。
+	"github.com/spf13/viper"
+)
+
+// SATokenConfig sa-token-go 鉴权配置，对应 yaml 的 satoken 段。
 //
 // 仅暴露 4 个可配项(token 名、并发登录、共享 token、jwt 密钥)；其余策略
 // (JWT 模式、30 天超时、仅读 Header、auto-renew、键前缀 satoken 等)在
@@ -29,21 +33,21 @@ func DefaultSAToken() SATokenConfig {
 	}
 }
 
-// setDefaults 把默认值铺给 viper。
-func (s SATokenConfig) setDefaults(v *viper.Viper) {
+// SetDefaults 把默认值铺给 viper。
+func (s SATokenConfig) SetDefaults(v *viper.Viper) {
 	v.SetDefault("satoken.tokenName", s.TokenName)
 	v.SetDefault("satoken.isConcurrent", s.IsConcurrent)
 	v.SetDefault("satoken.isShare", s.IsShare)
 	v.SetDefault("satoken.jwtSecretKey", s.JwtSecretKey)
 }
 
-// validate 校验 sa-token 配置。
-func (s SATokenConfig) validate() error {
+// Validate 校验 sa-token 配置。
+func (s SATokenConfig) Validate() error {
 	if s.TokenName == "" {
-		return errMissing("satoken.tokenName")
+		return fmt.Errorf("satoken.tokenName 未配置")
 	}
 	if s.JwtSecretKey == "" {
-		return errMissing("satoken.jwtSecretKey")
+		return fmt.Errorf("satoken.jwtSecretKey 未配置")
 	}
 	return nil
 }

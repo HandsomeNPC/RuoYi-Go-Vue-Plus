@@ -1,6 +1,10 @@
-package config
+package mail
 
-import "github.com/spf13/viper"
+import (
+	"fmt"
+
+	"github.com/spf13/viper"
+)
 
 // 默认 SMTP 参数。
 const (
@@ -40,8 +44,8 @@ func DefaultMail() MailConfig {
 	}
 }
 
-// setDefaults 把默认值铺给 viper。
-func (c MailConfig) setDefaults(v *viper.Viper) {
+// SetDefaults 把默认值铺给 viper。
+func (c MailConfig) SetDefaults(v *viper.Viper) {
 	v.SetDefault("mail.enabled", c.Enabled)
 	v.SetDefault("mail.host", c.Host)
 	v.SetDefault("mail.port", c.Port)
@@ -51,26 +55,26 @@ func (c MailConfig) setDefaults(v *viper.Viper) {
 	v.SetDefault("mail.ssl", c.SSL)
 }
 
-// validate 校验邮件配置。
-func (c MailConfig) validate() error {
+// Validate 校验邮件配置。
+func (c MailConfig) Validate() error {
 	// 关闭时其余项无需校验（同 push）：没开邮件功能不该拦住进程启动。
 	if !c.Enabled {
 		return nil
 	}
 	if c.Host == "" {
-		return errMissing("mail.host")
+		return fmt.Errorf("mail.host 未配置")
 	}
 	if c.Port <= 0 || c.Port > 65535 {
-		return errInvalid("mail.port", "必须是 1-65535 的端口号")
+		return fmt.Errorf("mail.port 必须是 1-65535 的端口号")
 	}
 	if c.From == "" {
-		return errMissing("mail.from")
+		return fmt.Errorf("mail.from 未配置")
 	}
 	if c.User == "" {
-		return errMissing("mail.user")
+		return fmt.Errorf("mail.user 未配置")
 	}
 	if c.Password == "" {
-		return errMissing("mail.password")
+		return fmt.Errorf("mail.password 未配置")
 	}
 	return nil
 }

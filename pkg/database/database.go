@@ -11,12 +11,11 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
 
-	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/repository"
 )
 
 // New 按配置建立数据库连接并完成连接池设置。
-func New(cfg config.DatasourceConfig) (*gorm.DB, error) {
+func New(cfg DatasourceConfig) (*gorm.DB, error) {
 	db, err := gorm.Open(mysql.Open(cfg.DSN()), &gorm.Config{
 		Logger: newLogger(cfg),
 		NamingStrategy: schema.NamingStrategy{
@@ -44,7 +43,7 @@ func New(cfg config.DatasourceConfig) (*gorm.DB, error) {
 }
 
 // setupPool 应用连接池参数。
-func setupPool(db *gorm.DB, cfg config.DatasourceConfig) error {
+func setupPool(db *gorm.DB, cfg DatasourceConfig) error {
 	sqlDB, err := db.DB()
 	if err != nil {
 		return fmt.Errorf("database: 获取底层连接池失败: %w", err)
@@ -98,7 +97,7 @@ var (
 )
 
 // Init 建立连接并设置为包级默认实例。
-func Init(cfg config.DatasourceConfig) {
+func Init(cfg DatasourceConfig) {
 	db, err := New(cfg)
 	if err != nil {
 		panic(fmt.Errorf("database: 初始化失败: %w", err))

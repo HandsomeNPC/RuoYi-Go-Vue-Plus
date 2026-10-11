@@ -20,7 +20,6 @@ import (
 	systemconfig "ruoyi-go-vue-plus/internal/system/config"
 	operlogservice "ruoyi-go-vue-plus/internal/system/service/operlog"
 	"ruoyi-go-vue-plus/pkg/captcha"
-	pkgconfig "ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/database"
 	"ruoyi-go-vue-plus/pkg/encrypt"
 	"ruoyi-go-vue-plus/pkg/mail"
@@ -40,7 +39,6 @@ import (
 func main() {
 	startAt := time.Now()
 	// 单体同进程跑全四模块，各模块 config 都须 Load（各模块 server/router 读各自子集）。
-	// 桥接：首个 Load 即填充 pkg/config 旧全局，供中间件无参包装读取；后续 Load 覆盖同值。
 	path := "configs/standalone.yaml"
 	authconfig.Load(path)
 	systemconfig.Load(path)
@@ -50,35 +48,36 @@ func main() {
 	// 须在首个 c.JSON / 参数绑定之前接管 gin 的 JSON codec(雪花 id 按值转字符串)。
 	jsonx.OverrideGinCodec()
 
-	// 单体读 pkg/config 全局（standalone.yaml 含全部段）拿子配置传各 Init；
-	// 上面四个模块 Load 已各自缓存子集供各模块 server/router 读取。
-	cfg := pkgconfig.Get()
-	database.Init(cfg.Datasource)
+	// 共享子配置（datasource/redis/satoken/snowflake）与 auth 专属（apiEncrypt/user/captcha/social）
+	// 从 auth 子集取；push/mail/sms 从 resource 子集取——standalone.yaml 各段四模块同源。
+	ac := authconfig.Get()
+	rc := resourceconfig.Get()
+	database.Init(ac.Datasource)
 	defer database.CloseDefault()
 
-	redis.Init(cfg.Redis)
+	redis.Init(ac.Redis)
 	defer redis.CloseDefault()
 
-	satoken.Init(cfg.SAToken)
-	encrypt.Init(cfg.APIEncrypt)
+	satoken.Init(ac.SAToken)
+	encrypt.Init(ac.APIEncrypt)
 	// 主键发号器，各业务表主键无 auto_increment，插入前必须就绪。
-	snowflake.Init(cfg.Snowflake)
+	snowflake.Init(ac.Snowflake)
 	// 依赖 redis(验证码存 Redis)，须在 redis.Init 之后。
-	captcha.Init(cfg.Captcha)
+	captcha.Init(ac.Captcha)
 	// 依赖 redis(限流计数存 Redis)，须在 redis.Init 之后。
 	ratelimiter.Init()
 	// 依赖 redis(防重键存 Redis)，须在 redis.Init 之后。
-	repeatsubmit.Init(cfg.SAToken.TokenName)
+	repeatsubmit.Init(ac.SAToken.TokenName)
 	// 验证码的两个发送通道，只依赖 config。未配置时接口返回提示而非报错。
-	mail.Init(cfg.Mail)
-	sms.Init(cfg.SMS)
+	mail.Init(rc.Mail)
+	sms.Init(rc.SMS)
 	// 三方登录，依赖 redis(state 存 Redis)，须在 redis.Init 之后。
-	social.Init(cfg.Social)
+	social.Init(ac.Social)
 	// 操作日志落库实现反向注册给 pkg/oplog(pkg 不依赖 internal/service)，
 	// 依赖 database 与 snowflake。
 	oplog.Init(operlogservice.RecordOper)
 	// 推送会话管理器，依赖 redis(跨实例分发走 Redis 订阅)，须在 redis.Init 之后。
-	push.Init(cfg.Push)
+	push.Init(rc.Push)
 	defer push.Shutdown()
 
 	// OSS 配置预热：把库里的配置写进缓存并确定默认配置键。
@@ -90,15 +89,14 @@ func main() {
 
 	// 单体引擎：全局中间件装配一次，auth/system 各自只注册本模块路由。
 	// standalone 部署保留 /auth、/system 前缀(与前端直连的网关路径一致)。
-	mw := pkgconfig.Get()
 	r := gin.New()
 	r.Use(middleware.Recover())
-	r.Use(middleware.CORSWithConfig(mw.CORS))
-	r.Use(middleware.TraceIDWithConfig(mw.TraceID))
-	r.Use(middleware.RepeatableBodyWithConfig(mw.RepeatableBody))
-	r.Use(middleware.AccessLogWithConfig(mw.AccessLog))
-	r.Use(middleware.XSSWithConfig(mw.XSS))
-	r.Use(middleware.I18nWithConfig(mw.I18n))
+	r.Use(middleware.CORSWithConfig(ac.CORS))
+	r.Use(middleware.TraceIDWithConfig(ac.TraceID))
+	r.Use(middleware.RepeatableBodyWithConfig(ac.RepeatableBody))
+	r.Use(middleware.AccessLogWithConfig(ac.AccessLog))
+	r.Use(middleware.XSSWithConfig(ac.XSS))
+	r.Use(middleware.I18nWithConfig(ac.I18n))
 
 	auth.RegisterRoutes(r, "/auth")
 	system.RegisterRoutes(r, "/system")
@@ -109,7 +107,7 @@ func main() {
 	// monitor 与 system/auth 同构：prefix 传模块名 /monitor，对外即 /monitor/cache。
 	monitor.RegisterRoutes(r, "/monitor")
 
-	serverCfg := pkgconfig.Get().Server
+	serverCfg := ac.Server
 	log.Printf("[%s] 监听 %s (auth + system standalone)", serverCfg.Name, serverCfg.Addr)
 	cost := time.Since(startAt)
 	log.Printf("[standalone] 启动完成，耗时: %s", cost)

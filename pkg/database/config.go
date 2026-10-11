@@ -1,4 +1,4 @@
-package config
+package database
 
 import (
 	"fmt"
@@ -16,7 +16,7 @@ const (
 	LogLevelInfo   = "info"
 )
 
-// Datasource MySQL 数据源配置。
+// DatasourceConfig MySQL 数据源配置，对应 yaml 的 datasource 段。
 type DatasourceConfig struct {
 	Driver          string `mapstructure:"driver"`
 	Host            string `mapstructure:"host"`
@@ -65,28 +65,27 @@ func (d DatasourceConfig) Level() string {
 	return d.LogLevel
 }
 
-// validate 校验数据源配置。
-func (d DatasourceConfig) validate() error {
+// Validate 校验数据源配置。
+func (d DatasourceConfig) Validate() error {
 	if d.Driver != "" && d.Driver != DriverMySQL {
-		return errInvalid("datasource.driver", "仅支持 "+DriverMySQL)
+		return fmt.Errorf("datasource.driver 仅支持 %s", DriverMySQL)
 	}
 	if d.Host == "" {
-		return errMissing("datasource.host")
+		return fmt.Errorf("datasource.host 未配置")
 	}
 	if d.DBName == "" {
-		return errMissing("datasource.dbname")
+		return fmt.Errorf("datasource.dbname 未配置")
 	}
 	if d.Port <= 0 {
-		return errInvalid("datasource.port", "必须大于 0")
+		return fmt.Errorf("datasource.port 必须大于 0")
 	}
 	if d.MaxOpenConns > 0 && d.MaxIdleConns > d.MaxOpenConns {
-		return errInvalid("datasource.maxIdleConns", "不能大于 maxOpenConns")
+		return fmt.Errorf("datasource.maxIdleConns 不能大于 maxOpenConns")
 	}
 	switch d.LogLevel {
 	case "", LogLevelSilent, LogLevelError, LogLevelWarn, LogLevelInfo:
 	default:
-		return errInvalid("datasource.logLevel",
-			"必须为 silent/error/warn/info 之一")
+		return fmt.Errorf("datasource.logLevel 必须为 silent/error/warn/info 之一")
 	}
 	return nil
 }

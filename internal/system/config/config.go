@@ -1,33 +1,103 @@
 // Package config system 进程的配置加载。
 //
-// 桥接期：Load 先调 pkg/config.Load 填充旧全局（中间件无参包装仍读它），
-// 再缓存本模块的子集视图；Get 返回子集。pkg/config 删除后，Load 改为自行 viper 解析。
+// 自行 viper 解析本模块自包含 yaml，按需只解析 system 用到的子配置。
+// 类型由各 owning pkg 提供（redis.RedisConfig / database.DatasourceConfig 等），
+// ServerConfig / UserConfig 为本模块自有。
 package config
 
 import (
+	"fmt"
 	"sync"
+	"time"
+
+	"github.com/spf13/viper"
+
+	"ruoyi-go-vue-plus/pkg/database"
+	"ruoyi-go-vue-plus/pkg/encrypt"
+	"ruoyi-go-vue-plus/pkg/middleware"
+	"ruoyi-go-vue-plus/pkg/push"
+	"ruoyi-go-vue-plus/pkg/redis"
+	"ruoyi-go-vue-plus/pkg/satoken"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
-
-	pkgconfig "ruoyi-go-vue-plus/pkg/config"
 )
+
+// ServerConfig system 进程的服务配置。
+type ServerConfig struct {
+	Name string `mapstructure:"name"` // 模块名
+	Addr string `mapstructure:"addr"` // 监听地址，如 :8080
+}
+
+// Validate 校验服务配置。
+func (s ServerConfig) Validate() error {
+	if s.Addr == "" {
+		return fmt.Errorf("server.addr 未配置")
+	}
+	return nil
+}
+
+// UserConfig 用户相关业务配置，对应 yaml 的 user 段。
+// auth 复用本类型（密码策略两侧须一致）。
+type UserConfig struct {
+	Password UserPassword `mapstructure:"password"`
+}
+
+// UserPassword 密码策略。
+type UserPassword struct {
+	// MaxRetryCount 密码最大错误次数，达到即锁定。
+	MaxRetryCount int `mapstructure:"maxRetryCount"`
+	// LockTime 锁定时长（分钟）。
+	LockTime int `mapstructure:"lockTime"`
+}
+
+// DefaultUser 返回用户默认配置。
+func DefaultUser() UserConfig {
+	return UserConfig{
+		Password: UserPassword{
+			MaxRetryCount: 5,
+			LockTime:      10,
+		},
+	}
+}
+
+// Lock 返回锁定时长。
+func (p UserPassword) Lock() time.Duration {
+	return time.Duration(p.LockTime) * time.Minute
+}
+
+// SetDefaults 把默认值铺给 viper。
+func (u UserConfig) SetDefaults(v *viper.Viper) {
+	v.SetDefault("user.password.maxRetryCount", u.Password.MaxRetryCount)
+	v.SetDefault("user.password.lockTime", u.Password.LockTime)
+}
+
+// Validate 校验用户配置。
+func (u UserConfig) Validate() error {
+	if u.Password.MaxRetryCount <= 0 {
+		return fmt.Errorf("user.password.maxRetryCount 必须大于 0")
+	}
+	if u.Password.LockTime <= 0 {
+		return fmt.Errorf("user.password.lockTime 必须大于 0")
+	}
+	return nil
+}
 
 // Config system 进程用到的配置子集。
 type Config struct {
-	Server         pkgconfig.ServerConfig
-	Snowflake      snowflake.SnowflakeConfig
-	Datasource     pkgconfig.DatasourceConfig
-	Redis          pkgconfig.RedisConfig
-	SAToken        pkgconfig.SATokenConfig
-	CORS           pkgconfig.CORSConfig
-	XSS            pkgconfig.XSSConfig
-	AccessLog      pkgconfig.AccessLogConfig
-	TraceID        pkgconfig.TraceIDConfig
-	RepeatableBody pkgconfig.RepeatableBodyConfig
-	I18n           pkgconfig.I18nConfig
-	APIEncrypt     pkgconfig.APIEncryptConfig
-	User           pkgconfig.UserConfig
-	Push           pkgconfig.PushConfig
+	Server         ServerConfig                    `mapstructure:"server"`
+	Snowflake      snowflake.SnowflakeConfig       `mapstructure:"snowflake"`
+	Datasource     database.DatasourceConfig       `mapstructure:"datasource"`
+	Redis          redis.RedisConfig               `mapstructure:"redis"`
+	SAToken        satoken.SATokenConfig           `mapstructure:"satoken"`
+	CORS           middleware.CORSConfig           `mapstructure:"cors"`
+	XSS            middleware.XSSConfig            `mapstructure:"xss"`
+	AccessLog      middleware.AccessLogConfig      `mapstructure:"accessLog"`
+	TraceID        middleware.TraceIDConfig        `mapstructure:"traceId"`
+	RepeatableBody middleware.RepeatableBodyConfig `mapstructure:"repeatableBody"`
+	I18n           middleware.I18nConfig           `mapstructure:"i18n"`
+	APIEncrypt     encrypt.APIEncryptConfig        `mapstructure:"apiEncrypt"`
+	User           UserConfig                      `mapstructure:"user"`
+	Push           push.PushConfig                 `mapstructure:"push"`
 }
 
 var (
@@ -37,26 +107,52 @@ var (
 
 // Load 读取自包含 yaml 并缓存本模块配置子集。
 func Load(path string) {
-	pkgconfig.Load(path)
-	c := pkgconfig.Get()
-	cfg := &Config{
-		Server:         c.Server,
-		Snowflake:      c.Snowflake,
-		Datasource:     c.Datasource,
-		Redis:          c.Redis,
-		SAToken:        c.SAToken,
-		CORS:           c.CORS,
-		XSS:            c.XSS,
-		AccessLog:      c.AccessLog,
-		TraceID:        c.TraceID,
-		RepeatableBody: c.RepeatableBody,
-		I18n:           c.I18n,
-		APIEncrypt:     c.APIEncrypt,
-		User:           c.User,
-		Push:           c.Push,
+	v := viper.New()
+	v.SetConfigType("yaml")
+	v.SetConfigFile(path)
+
+	satoken.DefaultSAToken().SetDefaults(v)
+	middleware.DefaultCORS().SetDefaults(v)
+	middleware.DefaultXSS().SetDefaults(v)
+	middleware.DefaultAccessLog().SetDefaults(v)
+	middleware.DefaultTraceID().SetDefaults(v)
+	middleware.DefaultRepeatableBody().SetDefaults(v)
+	middleware.DefaultI18n().SetDefaults(v)
+	encrypt.DefaultAPIEncrypt().SetDefaults(v)
+	DefaultUser().SetDefaults(v)
+	push.DefaultPush().SetDefaults(v)
+
+	if err := v.ReadInConfig(); err != nil {
+		panic(fmt.Errorf("system/config: 读取 %s 失败: %w", path, err))
 	}
+
+	var cfg Config
+	if err := v.Unmarshal(&cfg); err != nil {
+		panic(fmt.Errorf("system/config: 解析配置失败: %w", err))
+	}
+
+	for _, fn := range []func() error{
+		cfg.Server.Validate,
+		cfg.Datasource.Validate,
+		cfg.Redis.Validate,
+		cfg.SAToken.Validate,
+		cfg.CORS.Validate,
+		cfg.XSS.Validate,
+		cfg.AccessLog.Validate,
+		cfg.TraceID.Validate,
+		cfg.RepeatableBody.Validate,
+		cfg.I18n.Validate,
+		cfg.APIEncrypt.Validate,
+		cfg.User.Validate,
+		cfg.Push.Validate,
+	} {
+		if err := fn(); err != nil {
+			panic(fmt.Errorf("system/config: %w", err))
+		}
+	}
+
 	mu.Lock()
-	current = cfg
+	current = &cfg
 	mu.Unlock()
 }
 

@@ -9,13 +9,12 @@ import (
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 	"github.com/sa-tokens/sa-token-go/storage/redis"
 
-	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/constant"
 	pkgredis "ruoyi-go-vue-plus/pkg/redis"
 )
 
 // Init 按传入的 SATokenConfig 与包级 Redis 客户端构建全局 sa-token Manager。
-func Init(cfg config.SATokenConfig) {
+func Init(cfg SATokenConfig) {
 	storage := redis.NewStorageFromClient(pkgredis.Client())
 
 	manager := sagin.NewBuilder().

@@ -17,7 +17,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/response"
 )
@@ -36,7 +35,7 @@ type Crypto struct {
 }
 
 // New 解析配置构造 Crypto。!Enabled 时返回 no-op（注解直通）。对照 redis.New。
-func New(cfg config.APIEncryptConfig) (*Crypto, error) {
+func New(cfg APIEncryptConfig) (*Crypto, error) {
 	if !cfg.Enabled {
 		return &Crypto{}, nil
 	}
@@ -66,7 +65,7 @@ var (
 
 // Init 按传入的 APIEncryptConfig 构造并设包级默认实例。
 // 必须在 config.Load 之后调用。密钥解析失败直接 panic（启动期 fail-fast）。
-func Init(cfg config.APIEncryptConfig) {
+func Init(cfg APIEncryptConfig) {
 	crypto, err := New(cfg)
 	if err != nil {
 		panic(fmt.Errorf("encrypt: 初始化失败: %w", err))
