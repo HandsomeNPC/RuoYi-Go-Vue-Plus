@@ -1,4 +1,4 @@
-package dto
+package domain
 
 // PostDTO 岗位简要信息对象。
 type PostDTO struct {

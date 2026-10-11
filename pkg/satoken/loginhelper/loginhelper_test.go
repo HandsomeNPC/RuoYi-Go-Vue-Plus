@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
-	authmodel "ruoyi-go-vue-plus/pkg/model"
+	authmodel "ruoyi-go-vue-plus/pkg/api/system/model"
 )
 
 // TestToSaTokenPerms 超管的 *:*:* 必须换成 *，其余权限码原样透传。

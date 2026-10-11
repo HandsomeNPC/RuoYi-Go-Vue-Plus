@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
-	"ruoyi-go-vue-plus/internal/system/model/dto"
+	domain "ruoyi-go-vue-plus/pkg/api/system/domain"
 )
 
 // TestSupportsMessageBox 只有通用消息与通知公告入盒子，LLM 一概排除。
@@ -14,20 +14,20 @@ import (
 func TestSupportsMessageBox(t *testing.T) {
 	tests := []struct {
 		name    string
-		payload *dto.PushPayloadDTO
+		payload *domain.PushPayloadDTO
 		want    bool
 	}{
 		{"nil", nil, false},
-		{"通用消息", &dto.PushPayloadDTO{
+		{"通用消息", &domain.PushPayloadDTO{
 			Type: constant.PushTypeMessage, Source: constant.PushSourceBackend}, true},
-		{"通知公告", &dto.PushPayloadDTO{
+		{"通知公告", &domain.PushPayloadDTO{
 			Type: constant.PushTypeNotice, Source: constant.PushSourceNotice}, true},
-		{"自定义消息不入盒子", &dto.PushPayloadDTO{
+		{"自定义消息不入盒子", &domain.PushPayloadDTO{
 			Type: constant.PushTypeCustom, Source: constant.PushSourceClient}, false},
-		{"LLM 类型不入盒子", &dto.PushPayloadDTO{
+		{"LLM 类型不入盒子", &domain.PushPayloadDTO{
 			Type: constant.PushTypeLLM, Source: constant.PushSourceLLM}, false},
 		// 类型合法但来源是 LLM：同样排除，否则大模型走 message 类型就绕过了限制。
-		{"LLM 来源不入盒子", &dto.PushPayloadDTO{
+		{"LLM 来源不入盒子", &domain.PushPayloadDTO{
 			Type: constant.PushTypeMessage, Source: constant.PushSourceLLM}, false},
 	}
 	for _, tt := range tests {
@@ -58,7 +58,7 @@ func TestResolveCategory(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			payload := &dto.PushPayloadDTO{Type: tt.typ, Source: tt.source}
+			payload := &domain.PushPayloadDTO{Type: tt.typ, Source: tt.source}
 			if got := resolveCategory(payload); got != tt.wantCategory {
 				t.Errorf("resolveCategory() = %q, 期望 %q", got, tt.wantCategory)
 			}
@@ -98,7 +98,7 @@ func TestResolveContent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := resolveContent(&dto.PushPayloadDTO{Data: tt.data})
+			got := resolveContent(&domain.PushPayloadDTO{Data: tt.data})
 			if got != tt.want {
 				t.Errorf("resolveContent() = %q, 期望 %q", got, tt.want)
 			}

@@ -10,9 +10,9 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model"
-	"ruoyi-go-vue-plus/internal/system/model/dto"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	messagerepository "ruoyi-go-vue-plus/internal/system/repository/message"
+	domain "ruoyi-go-vue-plus/pkg/api/system/domain"
 	"ruoyi-go-vue-plus/pkg/push"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/jsonx"
@@ -95,13 +95,13 @@ func parseMessageData(dataJSON string) any {
 }
 
 // PublishAll 广播消息给全部用户：先落消息盒子再推送。
-func PublishAll(ctx context.Context, payload *dto.PushPayloadDTO) error {
+func PublishAll(ctx context.Context, payload *domain.PushPayloadDTO) error {
 	return publish(ctx, nil, payload)
 }
 
 // PublishUsers 发布消息给指定用户。
 func PublishUsers(ctx context.Context, userIDs []int64,
-	payload *dto.PushPayloadDTO) error {
+	payload *domain.PushPayloadDTO) error {
 
 	return publish(ctx, userIDs, payload)
 }
@@ -111,7 +111,7 @@ func PublishUsers(ctx context.Context, userIDs []int64,
 // 落库失败要上抛：消息盒子查不到就等于消息丢了。推送失败只记日志——
 // 消息已经进盒子，用户下次打开就能看到，不值得让调用方（如公告新增）整体失败。
 func publish(ctx context.Context, userIDs []int64,
-	payload *dto.PushPayloadDTO) error {
+	payload *domain.PushPayloadDTO) error {
 
 	if payload == nil {
 		return nil
@@ -128,7 +128,7 @@ func publish(ctx context.Context, userIDs []int64,
 // storeMessage 把消息写进消息盒子，并回填 payload.MessageID。
 // 不入盒子的类型（如 LLM 流式消息）直接跳过。
 func storeMessage(ctx context.Context, userIDs []int64,
-	payload *dto.PushPayloadDTO) error {
+	payload *domain.PushPayloadDTO) error {
 
 	if !supportsMessageBox(payload) {
 		return nil
@@ -144,7 +144,7 @@ func storeMessage(ctx context.Context, userIDs []int64,
 }
 
 // buildMessage 组装消息实体。
-func buildMessage(userIDs []int64, payload *dto.PushPayloadDTO) *model.SysMessage {
+func buildMessage(userIDs []int64, payload *domain.PushPayloadDTO) *model.SysMessage {
 	messageID := payload.MessageID
 	// 调用方已指定则沿用，否则发号。
 	if messageID == 0 {
@@ -195,7 +195,7 @@ func joinSendUserIDs(userIDs []int64) string {
 // supportsMessageBox 判断该消息是否需要入消息盒子。
 // 只有通用消息与通知公告入盒子，且排除大模型消息——LLM 是逐字流式下发的，
 // 每个片段都存一条会瞬间把表写满。
-func supportsMessageBox(payload *dto.PushPayloadDTO) bool {
+func supportsMessageBox(payload *domain.PushPayloadDTO) bool {
 	if payload == nil {
 		return false
 	}
@@ -206,7 +206,7 @@ func supportsMessageBox(payload *dto.PushPayloadDTO) bool {
 }
 
 // resolveCategory 按类型/来源推断消息分类。
-func resolveCategory(payload *dto.PushPayloadDTO) string {
+func resolveCategory(payload *domain.PushPayloadDTO) string {
 	switch {
 	case payload.Type == constant.PushTypeNotice || payload.Source == constant.PushSourceNotice:
 		return constant.MessageCategoryNotice
@@ -218,7 +218,7 @@ func resolveCategory(payload *dto.PushPayloadDTO) string {
 }
 
 // resolveTitle 按分类生成标题。
-func resolveTitle(payload *dto.PushPayloadDTO) string {
+func resolveTitle(payload *domain.PushPayloadDTO) string {
 	switch resolveCategory(payload) {
 	case constant.MessageCategoryNotice:
 		return titleNotice
@@ -231,7 +231,7 @@ func resolveTitle(payload *dto.PushPayloadDTO) string {
 
 // resolveContent 从扩展数据里取详细内容。
 // 只认 map 形态的 data 里的 noticeContent 键，其余情况留空。
-func resolveContent(payload *dto.PushPayloadDTO) string {
+func resolveContent(payload *domain.PushPayloadDTO) string {
 	data, ok := payload.Data.(map[string]any)
 	if !ok {
 		return ""

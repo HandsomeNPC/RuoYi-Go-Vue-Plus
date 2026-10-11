@@ -3,52 +3,55 @@
 
 package dto
 
-import vo "ruoyi-go-vue-plus/internal/system/model/vo"
+import (
+	vo "ruoyi-go-vue-plus/internal/system/model/vo"
+	domain "ruoyi-go-vue-plus/pkg/api/system/domain"
+)
 
 type ConverterImpl struct{}
 
-func (c *ConverterImpl) ConvertToPostDTO(source *vo.SysPostVo) *PostDTO {
-	var pDtoPostDTO *PostDTO
+func (c *ConverterImpl) ConvertToPostDTO(source *vo.SysPostVo) *domain.PostDTO {
+	var pDomainPostDTO *domain.PostDTO
 	if source != nil {
-		var dtoPostDTO PostDTO
-		dtoPostDTO.PostID = (*source).PostID
-		dtoPostDTO.DeptID = (*source).DeptID
-		dtoPostDTO.PostCode = (*source).PostCode
-		dtoPostDTO.PostName = (*source).PostName
-		dtoPostDTO.PostCategory = (*source).PostCategory
-		pDtoPostDTO = &dtoPostDTO
+		var domainPostDTO domain.PostDTO
+		domainPostDTO.PostID = (*source).PostID
+		domainPostDTO.DeptID = (*source).DeptID
+		domainPostDTO.PostCode = (*source).PostCode
+		domainPostDTO.PostName = (*source).PostName
+		domainPostDTO.PostCategory = (*source).PostCategory
+		pDomainPostDTO = &domainPostDTO
 	}
-	return pDtoPostDTO
+	return pDomainPostDTO
 }
-func (c *ConverterImpl) ConvertToPostDTOList(source []*vo.SysPostVo) []*PostDTO {
-	var pDtoPostDTOList []*PostDTO
+func (c *ConverterImpl) ConvertToPostDTOList(source []*vo.SysPostVo) []*domain.PostDTO {
+	var pDomainPostDTOList []*domain.PostDTO
 	if source != nil {
-		pDtoPostDTOList = make([]*PostDTO, len(source))
+		pDomainPostDTOList = make([]*domain.PostDTO, len(source))
 		for i := 0; i < len(source); i++ {
-			pDtoPostDTOList[i] = c.ConvertToPostDTO(source[i])
+			pDomainPostDTOList[i] = c.ConvertToPostDTO(source[i])
 		}
 	}
-	return pDtoPostDTOList
+	return pDomainPostDTOList
 }
-func (c *ConverterImpl) ConvertToRoleDTO(source *vo.SysRoleVo) *RoleDTO {
-	var pDtoRoleDTO *RoleDTO
+func (c *ConverterImpl) ConvertToRoleDTO(source *vo.SysRoleVo) *domain.RoleDTO {
+	var pDomainRoleDTO *domain.RoleDTO
 	if source != nil {
-		var dtoRoleDTO RoleDTO
-		dtoRoleDTO.RoleID = (*source).RoleID
-		dtoRoleDTO.RoleName = (*source).RoleName
-		dtoRoleDTO.RoleKey = (*source).RoleKey
-		dtoRoleDTO.DataScope = (*source).DataScope
-		pDtoRoleDTO = &dtoRoleDTO
+		var domainRoleDTO domain.RoleDTO
+		domainRoleDTO.RoleID = (*source).RoleID
+		domainRoleDTO.RoleName = (*source).RoleName
+		domainRoleDTO.RoleKey = (*source).RoleKey
+		domainRoleDTO.DataScope = (*source).DataScope
+		pDomainRoleDTO = &domainRoleDTO
 	}
-	return pDtoRoleDTO
+	return pDomainRoleDTO
 }
-func (c *ConverterImpl) ConvertToRoleDTOList(source []*vo.SysRoleVo) []*RoleDTO {
-	var pDtoRoleDTOList []*RoleDTO
+func (c *ConverterImpl) ConvertToRoleDTOList(source []*vo.SysRoleVo) []*domain.RoleDTO {
+	var pDomainRoleDTOList []*domain.RoleDTO
 	if source != nil {
-		pDtoRoleDTOList = make([]*RoleDTO, len(source))
+		pDomainRoleDTOList = make([]*domain.RoleDTO, len(source))
 		for i := 0; i < len(source); i++ {
-			pDtoRoleDTOList[i] = c.ConvertToRoleDTO(source[i])
+			pDomainRoleDTOList[i] = c.ConvertToRoleDTO(source[i])
 		}
 	}
-	return pDtoRoleDTOList
+	return pDomainRoleDTOList
 }

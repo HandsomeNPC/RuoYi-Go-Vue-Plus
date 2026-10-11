@@ -6,7 +6,7 @@
 package push
 
 import (
-	systemdto "ruoyi-go-vue-plus/internal/system/model/dto"
+	domain "ruoyi-go-vue-plus/pkg/api/system/domain"
 )
 
 // PushDTO 一次推送的目标与载荷。
@@ -16,15 +16,15 @@ type PushDTO struct {
 	// （nil 表示广播）。
 	UserIDs []int64 `json:"userIds"`
 	// Payload 推送消息体。
-	Payload *systemdto.PushPayloadDTO `json:"payload"`
+	Payload *domain.PushPayloadDTO `json:"payload"`
 }
 
 // ToUsers 构建指定用户的推送。
-func ToUsers(userIDs []int64, payload *systemdto.PushPayloadDTO) PushDTO {
+func ToUsers(userIDs []int64, payload *domain.PushPayloadDTO) PushDTO {
 	return PushDTO{UserIDs: userIDs, Payload: payload}
 }
 
 // Broadcast 构建广播推送。
-func Broadcast(payload *systemdto.PushPayloadDTO) PushDTO {
+func Broadcast(payload *domain.PushPayloadDTO) PushDTO {
 	return PushDTO{Payload: payload}
 }

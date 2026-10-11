@@ -9,12 +9,12 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
-	"ruoyi-go-vue-plus/internal/system/model/dto"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	noticerepository "ruoyi-go-vue-plus/internal/system/repository/notice"
 	"ruoyi-go-vue-plus/internal/system/repository/user"
 	dicttypeservice "ruoyi-go-vue-plus/internal/system/service/dicttype"
 	messageservice "ruoyi-go-vue-plus/internal/system/service/message"
+	domain "ruoyi-go-vue-plus/pkg/api/system/domain"
 	"ruoyi-go-vue-plus/pkg/cache"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
@@ -179,7 +179,7 @@ func broadcastNotice(ctx context.Context, b *bo.SysNoticeBo) {
 		"noticeContent":   b.NoticeContent,
 		"status":          b.Status,
 	}
-	payload := dto.NewPushPayloadWithPath(
+	payload := domain.NewPushPayloadWithPath(
 		constant.PushTypeNotice,
 		constant.PushSourceNotice,
 		"["+label+"] "+b.NoticeTitle,

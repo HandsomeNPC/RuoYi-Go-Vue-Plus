@@ -1,11 +1,11 @@
-// Package model 跨模块复用的领域模型。
+// Package model 跨模块复用的登录上下文与登录入参，对应 Java ruoyi-api/system/api/model。
 package model
 
 import (
 	"errors"
 	"strconv"
 
-	systemdto "ruoyi-go-vue-plus/internal/system/model/dto"
+	"ruoyi-go-vue-plus/pkg/api/system/domain"
 )
 
 // LoginUser 登录用户上下文对象，保存当前会话的身份、权限和终端信息。
@@ -43,11 +43,11 @@ type LoginUser struct {
 	// Nickname 用户昵称。
 	Nickname string `json:"nickname"`
 	// Roles 角色对象。
-	Roles []*systemdto.RoleDTO `json:"roles"`
+	Roles []*domain.RoleDTO `json:"roles"`
 	// DataScopeRoleMap 数据权限角色映射，key 为权限码，value 为可参与数据权限计算的角色ID列表。
 	DataScopeRoleMap map[string][]int64 `json:"dataScopeRoleMap"`
 	// Posts 岗位对象。
-	Posts []*systemdto.PostDTO `json:"posts"`
+	Posts []*domain.PostDTO `json:"posts"`
 	// RoleID 数据权限当前角色ID。
 	RoleID int64 `json:"roleId"`
 	// ClientKey 客户端。

@@ -1,4 +1,7 @@
-package dto
+// Package domain 跨模块共享的领域 DTO，对应 Java ruoyi-api/system/api/domain。
+//
+// 纯基本类型，零 internal 依赖，作为最底层共享层被 internal/* 与 pkg/* 双向引用。
+package domain
 
 // RoleDTO 角色简要信息对象。
 type RoleDTO struct {

@@ -1,4 +1,4 @@
-package dto
+package domain
 
 // DeptDTO 部门简要信息对象。
 type DeptDTO struct {

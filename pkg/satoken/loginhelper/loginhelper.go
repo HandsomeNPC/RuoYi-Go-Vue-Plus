@@ -11,8 +11,8 @@ import (
 	"github.com/sa-tokens/sa-token-go/stputil"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
+	authmodel "ruoyi-go-vue-plus/pkg/api/system/model"
 	"ruoyi-go-vue-plus/pkg/enum"
-	authmodel "ruoyi-go-vue-plus/pkg/model"
 )
 
 // LoginUserKey token session 中 *LoginUser 的键。

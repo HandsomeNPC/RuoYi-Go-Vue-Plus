@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
-	systemdto "ruoyi-go-vue-plus/internal/system/model/dto"
 	menuservice "ruoyi-go-vue-plus/internal/system/service/menu"
 	roleservice "ruoyi-go-vue-plus/internal/system/service/role"
+	domain "ruoyi-go-vue-plus/pkg/api/system/domain"
 )
 
 // GetRolePermission 获取角色权限标识。
@@ -30,7 +30,7 @@ func GetMenuPermission(ctx context.Context, userID int64) ([]string, error) {
 // GetDataScopeRoleMap 按权限标识汇总具备数据权限的角色集合。
 // key 为权限标识，value 为拥有该权限的角色ID列表。
 func GetDataScopeRoleMap(ctx context.Context,
-	roles []*systemdto.RoleDTO) (map[string][]int64, error) {
+	roles []*domain.RoleDTO) (map[string][]int64, error) {
 	if len(roles) == 0 {
 		return map[string][]int64{}, nil
 	}

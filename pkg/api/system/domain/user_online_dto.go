@@ -1,4 +1,4 @@
-package dto
+package domain
 
 // UserOnlineDTO 当前在线会话信息对象。
 type UserOnlineDTO struct {

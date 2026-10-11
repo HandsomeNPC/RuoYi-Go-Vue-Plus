@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
-	systemdto "ruoyi-go-vue-plus/internal/system/model/dto"
+	domain "ruoyi-go-vue-plus/pkg/api/system/domain"
 	pkgredis "ruoyi-go-vue-plus/pkg/redis"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/jsonx"
@@ -118,13 +118,13 @@ func Publish(ctx context.Context, dto PushDTO) error {
 }
 
 // PublishAll 广播给全部在线用户。
-func PublishAll(ctx context.Context, payload *systemdto.PushPayloadDTO) error {
+func PublishAll(ctx context.Context, payload *domain.PushPayloadDTO) error {
 	return Publish(ctx, Broadcast(payload))
 }
 
 // PublishUsers 发布给指定用户。
 func PublishUsers(ctx context.Context, userIDs []int64,
-	payload *systemdto.PushPayloadDTO) error {
+	payload *domain.PushPayloadDTO) error {
 
 	return Publish(ctx, ToUsers(userIDs, payload))
 }

@@ -23,10 +23,11 @@ import (
 	postservice "ruoyi-go-vue-plus/internal/system/service/post"
 	roleservice "ruoyi-go-vue-plus/internal/system/service/role"
 	socialservice "ruoyi-go-vue-plus/internal/system/service/social"
+	domain "ruoyi-go-vue-plus/pkg/api/system/domain"
+	authmodel "ruoyi-go-vue-plus/pkg/api/system/model"
 	"ruoyi-go-vue-plus/pkg/enum"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/i18n"
-	authmodel "ruoyi-go-vue-plus/pkg/model"
 	"ruoyi-go-vue-plus/pkg/redis"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 	"ruoyi-go-vue-plus/pkg/social"
@@ -166,7 +167,7 @@ func RecordOnlineUser(lu *authmodel.LoginUser, token string) {
 	if lu == nil || token == "" {
 		return
 	}
-	dto := systemdto.UserOnlineDTO{
+	dto := domain.UserOnlineDTO{
 		TokenID:       token,
 		DeptName:      lu.DeptName,
 		UserName:      lu.Username,

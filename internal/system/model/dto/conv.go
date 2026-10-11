@@ -2,6 +2,7 @@ package dto
 
 import (
 	systemvo "ruoyi-go-vue-plus/internal/system/model/vo"
+	"ruoyi-go-vue-plus/pkg/api/system/domain"
 )
 
 // goverter 生成 VO→DTO 转换器，替代手写逐字段拷贝。
@@ -20,9 +21,9 @@ import (
 //goverter:ignoreMissing yes
 //goverter:skipCopySameType yes
 type Converter interface {
-	ConvertToRoleDTO(r *systemvo.SysRoleVo) *RoleDTO
-	ConvertToRoleDTOList(in []*systemvo.SysRoleVo) []*RoleDTO
+	ConvertToRoleDTO(r *systemvo.SysRoleVo) *domain.RoleDTO
+	ConvertToRoleDTOList(in []*systemvo.SysRoleVo) []*domain.RoleDTO
 
-	ConvertToPostDTO(p *systemvo.SysPostVo) *PostDTO
-	ConvertToPostDTOList(in []*systemvo.SysPostVo) []*PostDTO
+	ConvertToPostDTO(p *systemvo.SysPostVo) *domain.PostDTO
+	ConvertToPostDTOList(in []*systemvo.SysPostVo) []*domain.PostDTO
 }
