@@ -5,14 +5,14 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/cache"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
+	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	configrepository "ruoyi-go-vue-plus/internal/system/repository/config"
-	"ruoyi-go-vue-plus/pkg/cache"
-	"ruoyi-go-vue-plus/pkg/errs"
-	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
 var ErrConfigNotFound = errors.New("service: 参数配置不存在")

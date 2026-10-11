@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
-	domain "ruoyi-go-vue-plus/pkg/api/system/domain"
+	domain "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/domain"
 )
 
 // TestSupportsMessageBox 只有通用消息与通知公告入盒子，LLM 一概排除。

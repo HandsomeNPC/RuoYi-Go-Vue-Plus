@@ -10,11 +10,11 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
-	"ruoyi-go-vue-plus/pkg/i18n"
-	"ruoyi-go-vue-plus/pkg/mail"
-	pkgredis "ruoyi-go-vue-plus/pkg/redis"
-	"ruoyi-go-vue-plus/pkg/response"
-	"ruoyi-go-vue-plus/pkg/sms"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/i18n"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/mail"
+	pkgredis "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/sms"
 )
 
 // codeExpiration 验证码有效期。

@@ -6,17 +6,17 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/cache"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	deptrepository "ruoyi-go-vue-plus/internal/system/repository/dept"
 	"ruoyi-go-vue-plus/internal/system/repository/post"
 	"ruoyi-go-vue-plus/internal/system/repository/user"
-	"ruoyi-go-vue-plus/pkg/cache"
-	"ruoyi-go-vue-plus/pkg/errs"
-	"ruoyi-go-vue-plus/pkg/response"
-	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/treeutil"
 )

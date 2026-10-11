@@ -5,9 +5,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
 	socialservice "ruoyi-go-vue-plus/internal/system/service/social"
-	"ruoyi-go-vue-plus/pkg/response"
-	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 )
 
 // SocialApi 社会化关系接口。

@@ -5,10 +5,10 @@ import (
 	"context"
 	"strings"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
+	pkgredis "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
 	"ruoyi-go-vue-plus/internal/monitor/model/vo"
-	"ruoyi-go-vue-plus/pkg/errs"
-	pkgredis "ruoyi-go-vue-plus/pkg/redis"
-	"ruoyi-go-vue-plus/pkg/response"
 )
 
 // GetInfo 取 Redis 服务信息、库大小与命令统计饼图数据。

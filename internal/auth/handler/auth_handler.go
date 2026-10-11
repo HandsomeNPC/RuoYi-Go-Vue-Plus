@@ -11,18 +11,18 @@ import (
 	"github.com/gin-gonic/gin/binding"
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/captcha"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/i18n"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/social"
 	"ruoyi-go-vue-plus/internal/auth/model"
 	authservice "ruoyi-go-vue-plus/internal/auth/service/auth"
 	sysloginservice "ruoyi-go-vue-plus/internal/auth/service/syslogin"
 	clientservice "ruoyi-go-vue-plus/internal/system/service/client"
 	socialservice "ruoyi-go-vue-plus/internal/system/service/social"
-	"ruoyi-go-vue-plus/pkg/captcha"
-	"ruoyi-go-vue-plus/pkg/errs"
-	"ruoyi-go-vue-plus/pkg/i18n"
-	"ruoyi-go-vue-plus/pkg/response"
-	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
-	"ruoyi-go-vue-plus/pkg/social"
 )
 
 // AuthApi 认证接口。

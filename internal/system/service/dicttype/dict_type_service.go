@@ -5,15 +5,15 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/cache"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
+	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	"ruoyi-go-vue-plus/internal/system/repository/dictdata"
 	dicttyperepository "ruoyi-go-vue-plus/internal/system/repository/dicttype"
-	"ruoyi-go-vue-plus/pkg/cache"
-	"ruoyi-go-vue-plus/pkg/errs"
-	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
 var ErrDictTypeNotFound = errors.New("service: 字典类型不存在")

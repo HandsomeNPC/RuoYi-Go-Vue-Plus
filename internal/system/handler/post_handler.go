@@ -9,13 +9,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/excel"
+	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	deptservice "ruoyi-go-vue-plus/internal/system/service/dept"
 	postservice "ruoyi-go-vue-plus/internal/system/service/post"
-	"ruoyi-go-vue-plus/pkg/errs"
-	"ruoyi-go-vue-plus/pkg/excel"
-	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
-	"ruoyi-go-vue-plus/pkg/response"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/strutil"
 )

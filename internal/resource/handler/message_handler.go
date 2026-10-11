@@ -5,10 +5,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
 	messageservice "ruoyi-go-vue-plus/internal/system/service/message"
-	"ruoyi-go-vue-plus/pkg/errs"
-	"ruoyi-go-vue-plus/pkg/response"
-	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 )
 
 // MessageApi 消息记录接口。

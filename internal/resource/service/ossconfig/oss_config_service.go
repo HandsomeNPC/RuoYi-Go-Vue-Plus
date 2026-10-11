@@ -6,16 +6,16 @@ import (
 	"log"
 	"strconv"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/cache"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oss"
+	pkgredis "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
+	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/resource/model/bo"
 	"ruoyi-go-vue-plus/internal/resource/model/vo"
 	ossconfigrepository "ruoyi-go-vue-plus/internal/resource/repository/ossconfig"
-	"ruoyi-go-vue-plus/pkg/cache"
-	"ruoyi-go-vue-plus/pkg/errs"
-	"ruoyi-go-vue-plus/pkg/oss"
-	pkgredis "ruoyi-go-vue-plus/pkg/redis"
-	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
 var ErrOssConfigNotFound = errors.New("service: 对象存储配置不存在")

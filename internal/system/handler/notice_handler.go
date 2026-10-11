@@ -7,11 +7,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
+	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	noticeservice "ruoyi-go-vue-plus/internal/system/service/notice"
-	"ruoyi-go-vue-plus/pkg/errs"
-	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
-	"ruoyi-go-vue-plus/pkg/response"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/strutil"
 )

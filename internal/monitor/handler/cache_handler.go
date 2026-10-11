@@ -6,8 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
 	cacheservice "ruoyi-go-vue-plus/internal/monitor/service/cache"
-	"ruoyi-go-vue-plus/pkg/response"
 )
 
 // CacheApi 缓存监控接口。

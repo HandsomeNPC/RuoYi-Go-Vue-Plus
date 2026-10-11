@@ -7,13 +7,13 @@ import (
 	"github.com/gin-gonic/gin"
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/encrypt"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/ratelimiter"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
 	authconfig "ruoyi-go-vue-plus/internal/auth/config"
 	"ruoyi-go-vue-plus/internal/auth/handler"
-	"ruoyi-go-vue-plus/pkg/encrypt"
-	"ruoyi-go-vue-plus/pkg/middleware"
-	"ruoyi-go-vue-plus/pkg/ratelimiter"
-	"ruoyi-go-vue-plus/pkg/satoken"
-	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 )
 
 func RegisterRoutes(r *gin.Engine, prefix string) {

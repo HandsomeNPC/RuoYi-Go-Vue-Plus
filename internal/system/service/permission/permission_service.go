@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
+	domain "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/domain"
 	menuservice "ruoyi-go-vue-plus/internal/system/service/menu"
 	roleservice "ruoyi-go-vue-plus/internal/system/service/role"
-	domain "ruoyi-go-vue-plus/pkg/api/system/domain"
 )
 
 // GetRolePermission 获取角色权限标识。

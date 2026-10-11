@@ -9,10 +9,10 @@ import (
 
 	"github.com/spf13/viper"
 
-	"ruoyi-go-vue-plus/pkg/database"
-	"ruoyi-go-vue-plus/pkg/middleware"
-	"ruoyi-go-vue-plus/pkg/redis"
-	"ruoyi-go-vue-plus/pkg/satoken"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/database"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 )

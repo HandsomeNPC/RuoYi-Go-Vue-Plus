@@ -1,8 +1,8 @@
 package dto
 
 import (
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/domain"
 	systemvo "ruoyi-go-vue-plus/internal/system/model/vo"
-	"ruoyi-go-vue-plus/pkg/api/system/domain"
 )
 
 // goverter 生成 VO→DTO 转换器，替代手写逐字段拷贝。

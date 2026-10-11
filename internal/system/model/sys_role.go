@@ -1,6 +1,6 @@
 package model
 
-import "ruoyi-go-vue-plus/pkg/repository"
+import "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 
 // SysRole 角色表（sys_role）。
 type SysRole struct {

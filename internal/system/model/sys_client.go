@@ -1,6 +1,6 @@
 package model
 
-import "ruoyi-go-vue-plus/pkg/repository"
+import "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 
 // SysClient 系统授权表。纯 POJO，规则串的切分/归一化逻辑在 service 层。
 type SysClient struct {

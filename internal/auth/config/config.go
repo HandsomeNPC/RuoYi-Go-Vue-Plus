@@ -10,14 +10,14 @@ import (
 
 	"github.com/spf13/viper"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/captcha"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/database"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/encrypt"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/social"
 	systemconfig "ruoyi-go-vue-plus/internal/system/config"
-	"ruoyi-go-vue-plus/pkg/captcha"
-	"ruoyi-go-vue-plus/pkg/database"
-	"ruoyi-go-vue-plus/pkg/encrypt"
-	"ruoyi-go-vue-plus/pkg/middleware"
-	"ruoyi-go-vue-plus/pkg/redis"
-	"ruoyi-go-vue-plus/pkg/satoken"
-	"ruoyi-go-vue-plus/pkg/social"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 )

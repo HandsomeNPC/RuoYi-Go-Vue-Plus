@@ -9,11 +9,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	deptservice "ruoyi-go-vue-plus/internal/system/service/dept"
-	"ruoyi-go-vue-plus/pkg/errs"
-	"ruoyi-go-vue-plus/pkg/response"
-	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/strutil"
 )

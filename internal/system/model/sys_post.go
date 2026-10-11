@@ -1,6 +1,6 @@
 package model
 
-import "ruoyi-go-vue-plus/pkg/repository"
+import "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 
 // SysPost 岗位表（sys_post）。
 type SysPost struct {

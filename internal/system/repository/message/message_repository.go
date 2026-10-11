@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/database"
 	"ruoyi-go-vue-plus/internal/system/model"
-	"ruoyi-go-vue-plus/pkg/database"
 )
 
 // Insert 插入一条消息记录。

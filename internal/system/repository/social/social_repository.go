@@ -7,8 +7,8 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/database"
 	"ruoyi-go-vue-plus/internal/system/model"
-	"ruoyi-go-vue-plus/pkg/database"
 )
 
 var ErrSocialNotFound = errors.New("repository: 社会化关系不存在")

@@ -7,15 +7,15 @@ import (
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/encrypt"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repeatsubmit"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
 	systemconfig "ruoyi-go-vue-plus/internal/system/config"
 	"ruoyi-go-vue-plus/internal/system/handler"
-	"ruoyi-go-vue-plus/pkg/encrypt"
-	"ruoyi-go-vue-plus/pkg/enum"
-	"ruoyi-go-vue-plus/pkg/middleware"
-	"ruoyi-go-vue-plus/pkg/oplog"
-	"ruoyi-go-vue-plus/pkg/repeatsubmit"
-	"ruoyi-go-vue-plus/pkg/satoken"
-	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 )
 
 const clientLogTitle = "客户端管理"

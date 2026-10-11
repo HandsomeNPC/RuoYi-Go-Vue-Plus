@@ -4,8 +4,8 @@
 package dto
 
 import (
+	domain "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/domain"
 	vo "ruoyi-go-vue-plus/internal/system/model/vo"
-	domain "ruoyi-go-vue-plus/pkg/api/system/domain"
 )
 
 type ConverterImpl struct{}

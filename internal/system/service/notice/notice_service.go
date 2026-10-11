@@ -6,7 +6,10 @@ import (
 	"log"
 	"strconv"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/cache"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
+	domain "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/domain"
+	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
@@ -14,9 +17,6 @@ import (
 	"ruoyi-go-vue-plus/internal/system/repository/user"
 	dicttypeservice "ruoyi-go-vue-plus/internal/system/service/dicttype"
 	messageservice "ruoyi-go-vue-plus/internal/system/service/message"
-	domain "ruoyi-go-vue-plus/pkg/api/system/domain"
-	"ruoyi-go-vue-plus/pkg/cache"
-	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
 var ErrNoticeNotFound = errors.New("service: 通知公告不存在")

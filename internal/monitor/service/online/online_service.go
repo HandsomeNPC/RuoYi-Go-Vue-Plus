@@ -11,10 +11,10 @@ import (
 	"github.com/sa-tokens/sa-token-go/stputil"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
+	pkgredis "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
 	"ruoyi-go-vue-plus/internal/system/model"
-	"ruoyi-go-vue-plus/pkg/errs"
-	pkgredis "ruoyi-go-vue-plus/pkg/redis"
-	"ruoyi-go-vue-plus/pkg/response"
 )
 
 // List 取所有未失效的在线会话，并按 IP/用户名过滤。

@@ -3,7 +3,7 @@ package model
 import (
 	"time"
 
-	"ruoyi-go-vue-plus/pkg/repository"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 )
 
 // SysUser 用户信息表。

@@ -7,13 +7,13 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/cache"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
+	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	clientrepository "ruoyi-go-vue-plus/internal/system/repository/client"
-	"ruoyi-go-vue-plus/pkg/cache"
-	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 )

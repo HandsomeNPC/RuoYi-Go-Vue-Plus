@@ -8,15 +8,15 @@
 package main
 
 import (
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/database"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repeatsubmit"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/monitor"
 	monitorconfig "ruoyi-go-vue-plus/internal/monitor/config"
 	operlogservice "ruoyi-go-vue-plus/internal/system/service/operlog"
-	"ruoyi-go-vue-plus/pkg/database"
-	"ruoyi-go-vue-plus/pkg/oplog"
-	"ruoyi-go-vue-plus/pkg/redis"
-	"ruoyi-go-vue-plus/pkg/repeatsubmit"
-	"ruoyi-go-vue-plus/pkg/satoken"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/jsonx"
 )

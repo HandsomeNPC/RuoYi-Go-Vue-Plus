@@ -1,19 +1,19 @@
 package main
 
 import (
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/captcha"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/database"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/encrypt"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/ratelimiter"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repeatsubmit"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/social"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/auth"
 	authconfig "ruoyi-go-vue-plus/internal/auth/config"
 	operlogservice "ruoyi-go-vue-plus/internal/system/service/operlog"
-	"ruoyi-go-vue-plus/pkg/captcha"
-	"ruoyi-go-vue-plus/pkg/database"
-	"ruoyi-go-vue-plus/pkg/encrypt"
-	"ruoyi-go-vue-plus/pkg/oplog"
-	"ruoyi-go-vue-plus/pkg/ratelimiter"
-	"ruoyi-go-vue-plus/pkg/redis"
-	"ruoyi-go-vue-plus/pkg/repeatsubmit"
-	"ruoyi-go-vue-plus/pkg/satoken"
-	"ruoyi-go-vue-plus/pkg/social"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/jsonx"
 )

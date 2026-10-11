@@ -12,19 +12,19 @@ import (
 	goredis "github.com/redis/go-redis/v9"
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/captcha"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/i18n"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
 	authmodel "ruoyi-go-vue-plus/internal/auth/model"
 	authvo "ruoyi-go-vue-plus/internal/auth/model/vo"
 	sysloginservice "ruoyi-go-vue-plus/internal/auth/service/syslogin"
 	systemvo "ruoyi-go-vue-plus/internal/system/model/vo"
 	userservice "ruoyi-go-vue-plus/internal/system/service/user"
-	"ruoyi-go-vue-plus/pkg/captcha"
-	"ruoyi-go-vue-plus/pkg/enum"
-	"ruoyi-go-vue-plus/pkg/errs"
-	"ruoyi-go-vue-plus/pkg/i18n"
-	"ruoyi-go-vue-plus/pkg/redis"
-	"ruoyi-go-vue-plus/pkg/response"
-	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 )
 
 // passwordAuthStrategy 密码认证策略。

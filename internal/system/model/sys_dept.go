@@ -1,6 +1,6 @@
 package model
 
-import "ruoyi-go-vue-plus/pkg/repository"
+import "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 
 // SysDept 部门表（sys_dept）。
 type SysDept struct {

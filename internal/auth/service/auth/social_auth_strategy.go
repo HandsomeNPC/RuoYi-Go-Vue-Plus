@@ -8,17 +8,17 @@ import (
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/i18n"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/social"
 	authmodel "ruoyi-go-vue-plus/internal/auth/model"
 	authvo "ruoyi-go-vue-plus/internal/auth/model/vo"
 	sysloginservice "ruoyi-go-vue-plus/internal/auth/service/syslogin"
 	systemvo "ruoyi-go-vue-plus/internal/system/model/vo"
 	socialservice "ruoyi-go-vue-plus/internal/system/service/social"
 	userservice "ruoyi-go-vue-plus/internal/system/service/user"
-	"ruoyi-go-vue-plus/pkg/errs"
-	"ruoyi-go-vue-plus/pkg/i18n"
-	"ruoyi-go-vue-plus/pkg/response"
-	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
-	"ruoyi-go-vue-plus/pkg/social"
 )
 
 // socialAuthStrategy 第三方授权认证策略。

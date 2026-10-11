@@ -7,11 +7,11 @@ import (
 	"log"
 	"time"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	socialrepository "ruoyi-go-vue-plus/internal/system/repository/social"
-	"ruoyi-go-vue-plus/pkg/redis"
 )
 
 var ErrSocialAlreadyBound = errors.New("service: 此三方账号已经被绑定")

@@ -7,10 +7,10 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/database"
+	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
-	"ruoyi-go-vue-plus/pkg/database"
-	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
 var ErrNoticeNotFound = errors.New("repository: 通知公告不存在")

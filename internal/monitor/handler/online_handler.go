@@ -6,11 +6,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
+	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
 	onlineservice "ruoyi-go-vue-plus/internal/monitor/service/online"
-	"ruoyi-go-vue-plus/pkg/errs"
-	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
-	"ruoyi-go-vue-plus/pkg/response"
-	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 )
 
 // UserOnlineApi 在线用户监控接口。

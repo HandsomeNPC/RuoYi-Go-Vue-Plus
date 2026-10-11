@@ -8,10 +8,10 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/database"
+	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"ruoyi-go-vue-plus/internal/resource/model"
 	"ruoyi-go-vue-plus/internal/resource/model/bo"
-	"ruoyi-go-vue-plus/pkg/database"
-	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
 var ErrOssConfigNotFound = errors.New("repository: 对象存储配置不存在")

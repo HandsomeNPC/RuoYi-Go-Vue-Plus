@@ -6,14 +6,14 @@ import (
 	"github.com/gin-gonic/gin"
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repeatsubmit"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
 	monitorconfig "ruoyi-go-vue-plus/internal/monitor/config"
 	"ruoyi-go-vue-plus/internal/monitor/handler"
-	"ruoyi-go-vue-plus/pkg/enum"
-	"ruoyi-go-vue-plus/pkg/middleware"
-	"ruoyi-go-vue-plus/pkg/oplog"
-	"ruoyi-go-vue-plus/pkg/repeatsubmit"
-	"ruoyi-go-vue-plus/pkg/satoken"
-	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
 )
 
 const loginInfoLogTitle = "登录日志"

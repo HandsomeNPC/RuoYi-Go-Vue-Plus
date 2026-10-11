@@ -8,12 +8,12 @@ import (
 	"time"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
+	domain "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/domain"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/push"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	messagerepository "ruoyi-go-vue-plus/internal/system/repository/message"
-	domain "ruoyi-go-vue-plus/pkg/api/system/domain"
-	"ruoyi-go-vue-plus/pkg/push"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/jsonx"
 )

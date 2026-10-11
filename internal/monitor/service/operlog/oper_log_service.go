@@ -5,10 +5,10 @@ import (
 	"context"
 	"fmt"
 
+	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	operlogrepository "ruoyi-go-vue-plus/internal/system/repository/operlog"
-	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
 // QueryPageList 按条件分页查操作日志。

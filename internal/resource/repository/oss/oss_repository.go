@@ -7,10 +7,10 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/database"
+	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"ruoyi-go-vue-plus/internal/resource/model"
 	"ruoyi-go-vue-plus/internal/resource/model/bo"
-	"ruoyi-go-vue-plus/pkg/database"
-	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
 var ErrOssNotFound = errors.New("repository: OSS 对象不存在")

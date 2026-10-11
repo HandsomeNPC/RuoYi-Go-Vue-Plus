@@ -3,11 +3,11 @@ package auth
 import (
 	"net/http"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/i18n"
 	authvo "ruoyi-go-vue-plus/internal/auth/model/vo"
 	systemvo "ruoyi-go-vue-plus/internal/system/model/vo"
-	"ruoyi-go-vue-plus/pkg/enum"
-	"ruoyi-go-vue-plus/pkg/errs"
-	"ruoyi-go-vue-plus/pkg/i18n"
 )
 
 // AuthStrategy 授权策略。

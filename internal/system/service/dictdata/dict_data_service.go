@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/cache"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
+	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	dictdatarepository "ruoyi-go-vue-plus/internal/system/repository/dictdata"
-	"ruoyi-go-vue-plus/pkg/cache"
-	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
 var ErrDictDataNotFound = errors.New("service: 字典数据不存在")

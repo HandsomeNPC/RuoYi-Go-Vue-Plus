@@ -2,17 +2,17 @@
 package main
 
 import (
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/database"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/encrypt"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/push"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repeatsubmit"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system"
 	systemconfig "ruoyi-go-vue-plus/internal/system/config"
 	operlogservice "ruoyi-go-vue-plus/internal/system/service/operlog"
-	"ruoyi-go-vue-plus/pkg/database"
-	"ruoyi-go-vue-plus/pkg/encrypt"
-	"ruoyi-go-vue-plus/pkg/oplog"
-	"ruoyi-go-vue-plus/pkg/push"
-	"ruoyi-go-vue-plus/pkg/redis"
-	"ruoyi-go-vue-plus/pkg/repeatsubmit"
-	"ruoyi-go-vue-plus/pkg/satoken"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/jsonx"
 )

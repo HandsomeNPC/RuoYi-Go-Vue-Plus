@@ -7,11 +7,11 @@ import (
 	"fmt"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
+	pkgredis "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
+	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	logininforepository "ruoyi-go-vue-plus/internal/system/repository/logininfo"
-	pkgredis "ruoyi-go-vue-plus/pkg/redis"
-	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 
 var ErrLoginInfoNotFound = errors.New("service: 登录日志不存在")
