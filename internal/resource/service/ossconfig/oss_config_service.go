@@ -6,11 +6,11 @@ import (
 	"log"
 	"strconv"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/cache"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oss"
-	pkgredis "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/resource/model/bo"
@@ -58,7 +58,7 @@ func InitCache(ctx context.Context) error {
 
 // setDefaultConfigKey 记录当前生效的配置键。
 func setDefaultConfigKey(ctx context.Context, configKey string) {
-	if err := pkgredis.Client().Set(ctx, constant.OssDefaultConfigKey, configKey, 0).Err(); err != nil {
+	if err := redis.Client().Set(ctx, constant.OssDefaultConfigKey, configKey, 0).Err(); err != nil {
 		log.Printf("[oss] 写默认配置键 %q 失败: %v", configKey, err)
 	}
 }

@@ -5,8 +5,8 @@ import (
 	"context"
 	"strings"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
-	pkgredis "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
 	"ruoyi-go-vue-plus/internal/monitor/model/vo"
 )
@@ -16,7 +16,7 @@ import (
 // 直接用包级 Redis 客户端而非走 repository：本仓库只有 repository 层碰 GORM，
 // Redis 不是 GORM，user_service 等既有代码也是 service 直连 redis.Client()。
 func GetInfo(ctx context.Context) (*vo.CacheListInfoVo, error) {
-	client := pkgredis.Client()
+	client := redis.Client()
 
 	infoStr, err := client.Info(ctx).Result()
 	if err != nil {

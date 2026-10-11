@@ -10,9 +10,9 @@ import (
 	goredis "github.com/redis/go-redis/v9"
 	"github.com/sa-tokens/sa-token-go/stputil"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
-	pkgredis "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
 	"ruoyi-go-vue-plus/internal/system/model"
 )
@@ -22,7 +22,7 @@ import (
 // 直接 Keys 扫描 online_tokens:* 而非走 sa-token 的 SearchTokenValue：在线摘要
 // 是项目自管键，不在 sa-token 的 token-key 命名空间里。
 func List(ctx context.Context, ipaddr, userName string) ([]model.SysUserOnline, error) {
-	keys, err := pkgredis.Client().Keys(ctx, constant.OnlineTokenKeyPrefix+"*").Result()
+	keys, err := redis.Client().Keys(ctx, constant.OnlineTokenKeyPrefix+"*").Result()
 	if err != nil {
 		return nil, errs.New(response.CodeFail, "获取在线用户列表失败", err.Error())
 	}
@@ -91,7 +91,7 @@ func fetchOnline(ctx context.Context, token string) (model.SysUserOnline, bool) 
 	if err := stputil.CheckActiveTimeout(token); err != nil {
 		return model.SysUserOnline{}, false
 	}
-	raw, err := pkgredis.Client().Get(ctx, constant.OnlineTokenKeyPrefix+token).Bytes()
+	raw, err := redis.Client().Get(ctx, constant.OnlineTokenKeyPrefix+token).Bytes()
 	if err != nil {
 		if !errors.Is(err, goredis.Nil) {
 			log.Printf("[monitor] 读取在线摘要 token=%s 失败: %v", token, err)

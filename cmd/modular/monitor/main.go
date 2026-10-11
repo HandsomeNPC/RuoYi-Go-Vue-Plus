@@ -8,9 +8,9 @@
 package main
 
 import (
+	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/database"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repeatsubmit"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
@@ -29,7 +29,7 @@ func main() {
 
 	cfg := monitorconfig.Get()
 	redis.Init(cfg.Redis)
-	defer redis.CloseDefault()
+	defer redis.Close()
 
 	// 登录日志查询/删除/清空走 MySQL。
 	database.Init(cfg.Datasource)

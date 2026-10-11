@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
-	pkgredis "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
@@ -65,7 +65,7 @@ func Unlock(ctx context.Context, userName string) error {
 		return fmt.Errorf("service: 用户名不能为空")
 	}
 	key := constant.PwdErrCntKeyPrefix + userName
-	if err := pkgredis.Client().Del(ctx, key).Err(); err != nil {
+	if err := redis.Client().Del(ctx, key).Err(); err != nil {
 		return fmt.Errorf("service: 解锁用户 %s 失败: %w", userName, err)
 	}
 	return nil

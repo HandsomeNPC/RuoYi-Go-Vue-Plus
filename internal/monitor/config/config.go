@@ -9,9 +9,9 @@ import (
 
 	"github.com/spf13/viper"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/database"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
@@ -75,7 +75,6 @@ func Load(path string) {
 	for _, fn := range []func() error{
 		cfg.Server.Validate,
 		cfg.Datasource.Validate,
-		cfg.Redis.Validate,
 		cfg.SAToken.Validate,
 		cfg.CORS.Validate,
 		cfg.XSS.Validate,

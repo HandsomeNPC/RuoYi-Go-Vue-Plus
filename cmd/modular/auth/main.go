@@ -1,12 +1,12 @@
 package main
 
 import (
+	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/captcha"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/database"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/encrypt"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/ratelimiter"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repeatsubmit"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/social"
@@ -29,7 +29,7 @@ func main() {
 	defer database.CloseDefault()
 
 	redis.Init(cfg.Redis)
-	defer redis.CloseDefault()
+	defer redis.Close()
 
 	satoken.Init(cfg.SAToken)
 	encrypt.Init(cfg.APIEncrypt)

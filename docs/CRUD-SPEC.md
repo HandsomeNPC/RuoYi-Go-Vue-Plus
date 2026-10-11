@@ -481,7 +481,7 @@ xxx.DELETE("/:xxxIds", satoken.CheckPermission("system:xxx:remove"),
 <m>config.Load("configs/<m>.yaml")      // 各模块自行 viper 解析自包含 yaml
 jsonx.OverrideGinCodec()        // 必须在首个 c.JSON / 参数绑定之前接管 gin codec
 cfg := <m>config.Get()
-database.Init(cfg.Datasource); redis.Init(cfg.Redis); satoken.Init(cfg.SAToken); encrypt.Init(cfg.APIEncrypt)
+database.Init(cfg.Datasource); redishelper.Init(cfg.Redis); satoken.Init(cfg.SAToken); encrypt.Init(cfg.APIEncrypt)
 snowflake.Init(cfg.Snowflake)    // 主键发号器，插入前必须就绪
 captcha.Init(cfg.Captcha); ratelimiter.Init(); repeatsubmit.Init(cfg.SAToken.TokenName)   // 三者都依赖 redis
 oplog.Init(operlogservice.RecordOper)        // 依赖 database + snowflake

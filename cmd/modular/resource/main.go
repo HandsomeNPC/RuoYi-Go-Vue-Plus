@@ -9,12 +9,12 @@ import (
 	"context"
 	"log"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/database"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/mail"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/push"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/ratelimiter"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repeatsubmit"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/smshelper"
@@ -38,7 +38,7 @@ func main() {
 	defer database.CloseDefault()
 
 	redis.Init(cfg.Redis)
-	defer redis.CloseDefault()
+	defer redis.Close()
 
 	satoken.Init(cfg.SAToken)
 	// 主键发号器，sys_oss/sys_oss_config 主键无 auto_increment，插入前必须就绪。

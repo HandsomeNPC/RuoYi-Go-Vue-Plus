@@ -9,9 +9,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/mail"
-	pkgredis "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
 	"github.com/HandsomeNPC/ruoyi-common-go/smshelper"
 	resourceconfig "ruoyi-go-vue-plus/internal/resource/config"
@@ -112,7 +112,7 @@ func (a *CaptchaApi) EmailCode(c *gin.Context) {
 // 这里直接用手机号/邮箱——登录时前端不回传 uuid，只回传账号与验证码，
 // 校验方（internal/auth 的认证策略）只能按账号回查。
 func storeCode(c *gin.Context, account, code string) error {
-	return pkgredis.Client().
+	return redis.Client().
 		Set(c.Request.Context(), constant.CaptchaCodeKey+account, code, codeExpiration).
 		Err()
 }
