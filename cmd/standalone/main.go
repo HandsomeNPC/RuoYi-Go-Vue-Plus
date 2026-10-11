@@ -19,8 +19,8 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repeatsubmit"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/sms"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/social"
+	"github.com/HandsomeNPC/ruoyi-common-go/smshelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/auth"
 	authconfig "ruoyi-go-vue-plus/internal/auth/config"
@@ -70,7 +70,8 @@ func main() {
 	repeatsubmit.Init(ac.SAToken.TokenName)
 	// 验证码的两个发送通道，只依赖 config。未配置时接口返回提示而非报错。
 	mail.Init(rc.Mail)
-	sms.Init(rc.SMS)
+	// 短信按渠道逐个 init，任一成功 enabled 即 true；全失败 enabled=false、接口返回未开启，不 fatal。
+	smshelper.Init(rc.SMS)
 	// 三方登录，依赖 redis(state 存 Redis)，须在 redis.Init 之后。
 	social.Init(ac.Social)
 	// 操作日志落库实现反向注册给 pkg/oplog(pkg 不依赖 internal/service)，

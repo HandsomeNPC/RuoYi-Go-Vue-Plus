@@ -14,7 +14,8 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/mail"
 	pkgredis "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/sms"
+	"github.com/HandsomeNPC/ruoyi-common-go/smshelper"
+	resourceconfig "ruoyi-go-vue-plus/internal/resource/config"
 )
 
 // codeExpiration 验证码有效期。
@@ -46,13 +47,16 @@ func (a *CaptchaApi) SmsCode(c *gin.Context) {
 		c.JSON(http.StatusOK, response.Fail("请输入正确的手机号！"))
 		return
 	}
-	if !sms.Enabled() {
+	if !smshelper.Enabled() {
 		c.JSON(http.StatusOK, response.Fail("当前系统没有开启短信功能！"))
 		return
 	}
 
+	// 签名 / 模板随业务走：验证码这一条用 sms.captcha 子段配的模板，透传给 SendByAli。
+	// 模板变量名固定为 "code"，阿里云模板里写 ${code}，故 map 键须与之对应。
+	smsTpl := resourceconfig.Get().SMS.Captcha
 	code := randomCode()
-	if err := sms.SendCode(ctx, phoneNumber, code); err != nil {
+	if err := smshelper.SendByAli(phoneNumber, smsTpl.SignName, smsTpl.TemplateCode, map[string]string{"code": code}); err != nil {
 		// 厂商文案进日志，给前端的是笼统提示：错误里可能带 accessKey 等内部信息。
 		log.Printf("[captcha] 验证码短信发送异常 => %v", err)
 		c.JSON(http.StatusOK, response.Fail("验证码短信发送失败"))

@@ -70,15 +70,18 @@ mail:
   password: ""                  # QQ/163 等要填「授权码」，不是登录密码
 
 # 短信配置(阿里云)，供 /resource/sms/code 发验证码用。
-# 原项目用 sms4j 聚合多厂商，Go 侧无对应物，故只接阿里云；
-# 换厂商实现 pkg/sms 的 Sender 接口即可，调用方不用改。
+# 原项目用 sms4j 聚合多厂商，Go 侧无对应物；本项目只接阿里云一家，
+# 故不做多渠道聚合——顶层 enabled 一开，凭证齐就建一个 dysmsapi 客户端。
+# 签名 / 模板随业务变，按业务各挂子段：captcha 子段即登录验证码那条路径用的模板。
 sms:
   enabled: false
-  accessKeyId: ""
-  accessKeySecret: ""
-  signName: ""                  # 须与控制台已审核通过的签名完全一致
-  templateCode: ""              # 形如 SMS_123456789，模板变量名须为 code
-  endpoint: dysmsapi.aliyuncs.com
-  regionId: cn-hangzhou
+  aliyun:
+    accessKeyId: ""
+    accessKeySecret: ""
+    endpoint: dysmsapi.aliyuncs.com
+    regionId: cn-hangzhou
+  captcha: # 登录验证码用的签名+模板
+    signName: ""              # 须与控制台已审核通过的签名完全一致
+    templateCode: ""          # 形如 SMS_123456789，模板变量名须为 code
 
 # cors/xss/accessLog/traceId/repeatableBody/i18n 走 Go 默认（DefaultX 兜底），resource 无富文本路由。

@@ -16,7 +16,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/push"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/sms"
+	"github.com/HandsomeNPC/ruoyi-common-go/smshelper"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 )
@@ -50,7 +50,7 @@ type Config struct {
 	I18n           middleware.I18nConfig           `mapstructure:"i18n"`
 	Push           push.PushConfig                 `mapstructure:"push"`
 	Mail           mail.MailConfig                 `mapstructure:"mail"`
-	SMS            sms.SMSConfig                   `mapstructure:"sms"`
+	SMS            smshelper.SMSConfig             `mapstructure:"sms"`
 }
 
 var (
@@ -73,7 +73,6 @@ func Load(path string) {
 	middleware.DefaultI18n().SetDefaults(v)
 	push.DefaultPush().SetDefaults(v)
 	mail.DefaultMail().SetDefaults(v)
-	sms.DefaultSMS().SetDefaults(v)
 
 	if err := v.ReadInConfig(); err != nil {
 		panic(fmt.Errorf("resource/config: 读取 %s 失败: %w", path, err))
@@ -97,7 +96,6 @@ func Load(path string) {
 		cfg.I18n.Validate,
 		cfg.Push.Validate,
 		cfg.Mail.Validate,
-		cfg.SMS.Validate,
 	} {
 		if err := fn(); err != nil {
 			panic(fmt.Errorf("resource/config: %w", err))

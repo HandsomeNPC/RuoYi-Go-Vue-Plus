@@ -17,7 +17,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repeatsubmit"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/sms"
+	"github.com/HandsomeNPC/ruoyi-common-go/smshelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/resource"
 	resourceconfig "ruoyi-go-vue-plus/internal/resource/config"
@@ -49,7 +49,8 @@ func main() {
 	ratelimiter.Init()
 	// 验证码的两个发送通道，只依赖 config。未配置时接口返回提示而非报错。
 	mail.Init(cfg.Mail)
-	sms.Init(cfg.SMS)
+	// 短信按渠道逐个 init，任一成功 enabled 即 true；全失败 enabled=false、接口返回未开启，不 fatal。
+	smshelper.Init(cfg.SMS)
 	// 操作日志落库实现反向注册给 pkg/oplog(pkg 不依赖 internal/service)，
 	// 依赖 database 与 snowflake。
 	oplog.Init(operlogservice.RecordOper)
