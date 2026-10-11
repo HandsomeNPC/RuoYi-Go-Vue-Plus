@@ -12,8 +12,8 @@ import (
 
 	systemconfig "ruoyi-go-vue-plus/internal/system/config"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/captchahelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/captcha"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/database"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/encrypt"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
@@ -51,7 +51,7 @@ type Config struct {
 	RepeatableBody middleware.RepeatableBodyConfig `mapstructure:"repeatableBody"`
 	APIEncrypt     encrypt.APIEncryptConfig        `mapstructure:"apiEncrypt"`
 	User           systemconfig.UserConfig         `mapstructure:"user"`
-	Captcha        captcha.CaptchaConfig           `mapstructure:"captcha"`
+	Captcha        captchahelper.CaptchaConfig     `mapstructure:"captcha"`
 	Social         social.SocialConfig             `mapstructure:"social"`
 }
 
@@ -74,7 +74,6 @@ func Load(path string) {
 	middleware.DefaultRepeatableBody().SetDefaults(v)
 	encrypt.DefaultAPIEncrypt().SetDefaults(v)
 	systemconfig.DefaultUser().SetDefaults(v)
-	captcha.DefaultCaptcha().SetDefaults(v)
 	social.DefaultSocial().SetDefaults(v)
 
 	if err := v.ReadInConfig(); err != nil {
@@ -97,7 +96,6 @@ func Load(path string) {
 		cfg.RepeatableBody.Validate,
 		cfg.APIEncrypt.Validate,
 		cfg.User.Validate,
-		cfg.Captcha.Validate,
 		cfg.Social.Validate,
 	} {
 		if err := fn(); err != nil {

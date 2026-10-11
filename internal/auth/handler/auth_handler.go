@@ -6,23 +6,30 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/captcha"
+	"github.com/HandsomeNPC/ruoyi-common-go/captchahelper"
+	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/social"
 	"ruoyi-go-vue-plus/internal/auth/model"
+	"ruoyi-go-vue-plus/internal/auth/model/vo"
 	authservice "ruoyi-go-vue-plus/internal/auth/service/auth"
 	sysloginservice "ruoyi-go-vue-plus/internal/auth/service/syslogin"
 	clientservice "ruoyi-go-vue-plus/internal/system/service/client"
 	socialservice "ruoyi-go-vue-plus/internal/system/service/social"
 )
+
+// codeExpiration 图形验证码有效期。裸 int(分钟) 在 constant 包，此处补单位。
+const codeExpiration = time.Duration(constant.ConstantCaptchaExpiration) * time.Minute
 
 // AuthApi 认证接口。
 type AuthApi struct{}
@@ -77,14 +84,29 @@ func (a *AuthApi) Logout(c *gin.Context) {
 }
 
 // Code 获取图形验证码。
+//
+// 是否启用由 captchahelper.Enabled() 判定：关闭时直接回 captchaEnabled=false 的
+// 空响应，前端据此隐藏验证码输入。启用时 captchahelper.Generate 出题画图，
+// 答案写 Redis（键 = CaptchaCodeKey + uuid，TTL 取 ConstantCaptchaExpiration 分钟），
+// 校验(取值→删除→判空→比对)在 password_auth_strategy.validateCaptcha。
 func (a *AuthApi) Code(c *gin.Context) {
-	vo, err := captcha.Generate(c.Request.Context())
+	if !captchahelper.Enabled() {
+		c.JSON(http.StatusOK, response.Ok(vo.CaptchaVo{CaptchaEnabled: false}))
+		return
+	}
+	uuid, img, answer, err := captchahelper.Generate()
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
-
-	c.JSON(http.StatusOK, response.Ok(vo))
+	// Generate 回带 "data:image/png;base64," 前缀，前端自己拼前缀，此处剥成裸 base64。
+	img = strings.TrimPrefix(img, "data:image/png;base64,")
+	key := constant.CaptchaCodeKey + uuid
+	if err := redis.Client().Set(c.Request.Context(), key, answer, codeExpiration).Err(); err != nil {
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, response.Ok(vo.CaptchaVo{CaptchaEnabled: true, UUID: uuid, Img: img}))
 }
 
 // Binding 获取三方授权跳转地址。

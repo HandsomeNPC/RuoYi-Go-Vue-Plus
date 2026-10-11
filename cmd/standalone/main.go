@@ -8,8 +8,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/captchahelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/captcha"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/database"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/encrypt"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/mail"
@@ -62,8 +62,8 @@ func main() {
 	encrypt.Init(ac.APIEncrypt)
 	// 主键发号器，各业务表主键无 auto_increment，插入前必须就绪。
 	snowflake.Init(ac.Snowflake)
-	// 依赖 redis(验证码存 Redis)，须在 redis.Init 之后。
-	captcha.Init(ac.Captcha)
+	// 只构造绘图驱动、不碰 Redis，无前置依赖；校验时才读 Redis。
+	captchahelper.Init(ac.Captcha)
 	// 依赖 redis(限流计数存 Redis)，须在 redis.Init 之后。
 	ratelimiter.Init()
 	// 依赖 redis(防重键存 Redis)，须在 redis.Init 之后。

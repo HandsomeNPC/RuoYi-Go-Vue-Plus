@@ -1,8 +1,8 @@
 package main
 
 import (
+	"github.com/HandsomeNPC/ruoyi-common-go/captchahelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/captcha"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/database"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/encrypt"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
@@ -35,8 +35,8 @@ func main() {
 	encrypt.Init(cfg.APIEncrypt)
 	// 主键发号器，落库前必须就绪(登录日志插入用)。
 	snowflake.Init(cfg.Snowflake)
-	// 依赖 redis(验证码存 Redis)，须在 redis.Init 之后。
-	captcha.Init(cfg.Captcha)
+	// 只构造绘图驱动、不碰 Redis，无前置依赖；校验时才读 Redis。
+	captchahelper.Init(cfg.Captcha)
 	// 依赖 redis(限流计数存 Redis)，须在 redis.Init 之后。
 	ratelimiter.Init()
 	// 依赖 redis(防重键存 Redis)，须在 redis.Init 之后。

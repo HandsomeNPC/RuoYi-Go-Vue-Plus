@@ -12,8 +12,8 @@ import (
 	goredis "github.com/redis/go-redis/v9"
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/captchahelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/captcha"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
@@ -38,7 +38,7 @@ func (s *passwordAuthStrategy) Login(req *http.Request, body []byte,
 		return nil, errs.New(response.CodeBadRequest, "参数校验失败", err.Error())
 	}
 	// 验证码开关。
-	if captcha.Enabled() {
+	if captchahelper.Enabled() {
 		if err := s.validateCaptcha(req, loginBody.Username, loginBody.Code, loginBody.UUID); err != nil {
 			return nil, err
 		}
@@ -81,8 +81,8 @@ func (s *passwordAuthStrategy) Login(req *http.Request, body []byte,
 
 // validateCaptcha 校验图形验证码是否有效且匹配，失败时记登录失败日志再返回错误。
 //
-// Redis 读写刻意放在本层而非 pkg/captcha：记日志要调 internal/system 的 service，
-// 而 pkg 不能 import internal/。
+// Redis 读删比对刻意放在本层而非 captchahelper：记登录失败日志要调 internal/system
+// 的 service，而 pkg 不能 import internal/。答案的写入则在 handler.Code 里。
 func (s *passwordAuthStrategy) validateCaptcha(req *http.Request, username, code, uuid string) error {
 	ctx := req.Context()
 	verifyKey := constant.CaptchaCodeKey + uuid
