@@ -5,8 +5,6 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-
-	"ruoyi-go-vue-plus/pkg/config"
 )
 
 // bearerPrefix query token 里可能带的授权前缀（大小写不敏感）。
@@ -23,9 +21,9 @@ const bearerPrefix = "bearer "
 //
 // 改全局 TokenPrefix 也能让 CutTokenPrefix 生效，但那会连带要求所有普通接口的
 // header 都带前缀，牵动面太大；只在推送这条链路上做规范化更克制。
-func NormalizeQueryToken() gin.HandlerFunc {
-	tokenName := config.Get().SAToken.TokenName
-
+//
+// tokenName 取自调用方传入（模块装配时从 satoken 配置取），不再回读全局配置。
+func NormalizeQueryToken(tokenName string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		raw := c.Request.URL.RawQuery
 		// 快速排除：绝大多数请求不带 query token，避免逐个请求解析 query。

@@ -15,11 +15,6 @@ import (
 // ContentTypeJSON JSON 请求的 content-type 前缀。
 const ContentTypeJSON = config.ContentTypeJSON
 
-// RepeatableBody 可重复读请求体中间件，配置取自 config.Get()。
-func RepeatableBody() gin.HandlerFunc {
-	return RepeatableBodyWithConfig(config.Get().RepeatableBody)
-}
-
 // RepeatableBodyWithConfig 可重复读请求体中间件。
 func RepeatableBodyWithConfig(cfg config.RepeatableBodyConfig) gin.HandlerFunc {
 	maxSize := cfg.MaxBodySize

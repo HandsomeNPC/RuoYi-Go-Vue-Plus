@@ -10,11 +10,6 @@ import (
 	"ruoyi-go-vue-plus/pkg/config"
 )
 
-// CORS 跨域中间件，配置取自 config.Get()。
-func CORS() gin.HandlerFunc {
-	return CORSWithConfig(config.Get().CORS)
-}
-
 // CORSWithConfig 跨域中间件。必须注册在 Auth 之前。
 func CORSWithConfig(cfg config.CORSConfig) gin.HandlerFunc {
 	maxAge := strconv.FormatInt(int64(cfg.MaxAge().Seconds()), 10)

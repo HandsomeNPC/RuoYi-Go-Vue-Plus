@@ -65,9 +65,7 @@ var (
 )
 
 // Init 建立连接并设置为包级默认实例。
-func Init() {
-	c := config.Get()
-	cfg := c.Redis
+func Init(cfg config.RedisConfig) {
 	client, err := New(cfg)
 	if err != nil {
 		panic(fmt.Errorf("redis: 初始化失败: %w", err))
@@ -75,7 +73,7 @@ func Init() {
 	mu.Lock()
 	defaultClient = client
 	mu.Unlock()
-	log.Printf("[%s] Redis 已连接 %s db=%d", c.Server.Name, cfg.Addr(), cfg.DB)
+	log.Printf("[redis] 已连接 %s db=%d", cfg.Addr(), cfg.DB)
 }
 
 // Client 返回包级默认实例，未调用 Init 会 panic。

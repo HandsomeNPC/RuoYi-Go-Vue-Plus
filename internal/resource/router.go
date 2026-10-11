@@ -7,8 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 
+	resourceconfig "ruoyi-go-vue-plus/internal/resource/config"
 	"ruoyi-go-vue-plus/internal/resource/handler"
-	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/enum"
 	"ruoyi-go-vue-plus/pkg/middleware"
 	"ruoyi-go-vue-plus/pkg/oplog"
@@ -113,20 +113,21 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 func RegisterPushRoutes(r *gin.Engine, prefix string) {
 	// 推送端点按 push.transport 决定走 SSE 还是 WebSocket，路径取配置值。
 	// 未启用推送时不注册，避免前端连上一个只会报错的端点。
-	cfg := config.Get().Push
+	cfg := resourceconfig.Get().Push
 	if !cfg.Enabled {
 		return
 	}
 
 	plugin := sagin.NewPlugin(satoken.Manager())
 	path := prefix + cfg.Path
+	tokenName := resourceconfig.Get().SAToken.TokenName
 	// NormalizeQueryToken 须排在 TokenInterceptor 之前：EventSource/WebSocket
 	// 不能自定义请求头，token 只能走 query，形如 ?Authorization=Bearer xxx，
 	// 而 sa-token-go 的 query 分支不剥 Bearer 前缀，不规范化会一律 401。
-	r.GET(path, push.NormalizeQueryToken(), plugin.TokenInterceptor(),
+	r.GET(path, push.NormalizeQueryToken(tokenName), plugin.TokenInterceptor(),
 		sagin.CheckLogin(), push.Handler())
 	// close：前端主动断开时清掉服务端会话，不必等心跳超时才回收。
-	r.GET(path+"/close", push.NormalizeQueryToken(), plugin.TokenInterceptor(),
+	r.GET(path+"/close", push.NormalizeQueryToken(tokenName), plugin.TokenInterceptor(),
 		sagin.CheckLogin(), push.CloseHandler())
 }
 
@@ -134,14 +135,15 @@ func RegisterPushRoutes(r *gin.Engine, prefix string) {
 // prefix 传空：modular 部署经 nginx 剥 /resource，进程内只注册裸路径。
 func InitRouter() *gin.Engine {
 	r := gin.New()
+	cfg := resourceconfig.Get()
 
 	r.Use(middleware.Recover())
-	r.Use(middleware.CORS())
-	r.Use(middleware.TraceID())
-	r.Use(middleware.RepeatableBody())
-	r.Use(middleware.AccessLog())
-	r.Use(middleware.XSS())
-	r.Use(middleware.I18n())
+	r.Use(middleware.CORSWithConfig(cfg.CORS))
+	r.Use(middleware.TraceIDWithConfig(cfg.TraceID))
+	r.Use(middleware.RepeatableBodyWithConfig(cfg.RepeatableBody))
+	r.Use(middleware.AccessLogWithConfig(cfg.AccessLog))
+	r.Use(middleware.XSSWithConfig(cfg.XSS))
+	r.Use(middleware.I18nWithConfig(cfg.I18n))
 
 	RegisterRoutes(r, "")
 	RegisterPushRoutes(r, "")

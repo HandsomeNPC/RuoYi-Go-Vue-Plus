@@ -17,11 +17,6 @@ import (
 // reHTMLTag 匹配一个 HTML 标签。
 var reHTMLTag = regexp.MustCompile(`<[^<]*?>`)
 
-// XSS 请求清洗中间件，配置取自 config.Get()。
-func XSS() gin.HandlerFunc {
-	return XSSWithConfig(config.Get().XSS)
-}
-
 // XSSWithConfig 请求清洗中间件：把请求里的 HTML 标签剔掉（保留标签内的文字）。
 // 必须注册在 RepeatableBody 之后、所有读参数的中间件与 handler 之前。
 func XSSWithConfig(cfg config.XSSConfig) gin.HandlerFunc {

@@ -10,11 +10,6 @@ import (
 	"ruoyi-go-vue-plus/pkg/config"
 )
 
-// AccessLog 请求日志中间件，配置取自 config.Get()。
-func AccessLog() gin.HandlerFunc {
-	return AccessLogWithConfig(config.Get().AccessLog)
-}
-
 // AccessLogWithConfig 请求日志中间件，必须注册在 RepeatableBody 之后。
 func AccessLogWithConfig(cfg config.AccessLogConfig) gin.HandlerFunc {
 	maxLen := cfg.MaxParamLength

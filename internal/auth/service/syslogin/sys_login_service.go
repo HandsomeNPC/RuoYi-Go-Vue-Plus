@@ -12,6 +12,7 @@ import (
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 	"golang.org/x/sync/errgroup"
 
+	authconfig "ruoyi-go-vue-plus/internal/auth/config"
 	systembo "ruoyi-go-vue-plus/internal/system/model/bo"
 	systemdto "ruoyi-go-vue-plus/internal/system/model/dto"
 	systemvo "ruoyi-go-vue-plus/internal/system/model/vo"
@@ -21,7 +22,6 @@ import (
 	postservice "ruoyi-go-vue-plus/internal/system/service/post"
 	roleservice "ruoyi-go-vue-plus/internal/system/service/role"
 	socialservice "ruoyi-go-vue-plus/internal/system/service/social"
-	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/enum"
 	"ruoyi-go-vue-plus/pkg/errs"
@@ -265,7 +265,7 @@ func CheckLogin(req *http.Request, loginType enum.LoginType,
 	}
 
 	key := constant.PwdErrCntKeyPrefix + username
-	passwdCfg := config.Get().User.Password
+	passwdCfg := authconfig.Get().User.Password
 	maxRetry := passwdCfg.MaxRetryCount
 	lockMinutes := passwdCfg.LockTime
 

@@ -98,9 +98,7 @@ var (
 )
 
 // Init 建立连接并设置为包级默认实例。
-func Init() {
-	c := config.Get()
-	cfg := c.Datasource
+func Init(cfg config.DatasourceConfig) {
 	db, err := New(cfg)
 	if err != nil {
 		panic(fmt.Errorf("database: 初始化失败: %w", err))
@@ -108,8 +106,7 @@ func Init() {
 	mu.Lock()
 	defaultDB = db
 	mu.Unlock()
-	log.Printf("[%s] 数据库已连接 %s:%d/%s",
-		c.Server.Name, cfg.Host, cfg.Port, cfg.DBName)
+	log.Printf("[database] 已连接 %s:%d/%s", cfg.Host, cfg.Port, cfg.DBName)
 }
 
 // DB 返回包级默认实例，未调用 Init 会 panic。

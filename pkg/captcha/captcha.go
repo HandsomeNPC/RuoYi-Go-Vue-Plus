@@ -1,6 +1,6 @@
 // Package captcha 图形验证码的生成。
 //
-// 初始化对照 redis.Init / encrypt.Init：captcha.Init() 无参，自读 config.Get().Captcha，
+// 初始化对照 redis.Init / encrypt.Init：captcha.Init(cfg) 收 CaptchaConfig，
 // 构造驱动并设包级全局；业务侧用包级 captcha.Generate() / captcha.Enabled()。
 //
 // **只管出题、画图、把答案写进 Redis**。校验(取值→删除→判空→比对)不在本包，而在
@@ -118,12 +118,10 @@ var (
 	defaultCaptcha *Captcha
 )
 
-// Init 按 config.Get().Captcha 构造并设包级默认实例。对照 redis.Init。
+// Init 按传入的 CaptchaConfig 构造并设包级默认实例。
 // 必须在 config.Load 之后调用；因 Generate/Validate 要读写 Redis，
 // 还须在 redis.Init 之后调用。构造失败直接 panic（启动期 fail-fast）。
-func Init() {
-	c := config.Get()
-	cfg := c.Captcha
+func Init(cfg config.CaptchaConfig) {
 	instance, err := New(cfg)
 	if err != nil {
 		panic(fmt.Errorf("captcha: 初始化失败: %w", err))
@@ -131,7 +129,7 @@ func Init() {
 	mu.Lock()
 	defaultCaptcha = instance
 	mu.Unlock()
-	log.Printf("[%s] captcha 已就绪: enable=%t type=%s", c.Server.Name, cfg.Enable, cfg.Type)
+	log.Printf("[captcha] 已就绪: enable=%t type=%s", cfg.Enable, cfg.Type)
 }
 
 // get 返回包级默认实例，未调用 Init 会 panic。对照 encrypt.getCrypto。

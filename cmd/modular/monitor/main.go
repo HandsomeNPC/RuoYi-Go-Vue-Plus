@@ -10,8 +10,8 @@ package main
 import (
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/monitor"
+	monitorconfig "ruoyi-go-vue-plus/internal/monitor/config"
 	operlogservice "ruoyi-go-vue-plus/internal/system/service/operlog"
-	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/database"
 	"ruoyi-go-vue-plus/pkg/oplog"
 	"ruoyi-go-vue-plus/pkg/redis"
@@ -22,27 +22,28 @@ import (
 )
 
 func main() {
-	config.Load("configs/application.yaml", "configs/monitor.yaml")
+	monitorconfig.Load("configs/monitor.yaml")
 
 	// 须在首个 c.JSON / 参数绑定之前接管 gin 的 JSON codec(雪花 id 按值转字符串)。
 	jsonx.OverrideGinCodec()
 
-	redis.Init()
+	cfg := monitorconfig.Get()
+	redis.Init(cfg.Redis)
 	defer redis.CloseDefault()
 
 	// 登录日志查询/删除/清空走 MySQL。
-	database.Init()
+	database.Init(cfg.Datasource)
 	defer database.CloseDefault()
 
-	satoken.Init()
+	satoken.Init(cfg.SAToken)
 
 	// oplog 落 sys_oper_log 的主键发号器，须在 oplog.Init 之前就绪。
-	snowflake.Init(config.Get().Snowflake)
+	snowflake.Init(cfg.Snowflake)
 	// 操作日志落库实现反向注册给 pkg/oplog(pkg 不依赖 internal/service)，
 	// 依赖 database 与 snowflake。
 	oplog.Init(operlogservice.RecordOper)
 	// 依赖 redis(防重键存 Redis)，须在 redis.Init 之后。
-	repeatsubmit.Init()
+	repeatsubmit.Init(cfg.SAToken.TokenName)
 
 	r := monitor.InitRouter()
 	monitor.InitServer(r)

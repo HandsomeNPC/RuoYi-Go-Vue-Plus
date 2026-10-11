@@ -1,10 +1,55 @@
+# monitor 进程自包含配置。最瘦：只 datasource/redis/satoken + server/snowflake，
+# 无 apiEncrypt/user/captcha/social/push/mail/sms。datasource/redis/satoken 与其它进程相同值。
 server:
   name: monitor
   # 各模块统一 8080：容器间网络命名空间隔离，端口由 nginx / compose 侧区分。
   # 代价是本机 go run 起多个 modular 进程会抢端口，本地多进程调试需临时改这里。
   addr: ":8080"
 
+# 各进程共用同一个库，workerId 必须互不相同，否则雪花主键会撞号。
+# 分配：auth=1 system=2 resource=3 monitor=4 standalone=0
+snowflake:
+  workerId: 4
+  datacenterId: 0
+
 # monitor 进程既读 Redis（缓存监控、解锁删 pwd_err_cnt 锁定键），又落库读 MySQL
 # （登录日志列表/删除/清空）。故需 database/snowflake/oplog/repeatsubmit：
 # snowflake 供 oplog 落 sys_oper_log 发号，repeatsubmit 给 unlock 防重。
 # 鉴权复用同一 Redis 中的 sa-token 会话，权限码 monitor:* 仍在登录时由 auth 进程写入。
+
+datasource:
+  driver: mysql
+  host: 127.0.0.1
+  port: 3306
+  username: root
+  password: ruoyi123
+  dbname: ry-cloud
+  params: charset=utf8mb4&parseTime=True&loc=Local&timeout=5s
+  maxIdleConns: 10
+  maxOpenConns: 100
+  connMaxLifetime: 3600   # 连接最大存活(秒)
+  connMaxIdleTime: 600    # 空闲连接最大存活(秒)
+  logLevel: warn          # silent/error/warn/info
+  slowThresholdMs: 200    # 慢 SQL 阈值(毫秒)
+
+redis:
+  host: 127.0.0.1
+  port: 6379
+  password: ruoyi123
+  db: 0
+  clientName: ruoyi-go        # 便于 CLIENT LIST 排查
+  poolSize: 32
+  minIdleConns: 8
+  dialTimeoutMs: 5000
+  readTimeoutMs: 3000
+  writeTimeoutMs: 3000
+  connMaxIdleTime: 600        # 空闲连接最大存活(秒)
+
+# sa-token-go 鉴权配置
+satoken:
+  tokenName: Authorization          # 读取 token 的请求头名(对应 sa-token.token-name)
+  isConcurrent: true                # 允许同一账号并发登录(多端在线)
+  isShare: false                    # 多端登录是否共享同一 token
+  jwtSecretKey: abcdefghijklmnopqrstuvwxyz # jwt秘钥
+
+# cors/xss/accessLog/traceId/repeatableBody/i18n 走 Go 默认（DefaultX 兜底），monitor 无富文本路由。

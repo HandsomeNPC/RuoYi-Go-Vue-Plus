@@ -3,7 +3,7 @@
 // 只做「纯文本、单收件人」——本项目发邮件的唯一场景是登录验证码，
 // 附件/HTML/群发都用不上，引一个第三方库不划算，标准库 net/smtp 足够。
 //
-// 初始化对照 captcha.Init：mail.Init() 无参，自读 config.Get().Mail 设包级实例，
+// 初始化对照 captcha.Init：mail.Init(cfg) 收 MailConfig 设包级实例，
 // 业务侧用包级 mail.Send() / mail.Enabled()。
 package mail
 
@@ -46,14 +46,12 @@ var (
 	defaultMailer *Mailer
 )
 
-// Init 按 config.Get().Mail 构造并设包级默认实例。须在 config.Load 之后调用。
-func Init() {
-	c := config.Get()
+// Init 按传入的 MailConfig 构造并设包级默认实例。须在 config.Load 之后调用。
+func Init(cfg config.MailConfig) {
 	mu.Lock()
-	defaultMailer = New(c.Mail)
+	defaultMailer = New(cfg)
 	mu.Unlock()
-	log.Printf("[%s] mail 已就绪: enabled=%t host=%s:%d",
-		c.Server.Name, c.Mail.Enabled, c.Mail.Host, c.Mail.Port)
+	log.Printf("[mail] 已就绪: enabled=%t host=%s:%d", cfg.Enabled, cfg.Host, cfg.Port)
 }
 
 // get 返回包级默认实例，未调用 Init 会 panic。

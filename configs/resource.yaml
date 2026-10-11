@@ -1,3 +1,6 @@
+# resource 进程自包含配置。datasource/redis/satoken 与其它进程相同值——
+# 拆开各管各的是要隔离部署，改环境值时同步改多份是已知代价。
+# 无 apiEncrypt/user/captcha/social，含 push/mail/sms（验证码与推送）。
 server:
   name: resource
   # 各模块统一 8080：容器间网络命名空间隔离，端口由 nginx / compose 侧区分。
@@ -5,7 +8,77 @@ server:
   addr: ":8080"
 
 # 各进程共用同一个库，workerId 必须互不相同，否则雪花主键会撞号。
-# 分配：auth=1 system=2 resource=3 standalone=0
+# 分配：auth=1 system=2 resource=3 monitor=4 standalone=0
 snowflake:
   workerId: 3
   datacenterId: 0
+
+datasource:
+  driver: mysql
+  host: 127.0.0.1
+  port: 3306
+  username: root
+  password: ruoyi123
+  dbname: ry-cloud
+  params: charset=utf8mb4&parseTime=True&loc=Local&timeout=5s
+  maxIdleConns: 10
+  maxOpenConns: 100
+  connMaxLifetime: 3600   # 连接最大存活(秒)
+  connMaxIdleTime: 600    # 空闲连接最大存活(秒)
+  logLevel: warn          # silent/error/warn/info
+  slowThresholdMs: 200    # 慢 SQL 阈值(毫秒)
+
+redis:
+  host: 127.0.0.1
+  port: 6379
+  password: ruoyi123
+  db: 0
+  clientName: ruoyi-go        # 便于 CLIENT LIST 排查
+  poolSize: 32
+  minIdleConns: 8
+  dialTimeoutMs: 5000
+  readTimeoutMs: 3000
+  writeTimeoutMs: 3000
+  connMaxIdleTime: 600        # 空闲连接最大存活(秒)
+
+# sa-token-go 鉴权配置
+satoken:
+  tokenName: Authorization          # 读取 token 的请求头名(对应 sa-token.token-name)
+  isConcurrent: true                # 允许同一账号并发登录(多端在线)
+  isShare: false                    # 多端登录是否共享同一 token
+  jwtSecretKey: abcdefghijklmnopqrstuvwxyz # jwt秘钥
+
+# 消息推送配置。对照原项目 message 段（本项目 sse / websocket 两种传输都已移植）。
+# 跨域统一由 cors 段管，不另设 allowedOrigins 白名单。
+push:
+  enabled: true                 # 关闭则不注册推送路由，且发布消息直接跳过
+  transport: sse                # sse / websocket，取值非法时回落 sse
+  path: /message
+  sseTimeoutSeconds: 86400      # SSE 连接超时(秒)，到点由服务端结束、前端重连
+  heartbeatSeconds: 60          # 心跳间隔(秒)，同时用于剔除失效连接
+  sendBuffer: 32                # 单连接待发消息缓冲；写满即断开该慢客户端
+
+# 邮件配置，供 /resource/email/code 发验证码用。
+# enabled=false 时该接口返回「当前系统没有开启邮箱功能！」而非报错（对齐原项目）。
+mail:
+  enabled: false
+  host: smtp.qq.com             # SMTP 服务器地址
+  port: 465                     # 465 配 ssl=true；587 配 ssl=false(STARTTLS)
+  ssl: true
+  from: ""                      # 发件地址
+  user: ""                      # 登录账号，多数服务商即完整邮箱地址
+  password: ""                  # QQ/163 等要填「授权码」，不是登录密码
+
+# 短信配置(阿里云)，供 /resource/sms/code 发验证码用。
+# 原项目用 sms4j 聚合多厂商，Go 侧无对应物，故只接阿里云；
+# 换厂商实现 pkg/sms 的 Sender 接口即可，调用方不用改。
+sms:
+  enabled: false
+  accessKeyId: ""
+  accessKeySecret: ""
+  signName: ""                  # 须与控制台已审核通过的签名完全一致
+  templateCode: ""              # 形如 SMS_123456789，模板变量名须为 code
+  endpoint: dysmsapi.aliyuncs.com
+  regionId: cn-hangzhou
+
+# cors/xss/accessLog/traceId/repeatableBody/i18n 走 Go 默认（DefaultX 兜底），resource 无富文本路由。

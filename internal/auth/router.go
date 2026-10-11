@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 
+	authconfig "ruoyi-go-vue-plus/internal/auth/config"
 	"ruoyi-go-vue-plus/internal/auth/handler"
 	"ruoyi-go-vue-plus/pkg/encrypt"
 	"ruoyi-go-vue-plus/pkg/middleware"
@@ -42,14 +43,15 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 // InitRouter 构建并返回 auth 进程的 gin 引擎(独立部署用)。
 func InitRouter() *gin.Engine {
 	r := gin.New()
+	cfg := authconfig.Get()
 
 	r.Use(middleware.Recover())
-	r.Use(middleware.CORS())
-	r.Use(middleware.TraceID())
-	r.Use(middleware.RepeatableBody())
-	r.Use(middleware.AccessLog())
-	r.Use(middleware.XSS())
-	r.Use(middleware.I18n())
+	r.Use(middleware.CORSWithConfig(cfg.CORS))
+	r.Use(middleware.TraceIDWithConfig(cfg.TraceID))
+	r.Use(middleware.RepeatableBodyWithConfig(cfg.RepeatableBody))
+	r.Use(middleware.AccessLogWithConfig(cfg.AccessLog))
+	r.Use(middleware.XSSWithConfig(cfg.XSS))
+	r.Use(middleware.I18nWithConfig(cfg.I18n))
 
 	RegisterRoutes(r, "")
 

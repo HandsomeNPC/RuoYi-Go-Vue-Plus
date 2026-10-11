@@ -3,7 +3,7 @@
 // sms4j 聚合多厂商，Go 生态无对应物，故这里自留 Sender 接口，
 // 内置阿里云一家实现；换/加厂商只需再写一个 Sender，调用方不动。
 //
-// 初始化对照 mail.Init / captcha.Init：sms.Init() 无参，自读 config.Get().SMS。
+// 初始化对照 mail.Init / captcha.Init：sms.Init(cfg) 收 SMSConfig。
 package sms
 
 import (
@@ -32,17 +32,16 @@ var (
 	defaultSender Sender
 )
 
-// Init 按 config.Get().SMS 构造并设包级默认发送器。须在 config.Load 之后调用。
-func Init() {
-	c := config.Get()
+// Init 按传入的 SMSConfig 构造并设包级默认发送器。须在 config.Load 之后调用。
+func Init(cfg config.SMSConfig) {
 	mu.Lock()
-	if c.SMS.Enabled {
-		defaultSender = newAliyunSender(c.SMS)
+	if cfg.Enabled {
+		defaultSender = newAliyunSender(cfg)
 	} else {
 		defaultSender = nil
 	}
 	mu.Unlock()
-	log.Printf("[%s] sms 已就绪: enabled=%t", c.Server.Name, c.SMS.Enabled)
+	log.Printf("[sms] 已就绪: enabled=%t", cfg.Enabled)
 }
 
 // SetSender 替换包级发送器，仅供测试注入桩件用。

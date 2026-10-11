@@ -14,11 +14,8 @@ import (
 	pkgredis "ruoyi-go-vue-plus/pkg/redis"
 )
 
-// Init 按 config.SATokenConfig 与包级 Redis 客户端构建全局 sa-token Manager。
-func Init() {
-	c := config.Get()
-	cfg := c.SAToken
-
+// Init 按传入的 SATokenConfig 与包级 Redis 客户端构建全局 sa-token Manager。
+func Init(cfg config.SATokenConfig) {
 	storage := redis.NewStorageFromClient(pkgredis.Client())
 
 	manager := sagin.NewBuilder().
@@ -36,8 +33,7 @@ func Init() {
 	// 登出/被踢/被顶时清 online_tokens 摘要。
 	// sa-token-go 在这些动作内部同步触发事件，故无需再于各调用点手删。
 	registerOnlineTokenCleanup(manager)
-	log.Printf("[%s] sa-token 已就绪: tokenName=%s",
-		c.Server.Name, cfg.TokenName)
+	log.Printf("[satoken] 已就绪: tokenName=%s", cfg.TokenName)
 }
 
 // registerOnlineTokenCleanup 在会话终结事件上删 online_tokens:<token>。

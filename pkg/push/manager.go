@@ -39,30 +39,28 @@ var (
 	defaultManager *Manager
 )
 
-// Init 按配置构建包级推送管理器并订阅 Redis 消息主题。
+// Init 按传入的 PushConfig 构建包级推送管理器并订阅 Redis 消息主题。
 // 依赖 pkg/redis，须在 redis.Init() 之后调用。
-func Init() {
-	c := config.Get()
-	if !c.Push.Enabled {
-		log.Printf("[%s] 消息推送已关闭", c.Server.Name)
+func Init(cfg config.PushConfig) {
+	if !cfg.Enabled {
+		log.Printf("[push] 消息推送已关闭")
 		return
 	}
 
 	m := &Manager{
-		cfg:      c.Push,
+		cfg:      cfg,
 		registry: newRegistry(),
 		stop:     make(chan struct{}),
 	}
 
-	go m.registry.monitor(c.Push.Heartbeat(), m.stop)
+	go m.registry.monitor(cfg.Heartbeat(), m.stop)
 	go m.subscribe()
 
 	mu.Lock()
 	defaultManager = m
 	mu.Unlock()
 
-	log.Printf("[%s] 消息推送已就绪: transport=%s path=%s",
-		c.Server.Name, c.Push.Transport, c.Push.Path)
+	log.Printf("[push] 消息推送已就绪: transport=%s path=%s", cfg.Transport, cfg.Path)
 }
 
 // Default 返回包级实例，未启用推送时返回 nil。

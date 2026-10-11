@@ -1,6 +1,6 @@
 // api_encrypt.go 接口加解密的注解（装饰器）层，对照 sa-token-go 的注解形式
 // （sagin.CheckPermission）。
-// 初始化对照 redis.Init：encrypt.Init() 无参，自读 config.Get().APIEncrypt，
+// 初始化对照 redis.Init：encrypt.Init(cfg) 收 APIEncryptConfig，
 // 解析密钥并设包级全局；路由用包级 encrypt.ApiEncrypt() / ApiEncryptWithResponse()。
 package encrypt
 
@@ -64,11 +64,9 @@ var (
 	defaultCrypto *Crypto
 )
 
-// Init 按 config.Get().APIEncrypt 构造并设包级默认实例。对照 redis.Init。
+// Init 按传入的 APIEncryptConfig 构造并设包级默认实例。
 // 必须在 config.Load 之后调用。密钥解析失败直接 panic（启动期 fail-fast）。
-func Init() {
-	c := config.Get()
-	cfg := c.APIEncrypt
+func Init(cfg config.APIEncryptConfig) {
 	crypto, err := New(cfg)
 	if err != nil {
 		panic(fmt.Errorf("encrypt: 初始化失败: %w", err))
@@ -76,7 +74,7 @@ func Init() {
 	mu.Lock()
 	defaultCrypto = crypto
 	mu.Unlock()
-	log.Printf("[%s] encrypt 已就绪: enabled=%t header=%s", c.Server.Name, cfg.Enabled, crypto.header)
+	log.Printf("[encrypt] 已就绪: enabled=%t header=%s", cfg.Enabled, crypto.header)
 }
 
 // getCrypto 返回包级默认实例，未调用 Init 会 panic。对照 redis.Client。

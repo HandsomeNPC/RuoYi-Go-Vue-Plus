@@ -25,7 +25,6 @@ import (
 	goredis "github.com/redis/go-redis/v9"
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 
-	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/middleware"
@@ -83,11 +82,9 @@ var (
 	defaultSubmitter *Submitter
 )
 
-// Init 构造包级默认实例，须在 config.Load 与 redis.Init 之后调用（防重键存 Redis）。
-// tokenName 取 config.SAToken.TokenName，为空时兜底 defaultTokenName（正常配置不会为空）。
-func Init() {
-	c := config.Get()
-	tokenName := c.SAToken.TokenName
+// Init 构造包级默认实例，须在 redis.Init 之后调用（防重键存 Redis）。
+// tokenName 取自调用方传入（模块装配时从 satoken 配置取），为空时兜底 defaultTokenName。
+func Init(tokenName string) {
 	if tokenName == "" {
 		tokenName = defaultTokenName
 	}
@@ -95,7 +92,7 @@ func Init() {
 	mu.Lock()
 	defaultSubmitter = s
 	mu.Unlock()
-	log.Printf("[%s] repeatsubmit 已就绪: tokenName=%s", c.Server.Name, s.tokenName)
+	log.Printf("[repeatsubmit] 已就绪: tokenName=%s", s.tokenName)
 }
 
 // get 返回包级默认实例，未 Init 会 panic。

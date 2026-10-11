@@ -12,7 +12,7 @@
 //
 // 加一个平台 = 实现 Provider 的两个方法并在 Init 里注册，约 30 行。
 //
-// 初始化对照 sms.Init / mail.Init：social.Init() 无参，自读 config.Get().Social，
+// 初始化对照 sms.Init / mail.Init：social.Init(cfg) 收 SocialConfig，
 // 但依赖 Redis(state 存 Redis)，须排在 redis.Init 之后。
 package social
 
@@ -91,10 +91,17 @@ type Provider interface {
 		client *http.Client, tok *oauth2.Token) (*AuthUser, error)
 }
 
+// providerEntry 已注册的平台：Provider 与其配置成对缓存，
+// 让请求期的 lookup 不必再回读全局配置。
+type providerEntry struct {
+	provider Provider
+	cfg      config.SocialLoginConfig
+}
+
 // registry 已注册的平台。仅含配置齐全者，故「未注册」等价于「不支持」。
 var (
 	mu       sync.RWMutex
-	registry = map[string]Provider{}
+	registry = map[string]providerEntry{}
 )
 
 // providers 全部平台实现。与配置无关，是否可用由 Init 按配置筛。
@@ -105,46 +112,44 @@ var providers = map[string]Provider{
 	SourceTopiam: serverProvider{source: SourceTopiam},
 }
 
-// Init 按 config.Get().Social 注册配置齐全的平台。须在 config.Load 之后调用。
+// Init 按传入的 SocialConfig 注册配置齐全的平台。须在 config.Load 之后调用。
 //
 // 配置不全即不注册：缺 clientId/clientSecret(私有化部署再加 serverUrl)
 // 也归进「不支持该平台」。
 // 因此前端那个 wechat 按钮天然返回「暂不支持」：它不是合法 source，
 // 原项目只支持 wechat_open/wechat_mp/wechat_enterprise。
-func Init() {
-	c := config.Get()
-
-	reg := make(map[string]Provider, len(providers))
+func Init(cfg config.SocialConfig) {
+	reg := make(map[string]providerEntry, len(providers))
 	for source, p := range providers {
-		lc, ok := c.Social.Type[source]
+		lc, ok := cfg.Type[source]
 		if !ok || !lc.Configured() {
 			continue
 		}
 		// 让 provider 自查其余必填项(如私有化部署的 serverUrl)，
 		// 不合格的当场剔除，免得留到运行期才报错。
 		if _, err := p.OAuth2Config(lc); err != nil {
-			log.Printf("[%s] social 平台 %s 配置无效，已跳过: %v", c.Server.Name, source, err)
+			log.Printf("[social] 平台 %s 配置无效，已跳过: %v", source, err)
 			continue
 		}
-		reg[source] = p
+		reg[source] = providerEntry{provider: p, cfg: lc}
 	}
 
 	mu.Lock()
 	registry = reg
 	mu.Unlock()
 
-	log.Printf("[%s] social 已就绪: 可用平台=%v", c.Server.Name, sortedKeys(reg))
+	log.Printf("[social] 已就绪: 可用平台=%v", sortedProviderKeys(reg))
 }
 
 // lookup 取平台实现与其配置，未注册时返回 ErrUnsupportedSource。
 func lookup(source string) (Provider, config.SocialLoginConfig, error) {
 	mu.RLock()
-	p, ok := registry[source]
+	e, ok := registry[source]
 	mu.RUnlock()
 	if !ok {
 		return nil, config.SocialLoginConfig{}, ErrUnsupportedSource
 	}
-	return p, config.Get().Social.Type[source], nil
+	return e.provider, e.cfg, nil
 }
 
 // GetAuthorizeURL 生成授权跳转地址，并把 state 存进 Redis 待回调校验。
@@ -291,8 +296,8 @@ func truncate(s string, n int) string {
 	return s[:n] + "..."
 }
 
-// sortedKeys 取排序后的键，仅用于日志输出稳定。
-func sortedKeys(m map[string]Provider) []string {
+// sortedProviderKeys 取排序后的键，仅用于日志输出稳定。
+func sortedProviderKeys(m map[string]providerEntry) []string {
 	out := make([]string, 0, len(m))
 	for k := range m {
 		out = append(out, k)

@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 
+	systemconfig "ruoyi-go-vue-plus/internal/system/config"
 	"ruoyi-go-vue-plus/internal/system/handler"
 	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/encrypt"
@@ -374,14 +375,15 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 // /resource/* 的路由（消息盒子、推送端点）归 internal/resource——与 OSS 一起由 resource 进程承载。
 func InitRouter() *gin.Engine {
 	r := gin.New()
+	cfg := systemconfig.Get()
 
 	r.Use(middleware.Recover())
-	r.Use(middleware.CORS())
-	r.Use(middleware.TraceID())
-	r.Use(middleware.RepeatableBody())
-	r.Use(middleware.AccessLog())
-	r.Use(middleware.XSS())
-	r.Use(middleware.I18n())
+	r.Use(middleware.CORSWithConfig(cfg.CORS))
+	r.Use(middleware.TraceIDWithConfig(cfg.TraceID))
+	r.Use(middleware.RepeatableBodyWithConfig(cfg.RepeatableBody))
+	r.Use(middleware.AccessLogWithConfig(cfg.AccessLog))
+	r.Use(middleware.XSSWithConfig(cfg.XSS))
+	r.Use(middleware.I18nWithConfig(cfg.I18n))
 
 	RegisterRoutes(r, "")
 

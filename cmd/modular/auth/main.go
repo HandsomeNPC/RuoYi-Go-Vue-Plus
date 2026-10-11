@@ -3,9 +3,9 @@ package main
 import (
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/auth"
+	authconfig "ruoyi-go-vue-plus/internal/auth/config"
 	operlogservice "ruoyi-go-vue-plus/internal/system/service/operlog"
 	"ruoyi-go-vue-plus/pkg/captcha"
-	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/database"
 	"ruoyi-go-vue-plus/pkg/encrypt"
 	"ruoyi-go-vue-plus/pkg/oplog"
@@ -19,30 +19,31 @@ import (
 )
 
 func main() {
-	config.Load("configs/application.yaml", "configs/auth.yaml")
+	authconfig.Load("configs/auth.yaml")
 
 	// 须在首个 c.JSON / 参数绑定之前接管 gin 的 JSON codec(雪花 id 按值转字符串)。
 	jsonx.OverrideGinCodec()
 
-	database.Init()
+	cfg := authconfig.Get()
+	database.Init(cfg.Datasource)
 	defer database.CloseDefault()
 
-	redis.Init()
+	redis.Init(cfg.Redis)
 	defer redis.CloseDefault()
 
-	satoken.Init()
-	encrypt.Init()
+	satoken.Init(cfg.SAToken)
+	encrypt.Init(cfg.APIEncrypt)
 	// 主键发号器，落库前必须就绪(登录日志插入用)。
-	snowflake.Init(config.Get().Snowflake)
+	snowflake.Init(cfg.Snowflake)
 	// 依赖 redis(验证码存 Redis)，须在 redis.Init 之后。
-	captcha.Init()
+	captcha.Init(cfg.Captcha)
 	// 依赖 redis(限流计数存 Redis)，须在 redis.Init 之后。
 	ratelimiter.Init()
 	// 依赖 redis(防重键存 Redis)，须在 redis.Init 之后。
 	// auth 当前无 RepeatSubmit 路由，此处为与其他进程对称、避免将来漏初始化。
-	repeatsubmit.Init()
+	repeatsubmit.Init(cfg.SAToken.TokenName)
 	// 三方登录，依赖 redis(state 存 Redis)，须在 redis.Init 之后。
-	social.Init()
+	social.Init(cfg.Social)
 	// 同理：auth 当前无 @Log 路由，但漏注册时 pkg/oplog 只打一行日志就丢弃事件，
 	// 不会报错——保持对称比事后排查静默丢日志省事。
 	oplog.Init(operlogservice.RecordOper)
