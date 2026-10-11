@@ -171,14 +171,24 @@ return pkgrepo.SelectPage(db, page, &rows)
 
 ## 4. Service
 
+每个业务 service 独占一个子包：`internal/<module>/service/<xxx>/`（包名同目录名，单字无下划线， 对齐 repository 层：
+`dictdata`/`dicttype`/`logininfo`/`operlog`/`ossconfig`，单字原样）。 **不要**
+`type XxxService struct{}` 也 **不要** `var XxxSvcApp = new(...)`——这俩是空壳，Go 里无意义。 service 就是包级函数，handler
+直接调：
+
 ```go
+package xxx
+
 var ErrXxxNotFound  = errors.New("service: Xxx 不存在")
 var ErrXxxKeyExists = errors.New("service: Xxx key 已存在")
 
-type XxxService struct{}
-var XxxSvcApp = new(XxxService)   // 包级实例，handler 直接用
+func QueryByID(ctx context.Context, id int64) (*vo.SysXxxVo, error) { ... }
 ```
 
+- **包名与 repository 同名时给 repo import 取别名** `<xxx>repository`，避免和自己包名撞：
+  `xxxrepository "ruoyi-go-vue-plus/internal/<module>/repository/<xxx>"`，调用 `xxxrepository.SelectByID`。
+- handler 侧 import 别名统一 `<xxx>service`：`xxservice "ruoyi-go-vue-plus/internal/<module>/service/<xxx>"`， 调
+  `xxservice.QueryByID(...)`、`xxservice.ErrXxxNotFound`。 （与既有 `systemservice`/`resourceservice` 同构。）
 - **每次调用现取 repo**：`repository.NewXxxRepository(database.DB())`，不缓存成字段。
 - 返回 **VO**（`vo.Conv.ConvertToSysXxxVo`），不把 entity 漏给 handler。
 - 分页要 **重建** `PageResult`：两个泛型实例是不同类型。
@@ -198,10 +208,10 @@ add.XxxID = snowflake.Next()   // 各业务表主键均无 auto_increment
 
 ```go
 // CheckXxxKeyUnique 校验 key 是否可用（对齐 Java 的「唯一即 true」）。
-func (s *XxxService) CheckXxxKeyUnique(ctx, key string, excludeID int64) (bool, error)
+func CheckXxxKeyUnique(ctx, key string, excludeID int64) (bool, error)
 
-s.CheckXxxKeyUnique(ctx, b.Key, 0)      // 新增：无自身可排除
-s.CheckXxxKeyUnique(ctx, b.Key, b.ID)   // 修改：排除自身，改回原 key 不算冲突
+CheckXxxKeyUnique(ctx, b.Key, 0)      // 新增：无自身可排除
+CheckXxxKeyUnique(ctx, b.Key, b.ID)   // 修改：排除自身，改回原 key 不算冲突
 ```
 
 ### ⚠️ 存在性判定不要用受影响行数
@@ -303,7 +313,7 @@ func (a *XxxApi) List(c *gin.Context) {
 		_ = c.Error(errs.New(response.CodeBadRequest, "分页参数有误", err.Error()))
 		return
 	}
-	res, err := systemservice.XxxSvcApp.QueryPageList(c.Request.Context(), q, page)
+	res, err := xxservice.QueryPageList(c.Request.Context(), q, page)
 	if err != nil { _ = c.Error(err); return }
 	c.JSON(http.StatusOK, response.Ok(res))
 }
@@ -320,7 +330,7 @@ func (a *XxxApi) Export(c *gin.Context) {
 		_ = c.Error(errs.New(response.CodeBadRequest, "参数校验失败", err.Error()))
 		return
 	}
-	rows, err := systemservice.XxxSvcApp.QueryList(c.Request.Context(), q, excel.MaxRows+1)
+	rows, err := xxservice.QueryList(c.Request.Context(), q, excel.MaxRows+1)
 	if err != nil { _ = c.Error(err); return }
 	// 工作簿在 excel.Export 内部先建满缓冲再落笔：
 	// middleware.Recover 只在 !Written() 时渲染错误，抢先写字节会让后续错误被静默吞掉。
@@ -363,13 +373,13 @@ func (a *XxxApi) Edit(c *gin.Context) {
 		_ = c.Error(errs.New(response.CodeBadRequest, "主键不能为空", ""))
 		return
 	}
-	if err := systemservice.XxxSvcApp.UpdateXxx(c.Request.Context(), &b); err != nil {
-		if errors.Is(err, systemservice.ErrXxxKeyExists) {
+	if err := xxservice.UpdateXxx(c.Request.Context(), &b); err != nil {
+		if errors.Is(err, xxservice.ErrXxxKeyExists) {
 			_ = c.Error(errs.New(response.CodeFail,
 				fmt.Sprintf("修改'%s'失败，key已存在", b.Name), ""))
 			return
 		}
-		if errors.Is(err, systemservice.ErrXxxNotFound) {
+		if errors.Is(err, xxservice.ErrXxxNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "Xxx 不存在", ""))
 			return
 		}
@@ -473,7 +483,7 @@ jsonx.OverrideGinCodec()        // 必须在首个 c.JSON / 参数绑定之前�
 database.Init(); redis.Init(); satoken.Init(); encrypt.Init()
 snowflake.Init(config.Get().Snowflake)    // 主键发号器，插入前必须就绪
 captcha.Init(); ratelimiter.Init(); repeatsubmit.Init()   // 三者都依赖 redis
-oplog.Init(systemservice.OperLogSvcApp.RecordOper)        // 依赖 database + snowflake
+oplog.Init(operlogservice.RecordOper)        // 依赖 database + snowflake
 ```
 
 全局中间件：`Recover → CORS → TraceID → RepeatableBody → AccessLog → XSS → I18n`。

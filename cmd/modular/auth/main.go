@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/auth"
-	systemservice "ruoyi-go-vue-plus/internal/system/service"
+	operlogservice "ruoyi-go-vue-plus/internal/system/service/operlog"
 	"ruoyi-go-vue-plus/pkg/captcha"
 	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/database"
@@ -45,7 +45,7 @@ func main() {
 	social.Init()
 	// 同理：auth 当前无 @Log 路由，但漏注册时 pkg/oplog 只打一行日志就丢弃事件，
 	// 不会报错——保持对称比事后排查静默丢日志省事。
-	oplog.Init(systemservice.OperLogSvcApp.RecordOper)
+	oplog.Init(operlogservice.RecordOper)
 
 	r := auth.InitRouter()
 	auth.InitServer(r)

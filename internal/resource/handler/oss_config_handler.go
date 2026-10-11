@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"ruoyi-go-vue-plus/internal/resource/model/bo"
-	resourceservice "ruoyi-go-vue-plus/internal/resource/service"
+	ossconfigservice "ruoyi-go-vue-plus/internal/resource/service/ossconfig"
 	"ruoyi-go-vue-plus/pkg/errs"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 	"ruoyi-go-vue-plus/pkg/response"
@@ -35,7 +35,7 @@ func (a *OssConfigApi) List(c *gin.Context) {
 		return
 	}
 
-	res, err := resourceservice.OssConfigSvcApp.QueryPageList(c.Request.Context(), q, page)
+	res, err := ossconfigservice.QueryPageList(c.Request.Context(), q, page)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -52,9 +52,9 @@ func (a *OssConfigApi) GetInfo(c *gin.Context) {
 		return
 	}
 
-	item, err := resourceservice.OssConfigSvcApp.QueryByID(c.Request.Context(), id)
+	item, err := ossconfigservice.QueryByID(c.Request.Context(), id)
 	if err != nil {
-		if errors.Is(err, resourceservice.ErrOssConfigNotFound) {
+		if errors.Is(err, ossconfigservice.ErrOssConfigNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "对象存储配置不存在", ""))
 			return
 		}
@@ -72,8 +72,8 @@ func (a *OssConfigApi) Add(c *gin.Context) {
 		return
 	}
 
-	if err := resourceservice.OssConfigSvcApp.InsertConfig(c.Request.Context(), &b); err != nil {
-		if errors.Is(err, resourceservice.ErrOssConfigKeyExists) {
+	if err := ossconfigservice.InsertConfig(c.Request.Context(), &b); err != nil {
+		if errors.Is(err, ossconfigservice.ErrOssConfigKeyExists) {
 			_ = c.Error(errs.New(response.CodeFail,
 				fmt.Sprintf("操作配置'%s'失败, 配置key已存在!", b.ConfigKey), ""))
 			return
@@ -97,13 +97,13 @@ func (a *OssConfigApi) Edit(c *gin.Context) {
 		return
 	}
 
-	if err := resourceservice.OssConfigSvcApp.UpdateConfig(c.Request.Context(), &b); err != nil {
-		if errors.Is(err, resourceservice.ErrOssConfigKeyExists) {
+	if err := ossconfigservice.UpdateConfig(c.Request.Context(), &b); err != nil {
+		if errors.Is(err, ossconfigservice.ErrOssConfigKeyExists) {
 			_ = c.Error(errs.New(response.CodeFail,
 				fmt.Sprintf("操作配置'%s'失败, 配置key已存在!", b.ConfigKey), ""))
 			return
 		}
-		if errors.Is(err, resourceservice.ErrOssConfigNotFound) {
+		if errors.Is(err, ossconfigservice.ErrOssConfigNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "对象存储配置不存在", ""))
 			return
 		}
@@ -121,8 +121,8 @@ func (a *OssConfigApi) ChangeStatus(c *gin.Context) {
 		return
 	}
 
-	if err := resourceservice.OssConfigSvcApp.UpdateConfigStatus(c.Request.Context(), &b); err != nil {
-		if errors.Is(err, resourceservice.ErrOssConfigNotFound) {
+	if err := ossconfigservice.UpdateConfigStatus(c.Request.Context(), &b); err != nil {
+		if errors.Is(err, ossconfigservice.ErrOssConfigNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "对象存储配置不存在", ""))
 			return
 		}
@@ -140,7 +140,7 @@ func (a *OssConfigApi) Remove(c *gin.Context) {
 		return
 	}
 
-	if err := resourceservice.OssConfigSvcApp.DeleteConfigs(c.Request.Context(), ids); err != nil {
+	if err := ossconfigservice.DeleteConfigs(c.Request.Context(), ids); err != nil {
 		_ = c.Error(err)
 		return
 	}

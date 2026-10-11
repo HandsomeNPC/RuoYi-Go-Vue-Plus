@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"ruoyi-go-vue-plus/internal/monitor/service"
+	onlineservice "ruoyi-go-vue-plus/internal/monitor/service/online"
 	"ruoyi-go-vue-plus/pkg/errs"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 	"ruoyi-go-vue-plus/pkg/response"
@@ -20,7 +20,7 @@ var UserOnlineApiApp = new(UserOnlineApi)
 
 // List 获取在线用户监控列表，按 IP 或用户名过滤当前有效会话。
 func (a *UserOnlineApi) List(c *gin.Context) {
-	rows, err := service.OnlineSvcApp.List(c.Request.Context(), c.Query("ipaddr"), c.Query("userName"))
+	rows, err := onlineservice.List(c.Request.Context(), c.Query("ipaddr"), c.Query("userName"))
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -35,7 +35,7 @@ func (a *UserOnlineApi) ForceLogout(c *gin.Context) {
 		_ = c.Error(errs.New(response.CodeBadRequest, "token 不能为空", ""))
 		return
 	}
-	if err := service.OnlineSvcApp.ForceLogout(c.Request.Context(), tokenID); err != nil {
+	if err := onlineservice.ForceLogout(c.Request.Context(), tokenID); err != nil {
 		_ = c.Error(err)
 		return
 	}
@@ -44,7 +44,7 @@ func (a *UserOnlineApi) ForceLogout(c *gin.Context) {
 
 // GetInfo 获取当前登录用户的在线设备列表。
 func (a *UserOnlineApi) GetInfo(c *gin.Context) {
-	rows, err := service.OnlineSvcApp.GetInfo(c.Request.Context(), loginhelper.GetLoginID(c))
+	rows, err := onlineservice.GetInfo(c.Request.Context(), loginhelper.GetLoginID(c))
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -59,7 +59,7 @@ func (a *UserOnlineApi) Remove(c *gin.Context) {
 		_ = c.Error(errs.New(response.CodeBadRequest, "token 不能为空", ""))
 		return
 	}
-	if err := service.OnlineSvcApp.Remove(c.Request.Context(), loginhelper.GetLoginID(c), tokenID); err != nil {
+	if err := onlineservice.Remove(c.Request.Context(), loginhelper.GetLoginID(c), tokenID); err != nil {
 		_ = c.Error(err)
 		return
 	}

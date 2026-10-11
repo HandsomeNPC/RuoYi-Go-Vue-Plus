@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"ruoyi-go-vue-plus/internal/monitor/service"
+	logininfoservice "ruoyi-go-vue-plus/internal/monitor/service/logininfo"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/excel"
@@ -35,7 +35,7 @@ func (a *LoginInfoApi) List(c *gin.Context) {
 		return
 	}
 
-	res, err := service.LoginInfoSvcApp.QueryPageList(c.Request.Context(), q, page)
+	res, err := logininfoservice.QueryPageList(c.Request.Context(), q, page)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -53,7 +53,7 @@ func (a *LoginInfoApi) Export(c *gin.Context) {
 		return
 	}
 
-	rows, err := service.LoginInfoSvcApp.QueryList(c.Request.Context(), q, excel.MaxRows+1)
+	rows, err := logininfoservice.QueryList(c.Request.Context(), q, excel.MaxRows+1)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -71,7 +71,7 @@ func (a *LoginInfoApi) Remove(c *gin.Context) {
 		_ = c.Error(errs.New(response.CodeBadRequest, "参数主键不能为空", c.Param("infoIds")))
 		return
 	}
-	if err := service.LoginInfoSvcApp.DeleteByIDs(c.Request.Context(), ids); err != nil {
+	if err := logininfoservice.DeleteByIDs(c.Request.Context(), ids); err != nil {
 		_ = c.Error(err)
 		return
 	}
@@ -80,7 +80,7 @@ func (a *LoginInfoApi) Remove(c *gin.Context) {
 
 // Clean 清空全部登录日志。
 func (a *LoginInfoApi) Clean(c *gin.Context) {
-	if err := service.LoginInfoSvcApp.Clean(c.Request.Context()); err != nil {
+	if err := logininfoservice.Clean(c.Request.Context()); err != nil {
 		_ = c.Error(err)
 		return
 	}
@@ -94,7 +94,7 @@ func (a *LoginInfoApi) Unlock(c *gin.Context) {
 		_ = c.Error(errs.New(response.CodeBadRequest, "用户名不能为空", ""))
 		return
 	}
-	if err := service.LoginInfoSvcApp.Unlock(c.Request.Context(), userName); err != nil {
+	if err := logininfoservice.Unlock(c.Request.Context(), userName); err != nil {
 		_ = c.Error(err)
 		return
 	}

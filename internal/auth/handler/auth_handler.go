@@ -12,8 +12,10 @@ import (
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 
 	"ruoyi-go-vue-plus/internal/auth/model"
-	authservice "ruoyi-go-vue-plus/internal/auth/service"
-	systemservice "ruoyi-go-vue-plus/internal/system/service"
+	authservice "ruoyi-go-vue-plus/internal/auth/service/auth"
+	sysloginservice "ruoyi-go-vue-plus/internal/auth/service/syslogin"
+	clientservice "ruoyi-go-vue-plus/internal/system/service/client"
+	socialservice "ruoyi-go-vue-plus/internal/system/service/social"
 	"ruoyi-go-vue-plus/pkg/captcha"
 	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/errs"
@@ -42,7 +44,7 @@ func (a *AuthApi) Login(c *gin.Context) {
 	}
 	clientID := body.ClientID
 	grantType := body.GrantType
-	client, err := systemservice.ClientSvcApp.QueryByClientID(c.Request.Context(), clientID)
+	client, err := clientservice.QueryByClientID(c.Request.Context(), clientID)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -57,7 +59,7 @@ func (a *AuthApi) Login(c *gin.Context) {
 		_ = c.Error(errs.New(0, i18n.Msg(c.Request.Context(), "auth.grant.type.blocked"), ""))
 		return
 	}
-	vo, err := authservice.AuthSvcApp.Login(c.Request, raw, grantType, client)
+	vo, err := authservice.Login(c.Request, raw, grantType, client)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -70,7 +72,7 @@ func (a *AuthApi) Login(c *gin.Context) {
 // 恒返回成功：service 内部吞掉未登录/token 失效的情况，前端总能正常清态。
 func (a *AuthApi) Logout(c *gin.Context) {
 	// token 由组级 TokenInterceptor 解析后存入 ctx；service 层不碰 *gin.Context，故在此取出传入。
-	authservice.SysLoginSvcApp.Logout(c.Request, sagin.GetTokenFromCtx(c))
+	sysloginservice.Logout(c.Request, sagin.GetTokenFromCtx(c))
 
 	c.JSON(http.StatusOK, response.OkMsg(i18n.Msg(c.Request.Context(), "user.logout.success")))
 }
@@ -127,9 +129,9 @@ func (a *AuthApi) SocialCallback(c *gin.Context) {
 		return
 	}
 
-	if err := authservice.SysLoginSvcApp.SocialRegister(ctx,
+	if err := sysloginservice.SocialRegister(ctx,
 		loginhelper.GetUserID(c), authUser); err != nil {
-		if errors.Is(err, systemservice.ErrSocialAlreadyBound) {
+		if errors.Is(err, socialservice.ErrSocialAlreadyBound) {
 			_ = c.Error(errs.New(0, "此三方账号已经被绑定!", ""))
 			return
 		}
@@ -152,9 +154,9 @@ func (a *AuthApi) UnlockSocial(c *gin.Context) {
 
 	ctx := c.Request.Context()
 	// 校验归属：原实现只按主键删，任何登录用户都能解绑他人账号，而那行里存着三方 access_token。
-	owner, err := systemservice.SocialSvcApp.FindOwnerUserID(ctx, socialID)
+	owner, err := socialservice.FindOwnerUserID(ctx, socialID)
 	if err != nil {
-		if errors.Is(err, systemservice.ErrSocialNotFound) {
+		if errors.Is(err, socialservice.ErrSocialNotFound) {
 			_ = c.Error(errs.New(0, "取消授权失败", ""))
 			return
 		}
@@ -166,7 +168,7 @@ func (a *AuthApi) UnlockSocial(c *gin.Context) {
 		return
 	}
 
-	ok, err := systemservice.SocialSvcApp.DeleteWithValidById(ctx, socialID)
+	ok, err := socialservice.DeleteWithValidById(ctx, socialID)
 	if err != nil {
 		_ = c.Error(err)
 		return

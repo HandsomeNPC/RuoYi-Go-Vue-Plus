@@ -12,9 +12,9 @@ import (
 	"ruoyi-go-vue-plus/internal/auth"
 	"ruoyi-go-vue-plus/internal/monitor"
 	"ruoyi-go-vue-plus/internal/resource"
-	resourceservice "ruoyi-go-vue-plus/internal/resource/service"
+	ossconfigservice "ruoyi-go-vue-plus/internal/resource/service/ossconfig"
 	"ruoyi-go-vue-plus/internal/system"
-	systemservice "ruoyi-go-vue-plus/internal/system/service"
+	operlogservice "ruoyi-go-vue-plus/internal/system/service/operlog"
 	"ruoyi-go-vue-plus/pkg/captcha"
 	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/database"
@@ -63,14 +63,14 @@ func main() {
 	social.Init()
 	// 操作日志落库实现反向注册给 pkg/oplog(pkg 不依赖 internal/service)，
 	// 依赖 database 与 snowflake。
-	oplog.Init(systemservice.OperLogSvcApp.RecordOper)
+	oplog.Init(operlogservice.RecordOper)
 	// 推送会话管理器，依赖 redis(跨实例分发走 Redis 订阅)，须在 redis.Init 之后。
 	push.Init()
 	defer push.Shutdown()
 
 	// OSS 配置预热：把库里的配置写进缓存并确定默认配置键。
 	// 不预热的话首次上传会因取不到默认配置而失败。依赖 database 与 redis。
-	if err := resourceservice.OssConfigSvcApp.InitCache(context.Background()); err != nil {
+	if err := ossconfigservice.InitCache(context.Background()); err != nil {
 		// 不 fatal：配置表为空或库暂时不可用时，配置管理接口仍应能用来补配置。
 		log.Printf("[standalone] OSS 配置预热失败，上传功能暂不可用: %v", err)
 	}

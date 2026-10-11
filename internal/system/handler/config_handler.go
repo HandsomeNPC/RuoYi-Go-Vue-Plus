@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"ruoyi-go-vue-plus/internal/system/model/bo"
-	systemservice "ruoyi-go-vue-plus/internal/system/service"
+	configservice "ruoyi-go-vue-plus/internal/system/service/config"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/excel"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
@@ -37,7 +37,7 @@ func (a *ConfigApi) List(c *gin.Context) {
 		return
 	}
 
-	res, err := systemservice.ConfigSvcApp.QueryPageList(c.Request.Context(), q, page)
+	res, err := configservice.QueryPageList(c.Request.Context(), q, page)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -58,7 +58,7 @@ func (a *ConfigApi) Export(c *gin.Context) {
 		return
 	}
 
-	rows, err := systemservice.ConfigSvcApp.QueryList(c.Request.Context(), q, excel.MaxRows+1)
+	rows, err := configservice.QueryList(c.Request.Context(), q, excel.MaxRows+1)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -81,9 +81,9 @@ func (a *ConfigApi) GetInfo(c *gin.Context) {
 		return
 	}
 
-	res, err := systemservice.ConfigSvcApp.QueryByID(c.Request.Context(), id)
+	res, err := configservice.QueryByID(c.Request.Context(), id)
 	if err != nil {
-		if errors.Is(err, systemservice.ErrConfigNotFound) {
+		if errors.Is(err, configservice.ErrConfigNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "参数配置不存在", ""))
 			return
 		}
@@ -104,7 +104,7 @@ func (a *ConfigApi) GetConfigKey(c *gin.Context) {
 		return
 	}
 
-	value, err := systemservice.ConfigSvcApp.SelectConfigByKey(c.Request.Context(), configKey)
+	value, err := configservice.SelectConfigByKey(c.Request.Context(), configKey)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -120,8 +120,8 @@ func (a *ConfigApi) Add(c *gin.Context) {
 		return
 	}
 
-	if err := systemservice.ConfigSvcApp.InsertConfig(c.Request.Context(), &b); err != nil {
-		if errors.Is(err, systemservice.ErrConfigKeyExists) {
+	if err := configservice.InsertConfig(c.Request.Context(), &b); err != nil {
+		if errors.Is(err, configservice.ErrConfigKeyExists) {
 			_ = c.Error(errs.New(response.CodeFail,
 				fmt.Sprintf("新增参数'%s'失败，参数键名已存在", b.ConfigName), ""))
 			return
@@ -145,13 +145,13 @@ func (a *ConfigApi) Edit(c *gin.Context) {
 		return
 	}
 
-	if err := systemservice.ConfigSvcApp.UpdateConfig(c.Request.Context(), &b); err != nil {
-		if errors.Is(err, systemservice.ErrConfigKeyExists) {
+	if err := configservice.UpdateConfig(c.Request.Context(), &b); err != nil {
+		if errors.Is(err, configservice.ErrConfigKeyExists) {
 			_ = c.Error(errs.New(response.CodeFail,
 				fmt.Sprintf("修改参数'%s'失败，参数键名已存在", b.ConfigName), ""))
 			return
 		}
-		if errors.Is(err, systemservice.ErrConfigNotFound) {
+		if errors.Is(err, configservice.ErrConfigNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "参数配置不存在", ""))
 			return
 		}
@@ -169,8 +169,8 @@ func (a *ConfigApi) UpdateByKey(c *gin.Context) {
 		return
 	}
 
-	if err := systemservice.ConfigSvcApp.UpdateConfigByKey(c.Request.Context(), &b); err != nil {
-		if errors.Is(err, systemservice.ErrConfigNotFound) {
+	if err := configservice.UpdateConfigByKey(c.Request.Context(), &b); err != nil {
+		if errors.Is(err, configservice.ErrConfigNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "参数配置不存在", ""))
 			return
 		}
@@ -189,7 +189,7 @@ func (a *ConfigApi) Remove(c *gin.Context) {
 	}
 
 	// 内置参数不可删的提示由 service 以 ServiceError 抛出，此处无需另行翻译。
-	if err := systemservice.ConfigSvcApp.DeleteConfigByIDs(c.Request.Context(), ids); err != nil {
+	if err := configservice.DeleteConfigByIDs(c.Request.Context(), ids); err != nil {
 		_ = c.Error(err)
 		return
 	}
@@ -198,7 +198,7 @@ func (a *ConfigApi) Remove(c *gin.Context) {
 
 // RefreshCache 刷新参数缓存。
 func (a *ConfigApi) RefreshCache(c *gin.Context) {
-	if err := systemservice.ConfigSvcApp.ResetConfigCache(c.Request.Context()); err != nil {
+	if err := configservice.ResetConfigCache(c.Request.Context()); err != nil {
 		_ = c.Error(err)
 		return
 	}

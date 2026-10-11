@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"ruoyi-go-vue-plus/internal/system/model/bo"
-	systemservice "ruoyi-go-vue-plus/internal/system/service"
+	noticeservice "ruoyi-go-vue-plus/internal/system/service/notice"
 	"ruoyi-go-vue-plus/pkg/errs"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 	"ruoyi-go-vue-plus/pkg/response"
@@ -35,7 +35,7 @@ func (a *NoticeApi) List(c *gin.Context) {
 		return
 	}
 
-	res, err := systemservice.NoticeSvcApp.QueryPageList(c.Request.Context(), q, page)
+	res, err := noticeservice.QueryPageList(c.Request.Context(), q, page)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -52,9 +52,9 @@ func (a *NoticeApi) GetInfo(c *gin.Context) {
 		return
 	}
 
-	res, err := systemservice.NoticeSvcApp.QueryByID(c.Request.Context(), id)
+	res, err := noticeservice.QueryByID(c.Request.Context(), id)
 	if err != nil {
-		if errors.Is(err, systemservice.ErrNoticeNotFound) {
+		if errors.Is(err, noticeservice.ErrNoticeNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "通知公告不存在", ""))
 			return
 		}
@@ -72,7 +72,7 @@ func (a *NoticeApi) Add(c *gin.Context) {
 		return
 	}
 
-	if err := systemservice.NoticeSvcApp.InsertNotice(c.Request.Context(), &b); err != nil {
+	if err := noticeservice.InsertNotice(c.Request.Context(), &b); err != nil {
 		_ = c.Error(err)
 		return
 	}
@@ -92,8 +92,8 @@ func (a *NoticeApi) Edit(c *gin.Context) {
 		return
 	}
 
-	if err := systemservice.NoticeSvcApp.UpdateNotice(c.Request.Context(), &b); err != nil {
-		if errors.Is(err, systemservice.ErrNoticeNotFound) {
+	if err := noticeservice.UpdateNotice(c.Request.Context(), &b); err != nil {
+		if errors.Is(err, noticeservice.ErrNoticeNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "通知公告不存在", ""))
 			return
 		}
@@ -111,8 +111,8 @@ func (a *NoticeApi) Remove(c *gin.Context) {
 		return
 	}
 
-	if err := systemservice.NoticeSvcApp.DeleteNoticeByIDs(c.Request.Context(), ids); err != nil {
-		if errors.Is(err, systemservice.ErrNoticeNotFound) {
+	if err := noticeservice.DeleteNoticeByIDs(c.Request.Context(), ids); err != nil {
+		if errors.Is(err, noticeservice.ErrNoticeNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "通知公告不存在", ""))
 			return
 		}

@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"ruoyi-go-vue-plus/internal/system/model/bo"
-	systemservice "ruoyi-go-vue-plus/internal/system/service"
+	dicttypeservice "ruoyi-go-vue-plus/internal/system/service/dicttype"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/excel"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
@@ -37,7 +37,7 @@ func (a *DictTypeApi) List(c *gin.Context) {
 		return
 	}
 
-	res, err := systemservice.DictTypeSvcApp.QueryPageList(c.Request.Context(), q, page)
+	res, err := dicttypeservice.QueryPageList(c.Request.Context(), q, page)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -58,7 +58,7 @@ func (a *DictTypeApi) Export(c *gin.Context) {
 		return
 	}
 
-	rows, err := systemservice.DictTypeSvcApp.QueryList(c.Request.Context(), q, excel.MaxRows+1)
+	rows, err := dicttypeservice.QueryList(c.Request.Context(), q, excel.MaxRows+1)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -81,9 +81,9 @@ func (a *DictTypeApi) GetInfo(c *gin.Context) {
 		return
 	}
 
-	res, err := systemservice.DictTypeSvcApp.QueryByID(c.Request.Context(), dictID)
+	res, err := dicttypeservice.QueryByID(c.Request.Context(), dictID)
 	if err != nil {
-		if errors.Is(err, systemservice.ErrDictTypeNotFound) {
+		if errors.Is(err, dicttypeservice.ErrDictTypeNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "字典类型不存在", ""))
 			return
 		}
@@ -96,7 +96,7 @@ func (a *DictTypeApi) GetInfo(c *gin.Context) {
 // OptionSelect 获取字典类型下拉选择列表。
 // 不校验权限码，仅需登录：前端选字典时未必有字典管理权限。
 func (a *DictTypeApi) OptionSelect(c *gin.Context) {
-	res, err := systemservice.DictTypeSvcApp.QueryAll(c.Request.Context())
+	res, err := dicttypeservice.QueryAll(c.Request.Context())
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -112,8 +112,8 @@ func (a *DictTypeApi) Add(c *gin.Context) {
 		return
 	}
 
-	if err := systemservice.DictTypeSvcApp.InsertDictType(c.Request.Context(), &b); err != nil {
-		if errors.Is(err, systemservice.ErrDictTypeExists) {
+	if err := dicttypeservice.InsertDictType(c.Request.Context(), &b); err != nil {
+		if errors.Is(err, dicttypeservice.ErrDictTypeExists) {
 			_ = c.Error(errs.New(response.CodeFail,
 				fmt.Sprintf("新增字典'%s'失败，字典类型已存在", b.DictName), ""))
 			return
@@ -138,13 +138,13 @@ func (a *DictTypeApi) Edit(c *gin.Context) {
 		return
 	}
 
-	if err := systemservice.DictTypeSvcApp.UpdateDictType(c.Request.Context(), &b); err != nil {
-		if errors.Is(err, systemservice.ErrDictTypeExists) {
+	if err := dicttypeservice.UpdateDictType(c.Request.Context(), &b); err != nil {
+		if errors.Is(err, dicttypeservice.ErrDictTypeExists) {
 			_ = c.Error(errs.New(response.CodeFail,
 				fmt.Sprintf("修改字典'%s'失败，字典类型已存在", b.DictName), ""))
 			return
 		}
-		if errors.Is(err, systemservice.ErrDictTypeNotFound) {
+		if errors.Is(err, dicttypeservice.ErrDictTypeNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "字典类型不存在", ""))
 			return
 		}
@@ -163,7 +163,7 @@ func (a *DictTypeApi) Remove(c *gin.Context) {
 	}
 
 	// 「已分配,不能删除」的提示由 service 以 ServiceError 抛出，此处无需另行翻译。
-	if err := systemservice.DictTypeSvcApp.DeleteDictTypeByIDs(c.Request.Context(), ids); err != nil {
+	if err := dicttypeservice.DeleteDictTypeByIDs(c.Request.Context(), ids); err != nil {
 		_ = c.Error(err)
 		return
 	}
@@ -176,7 +176,7 @@ func (a *DictTypeApi) Remove(c *gin.Context) {
 // （EvictGroup 的 SCAN+DEL 本身幂等），没有"清空后重新加载"的窗口期，并发清也不会
 // 产生不一致。等将来改成预热式刷新再补锁。
 func (a *DictTypeApi) RefreshCache(c *gin.Context) {
-	if err := systemservice.DictTypeSvcApp.ResetDictCache(c.Request.Context()); err != nil {
+	if err := dicttypeservice.ResetDictCache(c.Request.Context()); err != nil {
 		_ = c.Error(err)
 		return
 	}

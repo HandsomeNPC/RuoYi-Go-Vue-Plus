@@ -12,7 +12,9 @@ import (
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
-	systemservice "ruoyi-go-vue-plus/internal/system/service"
+	deptservice "ruoyi-go-vue-plus/internal/system/service/dept"
+	roleservice "ruoyi-go-vue-plus/internal/system/service/role"
+	userservice "ruoyi-go-vue-plus/internal/system/service/user"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/excel"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
@@ -41,7 +43,7 @@ func (a *RoleApi) List(c *gin.Context) {
 		return
 	}
 
-	res, err := systemservice.RoleSvcApp.QueryPageList(c.Request.Context(), q, page)
+	res, err := roleservice.QueryPageList(c.Request.Context(), q, page)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -62,7 +64,7 @@ func (a *RoleApi) Export(c *gin.Context) {
 		return
 	}
 
-	rows, err := systemservice.RoleSvcApp.QueryList(c.Request.Context(), q, excel.MaxRows+1)
+	rows, err := roleservice.QueryList(c.Request.Context(), q, excel.MaxRows+1)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -87,13 +89,13 @@ func (a *RoleApi) GetInfo(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	if err := systemservice.RoleSvcApp.CheckRoleDataScope(ctx, loginhelper.GetUserID(c), roleID); err != nil {
+	if err := roleservice.CheckRoleDataScope(ctx, loginhelper.GetUserID(c), roleID); err != nil {
 		_ = c.Error(err)
 		return
 	}
-	res, err := systemservice.RoleSvcApp.QueryByID(ctx, roleID)
+	res, err := roleservice.QueryByID(ctx, roleID)
 	if err != nil {
-		if errors.Is(err, systemservice.ErrRoleNotFound) {
+		if errors.Is(err, roleservice.ErrRoleNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "角色不存在", ""))
 			return
 		}
@@ -111,7 +113,7 @@ func (a *RoleApi) Add(c *gin.Context) {
 		return
 	}
 
-	if err := systemservice.RoleSvcApp.InsertRole(c.Request.Context(), &b); err != nil {
+	if err := roleservice.InsertRole(c.Request.Context(), &b); err != nil {
 		_ = c.Error(translateRoleError(err, "新增", b.RoleName))
 		return
 	}
@@ -132,11 +134,11 @@ func (a *RoleApi) Edit(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	if err := systemservice.RoleSvcApp.CheckRoleDataScope(ctx, loginhelper.GetUserID(c), b.RoleID); err != nil {
+	if err := roleservice.CheckRoleDataScope(ctx, loginhelper.GetUserID(c), b.RoleID); err != nil {
 		_ = c.Error(err)
 		return
 	}
-	rows, err := systemservice.RoleSvcApp.UpdateRoleBaseInfo(ctx, &b)
+	rows, err := roleservice.UpdateRoleBaseInfo(ctx, &b)
 	if err != nil {
 		_ = c.Error(translateRoleError(err, "修改", b.RoleName))
 		return
@@ -163,11 +165,11 @@ func (a *RoleApi) EditPermission(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	if err := systemservice.RoleSvcApp.CheckRoleDataScope(ctx, loginhelper.GetUserID(c), b.RoleID); err != nil {
+	if err := roleservice.CheckRoleDataScope(ctx, loginhelper.GetUserID(c), b.RoleID); err != nil {
 		_ = c.Error(err)
 		return
 	}
-	rows, err := systemservice.RoleSvcApp.UpdateRolePermission(ctx, &b)
+	rows, err := roleservice.UpdateRolePermission(ctx, &b)
 	if err != nil {
 		_ = c.Error(translateRoleError(err, "修改", b.RoleName))
 		return
@@ -193,15 +195,15 @@ func (a *RoleApi) ChangeStatus(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	if err := systemservice.RoleSvcApp.CheckRoleAllowed(ctx, &b); err != nil {
+	if err := roleservice.CheckRoleAllowed(ctx, &b); err != nil {
 		_ = c.Error(err)
 		return
 	}
-	if err := systemservice.RoleSvcApp.CheckRoleDataScope(ctx, loginhelper.GetUserID(c), b.RoleID); err != nil {
+	if err := roleservice.CheckRoleDataScope(ctx, loginhelper.GetUserID(c), b.RoleID); err != nil {
 		_ = c.Error(err)
 		return
 	}
-	rows, err := systemservice.RoleSvcApp.UpdateRoleStatus(ctx, b.RoleID, b.Status)
+	rows, err := roleservice.UpdateRoleStatus(ctx, b.RoleID, b.Status)
 	if err != nil {
 		// 「角色已分配，不能禁用」由 service 以 ServiceError 抛出，此处无需另行翻译。
 		_ = c.Error(err)
@@ -225,7 +227,7 @@ func (a *RoleApi) Remove(c *gin.Context) {
 
 	// 「已分配,不能删除」「没有权限访问部分角色数据」「不允许操作超级管理员角色」
 	// 三类拦截由 service 以 ServiceError 抛出，此处无需另行翻译。
-	if err := systemservice.RoleSvcApp.DeleteRoleByIDs(
+	if err := roleservice.DeleteRoleByIDs(
 		c.Request.Context(), loginhelper.GetUserID(c), ids); err != nil {
 		_ = c.Error(err)
 		return
@@ -247,7 +249,7 @@ func (a *RoleApi) OptionSelect(c *gin.Context) {
 		roleIDs = parsed
 	}
 
-	res, err := systemservice.RoleSvcApp.SelectByIDs(c.Request.Context(), roleIDs)
+	res, err := roleservice.SelectByIDs(c.Request.Context(), roleIDs)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -268,7 +270,7 @@ func (a *RoleApi) AllocatedList(c *gin.Context) {
 		return
 	}
 
-	res, err := systemservice.UserSvcApp.SelectAllocatedList(c.Request.Context(), q, page)
+	res, err := userservice.SelectAllocatedList(c.Request.Context(), q, page)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -289,7 +291,7 @@ func (a *RoleApi) UnallocatedList(c *gin.Context) {
 		return
 	}
 
-	res, err := systemservice.UserSvcApp.SelectUnallocatedList(c.Request.Context(), q, page)
+	res, err := userservice.SelectUnallocatedList(c.Request.Context(), q, page)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -305,7 +307,7 @@ func (a *RoleApi) CancelAuthUser(c *gin.Context) {
 		return
 	}
 
-	rows, err := systemservice.RoleSvcApp.DeleteAuthUser(
+	rows, err := roleservice.DeleteAuthUser(
 		c.Request.Context(), loginhelper.GetUserID(c), ur.RoleID, ur.UserID)
 	if err != nil {
 		// 「不允许修改当前用户角色」由 service 以 ServiceError 抛出，此处无需另行翻译。
@@ -332,7 +334,7 @@ func (a *RoleApi) CancelAuthUserAll(c *gin.Context) {
 		return
 	}
 
-	rows, err := systemservice.RoleSvcApp.DeleteAuthUsers(
+	rows, err := roleservice.DeleteAuthUsers(
 		c.Request.Context(), loginhelper.GetUserID(c), roleID, userIDs)
 	if err != nil {
 		_ = c.Error(err)
@@ -359,11 +361,11 @@ func (a *RoleApi) SelectAuthUserAll(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	if err := systemservice.RoleSvcApp.CheckRoleDataScope(ctx, loginhelper.GetUserID(c), roleID); err != nil {
+	if err := roleservice.CheckRoleDataScope(ctx, loginhelper.GetUserID(c), roleID); err != nil {
 		_ = c.Error(err)
 		return
 	}
-	rows, err := systemservice.RoleSvcApp.InsertAuthUsers(ctx, roleID, userIDs)
+	rows, err := roleservice.InsertAuthUsers(ctx, roleID, userIDs)
 	if err != nil {
 		// 「不允许修改当前用户角色」由 service 以 ServiceError 抛出，此处无需另行翻译。
 		_ = c.Error(err)
@@ -386,9 +388,9 @@ func (a *RoleApi) DeptTreeSelect(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	checkedKeys, err := systemservice.RoleSvcApp.SelectDeptIDsByRoleID(ctx, roleID)
+	checkedKeys, err := roleservice.SelectDeptIDsByRoleID(ctx, roleID)
 	if err != nil {
-		if errors.Is(err, systemservice.ErrRoleNotFound) {
+		if errors.Is(err, roleservice.ErrRoleNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "角色不存在", ""))
 			return
 		}
@@ -399,7 +401,7 @@ func (a *RoleApi) DeptTreeSelect(c *gin.Context) {
 	if checkedKeys == nil {
 		checkedKeys = []int64{}
 	}
-	depts, err := systemservice.DeptSvcApp.SelectDeptTreeList(ctx, bo.SysDeptQueryBo{})
+	depts, err := deptservice.SelectDeptTreeList(ctx, bo.SysDeptQueryBo{})
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -416,13 +418,13 @@ func (a *RoleApi) DeptTreeSelect(c *gin.Context) {
 // action 取"新增"/"修改"，用作两个分支的提示前缀。
 func translateRoleError(err error, action, roleName string) error {
 	switch {
-	case errors.Is(err, systemservice.ErrRoleNameExists):
+	case errors.Is(err, roleservice.ErrRoleNameExists):
 		return errs.New(response.CodeFail,
 			fmt.Sprintf("%s角色'%s'失败，角色名称已存在", action, roleName), "")
-	case errors.Is(err, systemservice.ErrRoleKeyExists):
+	case errors.Is(err, roleservice.ErrRoleKeyExists):
 		return errs.New(response.CodeFail,
 			fmt.Sprintf("%s角色'%s'失败，角色权限已存在", action, roleName), "")
-	case errors.Is(err, systemservice.ErrRoleNotFound):
+	case errors.Is(err, roleservice.ErrRoleNotFound):
 		return errs.New(response.CodeNotFound, "角色不存在", "")
 	}
 	return err

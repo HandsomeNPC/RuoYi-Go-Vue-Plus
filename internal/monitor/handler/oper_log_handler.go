@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"ruoyi-go-vue-plus/internal/monitor/service"
+	operlogservice "ruoyi-go-vue-plus/internal/monitor/service/operlog"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/excel"
@@ -35,7 +35,7 @@ func (a *OperLogApi) List(c *gin.Context) {
 		return
 	}
 
-	res, err := service.OperLogSvcApp.QueryPageList(c.Request.Context(), q, page)
+	res, err := operlogservice.QueryPageList(c.Request.Context(), q, page)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -53,7 +53,7 @@ func (a *OperLogApi) Export(c *gin.Context) {
 		return
 	}
 
-	rows, err := service.OperLogSvcApp.QueryList(c.Request.Context(), q, excel.MaxRows+1)
+	rows, err := operlogservice.QueryList(c.Request.Context(), q, excel.MaxRows+1)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -71,7 +71,7 @@ func (a *OperLogApi) Remove(c *gin.Context) {
 		_ = c.Error(errs.New(response.CodeBadRequest, "参数主键不能为空", c.Param("operIds")))
 		return
 	}
-	if err := service.OperLogSvcApp.DeleteByIDs(c.Request.Context(), ids); err != nil {
+	if err := operlogservice.DeleteByIDs(c.Request.Context(), ids); err != nil {
 		_ = c.Error(err)
 		return
 	}
@@ -80,7 +80,7 @@ func (a *OperLogApi) Remove(c *gin.Context) {
 
 // Clean 清空全部操作日志。
 func (a *OperLogApi) Clean(c *gin.Context) {
-	if err := service.OperLogSvcApp.Clean(c.Request.Context()); err != nil {
+	if err := operlogservice.Clean(c.Request.Context()); err != nil {
 		_ = c.Error(err)
 		return
 	}

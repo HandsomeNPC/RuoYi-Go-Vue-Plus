@@ -4,7 +4,7 @@ package main
 import (
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system"
-	systemservice "ruoyi-go-vue-plus/internal/system/service"
+	operlogservice "ruoyi-go-vue-plus/internal/system/service/operlog"
 	"ruoyi-go-vue-plus/pkg/config"
 	"ruoyi-go-vue-plus/pkg/database"
 	"ruoyi-go-vue-plus/pkg/encrypt"
@@ -37,7 +37,7 @@ func main() {
 	repeatsubmit.Init()
 	// 操作日志落库实现反向注册给 pkg/oplog(pkg 不依赖 internal/service)，
 	// 依赖 database 与 snowflake。
-	oplog.Init(systemservice.OperLogSvcApp.RecordOper)
+	oplog.Init(operlogservice.RecordOper)
 	// 推送会话管理器，依赖 redis(跨实例分发走 Redis 订阅)，须在 redis.Init 之后。
 	push.Init()
 	defer push.Shutdown()

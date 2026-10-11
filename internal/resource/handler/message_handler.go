@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	systemservice "ruoyi-go-vue-plus/internal/system/service"
+	messageservice "ruoyi-go-vue-plus/internal/system/service/message"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/response"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
@@ -29,7 +29,7 @@ func (a *MessageApi) GetBox(c *gin.Context) {
 		return
 	}
 
-	res, err := systemservice.MessageSvcApp.QueryMessageBox(c.Request.Context(), userID)
+	res, err := messageservice.QueryMessageBox(c.Request.Context(), userID)
 	if err != nil {
 		_ = c.Error(err)
 		return

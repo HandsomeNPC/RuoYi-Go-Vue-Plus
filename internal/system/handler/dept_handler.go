@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"ruoyi-go-vue-plus/internal/system/model/bo"
-	systemservice "ruoyi-go-vue-plus/internal/system/service"
+	deptservice "ruoyi-go-vue-plus/internal/system/service/dept"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/response"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
@@ -33,7 +33,7 @@ func (a *DeptApi) List(c *gin.Context) {
 		return
 	}
 
-	res, err := systemservice.DeptSvcApp.QueryList(c.Request.Context(), q)
+	res, err := deptservice.QueryList(c.Request.Context(), q)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -49,7 +49,7 @@ func (a *DeptApi) ExcludeChild(c *gin.Context) {
 		return
 	}
 
-	res, err := systemservice.DeptSvcApp.QueryListExcludeChild(c.Request.Context(), deptID)
+	res, err := deptservice.QueryListExcludeChild(c.Request.Context(), deptID)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -65,13 +65,13 @@ func (a *DeptApi) GetInfo(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	if err := systemservice.DeptSvcApp.CheckDeptDataScope(ctx,
+	if err := deptservice.CheckDeptDataScope(ctx,
 		loginhelper.GetUserID(c), deptID); err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	res, err := systemservice.DeptSvcApp.SelectByID(ctx, deptID)
+	res, err := deptservice.SelectByID(ctx, deptID)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -96,7 +96,7 @@ func (a *DeptApi) OptionSelect(c *gin.Context) {
 		ids = parsed
 	}
 
-	res, err := systemservice.DeptSvcApp.QueryByIDs(c.Request.Context(), ids)
+	res, err := deptservice.QueryByIDs(c.Request.Context(), ids)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -112,8 +112,8 @@ func (a *DeptApi) Add(c *gin.Context) {
 		return
 	}
 
-	if err := systemservice.DeptSvcApp.InsertDept(c.Request.Context(), &b); err != nil {
-		if errors.Is(err, systemservice.ErrDeptNameExists) {
+	if err := deptservice.InsertDept(c.Request.Context(), &b); err != nil {
+		if errors.Is(err, deptservice.ErrDeptNameExists) {
 			_ = c.Error(errs.New(response.CodeFail,
 				fmt.Sprintf("新增部门'%s'失败，部门名称已存在", b.DeptName), ""))
 			return
@@ -139,23 +139,23 @@ func (a *DeptApi) Edit(c *gin.Context) {
 
 	ctx := c.Request.Context()
 	userID := loginhelper.GetUserID(c)
-	if err := systemservice.DeptSvcApp.CheckDeptDataScope(ctx, userID, b.DeptID); err != nil {
+	if err := deptservice.CheckDeptDataScope(ctx, userID, b.DeptID); err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	if err := systemservice.DeptSvcApp.UpdateDept(ctx, userID, &b); err != nil {
-		if errors.Is(err, systemservice.ErrDeptNameExists) {
+	if err := deptservice.UpdateDept(ctx, userID, &b); err != nil {
+		if errors.Is(err, deptservice.ErrDeptNameExists) {
 			_ = c.Error(errs.New(response.CodeFail,
 				fmt.Sprintf("修改部门'%s'失败，部门名称已存在", b.DeptName), ""))
 			return
 		}
-		if errors.Is(err, systemservice.ErrDeptParentIsSelf) {
+		if errors.Is(err, deptservice.ErrDeptParentIsSelf) {
 			_ = c.Error(errs.New(response.CodeFail,
 				fmt.Sprintf("修改部门'%s'失败，上级部门不能是自己", b.DeptName), ""))
 			return
 		}
-		if errors.Is(err, systemservice.ErrDeptNotFound) {
+		if errors.Is(err, deptservice.ErrDeptNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "部门不存在", ""))
 			return
 		}
@@ -174,9 +174,9 @@ func (a *DeptApi) Remove(c *gin.Context) {
 
 	// 默认部门/存在下级/存在用户/存在岗位四类拦截由 service 以 ServiceError 抛出，
 	// 此处无需另行翻译。
-	if err := systemservice.DeptSvcApp.DeleteDeptByID(c.Request.Context(),
+	if err := deptservice.DeleteDeptByID(c.Request.Context(),
 		loginhelper.GetUserID(c), deptID); err != nil {
-		if errors.Is(err, systemservice.ErrDeptNotFound) {
+		if errors.Is(err, deptservice.ErrDeptNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "部门不存在", ""))
 			return
 		}

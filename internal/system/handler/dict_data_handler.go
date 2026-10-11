@@ -9,7 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"ruoyi-go-vue-plus/internal/system/model/bo"
-	systemservice "ruoyi-go-vue-plus/internal/system/service"
+	dictdataservice "ruoyi-go-vue-plus/internal/system/service/dictdata"
+	dicttypeservice "ruoyi-go-vue-plus/internal/system/service/dicttype"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/excel"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
@@ -37,7 +38,7 @@ func (a *DictDataApi) List(c *gin.Context) {
 		return
 	}
 
-	res, err := systemservice.DictDataSvcApp.QueryPageList(c.Request.Context(), q, page)
+	res, err := dictdataservice.QueryPageList(c.Request.Context(), q, page)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -58,7 +59,7 @@ func (a *DictDataApi) Export(c *gin.Context) {
 		return
 	}
 
-	rows, err := systemservice.DictDataSvcApp.QueryList(c.Request.Context(), q, excel.MaxRows+1)
+	rows, err := dictdataservice.QueryList(c.Request.Context(), q, excel.MaxRows+1)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -81,9 +82,9 @@ func (a *DictDataApi) GetInfo(c *gin.Context) {
 		return
 	}
 
-	res, err := systemservice.DictDataSvcApp.QueryByID(c.Request.Context(), dictCode)
+	res, err := dictdataservice.QueryByID(c.Request.Context(), dictCode)
 	if err != nil {
-		if errors.Is(err, systemservice.ErrDictDataNotFound) {
+		if errors.Is(err, dictdataservice.ErrDictDataNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "字典数据不存在", ""))
 			return
 		}
@@ -104,7 +105,7 @@ func (a *DictDataApi) DictType(c *gin.Context) {
 		return
 	}
 
-	res, err := systemservice.DictTypeSvcApp.SelectDictDataByType(c.Request.Context(), dictType)
+	res, err := dicttypeservice.SelectDictDataByType(c.Request.Context(), dictType)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -120,8 +121,8 @@ func (a *DictDataApi) Add(c *gin.Context) {
 		return
 	}
 
-	if err := systemservice.DictDataSvcApp.InsertDictData(c.Request.Context(), &b); err != nil {
-		if errors.Is(err, systemservice.ErrDictDataValueExists) {
+	if err := dictdataservice.InsertDictData(c.Request.Context(), &b); err != nil {
+		if errors.Is(err, dictdataservice.ErrDictDataValueExists) {
 			_ = c.Error(errs.New(response.CodeFail,
 				fmt.Sprintf("新增字典数据'%s'失败，字典键值已存在", b.DictValue), ""))
 			return
@@ -145,13 +146,13 @@ func (a *DictDataApi) Edit(c *gin.Context) {
 		return
 	}
 
-	if err := systemservice.DictDataSvcApp.UpdateDictData(c.Request.Context(), &b); err != nil {
-		if errors.Is(err, systemservice.ErrDictDataValueExists) {
+	if err := dictdataservice.UpdateDictData(c.Request.Context(), &b); err != nil {
+		if errors.Is(err, dictdataservice.ErrDictDataValueExists) {
 			_ = c.Error(errs.New(response.CodeFail,
 				fmt.Sprintf("修改字典数据'%s'失败，字典键值已存在", b.DictValue), ""))
 			return
 		}
-		if errors.Is(err, systemservice.ErrDictDataNotFound) {
+		if errors.Is(err, dictdataservice.ErrDictDataNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "字典数据不存在", ""))
 			return
 		}
@@ -169,7 +170,7 @@ func (a *DictDataApi) Remove(c *gin.Context) {
 		return
 	}
 
-	if err := systemservice.DictDataSvcApp.DeleteDictDataByIDs(c.Request.Context(), ids); err != nil {
+	if err := dictdataservice.DeleteDictDataByIDs(c.Request.Context(), ids); err != nil {
 		_ = c.Error(err)
 		return
 	}

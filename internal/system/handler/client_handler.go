@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"ruoyi-go-vue-plus/internal/system/model/bo"
-	systemservice "ruoyi-go-vue-plus/internal/system/service"
+	clientservice "ruoyi-go-vue-plus/internal/system/service/client"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/excel"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
@@ -37,7 +37,7 @@ func (a *ClientApi) List(c *gin.Context) {
 		return
 	}
 
-	res, err := systemservice.ClientSvcApp.QueryPageList(c.Request.Context(), q, page)
+	res, err := clientservice.QueryPageList(c.Request.Context(), q, page)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -58,7 +58,7 @@ func (a *ClientApi) Export(c *gin.Context) {
 		return
 	}
 
-	rows, err := systemservice.ClientSvcApp.QueryList(c.Request.Context(), q, excel.MaxRows+1)
+	rows, err := clientservice.QueryList(c.Request.Context(), q, excel.MaxRows+1)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -81,9 +81,9 @@ func (a *ClientApi) GetInfo(c *gin.Context) {
 		return
 	}
 
-	res, err := systemservice.ClientSvcApp.QueryByID(c.Request.Context(), id)
+	res, err := clientservice.QueryByID(c.Request.Context(), id)
 	if err != nil {
-		if errors.Is(err, systemservice.ErrClientNotFound) {
+		if errors.Is(err, clientservice.ErrClientNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "客户端不存在", ""))
 			return
 		}
@@ -101,8 +101,8 @@ func (a *ClientApi) Add(c *gin.Context) {
 		return
 	}
 
-	if err := systemservice.ClientSvcApp.InsertByBo(c.Request.Context(), &b); err != nil {
-		if errors.Is(err, systemservice.ErrClientKeyExists) {
+	if err := clientservice.InsertByBo(c.Request.Context(), &b); err != nil {
+		if errors.Is(err, clientservice.ErrClientKeyExists) {
 			_ = c.Error(errs.New(response.CodeFail,
 				fmt.Sprintf("新增客户端'%s'失败，客户端key已存在", b.ClientKey), ""))
 			return
@@ -126,13 +126,13 @@ func (a *ClientApi) Edit(c *gin.Context) {
 		return
 	}
 
-	if err := systemservice.ClientSvcApp.UpdateByBo(c.Request.Context(), &b); err != nil {
-		if errors.Is(err, systemservice.ErrClientKeyExists) {
+	if err := clientservice.UpdateByBo(c.Request.Context(), &b); err != nil {
+		if errors.Is(err, clientservice.ErrClientKeyExists) {
 			_ = c.Error(errs.New(response.CodeFail,
 				fmt.Sprintf("修改客户端'%s'失败，客户端key已存在", b.ClientKey), ""))
 			return
 		}
-		if errors.Is(err, systemservice.ErrClientNotFound) {
+		if errors.Is(err, clientservice.ErrClientNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "客户端不存在", ""))
 			return
 		}
@@ -150,9 +150,9 @@ func (a *ClientApi) ChangeStatus(c *gin.Context) {
 		return
 	}
 
-	err := systemservice.ClientSvcApp.UpdateClientStatus(c.Request.Context(), b.ClientID, b.Status)
+	err := clientservice.UpdateClientStatus(c.Request.Context(), b.ClientID, b.Status)
 	if err != nil {
-		if errors.Is(err, systemservice.ErrClientNotFound) {
+		if errors.Is(err, clientservice.ErrClientNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "客户端不存在", ""))
 			return
 		}
@@ -170,8 +170,8 @@ func (a *ClientApi) Remove(c *gin.Context) {
 		return
 	}
 
-	if err := systemservice.ClientSvcApp.DeleteWithValidByIDs(c.Request.Context(), ids); err != nil {
-		if errors.Is(err, systemservice.ErrClientNotFound) {
+	if err := clientservice.DeleteWithValidByIDs(c.Request.Context(), ids); err != nil {
+		if errors.Is(err, clientservice.ErrClientNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "客户端不存在", ""))
 			return
 		}

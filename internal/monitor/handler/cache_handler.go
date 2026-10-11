@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"ruoyi-go-vue-plus/internal/monitor/service"
+	cacheservice "ruoyi-go-vue-plus/internal/monitor/service/cache"
 	"ruoyi-go-vue-plus/pkg/response"
 )
 
@@ -17,7 +17,7 @@ var CacheApiApp = new(CacheApi)
 
 // GetInfo 获取 Redis 缓存监控信息。
 func (a *CacheApi) GetInfo(c *gin.Context) {
-	res, err := service.CacheSvcApp.GetInfo(c.Request.Context())
+	res, err := cacheservice.GetInfo(c.Request.Context())
 	if err != nil {
 		_ = c.Error(err)
 		return

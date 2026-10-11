@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"ruoyi-go-vue-plus/internal/system/model/bo"
-	systemservice "ruoyi-go-vue-plus/internal/system/service"
+	userservice "ruoyi-go-vue-plus/internal/system/service/user"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/response"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
@@ -27,7 +27,7 @@ func (a *ProfileApi) Profile(c *gin.Context) {
 		c.JSON(http.StatusOK, response.Fail("没有权限访问用户数据!"))
 		return
 	}
-	res, err := systemservice.UserSvcApp.SelectUserProfile(c.Request.Context(), userID)
+	res, err := userservice.SelectUserProfile(c.Request.Context(), userID)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -53,13 +53,13 @@ func (a *ProfileApi) UpdateProfile(c *gin.Context) {
 	}
 
 	username := loginhelper.GetUsername(c)
-	if err := systemservice.UserSvcApp.UpdateUserProfile(c.Request.Context(), userID, &b); err != nil {
-		if errors.Is(err, systemservice.ErrUserPhoneExists) {
+	if err := userservice.UpdateUserProfile(c.Request.Context(), userID, &b); err != nil {
+		if errors.Is(err, userservice.ErrUserPhoneExists) {
 			_ = c.Error(errs.New(response.CodeFail,
 				fmt.Sprintf("修改用户'%s'失败，手机号码已存在", username), ""))
 			return
 		}
-		if errors.Is(err, systemservice.ErrUserEmailExists) {
+		if errors.Is(err, userservice.ErrUserEmailExists) {
 			_ = c.Error(errs.New(response.CodeFail,
 				fmt.Sprintf("修改用户'%s'失败，邮箱账号已存在", username), ""))
 			return
@@ -85,13 +85,13 @@ func (a *ProfileApi) UpdatePwd(c *gin.Context) {
 		return
 	}
 
-	if err := systemservice.UserSvcApp.ChangeUserPassword(c.Request.Context(),
+	if err := userservice.ChangeUserPassword(c.Request.Context(),
 		userID, b.OldPassword, b.NewPassword); err != nil {
-		if errors.Is(err, systemservice.ErrUserPasswordWrong) {
+		if errors.Is(err, userservice.ErrUserPasswordWrong) {
 			_ = c.Error(errs.New(response.CodeFail, "修改密码失败，旧密码错误", ""))
 			return
 		}
-		if errors.Is(err, systemservice.ErrUserPasswordSame) {
+		if errors.Is(err, userservice.ErrUserPasswordSame) {
 			_ = c.Error(errs.New(response.CodeFail, "新密码不能与旧密码相同", ""))
 			return
 		}

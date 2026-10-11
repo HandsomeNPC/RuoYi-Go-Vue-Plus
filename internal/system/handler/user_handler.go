@@ -11,7 +11,7 @@ import (
 
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	systemvo "ruoyi-go-vue-plus/internal/system/model/vo"
-	systemservice "ruoyi-go-vue-plus/internal/system/service"
+	userservice "ruoyi-go-vue-plus/internal/system/service/user"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/excel"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
@@ -34,7 +34,7 @@ func (a *UserApi) GetInfo(c *gin.Context) {
 		c.JSON(http.StatusOK, response.Fail("没有权限访问用户数据!"))
 		return
 	}
-	user, err := systemservice.UserSvcApp.SelectUserByID(c.Request.Context(), loginUser.UserID)
+	user, err := userservice.SelectUserByID(c.Request.Context(), loginUser.UserID)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -64,7 +64,7 @@ func (a *UserApi) List(c *gin.Context) {
 		_ = c.Error(errs.New(response.CodeBadRequest, "分页参数有误", err.Error()))
 		return
 	}
-	res, err := systemservice.UserSvcApp.QueryPageList(c.Request.Context(), q, page)
+	res, err := userservice.QueryPageList(c.Request.Context(), q, page)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -82,7 +82,7 @@ func (a *UserApi) Export(c *gin.Context) {
 		_ = c.Error(errs.New(response.CodeBadRequest, "参数校验失败", err.Error()))
 		return
 	}
-	rows, err := systemservice.UserSvcApp.QueryExportList(c.Request.Context(), q, excel.MaxRows+1)
+	rows, err := userservice.QueryExportList(c.Request.Context(), q, excel.MaxRows+1)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -114,7 +114,7 @@ func (a *UserApi) ImportData(c *gin.Context) {
 	}
 	defer func() { _ = src.Close() }()
 
-	msg, err := systemservice.UserSvcApp.ImportUsers(c.Request.Context(), src, updateSupport)
+	msg, err := userservice.ImportUsers(c.Request.Context(), src, updateSupport)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -144,7 +144,7 @@ func (a *UserApi) GetInfoByID(c *gin.Context) {
 		userID = id
 	}
 	currentUserID := loginhelper.GetUserID(c)
-	res, err := systemservice.UserSvcApp.GetUserInfoByID(c.Request.Context(), userID, currentUserID)
+	res, err := userservice.GetUserInfoByID(c.Request.Context(), userID, currentUserID)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -160,7 +160,7 @@ func (a *UserApi) Add(c *gin.Context) {
 		_ = c.Error(errs.New(response.CodeBadRequest, "参数校验失败", err.Error()))
 		return
 	}
-	if err := systemservice.UserSvcApp.InsertUser(c.Request.Context(), &b); err != nil {
+	if err := userservice.InsertUser(c.Request.Context(), &b); err != nil {
 		translateUserWriteErr(c, err, "新增", b.UserName)
 		return
 	}
@@ -178,7 +178,7 @@ func (a *UserApi) Edit(c *gin.Context) {
 		_ = c.Error(errs.New(response.CodeBadRequest, "主键不能为空", ""))
 		return
 	}
-	if err := systemservice.UserSvcApp.UpdateUser(c.Request.Context(), &b); err != nil {
+	if err := userservice.UpdateUser(c.Request.Context(), &b); err != nil {
 		translateUserWriteErr(c, err, "修改", b.UserName)
 		return
 	}
@@ -193,7 +193,7 @@ func (a *UserApi) Remove(c *gin.Context) {
 		return
 	}
 	currentUserID := loginhelper.GetUserID(c)
-	if err := systemservice.UserSvcApp.DeleteUserByIDs(c.Request.Context(), currentUserID, ids); err != nil {
+	if err := userservice.DeleteUserByIDs(c.Request.Context(), currentUserID, ids); err != nil {
 		_ = c.Error(err)
 		return
 	}
@@ -221,7 +221,7 @@ func (a *UserApi) OptionSelect(c *gin.Context) {
 		}
 		deptID = id
 	}
-	res, err := systemservice.UserSvcApp.SelectByIDs(c.Request.Context(), userIds, deptID)
+	res, err := userservice.SelectByIDs(c.Request.Context(), userIds, deptID)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -240,7 +240,7 @@ func (a *UserApi) ResetPwd(c *gin.Context) {
 		_ = c.Error(errs.New(response.CodeBadRequest, "主键不能为空", ""))
 		return
 	}
-	if err := systemservice.UserSvcApp.ResetUserPwdWithCheck(c.Request.Context(), &b); err != nil {
+	if err := userservice.ResetUserPwdWithCheck(c.Request.Context(), &b); err != nil {
 		_ = c.Error(err)
 		return
 	}
@@ -258,7 +258,7 @@ func (a *UserApi) ChangeStatus(c *gin.Context) {
 		_ = c.Error(errs.New(response.CodeBadRequest, "主键不能为空", ""))
 		return
 	}
-	if err := systemservice.UserSvcApp.UpdateUserStatusWithCheck(c.Request.Context(), &b); err != nil {
+	if err := userservice.UpdateUserStatusWithCheck(c.Request.Context(), &b); err != nil {
 		_ = c.Error(err)
 		return
 	}
@@ -272,7 +272,7 @@ func (a *UserApi) Unlock(c *gin.Context) {
 		_ = c.Error(errs.New(response.CodeBadRequest, "主键不能为空", c.Param("userId")))
 		return
 	}
-	if err := systemservice.UserSvcApp.Unlock(c.Request.Context(), userID); err != nil {
+	if err := userservice.Unlock(c.Request.Context(), userID); err != nil {
 		_ = c.Error(err)
 		return
 	}
@@ -286,7 +286,7 @@ func (a *UserApi) AuthRole(c *gin.Context) {
 		_ = c.Error(errs.New(response.CodeBadRequest, "主键不能为空", c.Param("userId")))
 		return
 	}
-	res, err := systemservice.UserSvcApp.AuthRole(c.Request.Context(), userID)
+	res, err := userservice.AuthRole(c.Request.Context(), userID)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -315,7 +315,7 @@ func (a *UserApi) InsertAuthRole(c *gin.Context) {
 		_ = c.Error(errs.New(response.CodeBadRequest, "角色ID不能为空", ""))
 		return
 	}
-	if err := systemservice.UserSvcApp.InsertUserAuth(c.Request.Context(), userID, roleIDs); err != nil {
+	if err := userservice.InsertUserAuth(c.Request.Context(), userID, roleIDs); err != nil {
 		_ = c.Error(err)
 		return
 	}
@@ -329,7 +329,7 @@ func (a *UserApi) DeptTree(c *gin.Context) {
 		_ = c.Error(errs.New(response.CodeBadRequest, "参数校验失败", err.Error()))
 		return
 	}
-	res, err := systemservice.UserSvcApp.DeptTree(c.Request.Context(), q)
+	res, err := userservice.DeptTree(c.Request.Context(), q)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -344,7 +344,7 @@ func (a *UserApi) ListByDept(c *gin.Context) {
 		_ = c.Error(errs.New(response.CodeBadRequest, "部门ID不能为空", c.Param("deptId")))
 		return
 	}
-	res, err := systemservice.UserSvcApp.SelectListByDept(c.Request.Context(), deptID)
+	res, err := userservice.SelectListByDept(c.Request.Context(), deptID)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -381,13 +381,13 @@ func parseFormIDArray(c *gin.Context, field string) ([]int64, error) {
 // 其余错误原样上抛由 middleware.Recover 兜底。
 func translateUserWriteErr(c *gin.Context, err error, op, userName string) {
 	switch {
-	case errors.Is(err, systemservice.ErrUserNameExists):
+	case errors.Is(err, userservice.ErrUserNameExists):
 		_ = c.Error(errs.New(response.CodeFail,
 			fmt.Sprintf("%s用户'%s'失败，登录账号已存在", op, userName), ""))
-	case errors.Is(err, systemservice.ErrUserPhoneExists):
+	case errors.Is(err, userservice.ErrUserPhoneExists):
 		_ = c.Error(errs.New(response.CodeFail,
 			fmt.Sprintf("%s用户'%s'失败，手机号码已存在", op, userName), ""))
-	case errors.Is(err, systemservice.ErrUserEmailExists):
+	case errors.Is(err, userservice.ErrUserEmailExists):
 		_ = c.Error(errs.New(response.CodeFail,
 			fmt.Sprintf("%s用户'%s'失败，邮箱账号已存在", op, userName), ""))
 	default:

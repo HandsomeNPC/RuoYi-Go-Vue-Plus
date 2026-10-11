@@ -10,7 +10,8 @@ import (
 
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
-	systemservice "ruoyi-go-vue-plus/internal/system/service"
+	menuservice "ruoyi-go-vue-plus/internal/system/service/menu"
+	roleservice "ruoyi-go-vue-plus/internal/system/service/role"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/response"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"
@@ -25,13 +26,13 @@ var MenuApiApp = new(MenuApi)
 
 // GetRouters 获取当前用户可访问的路由信息。
 func (a *MenuApi) GetRouters(c *gin.Context) {
-	menus, err := systemservice.MenuSvcApp.SelectMenuTreeByUserId(
+	menus, err := menuservice.SelectMenuTreeByUserId(
 		c.Request.Context(), loginhelper.GetUserID(c))
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
-	c.JSON(http.StatusOK, response.Ok(systemservice.MenuSvcApp.BuildMenus(menus)))
+	c.JSON(http.StatusOK, response.Ok(menuservice.BuildMenus(menus)))
 }
 
 // List 查询菜单列表。
@@ -44,7 +45,7 @@ func (a *MenuApi) List(c *gin.Context) {
 		return
 	}
 
-	res, err := systemservice.MenuSvcApp.QueryList(c.Request.Context(), q,
+	res, err := menuservice.QueryList(c.Request.Context(), q,
 		loginhelper.GetUserID(c))
 	if err != nil {
 		_ = c.Error(err)
@@ -60,9 +61,9 @@ func (a *MenuApi) GetInfo(c *gin.Context) {
 		return
 	}
 
-	res, err := systemservice.MenuSvcApp.QueryByID(c.Request.Context(), menuID)
+	res, err := menuservice.QueryByID(c.Request.Context(), menuID)
 	if err != nil {
-		if errors.Is(err, systemservice.ErrMenuNotFound) {
+		if errors.Is(err, menuservice.ErrMenuNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "菜单不存在", ""))
 			return
 		}
@@ -80,13 +81,13 @@ func (a *MenuApi) TreeSelect(c *gin.Context) {
 		return
 	}
 
-	menus, err := systemservice.MenuSvcApp.QueryList(c.Request.Context(), q,
+	menus, err := menuservice.QueryList(c.Request.Context(), q,
 		loginhelper.GetUserID(c))
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
-	c.JSON(http.StatusOK, response.Ok(systemservice.MenuSvcApp.BuildMenuTreeSelect(menus)))
+	c.JSON(http.StatusOK, response.Ok(menuservice.BuildMenuTreeSelect(menus)))
 }
 
 // RoleMenuTreeSelect 加载对应角色的菜单列表树及其选中节点。
@@ -101,15 +102,15 @@ func (a *MenuApi) RoleMenuTreeSelect(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	menus, err := systemservice.MenuSvcApp.QueryList(ctx, bo.SysMenuQueryBo{},
+	menus, err := menuservice.QueryList(ctx, bo.SysMenuQueryBo{},
 		loginhelper.GetUserID(c))
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
-	checkedKeys, err := systemservice.MenuSvcApp.SelectMenuIDsByRoleID(ctx, roleID)
+	checkedKeys, err := menuservice.SelectMenuIDsByRoleID(ctx, roleID)
 	if err != nil {
-		if errors.Is(err, systemservice.ErrRoleNotFound) {
+		if errors.Is(err, roleservice.ErrRoleNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "角色不存在", ""))
 			return
 		}
@@ -123,7 +124,7 @@ func (a *MenuApi) RoleMenuTreeSelect(c *gin.Context) {
 
 	c.JSON(http.StatusOK, response.Ok(vo.MenuTreeSelectVo{
 		CheckedKeys: checkedKeys,
-		Menus:       systemservice.MenuSvcApp.BuildMenuTreeSelect(menus),
+		Menus:       menuservice.BuildMenuTreeSelect(menus),
 	}))
 }
 
@@ -135,7 +136,7 @@ func (a *MenuApi) Add(c *gin.Context) {
 		return
 	}
 
-	if err := systemservice.MenuSvcApp.InsertMenu(c.Request.Context(), &b); err != nil {
+	if err := menuservice.InsertMenu(c.Request.Context(), &b); err != nil {
 		if translated := translateMenuValidationError(err, "新增", b.MenuName); translated != nil {
 			_ = c.Error(translated)
 			return
@@ -159,12 +160,12 @@ func (a *MenuApi) Edit(c *gin.Context) {
 		return
 	}
 
-	if err := systemservice.MenuSvcApp.UpdateMenu(c.Request.Context(), &b); err != nil {
+	if err := menuservice.UpdateMenu(c.Request.Context(), &b); err != nil {
 		if translated := translateMenuValidationError(err, "修改", b.MenuName); translated != nil {
 			_ = c.Error(translated)
 			return
 		}
-		if errors.Is(err, systemservice.ErrMenuNotFound) {
+		if errors.Is(err, menuservice.ErrMenuNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "菜单不存在", ""))
 			return
 		}
@@ -182,8 +183,8 @@ func (a *MenuApi) Remove(c *gin.Context) {
 	}
 
 	// 「存在子菜单」「菜单已分配」两类拦截由 service 以 ServiceError 抛出，此处无需另行翻译。
-	if err := systemservice.MenuSvcApp.DeleteMenuByID(c.Request.Context(), menuID); err != nil {
-		if errors.Is(err, systemservice.ErrMenuNotFound) {
+	if err := menuservice.DeleteMenuByID(c.Request.Context(), menuID); err != nil {
+		if errors.Is(err, menuservice.ErrMenuNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "菜单不存在", ""))
 			return
 		}
@@ -202,7 +203,7 @@ func (a *MenuApi) CascadeRemove(c *gin.Context) {
 		return
 	}
 
-	if err := systemservice.MenuSvcApp.DeleteMenuByIDs(c.Request.Context(), ids); err != nil {
+	if err := menuservice.DeleteMenuByIDs(c.Request.Context(), ids); err != nil {
 		_ = c.Error(err)
 		return
 	}
@@ -215,16 +216,16 @@ func (a *MenuApi) CascadeRemove(c *gin.Context) {
 // action 取"新增"/"修改"，用作两个分支的提示前缀。
 func translateMenuValidationError(err error, action, menuName string) error {
 	switch {
-	case errors.Is(err, systemservice.ErrMenuNameExists):
+	case errors.Is(err, menuservice.ErrMenuNameExists):
 		return errs.New(response.CodeFail,
 			fmt.Sprintf("%s菜单'%s'失败，菜单名称已存在", action, menuName), "")
-	case errors.Is(err, systemservice.ErrMenuFrameNeedHTTP):
+	case errors.Is(err, menuservice.ErrMenuFrameNeedHTTP):
 		return errs.New(response.CodeFail,
 			fmt.Sprintf("%s菜单'%s'失败，地址必须以http(s)://开头", action, menuName), "")
-	case errors.Is(err, systemservice.ErrMenuParentIsSelf):
+	case errors.Is(err, menuservice.ErrMenuParentIsSelf):
 		return errs.New(response.CodeFail,
 			fmt.Sprintf("%s菜单'%s'失败，上级菜单不能选择自己", action, menuName), "")
-	case errors.Is(err, systemservice.ErrMenuRouteConflict):
+	case errors.Is(err, menuservice.ErrMenuRouteConflict):
 		return errs.New(response.CodeFail,
 			fmt.Sprintf("%s菜单'%s'失败，路由名称或地址已存在", action, menuName), "")
 	}

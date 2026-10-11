@@ -10,7 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"ruoyi-go-vue-plus/internal/system/model/bo"
-	systemservice "ruoyi-go-vue-plus/internal/system/service"
+	deptservice "ruoyi-go-vue-plus/internal/system/service/dept"
+	postservice "ruoyi-go-vue-plus/internal/system/service/post"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/excel"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
@@ -38,7 +39,7 @@ func (a *PostApi) List(c *gin.Context) {
 		return
 	}
 
-	res, err := systemservice.PostSvcApp.QueryPageList(c.Request.Context(), q, page)
+	res, err := postservice.QueryPageList(c.Request.Context(), q, page)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -59,7 +60,7 @@ func (a *PostApi) Export(c *gin.Context) {
 		return
 	}
 
-	rows, err := systemservice.PostSvcApp.QueryList(c.Request.Context(), q, excel.MaxRows+1)
+	rows, err := postservice.QueryList(c.Request.Context(), q, excel.MaxRows+1)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -82,9 +83,9 @@ func (a *PostApi) GetInfo(c *gin.Context) {
 		return
 	}
 
-	res, err := systemservice.PostSvcApp.QueryByID(c.Request.Context(), postID)
+	res, err := postservice.QueryByID(c.Request.Context(), postID)
 	if err != nil {
-		if errors.Is(err, systemservice.ErrPostNotFound) {
+		if errors.Is(err, postservice.ErrPostNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "岗位不存在", ""))
 			return
 		}
@@ -102,13 +103,13 @@ func (a *PostApi) Add(c *gin.Context) {
 		return
 	}
 
-	if err := systemservice.PostSvcApp.InsertPost(c.Request.Context(), &b); err != nil {
-		if errors.Is(err, systemservice.ErrPostNameExists) {
+	if err := postservice.InsertPost(c.Request.Context(), &b); err != nil {
+		if errors.Is(err, postservice.ErrPostNameExists) {
 			_ = c.Error(errs.New(response.CodeFail,
 				fmt.Sprintf("新增岗位'%s'失败，岗位名称已存在", b.PostName), ""))
 			return
 		}
-		if errors.Is(err, systemservice.ErrPostCodeExists) {
+		if errors.Is(err, postservice.ErrPostCodeExists) {
 			_ = c.Error(errs.New(response.CodeFail,
 				fmt.Sprintf("新增岗位'%s'失败，岗位编码已存在", b.PostName), ""))
 			return
@@ -132,22 +133,22 @@ func (a *PostApi) Edit(c *gin.Context) {
 		return
 	}
 
-	if err := systemservice.PostSvcApp.UpdatePost(c.Request.Context(), &b); err != nil {
-		if errors.Is(err, systemservice.ErrPostNameExists) {
+	if err := postservice.UpdatePost(c.Request.Context(), &b); err != nil {
+		if errors.Is(err, postservice.ErrPostNameExists) {
 			_ = c.Error(errs.New(response.CodeFail,
 				fmt.Sprintf("修改岗位'%s'失败，岗位名称已存在", b.PostName), ""))
 			return
 		}
-		if errors.Is(err, systemservice.ErrPostCodeExists) {
+		if errors.Is(err, postservice.ErrPostCodeExists) {
 			_ = c.Error(errs.New(response.CodeFail,
 				fmt.Sprintf("修改岗位'%s'失败，岗位编码已存在", b.PostName), ""))
 			return
 		}
-		if errors.Is(err, systemservice.ErrPostHasUsers) {
+		if errors.Is(err, postservice.ErrPostHasUsers) {
 			_ = c.Error(errs.New(response.CodeFail, "该岗位下存在已分配用户，不能禁用!", ""))
 			return
 		}
-		if errors.Is(err, systemservice.ErrPostNotFound) {
+		if errors.Is(err, postservice.ErrPostNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "岗位不存在", ""))
 			return
 		}
@@ -166,7 +167,7 @@ func (a *PostApi) Remove(c *gin.Context) {
 	}
 
 	// 「已分配,不能删除」的提示由 service 以 ServiceError 抛出，此处无需另行翻译。
-	if err := systemservice.PostSvcApp.DeletePostByIDs(c.Request.Context(), ids); err != nil {
+	if err := postservice.DeletePostByIDs(c.Request.Context(), ids); err != nil {
 		_ = c.Error(err)
 		return
 	}
@@ -191,7 +192,7 @@ func (a *PostApi) OptionSelect(c *gin.Context) {
 		postIDs = parsed
 	}
 
-	res, err := systemservice.PostSvcApp.OptionSelect(c.Request.Context(), deptID, postIDs)
+	res, err := postservice.OptionSelect(c.Request.Context(), deptID, postIDs)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -207,7 +208,7 @@ func (a *PostApi) DeptTree(c *gin.Context) {
 		return
 	}
 
-	res, err := systemservice.DeptSvcApp.SelectDeptTreeList(c.Request.Context(), q)
+	res, err := deptservice.SelectDeptTreeList(c.Request.Context(), q)
 	if err != nil {
 		_ = c.Error(err)
 		return

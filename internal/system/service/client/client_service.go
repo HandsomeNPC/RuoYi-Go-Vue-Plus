@@ -1,0 +1,321 @@
+package client
+
+import (
+	"context"
+	"crypto/md5"
+	"encoding/hex"
+	"errors"
+	"strings"
+
+	"ruoyi-go-vue-plus/internal/system/model"
+	"ruoyi-go-vue-plus/internal/system/model/bo"
+	"ruoyi-go-vue-plus/internal/system/model/vo"
+	clientrepository "ruoyi-go-vue-plus/internal/system/repository/client"
+	"ruoyi-go-vue-plus/pkg/cache"
+	"ruoyi-go-vue-plus/pkg/constant"
+	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
+)
+
+var ErrClientNotFound = errors.New("service: 客户端不存在")
+
+var ErrClientKeyExists = errors.New("service: 客户端key已存在")
+
+// QueryByClientID 按客户端标识查客户端。
+// 不存在时返回 ErrClientNotFound，返回填充好 *List 字段的 VO。
+func QueryByClientID(ctx context.Context, clientID string) (*vo.SysClientVo, error) {
+	var out vo.SysClientVo
+	if hit, _ := cache.Get(ctx, constant.CacheSysClient, clientID, &out); hit {
+		return &out, nil
+	}
+
+	c, err := clientrepository.SelectByClientID(ctx, clientID)
+	if err != nil {
+		if errors.Is(err, clientrepository.ErrClientNotFound) {
+			return nil, ErrClientNotFound
+		}
+		return nil, err
+	}
+	ptr := vo.Conv.ConvertToSysClientVo(c)
+	fillRuleFields(ptr)
+	_ = cache.Put(ctx, constant.CacheSysClient, clientID, ptr, constant.CacheTTLSysClient)
+	return ptr, nil
+}
+
+// QueryByID 按主键查客户端，
+// 不存在时返回 ErrClientNotFound，返回填充好 *List 字段的 VO。
+func QueryByID(ctx context.Context, id int64) (*vo.SysClientVo, error) {
+	c, err := clientrepository.SelectByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, clientrepository.ErrClientNotFound) {
+			return nil, ErrClientNotFound
+		}
+		return nil, err
+	}
+	out := vo.Conv.ConvertToSysClientVo(c)
+	fillRuleFields(out)
+	return out, nil
+}
+
+// QueryPageList 按条件分页查客户端，返回填充好 *List 字段的 VO 分页结果。
+func QueryPageList(ctx context.Context, q bo.SysClientQueryBo,
+	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysClientVo], error) {
+
+	res, err := clientrepository.SelectPageList(ctx, q, page)
+	if err != nil {
+		return pkgrepo.EmptyPage[*vo.SysClientVo](), err
+	}
+	// 两个 PageResult 泛型实例是不同类型，只能重建；Page 内的空切片兜底顺带保证序列化成 []。
+	return pkgrepo.Page(toVoList(res.Rows), res.Total), nil
+}
+
+// QueryList 按条件不分页查客户端，返回填充好 *List 字段的 VO 列表，供导出等全量场景用。
+// limit <= 0 不限制行数；导出方应传 excel.MaxRows+1 以提前判定超限，见 pkg/excel 的说明。
+func QueryList(ctx context.Context, q bo.SysClientQueryBo,
+	limit int) ([]*vo.SysClientVo, error) {
+
+	clients, err := clientrepository.SelectList(ctx, q, limit)
+	if err != nil {
+		return nil, err
+	}
+	return toVoList(clients), nil
+}
+
+// CheckClientKeyUnique 校验 client_key 是否可用（唯一即 true）。
+// excludeID > 0 时排除该主键，供修改场景复用。
+func CheckClientKeyUnique(ctx context.Context, clientKey string,
+	excludeID int64) (bool, error) {
+
+	exists, err := clientrepository.
+		ExistsByClientKey(ctx, clientKey, excludeID)
+	if err != nil {
+		return false, err
+	}
+	return !exists, nil
+}
+
+// InsertByBo 新增客户端。
+// client_key 重复时返回 ErrClientKeyExists；插入成功后回填 b.ID。
+func InsertByBo(ctx context.Context, b *bo.SysClientBo) error {
+	if b == nil {
+		return errors.New("service: 客户端入参为空")
+	}
+
+	unique, err := CheckClientKeyUnique(ctx, b.ClientKey, 0) // 新增无自身可排除
+	if err != nil {
+		return err
+	}
+	if !unique {
+		return ErrClientKeyExists
+	}
+
+	add := bo.Conv.ConvertToSysClient(b)
+	add.ID = snowflake.Next() // id 无 auto_increment
+	add.ClientID = newClientID(b.ClientKey, b.ClientSecret)
+	// 授权类型只做拼接，不切分也不归一。
+	add.GrantType = strings.Join(b.GrantTypeList, ",")
+	add.AccessPath = resolveRuleValue(b.AccessPath, b.AccessPathList, normalizeAccessPath)
+	add.IPWhitelist = resolveRuleValue(b.IPWhitelist, b.IPWhitelistList, nil)
+	// 审计字段不在此处填：由 pkg/repository 的插入回调统一注入。
+
+	if err := clientrepository.Insert(ctx, add); err != nil {
+		return err
+	}
+	b.ID = add.ID
+	return nil
+}
+
+// UpdateByBo 修改客户端。
+// client_key 被别的客户端占用时返回 ErrClientKeyExists；主键不存在返回 ErrClientNotFound。
+func UpdateByBo(ctx context.Context, b *bo.SysClientBo) error {
+	if b == nil {
+		return errors.New("service: 客户端入参为空")
+	}
+	if b.ID <= 0 {
+		return errors.New("service: 客户端主键不能为空")
+	}
+
+	unique, err := CheckClientKeyUnique(ctx, b.ClientKey, b.ID) // 排除自身，改回原 key 不算冲突
+	if err != nil {
+		return err
+	}
+	if !unique {
+		return ErrClientKeyExists
+	}
+
+	// 一律写入，让前端能把访问路径/IP 白名单清空——这正是编辑表单的本意，
+	// 故不能用 Updates(struct)（它跳过零值，空串会被当成"未修改"而丢弃）。
+	columns := buildClientUpdateColumns(b)
+
+	affected, err := clientrepository.UpdateByID(ctx, b.ID, columns)
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return ErrClientNotFound
+	}
+	_ = cache.Evict(ctx, constant.CacheSysClient, b.ClientID)
+	return nil
+}
+
+// buildClientUpdateColumns 组装修改客户端的更新列。
+func buildClientUpdateColumns(b *bo.SysClientBo) map[string]any {
+	columns := map[string]any{
+		"client_key":    b.ClientKey,
+		"client_secret": b.ClientSecret,
+		"grant_type":    strings.Join(b.GrantTypeList, ","),
+		"device_type":   b.DeviceType,
+		"access_path":   resolveRuleValue(b.AccessPath, b.AccessPathList, normalizeAccessPath),
+		"ip_whitelist":  resolveRuleValue(b.IPWhitelist, b.IPWhitelistList, nil),
+	}
+	// client_id 用前端回填值而非服务端重算：前端改动
+	// key/secret 后自行重算 clientId 回传，服务端直接落库；未回传则为空，跳过
+	// 不写，避免把既有 client_id 刷成空串。
+	if b.ClientID != "" {
+		columns["client_id"] = b.ClientID
+	}
+	// 状态与两个超时缺省即视为不改：漏传字段不该把线上 status 刷成空串、
+	// 或把超时刷成 0 令已签发的 token 立刻失效。
+	if b.Status != "" {
+		columns["status"] = b.Status
+	}
+	if b.ActiveTimeout != 0 {
+		columns["active_timeout"] = b.ActiveTimeout
+	}
+	if b.Timeout != 0 {
+		columns["timeout"] = b.Timeout
+	}
+	return columns
+}
+
+// UpdateClientStatus 改客户端启停状态。
+// 客户端不存在时返回 ErrClientNotFound。
+func UpdateClientStatus(ctx context.Context, clientID, status string) error {
+	if clientID == "" {
+		return errors.New("service: 客户端标识不能为空")
+	}
+
+	affected, err := clientrepository.
+		UpdateStatusByClientID(ctx, clientID, status)
+	if err != nil {
+		return err
+	}
+	// 状态未变时 MySQL 也报 0 行；此处一并当作失败回报。
+	if affected == 0 {
+		return ErrClientNotFound
+	}
+	_ = cache.Evict(ctx, constant.CacheSysClient, clientID)
+	return nil
+}
+
+// DeleteWithValidByIDs 批量删除客户端。
+// 无一行命中时返回 ErrClientNotFound。
+func DeleteWithValidByIDs(ctx context.Context, ids []int64) error {
+	if len(ids) == 0 {
+		return errors.New("service: 客户端主键不能为空")
+	}
+
+	affected, err := clientrepository.DeleteByIDs(ctx, ids)
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return ErrClientNotFound
+	}
+	_ = cache.EvictGroup(ctx, constant.CacheSysClient)
+	return nil
+}
+
+// newClientID 生成客户端标识 md5(clientKey + clientSecret)。
+// md5 仅作客户端查找键，不是机密。
+func newClientID(clientKey, clientSecret string) string {
+	sum := md5.Sum([]byte(clientKey + clientSecret))
+	return hex.EncodeToString(sum[:])
+}
+
+// resolveRuleValue 归一化规则串的入库格式：
+// raw 非空时切分 raw，否则用 list（list 不再切分，只归一化），结果以逗号拼接。
+//
+// Go 的 BO 字段是 string，null 与显式空串都塌成 ""，故以 raw != "" 作代理。
+// access_path/ip_whitelist 均为 default null 且回读时 splitRules("") == nil，
+// 故落库 "" 与 NULL 透过 API 观察不可区分。
+func resolveRuleValue(raw string, list []string, normalize func(string) string) string {
+	rules := list
+	if raw != "" {
+		rules = splitRules(raw)
+	}
+
+	out := make([]string, 0, len(rules))
+	for _, r := range rules {
+		if r = strings.TrimSpace(r); r == "" {
+			continue
+		}
+		if normalize != nil {
+			if r = normalize(r); r == "" {
+				continue
+			}
+		}
+		out = append(out, r)
+	}
+	return strings.Join(out, ",")
+}
+
+// toVoList 批量转 VO 并回填规则字段。
+func toVoList(clients []*model.SysClient) []*vo.SysClientVo {
+	out := vo.Conv.ConvertToSysClientVoList(clients)
+	for _, c := range out {
+		fillRuleFields(c)
+	}
+	return out
+}
+
+// fillRuleFields 回填 VO 的扩展规则字段，便于前端直接展示/编辑。
+func fillRuleFields(c *vo.SysClientVo) {
+	if c == nil {
+		return
+	}
+	c.GrantTypeList = splitRules(c.GrantType)
+	c.AccessPathList = parseAccessPathList(c.AccessPath)
+	c.IPWhitelistList = splitRules(c.IPWhitelist)
+}
+
+// parseAccessPathList 切分访问路径串并对每条归一化。
+func parseAccessPathList(s string) []string {
+	rules := splitRules(s)
+	for i, r := range rules {
+		rules[i] = normalizeAccessPath(r)
+	}
+	return rules
+}
+
+// normalizeAccessPath 归一化单条访问路径规则：补前导斜杠，* 与 /** 统一成全放行。
+func normalizeAccessPath(path string) string {
+	if path == "*" || path == "/**" {
+		return "/**"
+	}
+	if !strings.HasPrefix(path, "/") {
+		return "/" + path
+	}
+	return path
+}
+
+// splitRules 按 , ; CR LF 切分规则串，trim 并丢弃空段（连续分隔符合并）。
+func splitRules(s string) []string {
+	if s == "" {
+		return nil
+	}
+	parts := strings.FieldsFunc(s, func(r rune) bool {
+		return r == ',' || r == ';' || r == '\r' || r == '\n'
+	})
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}

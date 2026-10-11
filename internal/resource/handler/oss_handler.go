@@ -12,7 +12,7 @@ import (
 
 	"ruoyi-go-vue-plus/internal/resource/model/bo"
 	"ruoyi-go-vue-plus/internal/resource/model/vo"
-	resourceservice "ruoyi-go-vue-plus/internal/resource/service"
+	ossservice "ruoyi-go-vue-plus/internal/resource/service/oss"
 	"ruoyi-go-vue-plus/pkg/errs"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 	"ruoyi-go-vue-plus/pkg/response"
@@ -46,7 +46,7 @@ func (a *OssApi) List(c *gin.Context) {
 		return
 	}
 
-	res, err := resourceservice.OssSvcApp.QueryPageList(c.Request.Context(), q, page)
+	res, err := ossservice.QueryPageList(c.Request.Context(), q, page)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -62,7 +62,7 @@ func (a *OssApi) ListByIDs(c *gin.Context) {
 		return
 	}
 
-	rows, err := resourceservice.OssSvcApp.ListByIDs(c.Request.Context(), ids)
+	rows, err := ossservice.ListByIDs(c.Request.Context(), ids)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -85,7 +85,7 @@ func (a *OssApi) Upload(c *gin.Context) {
 		return
 	}
 
-	item, err := resourceservice.OssSvcApp.Upload(c.Request.Context(), header, c.PostForm("ossExt"))
+	item, err := ossservice.Upload(c.Request.Context(), header, c.PostForm("ossExt"))
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -110,9 +110,9 @@ func (a *OssApi) Download(c *gin.Context) {
 		return
 	}
 
-	res, err := resourceservice.OssSvcApp.Download(c.Request.Context(), ossID)
+	res, err := ossservice.Download(c.Request.Context(), ossID)
 	if err != nil {
-		if errors.Is(err, resourceservice.ErrOssNotFound) {
+		if errors.Is(err, ossservice.ErrOssNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "文件数据不存在!", ""))
 			return
 		}
@@ -154,7 +154,7 @@ func (a *OssApi) Remove(c *gin.Context) {
 		return
 	}
 
-	if err := resourceservice.OssSvcApp.DeleteWithValidByIDs(c.Request.Context(), ids); err != nil {
+	if err := ossservice.DeleteWithValidByIDs(c.Request.Context(), ids); err != nil {
 		_ = c.Error(err)
 		return
 	}
