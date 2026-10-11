@@ -6,9 +6,9 @@ import (
 	"github.com/gin-gonic/gin"
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	systemconfig "ruoyi-go-vue-plus/internal/system/config"
 	"ruoyi-go-vue-plus/internal/system/handler"
-	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/encrypt"
 	"ruoyi-go-vue-plus/pkg/enum"
 	"ruoyi-go-vue-plus/pkg/middleware"

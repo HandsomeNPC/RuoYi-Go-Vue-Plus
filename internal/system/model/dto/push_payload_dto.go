@@ -3,7 +3,7 @@ package dto
 import (
 	"time"
 
-	"ruoyi-go-vue-plus/pkg/constant"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 )
 
 // PushPayloadDTO 推送给前端的统一消息体。

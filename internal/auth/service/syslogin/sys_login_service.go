@@ -12,6 +12,7 @@ import (
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	authconfig "ruoyi-go-vue-plus/internal/auth/config"
 	systembo "ruoyi-go-vue-plus/internal/system/model/bo"
 	systemdto "ruoyi-go-vue-plus/internal/system/model/dto"
@@ -22,7 +23,6 @@ import (
 	postservice "ruoyi-go-vue-plus/internal/system/service/post"
 	roleservice "ruoyi-go-vue-plus/internal/system/service/role"
 	socialservice "ruoyi-go-vue-plus/internal/system/service/social"
-	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/enum"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/i18n"

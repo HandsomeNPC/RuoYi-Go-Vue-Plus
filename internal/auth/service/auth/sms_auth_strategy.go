@@ -8,12 +8,12 @@ import (
 	goredis "github.com/redis/go-redis/v9"
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	authmodel "ruoyi-go-vue-plus/internal/auth/model"
 	authvo "ruoyi-go-vue-plus/internal/auth/model/vo"
 	sysloginservice "ruoyi-go-vue-plus/internal/auth/service/syslogin"
 	systemvo "ruoyi-go-vue-plus/internal/system/model/vo"
 	userservice "ruoyi-go-vue-plus/internal/system/service/user"
-	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/enum"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/i18n"

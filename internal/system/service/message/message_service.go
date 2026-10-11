@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/dto"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	messagerepository "ruoyi-go-vue-plus/internal/system/repository/message"
-	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/push"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/jsonx"

@@ -25,7 +25,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"ruoyi-go-vue-plus/pkg/constant"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"ruoyi-go-vue-plus/pkg/enum"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/middleware"

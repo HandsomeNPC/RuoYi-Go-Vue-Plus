@@ -6,12 +6,12 @@ import (
 	"log"
 	"strconv"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/resource/model/bo"
 	"ruoyi-go-vue-plus/internal/resource/model/vo"
 	ossconfigrepository "ruoyi-go-vue-plus/internal/resource/repository/ossconfig"
 	"ruoyi-go-vue-plus/pkg/cache"
-	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/oss"
 	pkgredis "ruoyi-go-vue-plus/pkg/redis"

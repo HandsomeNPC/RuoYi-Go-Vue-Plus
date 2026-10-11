@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	dictdatarepository "ruoyi-go-vue-plus/internal/system/repository/dictdata"
 	"ruoyi-go-vue-plus/pkg/cache"
-	"ruoyi-go-vue-plus/pkg/constant"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 

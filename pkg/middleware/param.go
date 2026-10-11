@@ -9,7 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"ruoyi-go-vue-plus/pkg/constant"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 )
 
 // 请求参数脱敏与截断。AccessLog 与 pkg/oplog 共用：两者都要把入参压成一行文本落日志，

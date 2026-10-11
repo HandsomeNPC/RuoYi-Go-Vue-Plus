@@ -6,6 +6,7 @@ import (
 	"log"
 	"strconv"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/dto"
@@ -15,7 +16,6 @@ import (
 	dicttypeservice "ruoyi-go-vue-plus/internal/system/service/dicttype"
 	messageservice "ruoyi-go-vue-plus/internal/system/service/message"
 	"ruoyi-go-vue-plus/pkg/cache"
-	"ruoyi-go-vue-plus/pkg/constant"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )
 

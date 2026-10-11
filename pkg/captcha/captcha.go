@@ -26,7 +26,7 @@ import (
 	"github.com/mojocn/base64Captcha"
 	goredis "github.com/redis/go-redis/v9"
 
-	"ruoyi-go-vue-plus/pkg/constant"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"ruoyi-go-vue-plus/pkg/redis"
 )
 

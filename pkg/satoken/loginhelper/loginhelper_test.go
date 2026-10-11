@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"ruoyi-go-vue-plus/pkg/constant"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	authmodel "ruoyi-go-vue-plus/pkg/model"
 )
 

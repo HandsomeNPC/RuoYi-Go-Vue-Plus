@@ -7,8 +7,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	systemdto "ruoyi-go-vue-plus/internal/system/model/dto"
-	"ruoyi-go-vue-plus/pkg/constant"
 	pkgredis "ruoyi-go-vue-plus/pkg/redis"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/jsonx"

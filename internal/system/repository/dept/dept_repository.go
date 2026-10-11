@@ -7,9 +7,9 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
-	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/database"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )

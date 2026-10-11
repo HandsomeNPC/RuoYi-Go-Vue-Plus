@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
@@ -14,7 +15,6 @@ import (
 	menurepository "ruoyi-go-vue-plus/internal/system/repository/menu"
 	"ruoyi-go-vue-plus/internal/system/repository/role"
 	roleservice "ruoyi-go-vue-plus/internal/system/service/role"
-	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/errs"
 	"ruoyi-go-vue-plus/pkg/response"
 	"ruoyi-go-vue-plus/pkg/satoken/loginhelper"

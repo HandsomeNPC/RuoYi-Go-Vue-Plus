@@ -10,8 +10,8 @@ import (
 	goredis "github.com/redis/go-redis/v9"
 	"github.com/sa-tokens/sa-token-go/stputil"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"ruoyi-go-vue-plus/internal/system/model"
-	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/errs"
 	pkgredis "ruoyi-go-vue-plus/pkg/redis"
 	"ruoyi-go-vue-plus/pkg/response"

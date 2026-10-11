@@ -3,7 +3,7 @@ package model
 import (
 	"strings"
 
-	"ruoyi-go-vue-plus/pkg/constant"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/strutil"
 )

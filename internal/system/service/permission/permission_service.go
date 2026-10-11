@@ -3,10 +3,10 @@ package permission
 import (
 	"context"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	systemdto "ruoyi-go-vue-plus/internal/system/model/dto"
 	menuservice "ruoyi-go-vue-plus/internal/system/service/menu"
 	roleservice "ruoyi-go-vue-plus/internal/system/service/role"
-	"ruoyi-go-vue-plus/pkg/constant"
 )
 
 // GetRolePermission 获取角色权限标识。

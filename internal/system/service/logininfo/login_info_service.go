@@ -5,12 +5,12 @@ import (
 	"log"
 	"time"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/dto"
 	logininforepository "ruoyi-go-vue-plus/internal/system/repository/logininfo"
 	clientservice "ruoyi-go-vue-plus/internal/system/service/client"
-	"ruoyi-go-vue-plus/pkg/constant"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ip"
 	"github.com/HandsomeNPC/ruoyi-common-go/useragent"

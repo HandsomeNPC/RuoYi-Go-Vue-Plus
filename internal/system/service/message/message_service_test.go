@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"ruoyi-go-vue-plus/internal/system/model/dto"
-	"ruoyi-go-vue-plus/pkg/constant"
 )
 
 // TestSupportsMessageBox 只有通用消息与通知公告入盒子，LLM 一概排除。

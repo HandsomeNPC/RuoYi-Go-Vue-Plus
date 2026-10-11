@@ -6,10 +6,10 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	logininforepository "ruoyi-go-vue-plus/internal/system/repository/logininfo"
-	"ruoyi-go-vue-plus/pkg/constant"
 	pkgredis "ruoyi-go-vue-plus/pkg/redis"
 	pkgrepo "ruoyi-go-vue-plus/pkg/repository"
 )

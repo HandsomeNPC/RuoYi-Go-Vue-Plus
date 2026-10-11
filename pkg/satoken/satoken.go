@@ -9,7 +9,7 @@ import (
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 	"github.com/sa-tokens/sa-token-go/storage/redis"
 
-	"ruoyi-go-vue-plus/pkg/constant"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	pkgredis "ruoyi-go-vue-plus/pkg/redis"
 )
 

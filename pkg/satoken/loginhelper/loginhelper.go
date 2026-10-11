@@ -10,7 +10,7 @@ import (
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 	"github.com/sa-tokens/sa-token-go/stputil"
 
-	"ruoyi-go-vue-plus/pkg/constant"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"ruoyi-go-vue-plus/pkg/enum"
 	authmodel "ruoyi-go-vue-plus/pkg/model"
 )
