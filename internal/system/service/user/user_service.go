@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/bcrypt"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
@@ -20,7 +21,6 @@ import (
 	deptservice "ruoyi-go-vue-plus/internal/system/service/dept"
 	postservice "ruoyi-go-vue-plus/internal/system/service/post"
 	roleservice "ruoyi-go-vue-plus/internal/system/service/role"
-	"ruoyi-go-vue-plus/pkg/bcrypt"
 	"ruoyi-go-vue-plus/pkg/cache"
 	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/enum"

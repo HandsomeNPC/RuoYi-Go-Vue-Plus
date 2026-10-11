@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/bcrypt"
 	"github.com/gin-gonic/gin/binding"
 	goredis "github.com/redis/go-redis/v9"
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
@@ -16,7 +17,6 @@ import (
 	sysloginservice "ruoyi-go-vue-plus/internal/auth/service/syslogin"
 	systemvo "ruoyi-go-vue-plus/internal/system/model/vo"
 	userservice "ruoyi-go-vue-plus/internal/system/service/user"
-	"ruoyi-go-vue-plus/pkg/bcrypt"
 	"ruoyi-go-vue-plus/pkg/captcha"
 	"ruoyi-go-vue-plus/pkg/constant"
 	"ruoyi-go-vue-plus/pkg/enum"

@@ -14,12 +14,10 @@ require (
 	github.com/redis/go-redis/v9 v9.22.0
 	github.com/sa-tokens/sa-token-go/core v0.2.4
 	github.com/sa-tokens/sa-token-go/integrations/gin v0.2.4
-	github.com/sa-tokens/sa-token-go/storage/memory v0.2.4
 	github.com/sa-tokens/sa-token-go/storage/redis v0.2.4
 	github.com/sa-tokens/sa-token-go/stputil v0.2.4
 	github.com/spf13/viper v1.21.0
 	github.com/xuri/excelize/v2 v2.9.0
-	golang.org/x/crypto v0.55.0
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/sync v0.22.0
 	gorm.io/driver/mysql v1.6.0
@@ -87,6 +85,7 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/arch v0.27.0 // indirect
+	golang.org/x/crypto v0.55.0 // indirect
 	golang.org/x/image v0.23.0 // indirect
 	golang.org/x/mod v0.38.0 // indirect
 	golang.org/x/net v0.57.0 // indirect
