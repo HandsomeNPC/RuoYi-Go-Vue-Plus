@@ -6,8 +6,8 @@ import (
 	"log"
 	"strconv"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/cache"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/cache"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oss"
@@ -42,7 +42,7 @@ func InitCache(ctx context.Context) error {
 	}
 
 	for _, cfg := range rows {
-		if err := cache.Put(ctx, constant.CacheSysOssConfig, cfg.ConfigKey, cfg,
+		if err := cache.Put(ctx, redis.Client(), constant.CacheSysOssConfig, cfg.ConfigKey, cfg,
 			constant.CacheTTLSysOssConfig); err != nil {
 			// 预热失败不阻断启动：Redis 恢复后改一次配置即可回填，
 			// 而这里 panic 会让整个进程起不来。
@@ -205,7 +205,7 @@ func refreshConfigCache(ctx context.Context, ossConfigID int64,
 	// 而 sys_oss.service 里记着旧键的老文件仍要能按旧配置下载则另说——
 	// 那种情况下老文件本就该随配置改名一起失效。
 	if oldConfigKey != "" && oldConfigKey != configKey {
-		_ = cache.Evict(ctx, constant.CacheSysOssConfig, oldConfigKey)
+		_ = cache.Evict(ctx, redis.Client(), constant.CacheSysOssConfig, oldConfigKey)
 		oss.Remove(oldConfigKey)
 	}
 
@@ -214,7 +214,7 @@ func refreshConfigCache(ctx context.Context, ossConfigID int64,
 		log.Printf("[oss] 回读配置 id=%d 失败，缓存未刷新: %v", ossConfigID, err)
 		return
 	}
-	_ = cache.Put(ctx, constant.CacheSysOssConfig, cfg.ConfigKey, cfg,
+	_ = cache.Put(ctx, redis.Client(), constant.CacheSysOssConfig, cfg.ConfigKey, cfg,
 		constant.CacheTTLSysOssConfig)
 	// 客户端持有旧配置建的连接，主动丢弃让下次取用时重建。
 	oss.Remove(cfg.ConfigKey)
@@ -243,7 +243,7 @@ func DeleteConfigs(ctx context.Context, ids []int64) error {
 	}
 	// 删除后再失效：提前清会让删除失败时白丢一批热配置。
 	for _, cfg := range rows {
-		_ = cache.Evict(ctx, constant.CacheSysOssConfig, cfg.ConfigKey)
+		_ = cache.Evict(ctx, redis.Client(), constant.CacheSysOssConfig, cfg.ConfigKey)
 		oss.Remove(cfg.ConfigKey)
 	}
 	return nil

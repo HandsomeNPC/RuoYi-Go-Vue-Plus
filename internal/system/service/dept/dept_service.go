@@ -6,7 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/cache"
+	"github.com/HandsomeNPC/ruoyi-common-go/cache"
+	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
@@ -36,7 +37,7 @@ var ErrDeptParentIsSelf = errors.New("service: 上级部门不能是自己")
 // 部门读到空值。
 func SelectByID(ctx context.Context, deptID int64) (*vo.SysDeptVo, error) {
 	var cached vo.SysDeptVo
-	if hit, _ := cache.Get(ctx, constant.CacheSysDept, deptCacheKey(deptID), &cached); hit {
+	if hit, _ := cache.Get(ctx, redis.Client(), constant.CacheSysDept, deptCacheKey(deptID), &cached); hit {
 		return &cached, nil
 	}
 
@@ -56,7 +57,7 @@ func SelectByID(ctx context.Context, deptID int64) (*vo.SysDeptVo, error) {
 		return nil, err
 	}
 
-	_ = cache.Put(ctx, constant.CacheSysDept, deptCacheKey(deptID), out, constant.CacheTTLSysDept)
+	_ = cache.Put(ctx, redis.Client(), constant.CacheSysDept, deptCacheKey(deptID), out, constant.CacheTTLSysDept)
 	return out, nil
 }
 
@@ -194,7 +195,7 @@ func InsertDept(ctx context.Context, b *bo.SysDeptBo) error {
 	}
 	b.DeptID = add.DeptID
 	// 祖先链变了，按部门取子树的缓存整组失效。
-	_ = cache.EvictGroup(ctx, constant.CacheSysDeptAndChild)
+	_ = cache.EvictGroup(ctx, redis.Client(), constant.CacheSysDeptAndChild)
 	return nil
 }
 
@@ -416,8 +417,8 @@ func DeleteDeptByID(ctx context.Context, userID, deptID int64) error {
 // evictDept 失效单个部门缓存，并连带清空按部门取子树的缓存组。
 // 后者是 allEntries 语义：子树结果按祖先链聚合，任一部门变动都可能影响别的 key。
 func evictDept(ctx context.Context, deptID int64) {
-	_ = cache.Evict(ctx, constant.CacheSysDept, deptCacheKey(deptID))
-	_ = cache.EvictGroup(ctx, constant.CacheSysDeptAndChild)
+	_ = cache.Evict(ctx, redis.Client(), constant.CacheSysDept, deptCacheKey(deptID))
+	_ = cache.EvictGroup(ctx, redis.Client(), constant.CacheSysDeptAndChild)
 }
 
 // deptCacheKey 部门缓存的 key。

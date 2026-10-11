@@ -6,7 +6,8 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/cache"
+	"github.com/HandsomeNPC/ruoyi-common-go/cache"
+	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	domain "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/domain"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
@@ -92,7 +93,7 @@ func fillCreateByNames(ctx context.Context, rows []*vo.SysNoticeVo) error {
 		seen[row.CreateBy] = struct{}{}
 
 		var cached string
-		if hit, _ := cache.Get(ctx, constant.CacheSysUserName,
+		if hit, _ := cache.Get(ctx, redis.Client(), constant.CacheSysUserName,
 			userNameCacheKey(row.CreateBy), &cached); hit {
 			names[row.CreateBy] = cached
 			continue
@@ -108,7 +109,7 @@ func fillCreateByNames(ctx context.Context, rows []*vo.SysNoticeVo) error {
 		}
 		for id, name := range found {
 			names[id] = name
-			_ = cache.Put(ctx, constant.CacheSysUserName, userNameCacheKey(id), name,
+			_ = cache.Put(ctx, redis.Client(), constant.CacheSysUserName, userNameCacheKey(id), name,
 				constant.CacheTTLSysUserName)
 		}
 	}

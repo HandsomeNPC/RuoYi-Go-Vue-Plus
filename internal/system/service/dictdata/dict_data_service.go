@@ -4,7 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/cache"
+	"github.com/HandsomeNPC/ruoyi-common-go/cache"
+	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
@@ -195,10 +196,10 @@ func refreshTypeCache(ctx context.Context, dictType string) {
 	}
 	list, err := selectDictDataByTypeUncached(ctx, dictType)
 	if err != nil {
-		_ = cache.Evict(ctx, constant.CacheSysDict, dictType)
+		_ = cache.Evict(ctx, redis.Client(), constant.CacheSysDict, dictType)
 		return
 	}
-	_ = cache.Put(ctx, constant.CacheSysDict, dictType, list, constant.CacheTTLSysDict)
+	_ = cache.Put(ctx, redis.Client(), constant.CacheSysDict, dictType, list, constant.CacheTTLSysDict)
 }
 
 // selectDictDataByTypeUncached 直接查库取某类型下的字典数据，恒返回非 nil 切片

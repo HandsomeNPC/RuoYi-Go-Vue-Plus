@@ -268,23 +268,24 @@ for _, e := range rows {
 }
 if _, err := repo.DeleteByIDs(ctx, ids); err != nil { return err }
 // 删除后再失效：提前清缓存会让删除失败时白丢一批热数据。
-for _, e := range rows { _ = cache.Evict(ctx, constant.CacheSysXxx, e.Key) }
+for _, e := range rows { _ = cache.Evict(ctx, redis.Client(), constant.CacheSysXxx, e.Key) }
 ```
 
 ### 缓存：Java 注解 → Go 调用
 
-| Java 注解                      | Go 写法                                              |
-|--------------------------------|------------------------------------------------------|
-| `@Cacheable(key="#k")`         | 读头 `cache.Get` 命中即返回；miss 查库后 `cache.Put` |
-| `@CachePut(key="#k")`          | 写库**成功后** `cache.Put(ctx, group, k, val, ttl)`  |
-| `@CacheEvict(key="#k")`        | `cache.Evict(ctx, group, k)`                         |
-| `@CacheEvict(allEntries=true)` | `cache.EvictGroup(ctx, group)`                       |
-| 防击穿的读穿                   | `cache.GetOrSet(...)`（内含 singleflight）           |
+| Java 注解                      | Go 写法                                                  |
+|--------------------------------|----------------------------------------------------------|
+| `@Cacheable(key="#k")`         | 读头 `cache.Get` 命中即返回；miss 查库后 `cache.Put`     |
+| `@CachePut(key="#k")`          | 写库**成功后** `cache.Put(ctx, rdb, group, k, val, ttl)` |
+| `@CacheEvict(key="#k")`        | `cache.Evict(ctx, rdb, group, k)`                        |
+| `@CacheEvict(allEntries=true)` | `cache.EvictGroup(ctx, rdb, group)`                      |
+| 防击穿的读穿                   | `cache.GetOrSet(ctx, rdb, ...)`（内含 singleflight）     |
 
-- 组名与 TTL 加在 `pkg/constant/cache_names.go`。 TTL 取值看 Java `CacheNames` 的 `#ttl` 后缀：`sys_client#30d` →
+- 调用方负责传 `*goredis.Client`（通常 `redis.Client()`），`cache` 包不持有 Redis 单例，便于测试与按进程换实例。
+- 组名与 TTL 在 `ruoyi-core/constant/cache_names.go`。 TTL 取值看 Java `CacheNames` 的 `#ttl` 后缀：`sys_client#30d` →
   `30*24*time.Hour`， **无后缀 → `0`（不过期）**。
 - 缓存写/删（`Put`/`Evict`/`EvictGroup`） **一律 `_ =` 忽略错误**（fail-open，Redis 挂了要能继续走 DB）。 但 `Get` 返回两个值，
-  **不能** `_ = cache.Get(...)`——用 `hit, _ := cache.Get(ctx, group, key, &dest)`。
+  **不能** `_ = cache.Get(...)`——用 `hit, _ := cache.Get(ctx, redis.Client(), group, key, &dest)`。
 - 改了 key 的更新， **旧 key 要单独 Evict**——`@CachePut` 只写新 key，旧的会成孤儿。
 - Java `@Cacheable` 缓存的是返回值， **"查不到"的空串也会入缓存**，照搬即可（写路径的 `@CachePut` 会覆盖）。
 

@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/bcrypt"
+	"github.com/HandsomeNPC/ruoyi-common-go/cache"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/cache"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
@@ -707,7 +707,7 @@ func UpdateUser(ctx context.Context, b *bo.SysUserBo) error {
 		return ErrUserUpdateFailed
 	}
 	// 失效该用户昵称缓存。
-	_ = cache.Evict(ctx, constant.CacheSysNickname, strconv.FormatInt(b.UserID, 10))
+	_ = cache.Evict(ctx, redis.Client(), constant.CacheSysNickname, strconv.FormatInt(b.UserID, 10))
 	return nil
 }
 

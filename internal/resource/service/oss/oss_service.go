@@ -10,7 +10,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/cache"
+	"github.com/HandsomeNPC/ruoyi-common-go/cache"
+	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	pkgoss "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oss"
@@ -88,7 +89,7 @@ func ListByIDs(ctx context.Context, ids []int64) ([]*vo.SysOssVo, error) {
 // 缓存进去（TTL 30 天）等于发一批必然失效的地址。
 func getByID(ctx context.Context, ossID int64) (*vo.SysOssVo, error) {
 	var item vo.SysOssVo
-	err := cache.GetOrSet(ctx, constant.CacheSysOss, ossKey(ossID), constant.CacheTTLSysOss,
+	err := cache.GetOrSet(ctx, redis.Client(), constant.CacheSysOss, ossKey(ossID), constant.CacheTTLSysOss,
 		&item, func(ctx context.Context) (any, error) {
 			row, err := ossrepository.SelectByID(ctx, ossID)
 			if err != nil {
@@ -262,7 +263,7 @@ func DeleteWithValidByIDs(ctx context.Context, ids []int64) error {
 	// 删除后再失效，且必须失效：那份缓存 TTL 30 天，不清的话
 	// listByIds 会一直返回已删文件。
 	for _, row := range rows {
-		_ = cache.Evict(ctx, constant.CacheSysOss, ossKey(row.OssID))
+		_ = cache.Evict(ctx, redis.Client(), constant.CacheSysOss, ossKey(row.OssID))
 	}
 	return nil
 }

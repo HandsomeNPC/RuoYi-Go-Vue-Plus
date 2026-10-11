@@ -7,7 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/cache"
+	"github.com/HandsomeNPC/ruoyi-common-go/cache"
+	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
@@ -353,7 +354,7 @@ func UpdateRolePermission(ctx context.Context,
 		return 0, err
 	}
 	// 数据权限缓存按角色失效。
-	_ = cache.Evict(ctx, constant.CacheSysRoleCustom, strconv.FormatInt(b.RoleID, 10))
+	_ = cache.Evict(ctx, redis.Client(), constant.CacheSysRoleCustom, strconv.FormatInt(b.RoleID, 10))
 	// 权限变更后让受影响在线用户下次请求即失效。
 	cleanOnlineUserByRole(ctx, b.RoleID)
 	// 取部门授权条数，空集合视作 1（成功），使 controller 的 toAjax(>0) 恒为成功口径。
@@ -435,7 +436,7 @@ func DeleteRoleByIDs(ctx context.Context, userID int64,
 		return err
 	}
 	// 批量删除整组清空数据权限缓存。
-	_ = cache.EvictGroup(ctx, constant.CacheSysRoleCustom)
+	_ = cache.EvictGroup(ctx, redis.Client(), constant.CacheSysRoleCustom)
 	return nil
 }
 
