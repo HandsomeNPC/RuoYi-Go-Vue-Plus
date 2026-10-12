@@ -12,9 +12,8 @@ import (
 
 	"github.com/HandsomeNPC/ruoyi-common-go/cache"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
-	pkgoss "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oss"
+	pkgoss "github.com/HandsomeNPC/ruoyi-common-go/oss"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/resource/model"
@@ -89,7 +88,7 @@ func ListByIDs(ctx context.Context, ids []int64) ([]*vo.SysOssVo, error) {
 // 缓存进去（TTL 30 天）等于发一批必然失效的地址。
 func getByID(ctx context.Context, ossID int64) (*vo.SysOssVo, error) {
 	var item vo.SysOssVo
-	err := cache.GetOrSet(ctx, redis.Client(), constant.CacheSysOss, ossKey(ossID), constant.CacheTTLSysOss,
+	err := cache.GetOrSet(ctx, redis.Client(), pkgoss.CacheSysOss, ossKey(ossID), pkgoss.CacheTTLSysOss,
 		&item, func(ctx context.Context) (any, error) {
 			row, err := ossrepository.SelectByID(ctx, ossID)
 			if err != nil {
@@ -120,7 +119,7 @@ func matchingURL(ctx context.Context, item *vo.SysOssVo) {
 	if item == nil {
 		return
 	}
-	client, err := pkgoss.Instance(ctx, item.Service)
+	client, err := pkgoss.GetS3Client(ctx, redis.Client(), item.Service)
 	if err != nil {
 		log.Printf("[oss] 取配置 %q 的客户端失败，沿用库中地址: %v", item.Service, err)
 		return
@@ -145,7 +144,7 @@ func Upload(ctx context.Context, header *multipart.FileHeader,
 		return nil, errs.New(0, "上传文件不能为空", "")
 	}
 
-	client, err := pkgoss.InstanceDefault(ctx)
+	client, err := pkgoss.GetDefaultS3Client(ctx, redis.Client())
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +218,7 @@ func Download(ctx context.Context, ossID int64) (*DownloadResult, error) {
 		return nil, err
 	}
 
-	client, err := pkgoss.Instance(ctx, row.Service)
+	client, err := pkgoss.GetS3Client(ctx, redis.Client(), row.Service)
 	if err != nil {
 		return nil, err
 	}
@@ -247,7 +246,7 @@ func DeleteWithValidByIDs(ctx context.Context, ids []int64) error {
 	}
 
 	for _, row := range rows {
-		client, err := pkgoss.Instance(ctx, row.Service)
+		client, err := pkgoss.GetS3Client(ctx, redis.Client(), row.Service)
 		if err != nil {
 			log.Printf("[oss] 取配置 %q 的客户端失败，跳过远端删除: %v", row.Service, err)
 			continue
@@ -263,7 +262,7 @@ func DeleteWithValidByIDs(ctx context.Context, ids []int64) error {
 	// 删除后再失效，且必须失效：那份缓存 TTL 30 天，不清的话
 	// listByIds 会一直返回已删文件。
 	for _, row := range rows {
-		_ = cache.Evict(ctx, redis.Client(), constant.CacheSysOss, ossKey(row.OssID))
+		_ = cache.Evict(ctx, redis.Client(), pkgoss.CacheSysOss, ossKey(row.OssID))
 	}
 	return nil
 }
