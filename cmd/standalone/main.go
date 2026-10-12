@@ -15,6 +15,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/cors"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/ratelimiter"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatablebody"
+	"github.com/HandsomeNPC/ruoyi-common-go/middleware/trace"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/xss"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/encrypt"
@@ -97,7 +98,7 @@ func main() {
 	r := gin.New()
 	r.Use(middleware.Recover())
 	r.Use(cors.CORSWithConfig(ac.CORS))
-	r.Use(middleware.TraceIDWithConfig(ac.TraceID))
+	r.Use(trace.TraceIDWithConfig(ac.TraceID))
 	r.Use(repeatablebody.RepeatableBodyWithConfig(ac.RepeatableBody))
 	r.Use(accesslog.AccessLogWithConfig(ac.AccessLog))
 	r.Use(xss.XSSWithConfig(ac.XSS))

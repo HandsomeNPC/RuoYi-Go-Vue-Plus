@@ -11,12 +11,12 @@ import (
 
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/accesslog"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/cors"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatablebody"
+	"github.com/HandsomeNPC/ruoyi-common-go/middleware/trace"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/xss"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 )
@@ -45,7 +45,7 @@ type Config struct {
 	CORS           cors.CORSConfig                     `mapstructure:"cors"`
 	XSS            xss.XSSConfig                       `mapstructure:"xss"`
 	AccessLog      accesslog.AccessLogConfig           `mapstructure:"accessLog"`
-	TraceID        middleware.TraceIDConfig            `mapstructure:"traceId"`
+	TraceID        trace.TraceIDConfig                 `mapstructure:"traceId"`
 	RepeatableBody repeatablebody.RepeatableBodyConfig `mapstructure:"repeatableBody"`
 }
 
@@ -64,7 +64,7 @@ func Load(path string) {
 	cors.DefaultCORS().SetDefaults(v)
 	xss.DefaultXSS().SetDefaults(v)
 	accesslog.DefaultAccessLog().SetDefaults(v)
-	middleware.DefaultTraceID().SetDefaults(v)
+	trace.DefaultTraceID().SetDefaults(v)
 	repeatablebody.DefaultRepeatableBody().SetDefaults(v)
 
 	if err := v.ReadInConfig(); err != nil {
