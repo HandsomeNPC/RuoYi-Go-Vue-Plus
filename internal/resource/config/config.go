@@ -21,6 +21,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/accesslog"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/cors"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatablebody"
+	"github.com/HandsomeNPC/ruoyi-common-go/middleware/xss"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 )
 
@@ -46,7 +47,7 @@ type Config struct {
 	Redis          redis.RedisConfig                   `mapstructure:"redis"`
 	SAToken        satoken.SATokenConfig               `mapstructure:"satoken"`
 	CORS           cors.CORSConfig                     `mapstructure:"cors"`
-	XSS            middleware.XSSConfig                `mapstructure:"xss"`
+	XSS            xss.XSSConfig                       `mapstructure:"xss"`
 	AccessLog      accesslog.AccessLogConfig           `mapstructure:"accessLog"`
 	TraceID        middleware.TraceIDConfig            `mapstructure:"traceId"`
 	RepeatableBody repeatablebody.RepeatableBodyConfig `mapstructure:"repeatableBody"`
@@ -68,7 +69,7 @@ func Load(path string) {
 
 	satoken.DefaultSAToken().SetDefaults(v)
 	cors.DefaultCORS().SetDefaults(v)
-	middleware.DefaultXSS().SetDefaults(v)
+	xss.DefaultXSS().SetDefaults(v)
 	accesslog.DefaultAccessLog().SetDefaults(v)
 	middleware.DefaultTraceID().SetDefaults(v)
 	repeatablebody.DefaultRepeatableBody().SetDefaults(v)

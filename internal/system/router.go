@@ -9,6 +9,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/accesslog"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/cors"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatablebody"
+	"github.com/HandsomeNPC/ruoyi-common-go/middleware/xss"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/encrypt"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
@@ -385,7 +386,7 @@ func InitRouter() *gin.Engine {
 	r.Use(middleware.TraceIDWithConfig(cfg.TraceID))
 	r.Use(repeatablebody.RepeatableBodyWithConfig(cfg.RepeatableBody))
 	r.Use(accesslog.AccessLogWithConfig(cfg.AccessLog))
-	r.Use(middleware.XSSWithConfig(cfg.XSS))
+	r.Use(xss.XSSWithConfig(cfg.XSS))
 
 	RegisterRoutes(r, "")
 
