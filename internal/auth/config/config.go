@@ -20,9 +20,9 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatablebody"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/trace"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/xss"
+	"github.com/HandsomeNPC/ruoyi-common-go/oauth2"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/social"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 )
@@ -56,7 +56,7 @@ type Config struct {
 	APIEncrypt     apiencrypt.APIEncryptConfig         `mapstructure:"apiEncrypt"`
 	User           systemconfig.UserConfig             `mapstructure:"user"`
 	Captcha        captchahelper.CaptchaConfig         `mapstructure:"captcha"`
-	Social         social.SocialConfig                 `mapstructure:"social"`
+	Social         oauth2.Config                       `mapstructure:"social"`
 }
 
 var (
@@ -72,7 +72,9 @@ func Load(path string) {
 
 	satoken.DefaultSAToken().SetDefaults(v)
 	systemconfig.DefaultUser().SetDefaults(v)
-	social.DefaultSocial().SetDefaults(v)
+	// social 段无需铺默认值：viper 的 SetDefault 盖不住「键名未知」的 map 项，
+	// 各平台默认 scope 落在 oauth2 的 provider 里；整段缺失时 Type 为 nil，
+	// oauth2.New 按「无可用平台」处理。
 
 	if err := v.ReadInConfig(); err != nil {
 		panic(fmt.Errorf("auth/config: 读取 %s 失败: %w", path, err))

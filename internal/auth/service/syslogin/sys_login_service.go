@@ -12,6 +12,7 @@ import (
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/oauth2"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	domain "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/domain"
@@ -19,7 +20,6 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	authmodel "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/social"
 	authconfig "ruoyi-go-vue-plus/internal/auth/config"
 	systembo "ruoyi-go-vue-plus/internal/system/model/bo"
 	systemdto "ruoyi-go-vue-plus/internal/system/model/dto"
@@ -125,9 +125,9 @@ func BuildLoginUser(req *http.Request, user *systemvo.SysUserVo) (*authmodel.Log
 //
 // authId = source + 平台内唯一 id，是「这个三方账号」的全局标识；
 // 查重与续绑的判定都在 system 的 service 层（含 Redis 互斥锁），
-// 此处只负责把 social.AuthUser 摊平成 SysSocialBo。
+// 此处只负责把 oauth2.AuthUser 摊平成 SysSocialBo。
 func SocialRegister(ctx context.Context, userID int64,
-	au *social.AuthUser) error {
+	au *oauth2.AuthUser) error {
 
 	if au == nil {
 		return errs.New(0, "三方登录信息为空", "")

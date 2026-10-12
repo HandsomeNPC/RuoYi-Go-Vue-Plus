@@ -14,15 +14,16 @@ import (
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/captchahelper"
+	"github.com/HandsomeNPC/ruoyi-common-go/oauth2"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/social"
 	"ruoyi-go-vue-plus/internal/auth/model"
 	"ruoyi-go-vue-plus/internal/auth/model/vo"
 	authservice "ruoyi-go-vue-plus/internal/auth/service/auth"
+	socialauth "ruoyi-go-vue-plus/internal/auth/service/social"
 	sysloginservice "ruoyi-go-vue-plus/internal/auth/service/syslogin"
 	clientservice "ruoyi-go-vue-plus/internal/system/service/client"
 	socialservice "ruoyi-go-vue-plus/internal/system/service/social"
@@ -114,9 +115,9 @@ func (a *AuthApi) Code(c *gin.Context) {
 // 公开接口：登录页未登录时点三方登录也要拿得到地址。
 func (a *AuthApi) Binding(c *gin.Context) {
 	source := c.Param("source")
-	url, err := social.GetAuthorizeURL(c.Request.Context(), source)
+	url, err := socialauth.AuthorizeURL(c.Request.Context(), source)
 	if err != nil {
-		if errors.Is(err, social.ErrUnsupportedSource) {
+		if errors.Is(err, oauth2.ErrUnsupportedSource) {
 			_ = c.Error(errs.New(0, source+"平台账号暂不支持", ""))
 			return
 		}
@@ -136,13 +137,13 @@ func (a *AuthApi) SocialCallback(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	authUser, err := social.LoginAuth(ctx, body.Source, body.SocialCode, body.SocialState)
+	authUser, err := socialauth.Callback(ctx, body.Source, body.SocialCode, body.SocialState)
 	if err != nil {
-		if errors.Is(err, social.ErrUnsupportedSource) {
+		if errors.Is(err, oauth2.ErrUnsupportedSource) {
 			_ = c.Error(errs.New(0, body.Source+"平台账号暂不支持", ""))
 			return
 		}
-		if errors.Is(err, social.ErrIllegalState) {
+		if errors.Is(err, oauth2.ErrIllegalState) {
 			_ = c.Error(errs.New(0, "三方登录状态已失效，请重新授权", err.Error()))
 			return
 		}

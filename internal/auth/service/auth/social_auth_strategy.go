@@ -7,13 +7,14 @@ import (
 	"github.com/gin-gonic/gin/binding"
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/oauth2"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/social"
 	authmodel "ruoyi-go-vue-plus/internal/auth/model"
 	authvo "ruoyi-go-vue-plus/internal/auth/model/vo"
+	socialauth "ruoyi-go-vue-plus/internal/auth/service/social"
 	sysloginservice "ruoyi-go-vue-plus/internal/auth/service/syslogin"
 	systemvo "ruoyi-go-vue-plus/internal/system/model/vo"
 	socialservice "ruoyi-go-vue-plus/internal/system/service/social"
@@ -37,12 +38,12 @@ func (s *socialAuthStrategy) Login(req *http.Request, body []byte,
 		return nil, errs.New(response.CodeBadRequest, "参数校验失败", err.Error())
 	}
 
-	authUser, err := social.LoginAuth(ctx, loginBody.Source, loginBody.SocialCode, loginBody.SocialState)
+	authUser, err := socialauth.Callback(ctx, loginBody.Source, loginBody.SocialCode, loginBody.SocialState)
 	if err != nil {
-		if errors.Is(err, social.ErrUnsupportedSource) {
+		if errors.Is(err, oauth2.ErrUnsupportedSource) {
 			return nil, errs.New(0, loginBody.Source+"平台账号暂不支持", "")
 		}
-		if errors.Is(err, social.ErrIllegalState) {
+		if errors.Is(err, oauth2.ErrIllegalState) {
 			return nil, errs.New(0, "三方登录状态已失效，请重新授权", err.Error())
 		}
 		return nil, err
