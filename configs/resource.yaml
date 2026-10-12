@@ -22,8 +22,6 @@ datasource:
       type: mysql
       # GORM MySQL DSN；原 params 的 query 段并入此 url
       url: "root:ruoyi123@tcp(127.0.0.1:3306)/ry-cloud?charset=utf8mb4&parseTime=True&loc=Local&timeout=5s"
-      username: root
-      password: ruoyi123
       maxIdleConns: 10
       maxOpenConns: 100
       connMaxLifetime: 3600   # 连接最大存活(秒)
@@ -35,8 +33,6 @@ datasource:
 #      lazy: true
 #      type: mysql
 #      url: "root:ruoyi123@tcp(127.0.0.1:3306)/ry-vue?charset=utf8mb4&parseTime=True&loc=Local"
-#      username: root
-#      password: ruoyi123
 
 redis:
   host: 127.0.0.1
