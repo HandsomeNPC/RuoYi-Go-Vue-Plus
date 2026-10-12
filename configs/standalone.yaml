@@ -92,10 +92,10 @@ social:
       redirectUri: http://localhost:80/social-callback?source=topiam
       scopes: [ openid, profile, email ]
 
-# 消息推送配置
+# 消息推送配置（只移植 SSE，不支持 websocket）。
+# 默认值与校验由 push.Init 兜底；enabled 缺省为 false，故必须显式开启。
 push:
   enabled: true
-  transport: sse
   path: /message
   sseTimeoutSeconds: 86400
   heartbeatSeconds: 60

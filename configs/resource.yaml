@@ -54,11 +54,15 @@ satoken:
   isShare: false                    # 多端登录是否共享同一 token
   jwtSecretKey: abcdefghijklmnopqrstuvwxyz # jwt秘钥
 
-# 消息推送配置。对照原项目 message 段（本项目 sse / websocket 两种传输都已移植）。
+# 消息推送配置。对照原项目 message 段（只移植 SSE，不支持 websocket）。
 # 跨域统一由 cors 段管，不另设 allowedOrigins 白名单。
+# 默认值与校验由 push.Init 兜底；enabled 缺省为 false，故必须显式开启。
 push:
-  enabled: true                 # 关闭则不注册推送路由，且发布消息直接跳过
-  transport: sse                # sse / websocket，取值非法时回落 sse
+  enabled: true                 # 关闭则不注册推送路由
+  # 相对部分，注册时拼 prefix（对齐 Java：微服务版 nacos 把 message.path 覆盖成 /message）。
+  # modular(prefix="") → /message，nginx 剥 /resource 后匹配；
+  # standalone(prefix="/resource") → /resource/message，直连。
+  # 前端两种部署都打 /resource/message。
   path: /message
   sseTimeoutSeconds: 86400      # SSE 连接超时(秒)，到点由服务端结束、前端重连
   heartbeatSeconds: 60          # 心跳间隔(秒)，同时用于剔除失效连接

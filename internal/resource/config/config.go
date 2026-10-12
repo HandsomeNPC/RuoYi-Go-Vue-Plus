@@ -13,9 +13,9 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
 	"github.com/HandsomeNPC/ruoyi-common-go/mailhelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/push"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/smshelper"
+	"ruoyi-go-vue-plus/internal/resource/push"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/accesslog"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/cors"
@@ -68,7 +68,6 @@ func Load(path string) {
 	v.SetConfigFile(path)
 
 	satoken.DefaultSAToken().SetDefaults(v)
-	push.DefaultPush().SetDefaults(v)
 
 	if err := v.ReadInConfig(); err != nil {
 		panic(fmt.Errorf("resource/config: 读取 %s 失败: %w", path, err))
@@ -79,11 +78,11 @@ func Load(path string) {
 		panic(fmt.Errorf("resource/config: 解析配置失败: %w", err))
 	}
 
+	// Push 的默认值与校验由 push.Init 兜底，不在此处铺 viper 默认值。
 	for _, fn := range []func() error{
 		cfg.Server.Validate,
 		cfg.Datasource.Validate,
 		cfg.SAToken.Validate,
-		cfg.Push.Validate,
 	} {
 		if err := fn(); err != nil {
 			panic(fmt.Errorf("resource/config: %w", err))

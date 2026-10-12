@@ -9,8 +9,8 @@ import (
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	domain "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/domain"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/push"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
+	"ruoyi-go-vue-plus/internal/resource/push"
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	messagerepository "ruoyi-go-vue-plus/internal/system/repository/message"
@@ -119,7 +119,7 @@ func publish(ctx context.Context, userIDs []int64,
 	if err := storeMessage(ctx, userIDs, payload); err != nil {
 		return err
 	}
-	if err := push.Publish(ctx, push.ToUsers(userIDs, payload)); err != nil {
+	if err := push.Publish(ctx, userIDs, payload); err != nil {
 		log.Printf("[message] 推送失败(消息已入库，不影响业务): %v", err)
 	}
 	return nil

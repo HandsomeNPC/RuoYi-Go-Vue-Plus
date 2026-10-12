@@ -20,7 +20,6 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/trace"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/xss"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/push"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
@@ -87,6 +86,9 @@ func (u UserConfig) Validate() error {
 }
 
 // Config system 进程用到的配置子集。
+//
+// 不含 Push：推送的发布端(push.Publish)无状态、只用 Redis，
+// 会话管理与端点只在 resource 进程起，故 system 侧无需推送配置。
 type Config struct {
 	Server         ServerConfig                        `mapstructure:"server"`
 	Snowflake      snowflake.SnowflakeConfig           `mapstructure:"snowflake"`
@@ -100,7 +102,6 @@ type Config struct {
 	RepeatableBody repeatablebody.RepeatableBodyConfig `mapstructure:"repeatableBody"`
 	APIEncrypt     apiencrypt.APIEncryptConfig         `mapstructure:"apiEncrypt"`
 	User           UserConfig                          `mapstructure:"user"`
-	Push           push.PushConfig                     `mapstructure:"push"`
 }
 
 var (
@@ -116,7 +117,6 @@ func Load(path string) {
 
 	satoken.DefaultSAToken().SetDefaults(v)
 	DefaultUser().SetDefaults(v)
-	push.DefaultPush().SetDefaults(v)
 
 	if err := v.ReadInConfig(); err != nil {
 		panic(fmt.Errorf("system/config: 读取 %s 失败: %w", path, err))
@@ -132,7 +132,6 @@ func Load(path string) {
 		cfg.Datasource.Validate,
 		cfg.SAToken.Validate,
 		cfg.User.Validate,
-		cfg.Push.Validate,
 	} {
 		if err := fn(); err != nil {
 			panic(fmt.Errorf("system/config: %w", err))

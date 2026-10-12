@@ -17,11 +17,11 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/push"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
 	resourceconfig "ruoyi-go-vue-plus/internal/resource/config"
 	"ruoyi-go-vue-plus/internal/resource/handler"
+	"ruoyi-go-vue-plus/internal/resource/push"
 )
 
 const ossLogTitle = "OSS对象存储"
@@ -116,7 +116,6 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 // standalone 传 "/resource" 得 /resource/message（直连）。
 // 不属于 protected 组的中间件链，单独注册在根引擎上。
 func RegisterPushRoutes(r *gin.Engine, prefix string) {
-	// 推送端点按 push.transport 决定走 SSE 还是 WebSocket，路径取配置值。
 	// 未启用推送时不注册，避免前端连上一个只会报错的端点。
 	cfg := resourceconfig.Get().Push
 	if !cfg.Enabled {
@@ -126,7 +125,7 @@ func RegisterPushRoutes(r *gin.Engine, prefix string) {
 	plugin := sagin.NewPlugin(satoken.Manager())
 	path := prefix + cfg.Path
 	tokenName := resourceconfig.Get().SAToken.TokenName
-	// NormalizeQueryToken 须排在 TokenInterceptor 之前：EventSource/WebSocket
+	// NormalizeQueryToken 须排在 TokenInterceptor 之前：EventSource
 	// 不能自定义请求头，token 只能走 query，形如 ?Authorization=Bearer xxx，
 	// 而 sa-token-go 的 query 分支不剥 Bearer 前缀，不规范化会一律 401。
 	r.GET(path, push.NormalizeQueryToken(tokenName), plugin.TokenInterceptor(),

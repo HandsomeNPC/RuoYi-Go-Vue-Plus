@@ -68,19 +68,8 @@ apiEncrypt:
   # 请求解密私钥
   privateKey: MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBAO8QO5Eg4zehk9aP1SShzmlCSVHg8Ufr9yWeN4WqMMsiAPJC+PGGCoBlAD4T14Pqq7oWxc+Yrx2Nwv6eHdwUfPilfjveMO87dK977zIvdVFDSfalGBDZrTUwmzL5bBNkIFhZ/RWctEi8A1ShZCDL2/P3irtVrjh2DsDX/cgJ/7EDAgMBAAECgYEAhNZAQyRDHWZq/45soS5Hw7VRiG21pIE5k22W7G7lLfp3DCaqrYoNy8pTmCruVh7PzVdaE0CEDaf38gNqFCBOT8iTFQiYV3am4W3hsEQM5wmVBeTvCM5P2jsaaBQbqmneRjiZVbs6ha205JSho1Oc85NbaZa8gFVjwZgZWJrbzgECQQD/iZWhkRPtbdeai/Xk7D/eIXKh1Gxid0rWKQq8ikxbaiergn47XzNKrpROVyka3Gn85o7jJphgxp99R3r8sH71AkEA738Dn7xs+I4Y+MLa2EcT78JG3f/VhlWS/ks3qGJ2dfqwS7ntnmf5Q+2Xw+9UcuiK/TxD8K/0inSCkIMeWBOFFwJBAIoTebq3faEJfTqQ7ekojsokIKC4+2epNdLKknaV8/RhQ9Y0yKikJD7yXkiGaDuPZeW1Xvf2XtfL+1niSd5IMBECQDCOOMbe5dzyuj9dCg+FQZZ/dey2XK0Slm22BD/ATrIWtD12IaXXAKNz/Sv9TsrJOLykxkV69wJHIt13p+RFeNsCQGn5XGRn4ZCRVCesJYXyx29MTqkl8sD/gzYcURTZYjHqX2EvtvAyC6gBm9H0EbxmHIi4Oq0tITzklCXj5SpvBEw=
 
-# 消息推送配置。对照原项目 message 段（本项目 sse / websocket 两种传输都已移植）。
-# 跨域统一由 cors 段管，不另设 allowedOrigins 白名单。
-push:
-  enabled: true                 # 关闭则不注册推送路由，且发布消息直接跳过
-  transport: sse                # sse / websocket，取值非法时回落 sse
-  # 相对部分，注册时拼 prefix（对齐 Java：微服务版 nacos 把 message.path 覆盖成 /message）。
-  # modular(prefix="") → /message，nginx 剥 /resource 后匹配；
-  # standalone(prefix="/resource") → /resource/message，直连。
-  # 前端两种部署都打 /resource/message。
-  path: /message
-  sseTimeoutSeconds: 86400      # SSE 连接超时(秒)，到点由服务端结束、前端重连
-  heartbeatSeconds: 60          # 心跳间隔(秒)，同时用于剔除失效连接
-  sendBuffer: 32                # 单连接待发消息缓冲；写满即断开该慢客户端
+# 不设 push 段：推送的发布端(push.Publish)无状态、只用 Redis，
+# 会话管理与 /message 端点都在 resource 进程，配置见 configs/resource.yaml。
 
 # xss 排除：modular system 的公告路由经 nginx 剥 /system 后是 /notice，须排除以免清洗破坏富文本。
 xss:
