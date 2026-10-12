@@ -12,10 +12,10 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
 	"github.com/HandsomeNPC/ruoyi-common-go/mailhelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/ratelimiter"
+	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatsubmit"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/push"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repeatsubmit"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/smshelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
@@ -44,7 +44,7 @@ func main() {
 	// 主键发号器，sys_oss/sys_oss_config 主键无 auto_increment，插入前必须就绪。
 	snowflake.Init(cfg.Snowflake)
 	// 依赖 redis(防重键存 Redis)，须在 redis.Init 之后。
-	repeatsubmit.Init(cfg.SAToken.TokenName)
+	repeatsubmit.Init(redis.Client(), cfg.SAToken.TokenName)
 	// 依赖 redis(限流计数存 Redis)：短信/邮箱验证码两个端点按手机号/邮箱限流。
 	ratelimiter.Init(redis.Client())
 	// 验证码的两个发送通道，只依赖 config。未配置时接口返回提示而非报错。

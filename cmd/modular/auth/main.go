@@ -4,9 +4,9 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/captchahelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/ratelimiter"
+	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatsubmit"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repeatsubmit"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/social"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
@@ -39,7 +39,7 @@ func main() {
 	ratelimiter.Init(redis.Client())
 	// 依赖 redis(防重键存 Redis)，须在 redis.Init 之后。
 	// auth 当前无 RepeatSubmit 路由，此处为与其他进程对称、避免将来漏初始化。
-	repeatsubmit.Init(cfg.SAToken.TokenName)
+	repeatsubmit.Init(redis.Client(), cfg.SAToken.TokenName)
 	// 三方登录，依赖 redis(state 存 Redis)，须在 redis.Init 之后。
 	social.Init(cfg.Social)
 	// 同理：auth 当前无 @Log 路由，但漏注册时 pkg/oplog 只打一行日志就丢弃事件，

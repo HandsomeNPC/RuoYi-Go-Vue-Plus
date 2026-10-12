@@ -8,10 +8,10 @@
 package main
 
 import (
-	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
+	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatsubmit"
+	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repeatsubmit"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/monitor"
@@ -43,7 +43,7 @@ func main() {
 	// 依赖 database 与 snowflake。
 	oplog.Init(operlogservice.RecordOper)
 	// 依赖 redis(防重键存 Redis)，须在 redis.Init 之后。
-	repeatsubmit.Init(cfg.SAToken.TokenName)
+	repeatsubmit.Init(redis.Client(), cfg.SAToken.TokenName)
 
 	r := monitor.InitRouter()
 	monitor.InitServer(r)

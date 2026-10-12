@@ -484,7 +484,7 @@ jsonx.OverrideGinCodec()        // 必须在首个 c.JSON / 参数绑定之前�
 cfg := <m>config.Get()
 database.Init(cfg.Datasource); redishelper.Init(cfg.Redis); satoken.Init(cfg.SAToken); encrypt.Init(cfg.APIEncrypt)
 snowflake.Init(cfg.Snowflake)    // 主键发号器，插入前必须就绪
-captcha.Init(cfg.Captcha); ratelimiter.Init(); repeatsubmit.Init(cfg.SAToken.TokenName)   // 三者都依赖 redis
+captcha.Init(cfg.Captcha); ratelimiter.Init(); repeatsubmit.Init(redis.Client(), cfg.SAToken.TokenName)   // 三者都依赖 redis
 oplog.Init(operlogservice.RecordOper)        // 依赖 database + snowflake
 ```
 
