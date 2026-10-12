@@ -11,19 +11,29 @@ snowflake:
   datacenterId: 0
 
 datasource:
-  driver: mysql
-  host: 127.0.0.1
-  port: 3306
-  username: root
-  password: ruoyi123
-  dbname: ry-cloud
-  params: charset=utf8mb4&parseTime=True&loc=Local&timeout=5s
-  maxIdleConns: 10
-  maxOpenConns: 100
-  connMaxLifetime: 3600   # 连接最大存活(秒)
-  connMaxIdleTime: 600    # 空闲连接最大存活(秒)
-  logLevel: warn          # silent/error/warn/info
-  slowThresholdMs: 200    # 慢 SQL 阈值(毫秒)
+  primary: master          # 默认数据源名，DB() 返回它
+  strict: true             # 匹配不到数据源则报错，否则回退 primary
+  datasource:
+    # 主库数据源
+    master:
+      type: mysql
+      # GORM MySQL DSN；原 params 的 query 段并入此 url
+      url: "root:ruoyi123@tcp(127.0.0.1:3306)/ry-cloud?charset=utf8mb4&parseTime=True&loc=Local&timeout=5s"
+      username: root
+      password: ruoyi123
+      maxIdleConns: 10
+      maxOpenConns: 100
+      connMaxLifetime: 3600   # 连接最大存活(秒)
+      connMaxIdleTime: 600    # 空闲连接最大存活(秒)
+      logLevel: warn          # silent/error/warn/info
+      slowThresholdMs: 200    # 慢 SQL 阈值(毫秒)
+#    # 从库数据源示例（lazy: 首次 DBByName 才建连）
+#    slave:
+#      lazy: true
+#      type: mysql
+#      url: "root:ruoyi123@tcp(127.0.0.1:3306)/ry-vue?charset=utf8mb4&parseTime=True&loc=Local"
+#      username: root
+#      password: ruoyi123
 
 redis:
   host: 127.0.0.1

@@ -9,7 +9,7 @@ package main
 
 import (
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/database"
+	"github.com/HandsomeNPC/ruoyi-common-go/database"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repeatsubmit"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
@@ -33,7 +33,7 @@ func main() {
 
 	// 登录日志查询/删除/清空走 MySQL。
 	database.Init(cfg.Datasource)
-	defer database.CloseDefault()
+	defer database.Close()
 
 	satoken.Init(cfg.SAToken)
 

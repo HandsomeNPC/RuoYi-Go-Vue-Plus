@@ -11,7 +11,7 @@ import (
 
 	"github.com/HandsomeNPC/ruoyi-common-go/mailhelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/database"
+	"github.com/HandsomeNPC/ruoyi-common-go/database"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/push"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/ratelimiter"
@@ -35,7 +35,7 @@ func main() {
 
 	cfg := resourceconfig.Get()
 	database.Init(cfg.Datasource)
-	defer database.CloseDefault()
+	defer database.Close()
 
 	redis.Init(cfg.Redis)
 	defer redis.Close()

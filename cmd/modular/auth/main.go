@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/HandsomeNPC/ruoyi-common-go/captchahelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/database"
+	"github.com/HandsomeNPC/ruoyi-common-go/database"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/encrypt"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/ratelimiter"
@@ -26,7 +26,7 @@ func main() {
 
 	cfg := authconfig.Get()
 	database.Init(cfg.Datasource)
-	defer database.CloseDefault()
+	defer database.Close()
 
 	redis.Init(cfg.Redis)
 	defer redis.Close()
