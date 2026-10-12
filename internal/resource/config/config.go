@@ -18,6 +18,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/smshelper"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/middleware/accesslog"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatablebody"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 )
@@ -45,7 +46,7 @@ type Config struct {
 	SAToken        satoken.SATokenConfig               `mapstructure:"satoken"`
 	CORS           middleware.CORSConfig               `mapstructure:"cors"`
 	XSS            middleware.XSSConfig                `mapstructure:"xss"`
-	AccessLog      middleware.AccessLogConfig          `mapstructure:"accessLog"`
+	AccessLog      accesslog.AccessLogConfig           `mapstructure:"accessLog"`
 	TraceID        middleware.TraceIDConfig            `mapstructure:"traceId"`
 	RepeatableBody repeatablebody.RepeatableBodyConfig `mapstructure:"repeatableBody"`
 	Push           push.PushConfig                     `mapstructure:"push"`
@@ -67,7 +68,7 @@ func Load(path string) {
 	satoken.DefaultSAToken().SetDefaults(v)
 	middleware.DefaultCORS().SetDefaults(v)
 	middleware.DefaultXSS().SetDefaults(v)
-	middleware.DefaultAccessLog().SetDefaults(v)
+	accesslog.DefaultAccessLog().SetDefaults(v)
 	middleware.DefaultTraceID().SetDefaults(v)
 	repeatablebody.DefaultRepeatableBody().SetDefaults(v)
 	push.DefaultPush().SetDefaults(v)

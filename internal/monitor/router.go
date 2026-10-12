@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/middleware/accesslog"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatablebody"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
@@ -97,7 +98,7 @@ func InitRouter() *gin.Engine {
 	r.Use(middleware.CORSWithConfig(cfg.CORS))
 	r.Use(middleware.TraceIDWithConfig(cfg.TraceID))
 	r.Use(repeatablebody.RepeatableBodyWithConfig(cfg.RepeatableBody))
-	r.Use(middleware.AccessLogWithConfig(cfg.AccessLog))
+	r.Use(accesslog.AccessLogWithConfig(cfg.AccessLog))
 	r.Use(middleware.XSSWithConfig(cfg.XSS))
 
 	RegisterRoutes(r, "")

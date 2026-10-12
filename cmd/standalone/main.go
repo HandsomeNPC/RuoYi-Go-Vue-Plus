@@ -11,6 +11,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/captchahelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
 	"github.com/HandsomeNPC/ruoyi-common-go/mailhelper"
+	"github.com/HandsomeNPC/ruoyi-common-go/middleware/accesslog"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/ratelimiter"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatablebody"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
@@ -96,7 +97,7 @@ func main() {
 	r.Use(middleware.CORSWithConfig(ac.CORS))
 	r.Use(middleware.TraceIDWithConfig(ac.TraceID))
 	r.Use(repeatablebody.RepeatableBodyWithConfig(ac.RepeatableBody))
-	r.Use(middleware.AccessLogWithConfig(ac.AccessLog))
+	r.Use(accesslog.AccessLogWithConfig(ac.AccessLog))
 	r.Use(middleware.XSSWithConfig(ac.XSS))
 
 	auth.RegisterRoutes(r, "/auth")
