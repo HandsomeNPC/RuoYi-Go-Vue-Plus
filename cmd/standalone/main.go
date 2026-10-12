@@ -12,6 +12,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
 	"github.com/HandsomeNPC/ruoyi-common-go/mailhelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/accesslog"
+	"github.com/HandsomeNPC/ruoyi-common-go/middleware/cors"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/ratelimiter"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatablebody"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
@@ -94,7 +95,7 @@ func main() {
 	// standalone 部署保留 /auth、/system 前缀(与前端直连的网关路径一致)。
 	r := gin.New()
 	r.Use(middleware.Recover())
-	r.Use(middleware.CORSWithConfig(ac.CORS))
+	r.Use(cors.CORSWithConfig(ac.CORS))
 	r.Use(middleware.TraceIDWithConfig(ac.TraceID))
 	r.Use(repeatablebody.RepeatableBodyWithConfig(ac.RepeatableBody))
 	r.Use(accesslog.AccessLogWithConfig(ac.AccessLog))

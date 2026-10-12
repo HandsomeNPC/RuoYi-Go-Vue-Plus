@@ -7,6 +7,7 @@ import (
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/accesslog"
+	"github.com/HandsomeNPC/ruoyi-common-go/middleware/cors"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatablebody"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
@@ -95,7 +96,7 @@ func InitRouter() *gin.Engine {
 	cfg := monitorconfig.Get()
 
 	r.Use(middleware.Recover())
-	r.Use(middleware.CORSWithConfig(cfg.CORS))
+	r.Use(cors.CORSWithConfig(cfg.CORS))
 	r.Use(middleware.TraceIDWithConfig(cfg.TraceID))
 	r.Use(repeatablebody.RepeatableBodyWithConfig(cfg.RepeatableBody))
 	r.Use(accesslog.AccessLogWithConfig(cfg.AccessLog))
