@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
-	"github.com/HandsomeNPC/ruoyi-common-go/excel"
+	"github.com/HandsomeNPC/ruoyi-common-go/excelhelper"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
@@ -58,15 +58,15 @@ func (a *ClientApi) Export(c *gin.Context) {
 		return
 	}
 
-	rows, err := clientservice.QueryList(c.Request.Context(), q, excel.MaxRows+1)
+	rows, err := clientservice.QueryList(c.Request.Context(), q, excelhelper.MaxRows+1)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	// 工作簿在 excel.Export 内部先建满缓冲再落笔：
+	// 工作簿在 excelhelper.Export 内部先建满缓冲再落笔：
 	// middleware.Recover 只在 !Written() 时渲染错误，抢先写字节会让后续错误被静默吞掉。
-	if err := excel.Export(c, rows, "客户端管理"); err != nil {
+	if err := excelhelper.Export(c, rows, "客户端管理"); err != nil {
 		reportExportErr(c, err)
 		return
 	}

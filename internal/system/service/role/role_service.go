@@ -85,7 +85,7 @@ func QueryPageList(ctx context.Context, q bo.SysRoleQueryBo,
 }
 
 // QueryList 按条件不分页查角色，供导出等全量场景用。
-// limit <= 0 不限制行数；导出方应传 excel.MaxRows+1 以提前判定超限，见 pkg/excel 的说明。
+// limit <= 0 不限制行数；导出方应传 excelhelper.MaxRows+1 以提前判定超限，见 excelhelper 的说明。
 func QueryList(ctx context.Context, q bo.SysRoleQueryBo,
 	limit int) ([]*vo.SysRoleVo, error) {
 

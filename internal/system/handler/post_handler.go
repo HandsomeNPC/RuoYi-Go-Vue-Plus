@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
-	"github.com/HandsomeNPC/ruoyi-common-go/excel"
+	"github.com/HandsomeNPC/ruoyi-common-go/excelhelper"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
@@ -51,7 +51,7 @@ func (a *PostApi) List(c *gin.Context) {
 // 走 POST：前端 commonExport 以 form 表单 POST 提交筛选条件，
 // 故用 ShouldBind 同时吃 form body 与 query。
 //
-// 响应体是二进制附件，不返回 response.R——见 pkg/excel 的说明。
+// 响应体是二进制附件，不返回 response.R——见 excelhelper 的说明。
 // 多取一行用于判定超限，避免"先捞完百万行再拒绝"。
 func (a *PostApi) Export(c *gin.Context) {
 	var q bo.SysPostQueryBo
@@ -60,15 +60,15 @@ func (a *PostApi) Export(c *gin.Context) {
 		return
 	}
 
-	rows, err := postservice.QueryList(c.Request.Context(), q, excel.MaxRows+1)
+	rows, err := postservice.QueryList(c.Request.Context(), q, excelhelper.MaxRows+1)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	// 工作簿在 excel.Export 内部先建满缓冲再落笔：
+	// 工作簿在 excelhelper.Export 内部先建满缓冲再落笔：
 	// middleware.Recover 只在 !Written() 时渲染错误，抢先写字节会让后续错误被静默吞掉。
-	if err := excel.Export(c, rows, "岗位数据"); err != nil {
+	if err := excelhelper.Export(c, rows, "岗位数据"); err != nil {
 		reportExportErr(c, err)
 		return
 	}

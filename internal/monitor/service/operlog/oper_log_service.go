@@ -24,7 +24,7 @@ func QueryPageList(ctx context.Context, q bo.SysOperLogQueryBo,
 }
 
 // QueryList 按条件不分页查操作日志，供导出等全量场景用。
-// limit <= 0 不限制行数；导出方应传 excel.MaxRows+1 以提前判定超限，见 pkg/excel 的说明。
+// limit <= 0 不限制行数；导出方应传 excelhelper.MaxRows+1 以提前判定超限，见 excelhelper 的说明。
 func QueryList(ctx context.Context, q bo.SysOperLogQueryBo,
 	limit int) ([]*vo.SysOperLogVo, error) {
 

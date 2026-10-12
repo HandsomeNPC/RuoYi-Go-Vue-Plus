@@ -15,7 +15,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
-	"github.com/HandsomeNPC/ruoyi-common-go/excel"
+	"github.com/HandsomeNPC/ruoyi-common-go/excelhelper"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
@@ -405,7 +405,7 @@ func QueryPageList(ctx context.Context, q bo.SysUserQueryBo,
 }
 
 // QueryExportList 按条件查导出列表。
-// limit <= 0 不限制；导出方应传 excel.MaxRows+1 以提前判定超限。
+// limit <= 0 不限制；导出方应传 excelhelper.MaxRows+1 以提前判定超限。
 // 批量回填 DeptName/LeaderName：先按结果里的 deptID 集合查部门（拿部门名+负责人 userID），
 // 再按负责人 userID 集合一次查账号名，两查询与行数无关，避免 N+1。
 func QueryExportList(ctx context.Context, q bo.SysUserQueryBo,
@@ -482,7 +482,7 @@ func fillExportDeptLeader(ctx context.Context, rows []*vo.SysUserExportVo) {
 func ImportUsers(ctx context.Context, r io.Reader,
 	updateSupport bool) (string, error) {
 
-	rows, err := excel.Read[vo.SysUserImportVo](r)
+	rows, err := excelhelper.Read[vo.SysUserImportVo](r)
 	if err != nil {
 		return "", err
 	}

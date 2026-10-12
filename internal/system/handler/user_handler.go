@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
-	"github.com/HandsomeNPC/ruoyi-common-go/excel"
+	"github.com/HandsomeNPC/ruoyi-common-go/excelhelper"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
@@ -82,14 +82,14 @@ func (a *UserApi) Export(c *gin.Context) {
 		_ = c.Error(errs.New(response.CodeBadRequest, "参数校验失败", err.Error()))
 		return
 	}
-	rows, err := userservice.QueryExportList(c.Request.Context(), q, excel.MaxRows+1)
+	rows, err := userservice.QueryExportList(c.Request.Context(), q, excelhelper.MaxRows+1)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
-	// 工作簿在 excel.Export 内部先建满缓冲再落笔：
+	// 工作簿在 excelhelper.Export 内部先建满缓冲再落笔：
 	// middleware.Recover 只在 !Written() 时渲染错误，抢先写字节会让后续错误被静默吞掉。
-	if err := excel.Export(c, rows, "用户数据"); err != nil {
+	if err := excelhelper.Export(c, rows, "用户数据"); err != nil {
 		reportExportErr(c, err)
 		return
 	}
@@ -125,7 +125,7 @@ func (a *UserApi) ImportData(c *gin.Context) {
 // ImportTemplate 导出用户导入模板。
 // 空切片输出表头列定义，供前端下载后填写再上传。
 func (a *UserApi) ImportTemplate(c *gin.Context) {
-	if err := excel.Export(c, []systemvo.SysUserImportVo{}, "用户数据"); err != nil {
+	if err := excelhelper.Export(c, []systemvo.SysUserImportVo{}, "用户数据"); err != nil {
 		reportExportErr(c, err)
 		return
 	}

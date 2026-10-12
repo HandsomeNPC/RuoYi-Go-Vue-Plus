@@ -388,8 +388,8 @@ func SelectPageList(ctx context.Context, q bo.SysUserQueryBo,
 	return pkgrepo.SelectPage(db, page, &rows)
 }
 
-// SelectExportList 按条件查导出列表，limit <= 0 不限制；导出方应传 excel.MaxRows+1
-// 以提前判定超限，见 pkg/excel 的说明。
+// SelectExportList 按条件查导出列表，limit <= 0 不限制；导出方应传 excelhelper.MaxRows+1
+// 以提前判定超限，见 excelhelper 的说明。
 func SelectExportList(ctx context.Context, q bo.SysUserQueryBo,
 	limit int) ([]*model.SysUser, error) {
 

@@ -23,7 +23,7 @@ import (
 // maxUploadSize 单文件大小上限。
 const maxUploadSize = 10 << 20
 
-// headerDownloadFilename 附件名响应头，与 pkg/excel 用的是同一个约定：
+// headerDownloadFilename 附件名响应头，与 excelhelper 用的是同一个约定：
 // 前端读它拿文件名，比解析 Content-Disposition 省事。
 const headerDownloadFilename = "download-filename"
 
@@ -164,7 +164,7 @@ func (a *OssApi) Remove(c *gin.Context) {
 // attachment 拼 Content-Disposition。
 //
 // 同时给 filename 与 filename*：前者是纯 ASCII 兜底给老客户端，后者带 UTF-8 原名。
-// 与 pkg/excel 的同名函数口径一致，只是这里 ASCII 兜底名也用编码值——
+// 与 excelhelper 的同名函数口径一致，只是这里 ASCII 兜底名也用编码值——
 // 原始文件名没有 uuid 那样天然的 ASCII 替身。
 func attachment(encoded string) string {
 	return fmt.Sprintf("attachment; filename=%q; filename*=UTF-8''%s", encoded, encoded)
@@ -174,7 +174,7 @@ func attachment(encoded string) string {
 //
 // 不用 url.QueryEscape（空格编成 +，而文件名里的 + 是字面加号，浏览器不会还原成空格），
 // 也不用 url.PathEscape（它放过 = 和 @，二者都不是 RFC 5987 允许的 attr-char，
-// 会把 filename* 的值截断）。与 pkg/excel 的同名实现一致，那个是包私有的取不到。
+// 会把 filename* 的值截断）。与 excelhelper 的同名实现一致，那个是包私有的取不到。
 func percentEncode(s string) string {
 	var b strings.Builder
 	for i := 0; i < len(s); i++ {
