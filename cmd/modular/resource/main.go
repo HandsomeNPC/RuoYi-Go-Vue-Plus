@@ -9,9 +9,9 @@ import (
 	"context"
 	"log"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/mailhelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/database"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/mail"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/push"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/ratelimiter"
@@ -48,7 +48,7 @@ func main() {
 	// 依赖 redis(限流计数存 Redis)：短信/邮箱验证码两个端点按手机号/邮箱限流。
 	ratelimiter.Init()
 	// 验证码的两个发送通道，只依赖 config。未配置时接口返回提示而非报错。
-	mail.Init(cfg.Mail)
+	mailhelper.Init(cfg.Mail)
 	// 短信按渠道逐个 init，任一成功 enabled 即 true；全失败 enabled=false、接口返回未开启，不 fatal。
 	smshelper.Init(cfg.SMS)
 	// 操作日志落库实现反向注册给 pkg/oplog(pkg 不依赖 internal/service)，

@@ -9,10 +9,10 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/captchahelper"
+	"github.com/HandsomeNPC/ruoyi-common-go/mailhelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/database"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/encrypt"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/mail"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/push"
@@ -69,7 +69,7 @@ func main() {
 	// 依赖 redis(防重键存 Redis)，须在 redis.Init 之后。
 	repeatsubmit.Init(ac.SAToken.TokenName)
 	// 验证码的两个发送通道，只依赖 config。未配置时接口返回提示而非报错。
-	mail.Init(rc.Mail)
+	mailhelper.Init(rc.Mail)
 	// 短信按渠道逐个 init，任一成功 enabled 即 true；全失败 enabled=false、接口返回未开启，不 fatal。
 	smshelper.Init(rc.SMS)
 	// 三方登录，依赖 redis(state 存 Redis)，须在 redis.Init 之后。

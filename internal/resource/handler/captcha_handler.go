@@ -9,9 +9,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/mailhelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/mail"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
 	"github.com/HandsomeNPC/ruoyi-common-go/smshelper"
 	resourceconfig "ruoyi-go-vue-plus/internal/resource/config"
@@ -79,7 +79,7 @@ func (a *CaptchaApi) EmailCode(c *gin.Context) {
 		return
 	}
 	// 开关判断排在格式校验之前：功能没开就没必要挑参数的错。
-	if !mail.Enabled() {
+	if !mailhelper.Enabled() {
 		c.JSON(http.StatusOK, response.Fail("当前系统没有开启邮箱功能！"))
 		return
 	}
@@ -91,7 +91,7 @@ func (a *CaptchaApi) EmailCode(c *gin.Context) {
 	code := randomCode()
 	body := fmt.Sprintf("您本次验证码为：%s，有效性为%d分钟，请尽快填写。",
 		code, constant.ConstantCaptchaExpiration)
-	if err := mail.Send(ctx, email, mailSubject, body); err != nil {
+	if err := mailhelper.Send(ctx, email, mailSubject, body); err != nil {
 		// SMTP 报错常含服务器地址与账号，只进日志。
 		log.Printf("[captcha] 验证码邮件发送异常 => %v", err)
 		c.JSON(http.StatusOK, response.Fail("验证码邮件发送失败"))

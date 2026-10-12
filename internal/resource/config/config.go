@@ -10,9 +10,9 @@ import (
 
 	"github.com/spf13/viper"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/mailhelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/database"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/mail"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/push"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
@@ -48,7 +48,7 @@ type Config struct {
 	TraceID        middleware.TraceIDConfig        `mapstructure:"traceId"`
 	RepeatableBody middleware.RepeatableBodyConfig `mapstructure:"repeatableBody"`
 	Push           push.PushConfig                 `mapstructure:"push"`
-	Mail           mail.MailConfig                 `mapstructure:"mail"`
+	Mail           mailhelper.MailConfig           `mapstructure:"mail"`
 	SMS            smshelper.SMSConfig             `mapstructure:"sms"`
 }
 
@@ -70,7 +70,6 @@ func Load(path string) {
 	middleware.DefaultTraceID().SetDefaults(v)
 	middleware.DefaultRepeatableBody().SetDefaults(v)
 	push.DefaultPush().SetDefaults(v)
-	mail.DefaultMail().SetDefaults(v)
 
 	if err := v.ReadInConfig(); err != nil {
 		panic(fmt.Errorf("resource/config: 读取 %s 失败: %w", path, err))
@@ -91,7 +90,6 @@ func Load(path string) {
 		cfg.TraceID.Validate,
 		cfg.RepeatableBody.Validate,
 		cfg.Push.Validate,
-		cfg.Mail.Validate,
 	} {
 		if err := fn(); err != nil {
 			panic(fmt.Errorf("resource/config: %w", err))
