@@ -9,14 +9,14 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/captchahelper"
-	"github.com/HandsomeNPC/ruoyi-common-go/mailhelper"
-	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
+	"github.com/HandsomeNPC/ruoyi-common-go/mailhelper"
+	"github.com/HandsomeNPC/ruoyi-common-go/middleware/ratelimiter"
+	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/encrypt"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/push"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/ratelimiter"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repeatsubmit"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/social"
@@ -65,7 +65,7 @@ func main() {
 	// 只构造绘图驱动、不碰 Redis，无前置依赖；校验时才读 Redis。
 	captchahelper.Init(ac.Captcha)
 	// 依赖 redis(限流计数存 Redis)，须在 redis.Init 之后。
-	ratelimiter.Init()
+	ratelimiter.Init(redis.Client())
 	// 依赖 redis(防重键存 Redis)，须在 redis.Init 之后。
 	repeatsubmit.Init(ac.SAToken.TokenName)
 	// 验证码的两个发送通道，只依赖 config。未配置时接口返回提示而非报错。

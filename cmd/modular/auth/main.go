@@ -2,11 +2,11 @@ package main
 
 import (
 	"github.com/HandsomeNPC/ruoyi-common-go/captchahelper"
-	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
+	"github.com/HandsomeNPC/ruoyi-common-go/middleware/ratelimiter"
+	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/encrypt"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/ratelimiter"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repeatsubmit"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/social"
@@ -38,7 +38,7 @@ func main() {
 	// 只构造绘图驱动、不碰 Redis，无前置依赖；校验时才读 Redis。
 	captchahelper.Init(cfg.Captcha)
 	// 依赖 redis(限流计数存 Redis)，须在 redis.Init 之后。
-	ratelimiter.Init()
+	ratelimiter.Init(redis.Client())
 	// 依赖 redis(防重键存 Redis)，须在 redis.Init 之后。
 	// auth 当前无 RepeatSubmit 路由，此处为与其他进程对称、避免将来漏初始化。
 	repeatsubmit.Init(cfg.SAToken.TokenName)
