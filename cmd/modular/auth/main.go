@@ -5,7 +5,6 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/ratelimiter"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/encrypt"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repeatsubmit"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
@@ -32,7 +31,6 @@ func main() {
 	defer redis.Close()
 
 	satoken.Init(cfg.SAToken)
-	encrypt.Init(cfg.APIEncrypt)
 	// 主键发号器，落库前必须就绪(登录日志插入用)。
 	snowflake.Init(cfg.Snowflake)
 	// 只构造绘图驱动、不碰 Redis，无前置依赖；校验时才读 Redis。

@@ -18,7 +18,6 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/trace"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/xss"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/encrypt"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/push"
@@ -64,7 +63,6 @@ func main() {
 	defer redis.Close()
 
 	satoken.Init(ac.SAToken)
-	encrypt.Init(ac.APIEncrypt)
 	// 主键发号器，各业务表主键无 auto_increment，插入前必须就绪。
 	snowflake.Init(ac.Snowflake)
 	// 只构造绘图驱动、不碰 Redis，无前置依赖；校验时才读 Redis。

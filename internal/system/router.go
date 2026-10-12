@@ -7,12 +7,12 @@ import (
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/accesslog"
+	"github.com/HandsomeNPC/ruoyi-common-go/middleware/apiencrypt"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/cors"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatablebody"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/trace"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/xss"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/encrypt"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
@@ -47,6 +47,7 @@ const userLogTitle = "用户管理"
 
 func RegisterRoutes(r *gin.Engine, prefix string) {
 	plugin := sagin.NewPlugin(satoken.Manager())
+	enc := apiencrypt.APIEncryptWithConfig(systemconfig.Get().APIEncrypt)
 
 	// 公开路由(免鉴权)：探针
 	r.GET(prefix+"/ping", func(c *gin.Context) {
@@ -66,9 +67,9 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	profile.PUT("", sagin.CheckLogin(),
 		oplog.Log(profileLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.ProfileApiApp.UpdateProfile)
-	// updatePwd 须排在 encrypt.ApiEncrypt() 之后：指纹要用解密后的明文，否则密文每次
+	// updatePwd 须排在 apiencrypt 之后：指纹要用解密后的明文，否则密文每次
 	// 随机密钥、同样入参算出不同指纹，防重直接失效。故顺序为 鉴权→解密→日志→防重→handler。
-	profile.PUT("/updatePwd", sagin.CheckLogin(), encrypt.ApiEncrypt(),
+	profile.PUT("/updatePwd", sagin.CheckLogin(), enc,
 		oplog.Log(profileLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.ProfileApiApp.UpdatePwd)
 
@@ -101,9 +102,9 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	user.PUT("", satoken.CheckPermission("system:user:edit"),
 		oplog.Log(userLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.UserApiApp.Edit)
-	// resetPwd 须排在 encrypt.ApiEncrypt() 之后：指纹要用解密后的明文，否则密文每次
+	// resetPwd 须排在 apiencrypt 之后：指纹要用解密后的明文，否则密文每次
 	// 随机密钥、同样入参算出不同指纹，防重直接失效。故顺序为 鉴权→解密→日志→防重→handler。
-	user.PUT("/resetPwd", satoken.CheckPermission("system:user:resetPwd"), encrypt.ApiEncrypt(),
+	user.PUT("/resetPwd", satoken.CheckPermission("system:user:resetPwd"), enc,
 		oplog.Log(userLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.UserApiApp.ResetPwd)
 	user.PUT("/changeStatus", satoken.CheckPermission("system:user:edit"),

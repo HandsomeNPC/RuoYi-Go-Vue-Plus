@@ -72,7 +72,7 @@ func (a *ProfileApi) UpdateProfile(c *gin.Context) {
 }
 
 // UpdatePwd 重置密码。
-// 走 encrypt.ApiEncrypt()：前端以 RSA 加密请求体，中间件解密后 handler 拿到明文。
+// 走 apiencrypt 中间件：前端以 RSA 加密请求体，中间件解密后 handler 拿到明文。
 func (a *ProfileApi) UpdatePwd(c *gin.Context) {
 	userID := loginhelper.GetUserID(c)
 	if userID == 0 {

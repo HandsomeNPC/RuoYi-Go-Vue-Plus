@@ -13,16 +13,16 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
-	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/encrypt"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/push"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
-
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/accesslog"
+	"github.com/HandsomeNPC/ruoyi-common-go/middleware/apiencrypt"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/cors"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatablebody"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/trace"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/xss"
+	"github.com/HandsomeNPC/ruoyi-common-go/redis"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/push"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
+
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 )
 
@@ -98,7 +98,7 @@ type Config struct {
 	AccessLog      accesslog.AccessLogConfig           `mapstructure:"accessLog"`
 	TraceID        trace.TraceIDConfig                 `mapstructure:"traceId"`
 	RepeatableBody repeatablebody.RepeatableBodyConfig `mapstructure:"repeatableBody"`
-	APIEncrypt     encrypt.APIEncryptConfig            `mapstructure:"apiEncrypt"`
+	APIEncrypt     apiencrypt.APIEncryptConfig         `mapstructure:"apiEncrypt"`
 	User           UserConfig                          `mapstructure:"user"`
 	Push           push.PushConfig                     `mapstructure:"push"`
 }
@@ -120,7 +120,7 @@ func Load(path string) {
 	accesslog.DefaultAccessLog().SetDefaults(v)
 	trace.DefaultTraceID().SetDefaults(v)
 	repeatablebody.DefaultRepeatableBody().SetDefaults(v)
-	encrypt.DefaultAPIEncrypt().SetDefaults(v)
+	apiencrypt.DefaultAPIEncrypt().SetDefaults(v)
 	DefaultUser().SetDefaults(v)
 	push.DefaultPush().SetDefaults(v)
 
