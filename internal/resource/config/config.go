@@ -68,11 +68,6 @@ func Load(path string) {
 	v.SetConfigFile(path)
 
 	satoken.DefaultSAToken().SetDefaults(v)
-	cors.DefaultCORS().SetDefaults(v)
-	xss.DefaultXSS().SetDefaults(v)
-	accesslog.DefaultAccessLog().SetDefaults(v)
-	trace.DefaultTraceID().SetDefaults(v)
-	repeatablebody.DefaultRepeatableBody().SetDefaults(v)
 	push.DefaultPush().SetDefaults(v)
 
 	if err := v.ReadInConfig(); err != nil {
@@ -88,11 +83,6 @@ func Load(path string) {
 		cfg.Server.Validate,
 		cfg.Datasource.Validate,
 		cfg.SAToken.Validate,
-		cfg.CORS.Validate,
-		cfg.XSS.Validate,
-		cfg.AccessLog.Validate,
-		cfg.TraceID.Validate,
-		cfg.RepeatableBody.Validate,
 		cfg.Push.Validate,
 	} {
 		if err := fn(); err != nil {

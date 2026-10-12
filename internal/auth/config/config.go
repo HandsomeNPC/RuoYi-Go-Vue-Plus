@@ -71,12 +71,6 @@ func Load(path string) {
 	v.SetConfigFile(path)
 
 	satoken.DefaultSAToken().SetDefaults(v)
-	cors.DefaultCORS().SetDefaults(v)
-	xss.DefaultXSS().SetDefaults(v)
-	accesslog.DefaultAccessLog().SetDefaults(v)
-	trace.DefaultTraceID().SetDefaults(v)
-	repeatablebody.DefaultRepeatableBody().SetDefaults(v)
-	apiencrypt.DefaultAPIEncrypt().SetDefaults(v)
 	systemconfig.DefaultUser().SetDefaults(v)
 	social.DefaultSocial().SetDefaults(v)
 
@@ -93,12 +87,6 @@ func Load(path string) {
 		cfg.Server.Validate,
 		cfg.Datasource.Validate,
 		cfg.SAToken.Validate,
-		cfg.CORS.Validate,
-		cfg.XSS.Validate,
-		cfg.AccessLog.Validate,
-		cfg.TraceID.Validate,
-		cfg.RepeatableBody.Validate,
-		cfg.APIEncrypt.Validate,
 		cfg.User.Validate,
 		cfg.Social.Validate,
 	} {

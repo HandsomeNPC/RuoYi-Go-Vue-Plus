@@ -61,11 +61,6 @@ func Load(path string) {
 	v.SetConfigFile(path)
 
 	satoken.DefaultSAToken().SetDefaults(v)
-	cors.DefaultCORS().SetDefaults(v)
-	xss.DefaultXSS().SetDefaults(v)
-	accesslog.DefaultAccessLog().SetDefaults(v)
-	trace.DefaultTraceID().SetDefaults(v)
-	repeatablebody.DefaultRepeatableBody().SetDefaults(v)
 
 	if err := v.ReadInConfig(); err != nil {
 		panic(fmt.Errorf("monitor/config: 读取 %s 失败: %w", path, err))
@@ -80,11 +75,6 @@ func Load(path string) {
 		cfg.Server.Validate,
 		cfg.Datasource.Validate,
 		cfg.SAToken.Validate,
-		cfg.CORS.Validate,
-		cfg.XSS.Validate,
-		cfg.AccessLog.Validate,
-		cfg.TraceID.Validate,
-		cfg.RepeatableBody.Validate,
 	} {
 		if err := fn(); err != nil {
 			panic(fmt.Errorf("monitor/config: %w", err))
