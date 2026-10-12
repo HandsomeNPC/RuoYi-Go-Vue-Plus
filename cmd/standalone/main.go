@@ -12,6 +12,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
 	"github.com/HandsomeNPC/ruoyi-common-go/mailhelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/ratelimiter"
+	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatablebody"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/encrypt"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
@@ -94,7 +95,7 @@ func main() {
 	r.Use(middleware.Recover())
 	r.Use(middleware.CORSWithConfig(ac.CORS))
 	r.Use(middleware.TraceIDWithConfig(ac.TraceID))
-	r.Use(middleware.RepeatableBodyWithConfig(ac.RepeatableBody))
+	r.Use(repeatablebody.RepeatableBodyWithConfig(ac.RepeatableBody))
 	r.Use(middleware.AccessLogWithConfig(ac.AccessLog))
 	r.Use(middleware.XSSWithConfig(ac.XSS))
 

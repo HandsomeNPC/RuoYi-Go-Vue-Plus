@@ -9,11 +9,12 @@ import (
 
 	"github.com/spf13/viper"
 
-	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
+	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatablebody"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 )
 
@@ -33,16 +34,16 @@ func (s ServerConfig) Validate() error {
 
 // Config monitor 进程用到的配置子集。最瘦：无 APIEncrypt/User/Captcha/Social/Push/Mail/SMS。
 type Config struct {
-	Server         ServerConfig                    `mapstructure:"server"`
-	Snowflake      snowflake.SnowflakeConfig       `mapstructure:"snowflake"`
-	Datasource     database.DatasourceConfig       `mapstructure:"datasource"`
-	Redis          redis.RedisConfig               `mapstructure:"redis"`
-	SAToken        satoken.SATokenConfig           `mapstructure:"satoken"`
-	CORS           middleware.CORSConfig           `mapstructure:"cors"`
-	XSS            middleware.XSSConfig            `mapstructure:"xss"`
-	AccessLog      middleware.AccessLogConfig      `mapstructure:"accessLog"`
-	TraceID        middleware.TraceIDConfig        `mapstructure:"traceId"`
-	RepeatableBody middleware.RepeatableBodyConfig `mapstructure:"repeatableBody"`
+	Server         ServerConfig                        `mapstructure:"server"`
+	Snowflake      snowflake.SnowflakeConfig           `mapstructure:"snowflake"`
+	Datasource     database.DatasourceConfig           `mapstructure:"datasource"`
+	Redis          redis.RedisConfig                   `mapstructure:"redis"`
+	SAToken        satoken.SATokenConfig               `mapstructure:"satoken"`
+	CORS           middleware.CORSConfig               `mapstructure:"cors"`
+	XSS            middleware.XSSConfig                `mapstructure:"xss"`
+	AccessLog      middleware.AccessLogConfig          `mapstructure:"accessLog"`
+	TraceID        middleware.TraceIDConfig            `mapstructure:"traceId"`
+	RepeatableBody repeatablebody.RepeatableBodyConfig `mapstructure:"repeatableBody"`
 }
 
 var (
@@ -61,7 +62,7 @@ func Load(path string) {
 	middleware.DefaultXSS().SetDefaults(v)
 	middleware.DefaultAccessLog().SetDefaults(v)
 	middleware.DefaultTraceID().SetDefaults(v)
-	middleware.DefaultRepeatableBody().SetDefaults(v)
+	repeatablebody.DefaultRepeatableBody().SetDefaults(v)
 
 	if err := v.ReadInConfig(); err != nil {
 		panic(fmt.Errorf("monitor/config: 读取 %s 失败: %w", path, err))

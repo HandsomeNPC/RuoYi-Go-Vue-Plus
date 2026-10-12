@@ -12,13 +12,14 @@ import (
 
 	"github.com/spf13/viper"
 
-	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
+	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/encrypt"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/push"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatablebody"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 )
 
@@ -84,19 +85,19 @@ func (u UserConfig) Validate() error {
 
 // Config system 进程用到的配置子集。
 type Config struct {
-	Server         ServerConfig                    `mapstructure:"server"`
-	Snowflake      snowflake.SnowflakeConfig       `mapstructure:"snowflake"`
-	Datasource     database.DatasourceConfig       `mapstructure:"datasource"`
-	Redis          redis.RedisConfig               `mapstructure:"redis"`
-	SAToken        satoken.SATokenConfig           `mapstructure:"satoken"`
-	CORS           middleware.CORSConfig           `mapstructure:"cors"`
-	XSS            middleware.XSSConfig            `mapstructure:"xss"`
-	AccessLog      middleware.AccessLogConfig      `mapstructure:"accessLog"`
-	TraceID        middleware.TraceIDConfig        `mapstructure:"traceId"`
-	RepeatableBody middleware.RepeatableBodyConfig `mapstructure:"repeatableBody"`
-	APIEncrypt     encrypt.APIEncryptConfig        `mapstructure:"apiEncrypt"`
-	User           UserConfig                      `mapstructure:"user"`
-	Push           push.PushConfig                 `mapstructure:"push"`
+	Server         ServerConfig                        `mapstructure:"server"`
+	Snowflake      snowflake.SnowflakeConfig           `mapstructure:"snowflake"`
+	Datasource     database.DatasourceConfig           `mapstructure:"datasource"`
+	Redis          redis.RedisConfig                   `mapstructure:"redis"`
+	SAToken        satoken.SATokenConfig               `mapstructure:"satoken"`
+	CORS           middleware.CORSConfig               `mapstructure:"cors"`
+	XSS            middleware.XSSConfig                `mapstructure:"xss"`
+	AccessLog      middleware.AccessLogConfig          `mapstructure:"accessLog"`
+	TraceID        middleware.TraceIDConfig            `mapstructure:"traceId"`
+	RepeatableBody repeatablebody.RepeatableBodyConfig `mapstructure:"repeatableBody"`
+	APIEncrypt     encrypt.APIEncryptConfig            `mapstructure:"apiEncrypt"`
+	User           UserConfig                          `mapstructure:"user"`
+	Push           push.PushConfig                     `mapstructure:"push"`
 }
 
 var (
@@ -115,7 +116,7 @@ func Load(path string) {
 	middleware.DefaultXSS().SetDefaults(v)
 	middleware.DefaultAccessLog().SetDefaults(v)
 	middleware.DefaultTraceID().SetDefaults(v)
-	middleware.DefaultRepeatableBody().SetDefaults(v)
+	repeatablebody.DefaultRepeatableBody().SetDefaults(v)
 	encrypt.DefaultAPIEncrypt().SetDefaults(v)
 	DefaultUser().SetDefaults(v)
 	push.DefaultPush().SetDefaults(v)

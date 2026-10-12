@@ -13,13 +13,14 @@ import (
 	systemconfig "ruoyi-go-vue-plus/internal/system/config"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/captchahelper"
-	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
+	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/encrypt"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/social"
 
+	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatablebody"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 )
 
@@ -39,20 +40,20 @@ func (s ServerConfig) Validate() error {
 
 // Config auth 进程用到的配置子集。不含 Push（auth 不发推送），含 Captcha/Social。
 type Config struct {
-	Server         ServerConfig                    `mapstructure:"server"`
-	Snowflake      snowflake.SnowflakeConfig       `mapstructure:"snowflake"`
-	Datasource     database.DatasourceConfig       `mapstructure:"datasource"`
-	Redis          redis.RedisConfig               `mapstructure:"redis"`
-	SAToken        satoken.SATokenConfig           `mapstructure:"satoken"`
-	CORS           middleware.CORSConfig           `mapstructure:"cors"`
-	XSS            middleware.XSSConfig            `mapstructure:"xss"`
-	AccessLog      middleware.AccessLogConfig      `mapstructure:"accessLog"`
-	TraceID        middleware.TraceIDConfig        `mapstructure:"traceId"`
-	RepeatableBody middleware.RepeatableBodyConfig `mapstructure:"repeatableBody"`
-	APIEncrypt     encrypt.APIEncryptConfig        `mapstructure:"apiEncrypt"`
-	User           systemconfig.UserConfig         `mapstructure:"user"`
-	Captcha        captchahelper.CaptchaConfig     `mapstructure:"captcha"`
-	Social         social.SocialConfig             `mapstructure:"social"`
+	Server         ServerConfig                        `mapstructure:"server"`
+	Snowflake      snowflake.SnowflakeConfig           `mapstructure:"snowflake"`
+	Datasource     database.DatasourceConfig           `mapstructure:"datasource"`
+	Redis          redis.RedisConfig                   `mapstructure:"redis"`
+	SAToken        satoken.SATokenConfig               `mapstructure:"satoken"`
+	CORS           middleware.CORSConfig               `mapstructure:"cors"`
+	XSS            middleware.XSSConfig                `mapstructure:"xss"`
+	AccessLog      middleware.AccessLogConfig          `mapstructure:"accessLog"`
+	TraceID        middleware.TraceIDConfig            `mapstructure:"traceId"`
+	RepeatableBody repeatablebody.RepeatableBodyConfig `mapstructure:"repeatableBody"`
+	APIEncrypt     encrypt.APIEncryptConfig            `mapstructure:"apiEncrypt"`
+	User           systemconfig.UserConfig             `mapstructure:"user"`
+	Captcha        captchahelper.CaptchaConfig         `mapstructure:"captcha"`
+	Social         social.SocialConfig                 `mapstructure:"social"`
 }
 
 var (
@@ -71,7 +72,7 @@ func Load(path string) {
 	middleware.DefaultXSS().SetDefaults(v)
 	middleware.DefaultAccessLog().SetDefaults(v)
 	middleware.DefaultTraceID().SetDefaults(v)
-	middleware.DefaultRepeatableBody().SetDefaults(v)
+	repeatablebody.DefaultRepeatableBody().SetDefaults(v)
 	encrypt.DefaultAPIEncrypt().SetDefaults(v)
 	systemconfig.DefaultUser().SetDefaults(v)
 	social.DefaultSocial().SetDefaults(v)
