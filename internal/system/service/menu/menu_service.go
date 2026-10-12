@@ -10,7 +10,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/loginhelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"

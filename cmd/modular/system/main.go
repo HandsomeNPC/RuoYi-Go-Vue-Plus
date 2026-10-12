@@ -6,7 +6,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatsubmit"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
+	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system"
 	systemconfig "ruoyi-go-vue-plus/internal/system/config"
@@ -32,7 +32,7 @@ func main() {
 	// 主键发号器，各业务表主键无 auto_increment，插入前必须就绪。
 	snowflake.Init(cfg.Snowflake)
 	// 依赖 redis(防重键存 Redis)，须在 redis.Init 之后。
-	repeatsubmit.Init(redis.Client(), cfg.SAToken.TokenName)
+	repeatsubmit.Init(redis.Client(), satoken.TokenName())
 	// 操作日志落库实现反向注册给 pkg/oplog(pkg 不依赖 internal/service)，
 	// 依赖 database 与 snowflake。
 	oplog.Init(operlogservice.RecordOper)

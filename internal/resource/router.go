@@ -17,8 +17,8 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
+	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/loginhelper"
 	resourceconfig "ruoyi-go-vue-plus/internal/resource/config"
 	"ruoyi-go-vue-plus/internal/resource/handler"
 	"ruoyi-go-vue-plus/internal/resource/push"
@@ -124,7 +124,7 @@ func RegisterPushRoutes(r *gin.Engine, prefix string) {
 
 	plugin := sagin.NewPlugin(satoken.Manager())
 	path := prefix + cfg.Path
-	tokenName := resourceconfig.Get().SAToken.TokenName
+	tokenName := satoken.TokenName()
 	// NormalizeQueryToken 须排在 TokenInterceptor 之前：EventSource
 	// 不能自定义请求头，token 只能走 query，形如 ?Authorization=Bearer xxx，
 	// 而 sa-token-go 的 query 分支不剥 Bearer 前缀，不规范化会一律 401。

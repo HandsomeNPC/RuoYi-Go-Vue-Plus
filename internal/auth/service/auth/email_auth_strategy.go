@@ -13,7 +13,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/loginhelper"
 	authmodel "ruoyi-go-vue-plus/internal/auth/model"
 	authvo "ruoyi-go-vue-plus/internal/auth/model/vo"
 	sysloginservice "ruoyi-go-vue-plus/internal/auth/service/syslogin"

@@ -13,7 +13,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/excelhelper"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/loginhelper"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	systemvo "ruoyi-go-vue-plus/internal/system/model/vo"
 	userservice "ruoyi-go-vue-plus/internal/system/service/user"

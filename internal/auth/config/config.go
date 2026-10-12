@@ -22,7 +22,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/xss"
 	"github.com/HandsomeNPC/ruoyi-common-go/oauth2"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
+	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 )
@@ -70,7 +70,6 @@ func Load(path string) {
 	v.SetConfigType("yaml")
 	v.SetConfigFile(path)
 
-	satoken.DefaultSAToken().SetDefaults(v)
 	systemconfig.DefaultUser().SetDefaults(v)
 	// social 段无需铺默认值：viper 的 SetDefault 盖不住「键名未知」的 map 项，
 	// 各平台默认 scope 落在 oauth2 的 provider 里；整段缺失时 Type 为 nil，
@@ -88,7 +87,6 @@ func Load(path string) {
 	for _, fn := range []func() error{
 		cfg.Server.Validate,
 		cfg.Datasource.Validate,
-		cfg.SAToken.Validate,
 		cfg.User.Validate,
 		cfg.Social.Validate,
 	} {

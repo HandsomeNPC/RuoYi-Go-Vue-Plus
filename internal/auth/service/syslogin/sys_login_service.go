@@ -19,7 +19,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	authmodel "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/loginhelper"
 	authconfig "ruoyi-go-vue-plus/internal/auth/config"
 	systembo "ruoyi-go-vue-plus/internal/system/model/bo"
 	systemdto "ruoyi-go-vue-plus/internal/system/model/dto"

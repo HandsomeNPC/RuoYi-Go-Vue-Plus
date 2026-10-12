@@ -15,8 +15,8 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/trace"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/xss"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
+	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/loginhelper"
 	authconfig "ruoyi-go-vue-plus/internal/auth/config"
 	"ruoyi-go-vue-plus/internal/auth/handler"
 )

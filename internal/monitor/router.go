@@ -15,8 +15,8 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
+	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/loginhelper"
 	monitorconfig "ruoyi-go-vue-plus/internal/monitor/config"
 	"ruoyi-go-vue-plus/internal/monitor/handler"
 )

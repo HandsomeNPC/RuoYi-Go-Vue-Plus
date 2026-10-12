@@ -21,7 +21,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
+	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/smshelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/auth"
@@ -70,7 +70,7 @@ func main() {
 	// 依赖 redis(限流计数存 Redis)，须在 redis.Init 之后。
 	ratelimiter.Init(redis.Client())
 	// 依赖 redis(防重键存 Redis)，须在 redis.Init 之后。
-	repeatsubmit.Init(redis.Client(), ac.SAToken.TokenName)
+	repeatsubmit.Init(redis.Client(), satoken.TokenName())
 	// 验证码的两个发送通道，只依赖 config。未配置时接口返回提示而非报错。
 	mailhelper.Init(rc.Mail)
 	// 短信按渠道逐个 init，任一成功 enabled 即 true；全失败 enabled=false、接口返回未开启，不 fatal。

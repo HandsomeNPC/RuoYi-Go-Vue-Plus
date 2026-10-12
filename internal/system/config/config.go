@@ -20,7 +20,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/trace"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/xss"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
+	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 )
@@ -115,7 +115,6 @@ func Load(path string) {
 	v.SetConfigType("yaml")
 	v.SetConfigFile(path)
 
-	satoken.DefaultSAToken().SetDefaults(v)
 	DefaultUser().SetDefaults(v)
 
 	if err := v.ReadInConfig(); err != nil {
@@ -130,7 +129,6 @@ func Load(path string) {
 	for _, fn := range []func() error{
 		cfg.Server.Validate,
 		cfg.Datasource.Validate,
-		cfg.SAToken.Validate,
 		cfg.User.Validate,
 	} {
 		if err := fn(); err != nil {

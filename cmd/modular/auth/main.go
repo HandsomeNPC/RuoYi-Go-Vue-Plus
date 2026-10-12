@@ -9,7 +9,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatsubmit"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
+	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/auth"
 	authconfig "ruoyi-go-vue-plus/internal/auth/config"
@@ -41,7 +41,7 @@ func main() {
 	ratelimiter.Init(redis.Client())
 	// 依赖 redis(防重键存 Redis)，须在 redis.Init 之后。
 	// auth 当前无 RepeatSubmit 路由，此处为与其他进程对称、避免将来漏初始化。
-	repeatsubmit.Init(redis.Client(), cfg.SAToken.TokenName)
+	repeatsubmit.Init(redis.Client(), satoken.TokenName())
 	// 三方登录，依赖 redis(state 存 Redis)，须在 redis.Init 之后。
 	// 不 fatal：三方登录是可选功能，配置有问题不该拦住整个 auth 进程启动。
 	if err := socialservice.Init(cfg.Social, redis.Client()); err != nil {

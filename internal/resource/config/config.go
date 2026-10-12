@@ -13,7 +13,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
 	"github.com/HandsomeNPC/ruoyi-common-go/mailhelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken"
+	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/smshelper"
 	"ruoyi-go-vue-plus/internal/resource/push"
 
@@ -67,7 +67,6 @@ func Load(path string) {
 	v.SetConfigType("yaml")
 	v.SetConfigFile(path)
 
-	satoken.DefaultSAToken().SetDefaults(v)
 
 	if err := v.ReadInConfig(); err != nil {
 		panic(fmt.Errorf("resource/config: 读取 %s 失败: %w", path, err))
@@ -82,7 +81,6 @@ func Load(path string) {
 	for _, fn := range []func() error{
 		cfg.Server.Validate,
 		cfg.Datasource.Validate,
-		cfg.SAToken.Validate,
 	} {
 		if err := fn(); err != nil {
 			panic(fmt.Errorf("resource/config: %w", err))

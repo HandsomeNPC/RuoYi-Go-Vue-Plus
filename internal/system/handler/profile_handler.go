@@ -9,7 +9,7 @@ import (
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/loginhelper"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	userservice "ruoyi-go-vue-plus/internal/system/service/user"
 )
