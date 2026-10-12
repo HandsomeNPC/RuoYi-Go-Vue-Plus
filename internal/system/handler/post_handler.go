@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/excel"
+	"github.com/HandsomeNPC/ruoyi-common-go/excel"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
@@ -69,7 +69,7 @@ func (a *PostApi) Export(c *gin.Context) {
 	// 工作簿在 excel.Export 内部先建满缓冲再落笔：
 	// middleware.Recover 只在 !Written() 时渲染错误，抢先写字节会让后续错误被静默吞掉。
 	if err := excel.Export(c, rows, "岗位数据"); err != nil {
-		_ = c.Error(err)
+		reportExportErr(c, err)
 		return
 	}
 }

@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/excel"
+	"github.com/HandsomeNPC/ruoyi-common-go/excel"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
@@ -90,7 +90,7 @@ func (a *UserApi) Export(c *gin.Context) {
 	// 工作簿在 excel.Export 内部先建满缓冲再落笔：
 	// middleware.Recover 只在 !Written() 时渲染错误，抢先写字节会让后续错误被静默吞掉。
 	if err := excel.Export(c, rows, "用户数据"); err != nil {
-		_ = c.Error(err)
+		reportExportErr(c, err)
 		return
 	}
 }
@@ -126,7 +126,7 @@ func (a *UserApi) ImportData(c *gin.Context) {
 // 空切片输出表头列定义，供前端下载后填写再上传。
 func (a *UserApi) ImportTemplate(c *gin.Context) {
 	if err := excel.Export(c, []systemvo.SysUserImportVo{}, "用户数据"); err != nil {
-		_ = c.Error(err)
+		reportExportErr(c, err)
 		return
 	}
 }

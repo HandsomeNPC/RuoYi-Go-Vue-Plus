@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/excel"
+	"github.com/HandsomeNPC/ruoyi-common-go/excel"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
 	logininfoservice "ruoyi-go-vue-plus/internal/monitor/service/logininfo"
@@ -59,7 +59,7 @@ func (a *LoginInfoApi) Export(c *gin.Context) {
 		return
 	}
 	if err := excel.Export(c, rows, "登录日志"); err != nil {
-		_ = c.Error(err)
+		reportExportErr(c, err)
 		return
 	}
 }

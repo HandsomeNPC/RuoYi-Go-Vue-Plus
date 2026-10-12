@@ -15,7 +15,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/excel"
+	"github.com/HandsomeNPC/ruoyi-common-go/excel"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/satoken/loginhelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
