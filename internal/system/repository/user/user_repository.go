@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
+	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
@@ -256,7 +257,7 @@ func UpdatePassword(ctx context.Context, userID int64,
 // 数据权限的部门/创建人隔离条件尚未落地，此处只按业务条件查——
 // 等数据权限落地后挂上过滤，调用点不必改。
 func SelectAllocatedList(ctx context.Context, q bo.SysUserQueryBo,
-	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysUser], error) {
+	page pkgpage.PageQuery) (pkgpage.PageResult[*model.SysUser], error) {
 
 	db := applyUserAuthQuery(database.DB().WithContext(ctx).Model(&model.SysUser{}), q)
 	if q.RoleID > 0 {
@@ -279,7 +280,7 @@ func SelectAllocatedList(ctx context.Context, q bo.SysUserQueryBo,
 // 会把总数错算成去重前。直接 NOT IN 主键集合即可——每用户一行，Count 与 Find 一致。
 // 与 LEFT JOIN sur 行为一致：没有任何角色授权的用户也会出现在未分配列表里。
 func SelectUnallocatedList(ctx context.Context, q bo.SysUserQueryBo,
-	excludeUserIDs []int64, page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysUser], error) {
+	excludeUserIDs []int64, page pkgpage.PageQuery) (pkgpage.PageResult[*model.SysUser], error) {
 
 	db := applyUserAuthQuery(database.DB().WithContext(ctx).Model(&model.SysUser{}), q)
 	if len(excludeUserIDs) > 0 {
@@ -378,7 +379,7 @@ func applyUserListQuery(db *gorm.DB, q bo.SysUserQueryBo) *gorm.DB {
 // 数据权限的部门/角色数据隔离条件尚未落地，此处只按业务条件查——
 // 等数据权限落地后挂上过滤，调用点不必改。
 func SelectPageList(ctx context.Context, q bo.SysUserQueryBo,
-	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysUser], error) {
+	page pkgpage.PageQuery) (pkgpage.PageResult[*model.SysUser], error) {
 
 	db := applyUserListQuery(database.DB().WithContext(ctx).Model(&model.SysUser{}), q)
 	if !page.HasOrder() {

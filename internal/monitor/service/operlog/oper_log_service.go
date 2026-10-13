@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 
-	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
+	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	operlogrepository "ruoyi-go-vue-plus/internal/system/repository/operlog"
@@ -13,14 +13,14 @@ import (
 
 // QueryPageList 按条件分页查操作日志。
 func QueryPageList(ctx context.Context, q bo.SysOperLogQueryBo,
-	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysOperLogVo], error) {
+	page pkgpage.PageQuery) (pkgpage.PageResult[*vo.SysOperLogVo], error) {
 
 	res, err := operlogrepository.SelectPageList(ctx, q, page)
 	if err != nil {
-		return pkgrepo.EmptyPage[*vo.SysOperLogVo](), err
+		return pkgpage.EmptyPage[*vo.SysOperLogVo](), err
 	}
 	// 两个 PageResult 泛型实例是不同类型，只能重建；Page 内的空切片兜底顺带保证序列化成 []。
-	return pkgrepo.Page(vo.Conv.ConvertToSysOperLogVoList(res.Rows), res.Total), nil
+	return pkgpage.Page(vo.Conv.ConvertToSysOperLogVoList(res.Rows), res.Total), nil
 }
 
 // QueryList 按条件不分页查操作日志，供导出等全量场景用。

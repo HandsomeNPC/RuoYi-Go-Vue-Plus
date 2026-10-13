@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
+	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
@@ -87,7 +88,7 @@ func DeleteRoleMenuByMenuIDs(ctx context.Context, menuIDs []int64) (int64, error
 
 // SelectPageList 按条件分页查角色。
 func SelectPageList(ctx context.Context, q bo.SysRoleQueryBo,
-	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysRole], error) {
+	page pkgpage.PageQuery) (pkgpage.PageResult[*model.SysRole], error) {
 
 	db := applyRoleQuery(database.DB().WithContext(ctx).Model(&model.SysRole{}), q)
 	// 仅在调用方未指定排序时兜底。

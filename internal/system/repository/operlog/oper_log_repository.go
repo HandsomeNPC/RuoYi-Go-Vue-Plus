@@ -7,6 +7,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
+	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
@@ -26,7 +27,7 @@ func Insert(ctx context.Context, l *model.SysOperLog) error {
 
 // SelectPageList 按条件分页查操作日志。
 func SelectPageList(ctx context.Context, q bo.SysOperLogQueryBo,
-	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysOperLog], error) {
+	page pkgpage.PageQuery) (pkgpage.PageResult[*model.SysOperLog], error) {
 
 	db := applyOperLogQuery(database.DB().WithContext(ctx).Model(&model.SysOperLog{}), q)
 	// 仅在调用方未指定排序时按主键降序兜底。

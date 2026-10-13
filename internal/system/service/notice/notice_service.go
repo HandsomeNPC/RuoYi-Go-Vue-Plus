@@ -10,7 +10,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	domain "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/domain"
-	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
+	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
@@ -33,25 +33,25 @@ const noticeCreateByNoMatch int64 = -1
 
 // QueryPageList 按条件分页查通知公告，并回填创建人名称。
 func QueryPageList(ctx context.Context, q bo.SysNoticeQueryBo,
-	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysNoticeVo], error) {
+	page pkgpage.PageQuery) (pkgpage.PageResult[*vo.SysNoticeVo], error) {
 
 	createBy, err := resolveCreateBy(ctx, q.CreateByName)
 	if err != nil {
-		return pkgrepo.EmptyPage[*vo.SysNoticeVo](), err
+		return pkgpage.EmptyPage[*vo.SysNoticeVo](), err
 	}
 
 	res, err := noticerepository.
 		SelectPageList(ctx, q, createBy, page)
 	if err != nil {
-		return pkgrepo.EmptyPage[*vo.SysNoticeVo](), err
+		return pkgpage.EmptyPage[*vo.SysNoticeVo](), err
 	}
 
 	// 两个 PageResult 泛型实例是不同类型，只能重建；Page 内的空切片兜底顺带保证序列化成 []。
 	rows := vo.Conv.ConvertToSysNoticeVoList(res.Rows)
 	if err := fillCreateByNames(ctx, rows); err != nil {
-		return pkgrepo.EmptyPage[*vo.SysNoticeVo](), err
+		return pkgpage.EmptyPage[*vo.SysNoticeVo](), err
 	}
-	return pkgrepo.Page(rows, res.Total), nil
+	return pkgpage.Page(rows, res.Total), nil
 }
 
 // resolveCreateBy 把创建人账号换成用户ID。

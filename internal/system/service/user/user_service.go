@@ -11,11 +11,12 @@ import (
 
 	"github.com/HandsomeNPC/ruoyi-common-go/bcrypt"
 	"github.com/HandsomeNPC/ruoyi-common-go/cache"
+	"github.com/HandsomeNPC/ruoyi-common-go/excelhelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
-	"github.com/HandsomeNPC/ruoyi-common-go/excelhelper"
+	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/utils/loginhelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
@@ -352,29 +353,29 @@ func ChangeUserPassword(ctx context.Context, userID int64,
 // SelectAllocatedList 分页查询已分配某角色的用户。
 // roleId 由 q.RoleID 承载；空结果不报错。返回 VO，不回填部门名（翻译层尚未落地，与 SelectUserByID 一致留空）。
 func SelectAllocatedList(ctx context.Context, q bo.SysUserQueryBo,
-	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysUserVo], error) {
+	page pkgpage.PageQuery) (pkgpage.PageResult[*vo.SysUserVo], error) {
 
 	res, err := userrepository.SelectAllocatedList(ctx, q, page)
 	if err != nil {
-		return pkgrepo.EmptyPage[*vo.SysUserVo](), err
+		return pkgpage.EmptyPage[*vo.SysUserVo](), err
 	}
-	return pkgrepo.Page(vo.Conv.ConvertToSysUserVoList(res.Rows), res.Total), nil
+	return pkgpage.Page(vo.Conv.ConvertToSysUserVoList(res.Rows), res.Total), nil
 }
 
 // SelectUnallocatedList 分页查询未分配某角色的用户。
 // 先取该角色已分配的用户集合，再 NOT IN 排除。
 func SelectUnallocatedList(ctx context.Context, q bo.SysUserQueryBo,
-	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysUserVo], error) {
+	page pkgpage.PageQuery) (pkgpage.PageResult[*vo.SysUserVo], error) {
 
 	excludeUserIDs, err := role.SelectUserIDsByRoleID(ctx, q.RoleID)
 	if err != nil {
-		return pkgrepo.EmptyPage[*vo.SysUserVo](), err
+		return pkgpage.EmptyPage[*vo.SysUserVo](), err
 	}
 	res, err := userrepository.SelectUnallocatedList(ctx, q, excludeUserIDs, page)
 	if err != nil {
-		return pkgrepo.EmptyPage[*vo.SysUserVo](), err
+		return pkgpage.EmptyPage[*vo.SysUserVo](), err
 	}
-	return pkgrepo.Page(vo.Conv.ConvertToSysUserVoList(res.Rows), res.Total), nil
+	return pkgpage.Page(vo.Conv.ConvertToSysUserVoList(res.Rows), res.Total), nil
 }
 
 // resolveDeptIDs 把 q.DeptID 解析成「自身+全部子部门」写回 q.DeptIDs，供 repository 的 IN 过滤用。
@@ -392,16 +393,16 @@ func resolveDeptIDs(ctx context.Context, q *bo.SysUserQueryBo) error {
 
 // QueryPageList 分页查询用户管理列表。
 func QueryPageList(ctx context.Context, q bo.SysUserQueryBo,
-	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysUserVo], error) {
+	page pkgpage.PageQuery) (pkgpage.PageResult[*vo.SysUserVo], error) {
 
 	if err := resolveDeptIDs(ctx, &q); err != nil {
-		return pkgrepo.EmptyPage[*vo.SysUserVo](), err
+		return pkgpage.EmptyPage[*vo.SysUserVo](), err
 	}
 	res, err := userrepository.SelectPageList(ctx, q, page)
 	if err != nil {
-		return pkgrepo.EmptyPage[*vo.SysUserVo](), err
+		return pkgpage.EmptyPage[*vo.SysUserVo](), err
 	}
-	return pkgrepo.Page(vo.Conv.ConvertToSysUserVoList(res.Rows), res.Total), nil
+	return pkgpage.Page(vo.Conv.ConvertToSysUserVoList(res.Rows), res.Total), nil
 }
 
 // QueryExportList 按条件查导出列表。

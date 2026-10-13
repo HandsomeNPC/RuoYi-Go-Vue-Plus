@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
+	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"ruoyi-go-vue-plus/internal/resource/model"
 	"ruoyi-go-vue-plus/internal/resource/model/bo"
@@ -47,7 +48,7 @@ func SelectByIDs(ctx context.Context, ids []int64) ([]*model.SysOss, error) {
 
 // SelectPageList 按条件分页查 OSS 对象。
 func SelectPageList(ctx context.Context, q bo.SysOssQueryBo,
-	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysOss], error) {
+	page pkgpage.PageQuery) (pkgpage.PageResult[*model.SysOss], error) {
 
 	db := applyOssQuery(database.DB().WithContext(ctx).Model(&model.SysOss{}), q)
 	// 仅在调用方未指定排序时按主键升序兜底。

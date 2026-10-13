@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
+	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
@@ -37,7 +38,7 @@ func SelectByID(ctx context.Context, noticeID int64) (*model.SysNotice, error) {
 // SelectPageList 按条件分页查通知公告。
 // createBy > 0 时按创建者过滤，由 service 从创建人账号解析而来。
 func SelectPageList(ctx context.Context, q bo.SysNoticeQueryBo,
-	createBy int64, page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysNotice], error) {
+	createBy int64, page pkgpage.PageQuery) (pkgpage.PageResult[*model.SysNotice], error) {
 
 	db := applyNoticeQuery(database.DB().WithContext(ctx).Model(&model.SysNotice{}), q, createBy)
 	// 仅在调用方未指定排序时按主键升序兜底。

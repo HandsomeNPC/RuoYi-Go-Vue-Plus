@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/cache"
+	pkgoss "github.com/HandsomeNPC/ruoyi-common-go/oss"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
-	pkgoss "github.com/HandsomeNPC/ruoyi-common-go/oss"
-	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
+	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/resource/model"
 	"ruoyi-go-vue-plus/internal/resource/model/bo"
@@ -50,11 +50,11 @@ func (d *DownloadResult) Close() error {
 
 // QueryPageList 按条件分页查 OSS 对象，私有桶的 URL 换成预签名链接。
 func QueryPageList(ctx context.Context, q bo.SysOssQueryBo,
-	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysOssVo], error) {
+	page pkgpage.PageQuery) (pkgpage.PageResult[*vo.SysOssVo], error) {
 
 	res, err := ossrepository.SelectPageList(ctx, q, page)
 	if err != nil {
-		return pkgrepo.EmptyPage[*vo.SysOssVo](), err
+		return pkgpage.EmptyPage[*vo.SysOssVo](), err
 	}
 
 	rows := vo.Conv.ConvertToSysOssVoList(res.Rows)
@@ -62,7 +62,7 @@ func QueryPageList(ctx context.Context, q bo.SysOssQueryBo,
 		matchingURL(ctx, item)
 	}
 	// 两个 PageResult 泛型实例是不同类型，只能重建。
-	return pkgrepo.Page(rows, res.Total), nil
+	return pkgpage.Page(rows, res.Total), nil
 }
 
 // ListByIDs 按主键批量查 OSS 对象，缺失的主键静默跳过。

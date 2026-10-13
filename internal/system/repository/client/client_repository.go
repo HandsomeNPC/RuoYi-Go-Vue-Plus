@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
+	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
@@ -57,7 +58,7 @@ func SelectByID(ctx context.Context, id int64) (*model.SysClient, error) {
 //
 // 返回实体而非 VO：SysClientVo 的三个 *List 字段无对应列，GORM 会按字段名拼进 SELECT。
 func SelectPageList(ctx context.Context, q bo.SysClientQueryBo,
-	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysClient], error) {
+	page pkgpage.PageQuery) (pkgpage.PageResult[*model.SysClient], error) {
 
 	db := applyClientQuery(database.DB().WithContext(ctx).Model(&model.SysClient{}), q)
 	// 仅在调用方未指定排序时按主键升序兜底，保证翻页稳定。

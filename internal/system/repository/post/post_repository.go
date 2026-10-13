@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
+	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
@@ -83,7 +84,7 @@ func SelectByIDs(ctx context.Context, ids []int64) ([]*model.SysPost, error) {
 
 // SelectPageList 按条件分页查岗位。
 func SelectPageList(ctx context.Context, q bo.SysPostQueryBo,
-	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysPost], error) {
+	page pkgpage.PageQuery) (pkgpage.PageResult[*model.SysPost], error) {
 
 	db := applyPostQuery(database.DB().WithContext(ctx).Model(&model.SysPost{}), q)
 	// 仅在调用方未指定排序时按 post_sort 升序兜底。

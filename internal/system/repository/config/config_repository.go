@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
+	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
@@ -68,7 +69,7 @@ func SelectByIDs(ctx context.Context, ids []int64) ([]*model.SysConfig, error) {
 
 // SelectPageList 按条件分页查参数配置。
 func SelectPageList(ctx context.Context, q bo.SysConfigQueryBo,
-	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysConfig], error) {
+	page pkgpage.PageQuery) (pkgpage.PageResult[*model.SysConfig], error) {
 
 	db := applyConfigQuery(database.DB().WithContext(ctx).Model(&model.SysConfig{}), q)
 	// 仅在调用方未指定排序时按主键升序兜底。

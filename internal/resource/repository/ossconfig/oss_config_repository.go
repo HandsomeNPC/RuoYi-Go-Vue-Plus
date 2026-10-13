@@ -7,8 +7,9 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
+	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"ruoyi-go-vue-plus/internal/resource/model"
 	"ruoyi-go-vue-plus/internal/resource/model/bo"
@@ -64,7 +65,7 @@ func SelectAll(ctx context.Context) ([]*model.SysOssConfig, error) {
 
 // SelectPageList 按条件分页查配置。
 func SelectPageList(ctx context.Context, q bo.SysOssConfigQueryBo,
-	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysOssConfig], error) {
+	page pkgpage.PageQuery) (pkgpage.PageResult[*model.SysOssConfig], error) {
 
 	db := applyOssConfigQuery(database.DB().WithContext(ctx).Model(&model.SysOssConfig{}), q)
 	if !page.HasOrder() {

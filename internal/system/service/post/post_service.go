@@ -7,7 +7,7 @@ import (
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
-	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
+	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
@@ -35,18 +35,18 @@ func SelectPostsByUserId(ctx context.Context, userID int64) ([]*vo.SysPostVo, er
 
 // QueryPageList 按条件分页查岗位。BelongDeptID 会在此时解析成部门ID集。
 func QueryPageList(ctx context.Context, q bo.SysPostQueryBo,
-	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysPostVo], error) {
+	page pkgpage.PageQuery) (pkgpage.PageResult[*vo.SysPostVo], error) {
 
 	if err := resolveDeptIDs(ctx, &q); err != nil {
-		return pkgrepo.EmptyPage[*vo.SysPostVo](), err
+		return pkgpage.EmptyPage[*vo.SysPostVo](), err
 	}
 
 	res, err := postrepository.SelectPageList(ctx, q, page)
 	if err != nil {
-		return pkgrepo.EmptyPage[*vo.SysPostVo](), err
+		return pkgpage.EmptyPage[*vo.SysPostVo](), err
 	}
 	// 两个 PageResult 泛型实例是不同类型，只能重建；Page 内的空切片兜底顺带保证序列化成 []。
-	return pkgrepo.Page(vo.Conv.ConvertToSysPostVoList(res.Rows), res.Total), nil
+	return pkgpage.Page(vo.Conv.ConvertToSysPostVoList(res.Rows), res.Total), nil
 }
 
 // QueryList 按条件不分页查岗位，供导出等全量场景用。

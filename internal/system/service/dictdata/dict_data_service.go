@@ -7,7 +7,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/cache"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
-	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
+	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
@@ -21,14 +21,14 @@ var ErrDictDataValueExists = errors.New("service: 字典键值已存在")
 
 // QueryPageList 按条件分页查字典数据。
 func QueryPageList(ctx context.Context, q bo.SysDictDataQueryBo,
-	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysDictDataVo], error) {
+	page pkgpage.PageQuery) (pkgpage.PageResult[*vo.SysDictDataVo], error) {
 
 	res, err := dictdatarepository.SelectPageList(ctx, q, page)
 	if err != nil {
-		return pkgrepo.EmptyPage[*vo.SysDictDataVo](), err
+		return pkgpage.EmptyPage[*vo.SysDictDataVo](), err
 	}
 	// 两个 PageResult 泛型实例是不同类型，只能重建；Page 内的空切片兜底顺带保证序列化成 []。
-	return pkgrepo.Page(vo.Conv.ConvertToSysDictDataVoList(res.Rows), res.Total), nil
+	return pkgpage.Page(vo.Conv.ConvertToSysDictDataVoList(res.Rows), res.Total), nil
 }
 
 // QueryList 按条件不分页查字典数据，供导出等全量场景用。

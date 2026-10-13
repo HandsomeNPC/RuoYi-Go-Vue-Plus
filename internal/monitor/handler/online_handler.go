@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
-	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
+	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/utils/loginhelper"
 	onlineservice "ruoyi-go-vue-plus/internal/monitor/service/online"
@@ -25,7 +25,7 @@ func (a *UserOnlineApi) List(c *gin.Context) {
 		_ = c.Error(err)
 		return
 	}
-	c.JSON(http.StatusOK, response.Ok(pkgrepo.PageOf(rows)))
+	c.JSON(http.StatusOK, response.Ok(pkgpage.PageOf(rows)))
 }
 
 // ForceLogout 按 token 强制用户下线。
@@ -49,7 +49,7 @@ func (a *UserOnlineApi) GetInfo(c *gin.Context) {
 		_ = c.Error(err)
 		return
 	}
-	c.JSON(http.StatusOK, response.Ok(pkgrepo.PageOf(rows)))
+	c.JSON(http.StatusOK, response.Ok(pkgpage.PageOf(rows)))
 }
 
 // Remove 强退当前账号下指定在线设备，避免误踢其他账号会话。

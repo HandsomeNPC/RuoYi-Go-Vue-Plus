@@ -98,7 +98,7 @@ func TestToVoList(t *testing.T) {
 	}
 }
 
-// TestToVoListNil 空入参不得 panic；返回 nil 由 pkgrepo.Page 兜成 []。
+// TestToVoListNil 空入参不得 panic；返回 nil 由 pkgpage.Page 兜成 []。
 func TestToVoListNil(t *testing.T) {
 	if got := toVoList(nil); got != nil {
 		t.Errorf("toVoList(nil) = %v, 期望 nil", got)

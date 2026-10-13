@@ -7,11 +7,11 @@ import (
 	"strconv"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/cache"
+	"github.com/HandsomeNPC/ruoyi-common-go/oss"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
-	"github.com/HandsomeNPC/ruoyi-common-go/oss"
-	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
+	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/resource/model/bo"
 	"ruoyi-go-vue-plus/internal/resource/model/vo"
@@ -65,14 +65,14 @@ func setDefaultConfigKey(ctx context.Context, configKey string) {
 
 // QueryPageList 按条件分页查配置。
 func QueryPageList(ctx context.Context, q bo.SysOssConfigQueryBo,
-	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysOssConfigVo], error) {
+	page pkgpage.PageQuery) (pkgpage.PageResult[*vo.SysOssConfigVo], error) {
 
 	res, err := ossconfigrepository.SelectPageList(ctx, q, page)
 	if err != nil {
-		return pkgrepo.EmptyPage[*vo.SysOssConfigVo](), err
+		return pkgpage.EmptyPage[*vo.SysOssConfigVo](), err
 	}
 	// 两个 PageResult 泛型实例是不同类型，只能重建。
-	return pkgrepo.Page(vo.Conv.ConvertToSysOssConfigVoList(res.Rows), res.Total), nil
+	return pkgpage.Page(vo.Conv.ConvertToSysOssConfigVoList(res.Rows), res.Total), nil
 }
 
 // QueryByID 按主键查配置，不存在时返回 ErrOssConfigNotFound。

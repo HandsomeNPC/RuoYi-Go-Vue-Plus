@@ -9,7 +9,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
-	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
+	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
@@ -22,14 +22,14 @@ var ErrConfigKeyExists = errors.New("service: 参数键名已存在")
 
 // QueryPageList 按条件分页查参数配置。
 func QueryPageList(ctx context.Context, q bo.SysConfigQueryBo,
-	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysConfigVo], error) {
+	page pkgpage.PageQuery) (pkgpage.PageResult[*vo.SysConfigVo], error) {
 
 	res, err := configrepository.SelectPageList(ctx, q, page)
 	if err != nil {
-		return pkgrepo.EmptyPage[*vo.SysConfigVo](), err
+		return pkgpage.EmptyPage[*vo.SysConfigVo](), err
 	}
 	// 两个 PageResult 泛型实例是不同类型，只能重建；Page 内的空切片兜底顺带保证序列化成 []。
-	return pkgrepo.Page(vo.Conv.ConvertToSysConfigVoList(res.Rows), res.Total), nil
+	return pkgpage.Page(vo.Conv.ConvertToSysConfigVoList(res.Rows), res.Total), nil
 }
 
 // QueryList 按条件不分页查参数配置，供导出等全量场景用。

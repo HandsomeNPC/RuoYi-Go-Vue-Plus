@@ -9,9 +9,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	"github.com/HandsomeNPC/ruoyi-common-go/excelhelper"
-	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
+	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/utils/loginhelper"
 	"ruoyi-go-vue-plus/internal/system/model"
@@ -37,7 +37,7 @@ func (a *RoleApi) List(c *gin.Context) {
 		_ = c.Error(errs.New(response.CodeBadRequest, "参数校验失败", err.Error()))
 		return
 	}
-	var page pkgrepo.PageQuery
+	var page pkgpage.PageQuery
 	if err := c.ShouldBindQuery(&page); err != nil {
 		_ = c.Error(errs.New(response.CodeBadRequest, "分页参数有误", err.Error()))
 		return
@@ -264,7 +264,7 @@ func (a *RoleApi) AllocatedList(c *gin.Context) {
 		_ = c.Error(errs.New(response.CodeBadRequest, "参数校验失败", err.Error()))
 		return
 	}
-	var page pkgrepo.PageQuery
+	var page pkgpage.PageQuery
 	if err := c.ShouldBindQuery(&page); err != nil {
 		_ = c.Error(errs.New(response.CodeBadRequest, "分页参数有误", err.Error()))
 		return
@@ -285,7 +285,7 @@ func (a *RoleApi) UnallocatedList(c *gin.Context) {
 		_ = c.Error(errs.New(response.CodeBadRequest, "参数校验失败", err.Error()))
 		return
 	}
-	var page pkgrepo.PageQuery
+	var page pkgpage.PageQuery
 	if err := c.ShouldBindQuery(&page); err != nil {
 		_ = c.Error(errs.New(response.CodeBadRequest, "分页参数有误", err.Error()))
 		return

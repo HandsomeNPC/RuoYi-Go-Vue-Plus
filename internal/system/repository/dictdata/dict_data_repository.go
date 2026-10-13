@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
+	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
@@ -67,7 +68,7 @@ func SelectByType(ctx context.Context, dictType string) ([]*model.SysDictData, e
 
 // SelectPageList 按条件分页查字典数据。
 func SelectPageList(ctx context.Context, q bo.SysDictDataQueryBo,
-	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysDictData], error) {
+	page pkgpage.PageQuery) (pkgpage.PageResult[*model.SysDictData], error) {
 
 	db := applyDictDataQuery(database.DB().WithContext(ctx).Model(&model.SysDictData{}), q)
 	// 仅在调用方未指定排序时兜底。

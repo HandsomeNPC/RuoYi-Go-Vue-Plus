@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
+	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
@@ -69,7 +70,7 @@ func SelectByIDs(ctx context.Context, ids []int64) ([]*model.SysDictType, error)
 
 // SelectPageList 按条件分页查字典类型。
 func SelectPageList(ctx context.Context, q bo.SysDictTypeQueryBo,
-	page pkgrepo.PageQuery) (pkgrepo.PageResult[*model.SysDictType], error) {
+	page pkgpage.PageQuery) (pkgpage.PageResult[*model.SysDictType], error) {
 
 	db := applyDictTypeQuery(database.DB().WithContext(ctx).Model(&model.SysDictType{}), q)
 	// 仅在调用方未指定排序时按主键升序兜底。

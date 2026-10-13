@@ -11,6 +11,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
+	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/utils/loginhelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
@@ -74,14 +75,14 @@ func splitRoleKeys(roles []*model.SysRole) []string {
 
 // QueryPageList 按条件分页查角色。
 func QueryPageList(ctx context.Context, q bo.SysRoleQueryBo,
-	page pkgrepo.PageQuery) (pkgrepo.PageResult[*vo.SysRoleVo], error) {
+	page pkgpage.PageQuery) (pkgpage.PageResult[*vo.SysRoleVo], error) {
 
 	res, err := rolerepository.SelectPageList(ctx, q, page)
 	if err != nil {
-		return pkgrepo.EmptyPage[*vo.SysRoleVo](), err
+		return pkgpage.EmptyPage[*vo.SysRoleVo](), err
 	}
 	// 两个 PageResult 泛型实例是不同类型，只能重建；Page 内的空切片兜底顺带保证序列化成 []。
-	return pkgrepo.Page(vo.Conv.ConvertToSysRoleVoList(res.Rows), res.Total), nil
+	return pkgpage.Page(vo.Conv.ConvertToSysRoleVoList(res.Rows), res.Total), nil
 }
 
 // QueryList 按条件不分页查角色，供导出等全量场景用。
