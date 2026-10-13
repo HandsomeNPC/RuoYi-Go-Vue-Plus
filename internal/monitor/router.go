@@ -14,6 +14,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/xss"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/permission"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
 	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/loginhelper"
@@ -45,40 +46,40 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	g.Use(plugin.TokenInterceptor(), loginhelper.AuditContext())
 
 	cache := g.Group("/cache")
-	cache.GET("", satoken.CheckPermission("monitor:cache:list"), handler.CacheApiApp.GetInfo)
+	cache.GET("", permission.CheckPermission("monitor:cache:list"), handler.CacheApiApp.GetInfo)
 
 	loginInfo := g.Group("/loginInfo")
-	loginInfo.GET("/list", satoken.CheckPermission("monitor:logininfo:list"), handler.LoginInfoApiApp.List)
-	loginInfo.POST("/export", satoken.CheckPermission("monitor:logininfo:export"),
+	loginInfo.GET("/list", permission.CheckPermission("monitor:logininfo:list"), handler.LoginInfoApiApp.List)
+	loginInfo.POST("/export", permission.CheckPermission("monitor:logininfo:export"),
 		oplog.Log(loginInfoLogTitle, enum.BusinessTypeExport), handler.LoginInfoApiApp.Export)
 	// clean 与 :infoIds 同层，静态段优先，gin 能区分二者，无需调整注册顺序。
 	// 权限码用 remove，两处复用。
-	loginInfo.DELETE("/clean", satoken.CheckPermission("monitor:logininfo:remove"),
+	loginInfo.DELETE("/clean", permission.CheckPermission("monitor:logininfo:remove"),
 		oplog.Log(loginInfoLogTitle, enum.BusinessTypeClean), handler.LoginInfoApiApp.Clean)
-	loginInfo.DELETE("/:infoIds", satoken.CheckPermission("monitor:logininfo:remove"),
+	loginInfo.DELETE("/:infoIds", permission.CheckPermission("monitor:logininfo:remove"),
 		oplog.Log(loginInfoLogTitle, enum.BusinessTypeDelete), handler.LoginInfoApiApp.Remove)
 	// unlock 需登录即可；
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
-	loginInfo.GET("/unlock/:userName", satoken.CheckPermission("monitor:logininfo:unlock"),
+	loginInfo.GET("/unlock/:userName", permission.CheckPermission("monitor:logininfo:unlock"),
 		oplog.Log(loginInfoLogTitle, enum.BusinessTypeOther),
 		repeatsubmit.RepeatSubmit(0, ""), handler.LoginInfoApiApp.Unlock)
 
 	operLog := g.Group("/operlog")
-	operLog.GET("/list", satoken.CheckPermission("monitor:operlog:list"), handler.OperLogApiApp.List)
-	operLog.POST("/export", satoken.CheckPermission("monitor:operlog:export"),
+	operLog.GET("/list", permission.CheckPermission("monitor:operlog:list"), handler.OperLogApiApp.List)
+	operLog.POST("/export", permission.CheckPermission("monitor:operlog:export"),
 		oplog.Log(operLogLogTitle, enum.BusinessTypeExport), handler.OperLogApiApp.Export)
 	// clean 与 :operIds 同层，静态段优先，gin 能区分二者，无需调整注册顺序（与 loginInfo 同理）。
 	// 权限码用 remove，两处复用。
-	operLog.DELETE("/clean", satoken.CheckPermission("monitor:operlog:remove"),
+	operLog.DELETE("/clean", permission.CheckPermission("monitor:operlog:remove"),
 		oplog.Log(operLogLogTitle, enum.BusinessTypeClean), handler.OperLogApiApp.Clean)
-	operLog.DELETE("/:operIds", satoken.CheckPermission("monitor:operlog:remove"),
+	operLog.DELETE("/:operIds", permission.CheckPermission("monitor:operlog:remove"),
 		oplog.Log(operLogLogTitle, enum.BusinessTypeDelete), handler.OperLogApiApp.Remove)
 
 	// online 在线用户监控。getInfo/remove 只需登录(操作自身会话)，list/forceLogout 需权限码。
 	// /myself/:tokenId 与 /:tokenId 段数不同，gin 按深度区分，无路由冲突。
 	online := g.Group("/online")
-	online.GET("/list", satoken.CheckPermission("monitor:online:list"), handler.UserOnlineApiApp.List)
-	online.DELETE("/:tokenId", satoken.CheckPermission("monitor:online:forceLogout"),
+	online.GET("/list", permission.CheckPermission("monitor:online:list"), handler.UserOnlineApiApp.List)
+	online.DELETE("/:tokenId", permission.CheckPermission("monitor:online:forceLogout"),
 		oplog.Log(userOnlineLogTitle, enum.BusinessTypeForce),
 		repeatsubmit.RepeatSubmit(0, ""), handler.UserOnlineApiApp.ForceLogout)
 	online.GET("", handler.UserOnlineApiApp.GetInfo)

@@ -35,7 +35,7 @@ func main() {
 	database.Init(cfg.Datasource)
 	defer database.Close()
 
-	satoken.Init(cfg.SAToken)
+	satoken.Init(cfg.SAToken, redis.Client())
 
 	// oplog 落 sys_oper_log 的主键发号器，须在 oplog.Init 之前就绪。
 	snowflake.Init(cfg.Snowflake)

@@ -16,6 +16,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/permission"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
 	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/loginhelper"
@@ -77,250 +78,250 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	// /resetPwd/changeStatus）与同层 /:userId 共存，gin 静态段优先，无需调整注册顺序。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
-	user.GET("/list", satoken.CheckPermission("system:user:list"), handler.UserApiApp.List)
-	user.GET("/list/dept/:deptId", satoken.CheckPermission("system:user:list"),
+	user.GET("/list", permission.CheckPermission("system:user:list"), handler.UserApiApp.List)
+	user.GET("/list/dept/:deptId", permission.CheckPermission("system:user:list"),
 		handler.UserApiApp.ListByDept)
-	user.GET("/deptTree", satoken.CheckPermission("system:user:list"),
+	user.GET("/deptTree", permission.CheckPermission("system:user:list"),
 		handler.UserApiApp.DeptTree)
-	user.GET("/optionselect", satoken.CheckPermission("system:user:query"),
+	user.GET("/optionselect", permission.CheckPermission("system:user:query"),
 		handler.UserApiApp.OptionSelect)
-	user.GET("/authRole/:userId", satoken.CheckPermission("system:user:query"),
+	user.GET("/authRole/:userId", permission.CheckPermission("system:user:query"),
 		handler.UserApiApp.AuthRole)
-	user.GET("/unlock/:userId", satoken.CheckPermission("system:user:edit"),
+	user.GET("/unlock/:userId", permission.CheckPermission("system:user:edit"),
 		oplog.Log(userLogTitle, enum.BusinessTypeOther),
 		repeatsubmit.RepeatSubmit(0, ""), handler.UserApiApp.Unlock)
-	user.POST("/export", satoken.CheckPermission("system:user:export"),
+	user.POST("/export", permission.CheckPermission("system:user:export"),
 		oplog.Log(userLogTitle, enum.BusinessTypeExport), handler.UserApiApp.Export)
-	user.POST("/importData", satoken.CheckPermission("system:user:import"),
+	user.POST("/importData", permission.CheckPermission("system:user:import"),
 		oplog.Log(userLogTitle, enum.BusinessTypeImport), handler.UserApiApp.ImportData)
 	// importTemplate 不校验权限码，仅需登录：下载模板不该卡权限。
 	user.POST("/importTemplate", sagin.CheckLogin(), handler.UserApiApp.ImportTemplate)
 	// 路径用 "" 而非 "/"：后者会注册成 /user/。
-	user.POST("", satoken.CheckPermission("system:user:add"),
+	user.POST("", permission.CheckPermission("system:user:add"),
 		oplog.Log(userLogTitle, enum.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.UserApiApp.Add)
-	user.PUT("", satoken.CheckPermission("system:user:edit"),
+	user.PUT("", permission.CheckPermission("system:user:edit"),
 		oplog.Log(userLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.UserApiApp.Edit)
 	// resetPwd 须排在 apiencrypt 之后：指纹要用解密后的明文，否则密文每次
 	// 随机密钥、同样入参算出不同指纹，防重直接失效。故顺序为 鉴权→解密→日志→防重→handler。
-	user.PUT("/resetPwd", satoken.CheckPermission("system:user:resetPwd"), enc,
+	user.PUT("/resetPwd", permission.CheckPermission("system:user:resetPwd"), enc,
 		oplog.Log(userLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.UserApiApp.ResetPwd)
-	user.PUT("/changeStatus", satoken.CheckPermission("system:user:edit"),
+	user.PUT("/changeStatus", permission.CheckPermission("system:user:edit"),
 		oplog.Log(userLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.UserApiApp.ChangeStatus)
 	// authRole 是授权操作，businessType=GRANT。
-	user.PUT("/authRole", satoken.CheckPermission("system:user:edit"),
+	user.PUT("/authRole", permission.CheckPermission("system:user:edit"),
 		oplog.Log(userLogTitle, enum.BusinessTypeGrant),
 		repeatsubmit.RepeatSubmit(0, ""), handler.UserApiApp.InsertAuthRole)
 	// 根路径 "" 与 /:userId 复用 GetInfoByID。
 	// 须注册在各静态段之后，静态段优先与 /:userId 共存。
-	user.GET("", satoken.CheckPermission("system:user:query"), handler.UserApiApp.GetInfoByID)
-	user.GET("/:userId", satoken.CheckPermission("system:user:query"),
+	user.GET("", permission.CheckPermission("system:user:query"), handler.UserApiApp.GetInfoByID)
+	user.GET("/:userId", permission.CheckPermission("system:user:query"),
 		handler.UserApiApp.GetInfoByID)
-	user.DELETE("/:userIds", satoken.CheckPermission("system:user:remove"),
+	user.DELETE("/:userIds", permission.CheckPermission("system:user:remove"),
 		oplog.Log(userLogTitle, enum.BusinessTypeDelete), handler.UserApiApp.Remove)
 
 	menu := protected.Group("/menu")
 	menu.GET("/getRouters", sagin.CheckLogin(), handler.MenuApiApp.GetRouters)
 	// 多个中间件串联即 AND：各中间件都得过。注意这与单个 CheckPermission 内部多值的 OR 语义不同——那是"任一权限码命中放行"。
-	menu.GET("/list", satoken.CheckRole(constant.SuperAdminRoleKey),
-		satoken.CheckPermission("system:menu:list"), handler.MenuApiApp.List)
+	menu.GET("/list", permission.CheckRole(constant.SuperAdminRoleKey),
+		permission.CheckPermission("system:menu:list"), handler.MenuApiApp.List)
 	// treeselect 与 roleMenuTreeselect 只要 query 权限，不挂超管角色：
 	// 角色授权界面要用它们，而分配角色的人未必是超管。
-	menu.GET("/treeselect", satoken.CheckPermission("system:menu:query"),
+	menu.GET("/treeselect", permission.CheckPermission("system:menu:query"),
 		handler.MenuApiApp.TreeSelect)
-	menu.GET("/roleMenuTreeselect/:roleId", satoken.CheckPermission("system:menu:query"),
+	menu.GET("/roleMenuTreeselect/:roleId", permission.CheckPermission("system:menu:query"),
 		handler.MenuApiApp.RoleMenuTreeSelect)
 	// getRouters/treeselect 等静态段与 :menuId 同层但静态段优先，无需调整注册顺序。
-	menu.GET("/:menuId", satoken.CheckRole(constant.SuperAdminRoleKey),
-		satoken.CheckPermission("system:menu:query"), handler.MenuApiApp.GetInfo)
+	menu.GET("/:menuId", permission.CheckRole(constant.SuperAdminRoleKey),
+		permission.CheckPermission("system:menu:query"), handler.MenuApiApp.GetInfo)
 	// 路径用 "" 而非 "/"：后者会注册成 /menu/。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
-	menu.POST("", satoken.CheckRole(constant.SuperAdminRoleKey),
-		satoken.CheckPermission("system:menu:add"),
+	menu.POST("", permission.CheckRole(constant.SuperAdminRoleKey),
+		permission.CheckPermission("system:menu:add"),
 		oplog.Log(menuLogTitle, enum.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.MenuApiApp.Add)
-	menu.PUT("", satoken.CheckRole(constant.SuperAdminRoleKey),
-		satoken.CheckPermission("system:menu:edit"),
+	menu.PUT("", permission.CheckRole(constant.SuperAdminRoleKey),
+		permission.CheckPermission("system:menu:edit"),
 		oplog.Log(menuLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.MenuApiApp.Edit)
 	// cascade/:menuIds 段更具体，与 /:menuId 可共存，静态段优先。
-	menu.DELETE("/cascade/:menuIds", satoken.CheckRole(constant.SuperAdminRoleKey),
-		satoken.CheckPermission("system:menu:remove"),
+	menu.DELETE("/cascade/:menuIds", permission.CheckRole(constant.SuperAdminRoleKey),
+		permission.CheckPermission("system:menu:remove"),
 		oplog.Log(menuLogTitle, enum.BusinessTypeDelete), handler.MenuApiApp.CascadeRemove)
-	menu.DELETE("/:menuId", satoken.CheckRole(constant.SuperAdminRoleKey),
-		satoken.CheckPermission("system:menu:remove"),
+	menu.DELETE("/:menuId", permission.CheckRole(constant.SuperAdminRoleKey),
+		permission.CheckPermission("system:menu:remove"),
 		oplog.Log(menuLogTitle, enum.BusinessTypeDelete), handler.MenuApiApp.Remove)
 
 	client := protected.Group("/client")
-	client.GET("/list", satoken.CheckPermission("system:client:list"), handler.ClientApiApp.List)
-	client.GET("/:id", satoken.CheckPermission("system:client:query"), handler.ClientApiApp.GetInfo)
+	client.GET("/list", permission.CheckPermission("system:client:list"), handler.ClientApiApp.List)
+	client.GET("/:id", permission.CheckPermission("system:client:query"), handler.ClientApiApp.GetInfo)
 	// 导出走 POST：前端以 form 表单 POST 提交筛选条件。
 	// 与 PUT ""/changeStatus 同理，路径更具体，须注册在 client.POST("") 之后。
-	client.POST("/export", satoken.CheckPermission("system:client:export"),
+	client.POST("/export", permission.CheckPermission("system:client:export"),
 		oplog.Log(clientLogTitle, enum.BusinessTypeExport), handler.ClientApiApp.Export)
 	// 路径用 "" 而非 "/"：后者会注册成 /client/。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
-	client.POST("", satoken.CheckPermission("system:client:add"),
+	client.POST("", permission.CheckPermission("system:client:add"),
 		oplog.Log(clientLogTitle, enum.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.ClientApiApp.Add)
-	client.PUT("", satoken.CheckPermission("system:client:edit"),
+	client.PUT("", permission.CheckPermission("system:client:edit"),
 		oplog.Log(clientLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.ClientApiApp.Edit)
 	// changeStatus 不挂防重：它幂等——重复提交同一状态无副作用。须注册在 PUT "" 之后，路径更具体。
-	client.PUT("/changeStatus", satoken.CheckPermission("system:client:edit"),
+	client.PUT("/changeStatus", permission.CheckPermission("system:client:edit"),
 		oplog.Log(clientLogTitle, enum.BusinessTypeUpdate),
 		handler.ClientApiApp.ChangeStatus)
-	client.DELETE("/:ids", satoken.CheckPermission("system:client:remove"),
+	client.DELETE("/:ids", permission.CheckPermission("system:client:remove"),
 		oplog.Log(clientLogTitle, enum.BusinessTypeDelete),
 		handler.ClientApiApp.Remove)
 
 	config := protected.Group("/config")
-	config.GET("/list", satoken.CheckPermission("system:config:list"), handler.ConfigApiApp.List)
+	config.GET("/list", permission.CheckPermission("system:config:list"), handler.ConfigApiApp.List)
 	// configKey 与 :configId 同层但静态段优先，gin 能区分二者，无需调整注册顺序。
 	// 不校验权限码，仅需登录：前端多处要读参数却未必有配置管理权限。
 	config.GET("/configKey/:configKey", sagin.CheckLogin(), handler.ConfigApiApp.GetConfigKey)
-	config.GET("/:configId", satoken.CheckPermission("system:config:query"),
+	config.GET("/:configId", permission.CheckPermission("system:config:query"),
 		handler.ConfigApiApp.GetInfo)
 	// 导出走 POST：前端以 form 表单 POST 提交筛选条件。
-	config.POST("/export", satoken.CheckPermission("system:config:export"),
+	config.POST("/export", permission.CheckPermission("system:config:export"),
 		oplog.Log(configLogTitle, enum.BusinessTypeExport), handler.ConfigApiApp.Export)
 	// 路径用 "" 而非 "/"：后者会注册成 /config/。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
-	config.POST("", satoken.CheckPermission("system:config:add"),
+	config.POST("", permission.CheckPermission("system:config:add"),
 		oplog.Log(configLogTitle, enum.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.ConfigApiApp.Add)
-	config.PUT("", satoken.CheckPermission("system:config:edit"),
+	config.PUT("", permission.CheckPermission("system:config:edit"),
 		oplog.Log(configLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.ConfigApiApp.Edit)
-	config.PUT("/updateByKey", satoken.CheckPermission("system:config:edit"),
+	config.PUT("/updateByKey", permission.CheckPermission("system:config:edit"),
 		oplog.Log(configLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.ConfigApiApp.UpdateByKey)
 	// refreshCache 与 :configIds 同层，静态段优先，无需调整注册顺序。
 	// 权限码用 remove 而非独立的 refresh。
-	config.DELETE("/refreshCache", satoken.CheckPermission("system:config:remove"),
+	config.DELETE("/refreshCache", permission.CheckPermission("system:config:remove"),
 		oplog.Log(configLogTitle, enum.BusinessTypeClean),
 		handler.ConfigApiApp.RefreshCache)
-	config.DELETE("/:configIds", satoken.CheckPermission("system:config:remove"),
+	config.DELETE("/:configIds", permission.CheckPermission("system:config:remove"),
 		oplog.Log(configLogTitle, enum.BusinessTypeDelete),
 		handler.ConfigApiApp.Remove)
 
 	dept := protected.Group("/dept")
 	// optionselect、list/exclude/:deptId 与 /:deptId 同层但前两者段更具体，
 	// gin 静态段优先，无需调整注册顺序。
-	dept.GET("/list", satoken.CheckPermission("system:dept:list"), handler.DeptApiApp.List)
-	dept.GET("/list/exclude/:deptId", satoken.CheckPermission("system:dept:list"),
+	dept.GET("/list", permission.CheckPermission("system:dept:list"), handler.DeptApiApp.List)
+	dept.GET("/list/exclude/:deptId", permission.CheckPermission("system:dept:list"),
 		handler.DeptApiApp.ExcludeChild)
-	dept.GET("/optionselect", satoken.CheckPermission("system:dept:query"),
+	dept.GET("/optionselect", permission.CheckPermission("system:dept:query"),
 		handler.DeptApiApp.OptionSelect)
-	dept.GET("/:deptId", satoken.CheckPermission("system:dept:query"), handler.DeptApiApp.GetInfo)
+	dept.GET("/:deptId", permission.CheckPermission("system:dept:query"), handler.DeptApiApp.GetInfo)
 	// 路径用 "" 而非 "/"：后者会注册成 /dept/。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
-	dept.POST("", satoken.CheckPermission("system:dept:add"),
+	dept.POST("", permission.CheckPermission("system:dept:add"),
 		oplog.Log(deptLogTitle, enum.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.DeptApiApp.Add)
-	dept.PUT("", satoken.CheckPermission("system:dept:edit"),
+	dept.PUT("", permission.CheckPermission("system:dept:edit"),
 		oplog.Log(deptLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.DeptApiApp.Edit)
 	// 只支持单删：部门有父子关系，批量删无法保证删除顺序。
-	dept.DELETE("/:deptId", satoken.CheckPermission("system:dept:remove"),
+	dept.DELETE("/:deptId", permission.CheckPermission("system:dept:remove"),
 		oplog.Log(deptLogTitle, enum.BusinessTypeDelete), handler.DeptApiApp.Remove)
 
 	// 字典数据与字典类型是 /dict 下两个并列静态段，各自独立注册。
 	// 权限码共用 system:dict:*，非 dict:data/dict:type 分设。
 	dictData := protected.Group("/dict/data")
-	dictData.GET("/list", satoken.CheckPermission("system:dict:list"),
+	dictData.GET("/list", permission.CheckPermission("system:dict:list"),
 		handler.DictDataApiApp.List)
 	// type/:dictType 与 :dictCode 同层但静态段优先，gin 能区分二者，无需调整注册顺序。
 	// 不校验权限码，仅需登录：前端 DictTag 到处渲染字典标签却未必有字典管理权限。
 	dictData.GET("/type/:dictType", sagin.CheckLogin(), handler.DictDataApiApp.DictType)
-	dictData.GET("/:dictCode", satoken.CheckPermission("system:dict:query"),
+	dictData.GET("/:dictCode", permission.CheckPermission("system:dict:query"),
 		handler.DictDataApiApp.GetInfo)
 	// 导出走 POST：前端 commonExport 以 form 表单提交筛选条件。
-	dictData.POST("/export", satoken.CheckPermission("system:dict:export"),
+	dictData.POST("/export", permission.CheckPermission("system:dict:export"),
 		oplog.Log(dictDataLogTitle, enum.BusinessTypeExport), handler.DictDataApiApp.Export)
 	// 路径用 "" 而非 "/"：后者会注册成 /dict/data/。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
-	dictData.POST("", satoken.CheckPermission("system:dict:add"),
+	dictData.POST("", permission.CheckPermission("system:dict:add"),
 		oplog.Log(dictDataLogTitle, enum.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.DictDataApiApp.Add)
-	dictData.PUT("", satoken.CheckPermission("system:dict:edit"),
+	dictData.PUT("", permission.CheckPermission("system:dict:edit"),
 		oplog.Log(dictDataLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.DictDataApiApp.Edit)
-	dictData.DELETE("/:dictCodes", satoken.CheckPermission("system:dict:remove"),
+	dictData.DELETE("/:dictCodes", permission.CheckPermission("system:dict:remove"),
 		oplog.Log(dictDataLogTitle, enum.BusinessTypeDelete), handler.DictDataApiApp.Remove)
 
 	dictType := protected.Group("/dict/type")
-	dictType.GET("/list", satoken.CheckPermission("system:dict:list"),
+	dictType.GET("/list", permission.CheckPermission("system:dict:list"),
 		handler.DictTypeApiApp.List)
 	// optionselect 与 :dictId 同层，静态段优先，无需调整注册顺序。
 	// 不校验权限码，仅需登录：前端选字典时未必有字典管理权限。
 	dictType.GET("/optionselect", sagin.CheckLogin(), handler.DictTypeApiApp.OptionSelect)
-	dictType.GET("/:dictId", satoken.CheckPermission("system:dict:query"),
+	dictType.GET("/:dictId", permission.CheckPermission("system:dict:query"),
 		handler.DictTypeApiApp.GetInfo)
-	dictType.POST("/export", satoken.CheckPermission("system:dict:export"),
+	dictType.POST("/export", permission.CheckPermission("system:dict:export"),
 		oplog.Log(dictTypeLogTitle, enum.BusinessTypeExport), handler.DictTypeApiApp.Export)
-	dictType.POST("", satoken.CheckPermission("system:dict:add"),
+	dictType.POST("", permission.CheckPermission("system:dict:add"),
 		oplog.Log(dictTypeLogTitle, enum.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.DictTypeApiApp.Add)
-	dictType.PUT("", satoken.CheckPermission("system:dict:edit"),
+	dictType.PUT("", permission.CheckPermission("system:dict:edit"),
 		oplog.Log(dictTypeLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.DictTypeApiApp.Edit)
 	// refreshCache 与 :dictIds 同层，静态段优先，无需调整注册顺序。
 	// 权限码用 remove 而非独立的 refresh。
-	dictType.DELETE("/refreshCache", satoken.CheckPermission("system:dict:remove"),
+	dictType.DELETE("/refreshCache", permission.CheckPermission("system:dict:remove"),
 		oplog.Log(dictTypeLogTitle, enum.BusinessTypeClean), handler.DictTypeApiApp.RefreshCache)
-	dictType.DELETE("/:dictIds", satoken.CheckPermission("system:dict:remove"),
+	dictType.DELETE("/:dictIds", permission.CheckPermission("system:dict:remove"),
 		oplog.Log(dictTypeLogTitle, enum.BusinessTypeDelete), handler.DictTypeApiApp.Remove)
 
 	notice := protected.Group("/notice")
-	notice.GET("/list", satoken.CheckPermission("system:notice:list"),
+	notice.GET("/list", permission.CheckPermission("system:notice:list"),
 		handler.NoticeApiApp.List)
-	notice.GET("/:noticeId", satoken.CheckPermission("system:notice:query"),
+	notice.GET("/:noticeId", permission.CheckPermission("system:notice:query"),
 		handler.NoticeApiApp.GetInfo)
 	// 路径用 "" 而非 "/"：后者会注册成 /notice/。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
-	notice.POST("", satoken.CheckPermission("system:notice:add"),
+	notice.POST("", permission.CheckPermission("system:notice:add"),
 		oplog.Log(noticeLogTitle, enum.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.NoticeApiApp.Add)
-	notice.PUT("", satoken.CheckPermission("system:notice:edit"),
+	notice.PUT("", permission.CheckPermission("system:notice:edit"),
 		oplog.Log(noticeLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.NoticeApiApp.Edit)
 	// notice 无导出接口，故不注册 /export。
-	notice.DELETE("/:noticeIds", satoken.CheckPermission("system:notice:remove"),
+	notice.DELETE("/:noticeIds", permission.CheckPermission("system:notice:remove"),
 		oplog.Log(noticeLogTitle, enum.BusinessTypeDelete), handler.NoticeApiApp.Remove)
 
 	post := protected.Group("/post")
-	post.GET("/list", satoken.CheckPermission("system:post:list"), handler.PostApiApp.List)
+	post.GET("/list", permission.CheckPermission("system:post:list"), handler.PostApiApp.List)
 	// optionselect、deptTree 与 :postId 同层但前两者段更具体，
 	// gin 静态段优先，无需调整注册顺序。
-	post.GET("/optionselect", satoken.CheckPermission("system:post:query"),
+	post.GET("/optionselect", permission.CheckPermission("system:post:query"),
 		handler.PostApiApp.OptionSelect)
-	post.GET("/deptTree", satoken.CheckPermission("system:post:list"),
+	post.GET("/deptTree", permission.CheckPermission("system:post:list"),
 		handler.PostApiApp.DeptTree)
-	post.GET("/:postId", satoken.CheckPermission("system:post:query"),
+	post.GET("/:postId", permission.CheckPermission("system:post:query"),
 		handler.PostApiApp.GetInfo)
 	// 导出走 POST：前端 commonExport 以 form 表单 POST 提交筛选条件。
-	post.POST("/export", satoken.CheckPermission("system:post:export"),
+	post.POST("/export", permission.CheckPermission("system:post:export"),
 		oplog.Log(postLogTitle, enum.BusinessTypeExport), handler.PostApiApp.Export)
 	// 路径用 "" 而非 "/"：后者会注册成 /post/。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
-	post.POST("", satoken.CheckPermission("system:post:add"),
+	post.POST("", permission.CheckPermission("system:post:add"),
 		oplog.Log(postLogTitle, enum.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.PostApiApp.Add)
-	post.PUT("", satoken.CheckPermission("system:post:edit"),
+	post.PUT("", permission.CheckPermission("system:post:edit"),
 		oplog.Log(postLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.PostApiApp.Edit)
-	post.DELETE("/:postIds", satoken.CheckPermission("system:post:remove"),
+	post.DELETE("/:postIds", permission.CheckPermission("system:post:remove"),
 		oplog.Log(postLogTitle, enum.BusinessTypeDelete), handler.PostApiApp.Remove)
 
 	// social 不校验权限码，仅需登录：用户查自己的社会化绑定关系不该卡权限。
@@ -328,50 +329,50 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	social.GET("/list", sagin.CheckLogin(), handler.SocialApiApp.List)
 
 	role := protected.Group("/role")
-	role.GET("/list", satoken.CheckPermission("system:role:list"), handler.RoleApiApp.List)
+	role.GET("/list", permission.CheckPermission("system:role:list"), handler.RoleApiApp.List)
 	// optionselect、authUser/*、deptTree/:roleId 与 :roleId 同层但前两者段更具体，
 	// gin 静态段优先，无需调整注册顺序。
-	role.GET("/optionselect", satoken.CheckPermission("system:role:query"),
+	role.GET("/optionselect", permission.CheckPermission("system:role:query"),
 		handler.RoleApiApp.OptionSelect)
-	role.GET("/authUser/allocatedList", satoken.CheckPermission("system:role:list"),
+	role.GET("/authUser/allocatedList", permission.CheckPermission("system:role:list"),
 		handler.RoleApiApp.AllocatedList)
-	role.GET("/authUser/unallocatedList", satoken.CheckPermission("system:role:list"),
+	role.GET("/authUser/unallocatedList", permission.CheckPermission("system:role:list"),
 		handler.RoleApiApp.UnallocatedList)
 	// deptTree/:roleId 取角色部门勾选 + 部门下拉树。
-	role.GET("/deptTree/:roleId", satoken.CheckPermission("system:role:list"),
+	role.GET("/deptTree/:roleId", permission.CheckPermission("system:role:list"),
 		handler.RoleApiApp.DeptTreeSelect)
 	// 导出走 POST：前端以 form 表单 POST 提交筛选条件。
-	role.POST("/export", satoken.CheckPermission("system:role:export"),
+	role.POST("/export", permission.CheckPermission("system:role:export"),
 		oplog.Log(roleLogTitle, enum.BusinessTypeExport), handler.RoleApiApp.Export)
 	// 路径用 "" 而非 "/"：后者会注册成 /role/。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
-	role.POST("", satoken.CheckPermission("system:role:add"),
+	role.POST("", permission.CheckPermission("system:role:add"),
 		oplog.Log(roleLogTitle, enum.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.RoleApiApp.Add)
-	role.PUT("", satoken.CheckPermission("system:role:edit"),
+	role.PUT("", permission.CheckPermission("system:role:edit"),
 		oplog.Log(roleLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.RoleApiApp.Edit)
 	// permission、changeStatus 路径更具体，须注册在 PUT "" 之后。
-	role.PUT("/permission", satoken.CheckPermission("system:role:edit"),
+	role.PUT("/permission", permission.CheckPermission("system:role:edit"),
 		oplog.Log(roleLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.RoleApiApp.EditPermission)
-	role.PUT("/changeStatus", satoken.CheckPermission("system:role:edit"),
+	role.PUT("/changeStatus", permission.CheckPermission("system:role:edit"),
 		oplog.Log(roleLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.RoleApiApp.ChangeStatus)
 	// authUser/cancel、cancelAll、selectAll 是授权操作，businessType=GRANT。
-	role.PUT("/authUser/cancel", satoken.CheckPermission("system:role:edit"),
+	role.PUT("/authUser/cancel", permission.CheckPermission("system:role:edit"),
 		oplog.Log(roleLogTitle, enum.BusinessTypeGrant),
 		repeatsubmit.RepeatSubmit(0, ""), handler.RoleApiApp.CancelAuthUser)
-	role.PUT("/authUser/cancelAll", satoken.CheckPermission("system:role:edit"),
+	role.PUT("/authUser/cancelAll", permission.CheckPermission("system:role:edit"),
 		oplog.Log(roleLogTitle, enum.BusinessTypeGrant),
 		repeatsubmit.RepeatSubmit(0, ""), handler.RoleApiApp.CancelAuthUserAll)
-	role.PUT("/authUser/selectAll", satoken.CheckPermission("system:role:edit"),
+	role.PUT("/authUser/selectAll", permission.CheckPermission("system:role:edit"),
 		oplog.Log(roleLogTitle, enum.BusinessTypeGrant),
 		repeatsubmit.RepeatSubmit(0, ""), handler.RoleApiApp.SelectAuthUserAll)
-	role.GET("/:roleId", satoken.CheckPermission("system:role:query"),
+	role.GET("/:roleId", permission.CheckPermission("system:role:query"),
 		handler.RoleApiApp.GetInfo)
-	role.DELETE("/:roleIds", satoken.CheckPermission("system:role:remove"),
+	role.DELETE("/:roleIds", permission.CheckPermission("system:role:remove"),
 		oplog.Log(roleLogTitle, enum.BusinessTypeDelete), handler.RoleApiApp.Remove)
 }
 

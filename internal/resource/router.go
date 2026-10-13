@@ -16,6 +16,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/xss"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/permission"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
 	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/loginhelper"
@@ -71,41 +72,41 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	// 但先注册更具体的路径可避免 DELETE /oss/config/:ids 被 /oss/:ossIds 吃掉。
 	ossConfig := protected.Group("/oss/config")
 	// 详情页复用 list 权限码而非 query。
-	ossConfig.GET("/list", satoken.CheckPermission("system:ossConfig:list"),
+	ossConfig.GET("/list", permission.CheckPermission("system:ossConfig:list"),
 		handler.OssConfigApiApp.List)
-	ossConfig.GET("/:ossConfigId", satoken.CheckPermission("system:ossConfig:list"),
+	ossConfig.GET("/:ossConfigId", permission.CheckPermission("system:ossConfig:list"),
 		handler.OssConfigApiApp.GetInfo)
 	// 路径用 "" 而非 "/"：后者会注册成 /oss/config/。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行，仍记一条失败日志。
-	ossConfig.POST("", satoken.CheckPermission("system:ossConfig:add"),
+	ossConfig.POST("", permission.CheckPermission("system:ossConfig:add"),
 		oplog.Log(ossConfigLogTitle, enum.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.OssConfigApiApp.Add)
-	ossConfig.PUT("", satoken.CheckPermission("system:ossConfig:edit"),
+	ossConfig.PUT("", permission.CheckPermission("system:ossConfig:edit"),
 		oplog.Log(ossConfigLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.OssConfigApiApp.Edit)
 	// changeStatus 路径更具体，须注册在 PUT "" 之后。挂防重：
 	// 它会把全表刷成非默认再置目标行，重复提交期间存在"一个默认都没有"的窗口。
-	ossConfig.PUT("/changeStatus", satoken.CheckPermission("system:ossConfig:edit"),
+	ossConfig.PUT("/changeStatus", permission.CheckPermission("system:ossConfig:edit"),
 		oplog.Log(ossConfigStatusLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.OssConfigApiApp.ChangeStatus)
-	ossConfig.DELETE("/:ossConfigIds", satoken.CheckPermission("system:ossConfig:remove"),
+	ossConfig.DELETE("/:ossConfigIds", permission.CheckPermission("system:ossConfig:remove"),
 		oplog.Log(ossConfigLogTitle, enum.BusinessTypeDelete), handler.OssConfigApiApp.Remove)
 
 	oss := protected.Group("/oss")
-	oss.GET("/list", satoken.CheckPermission("system:oss:list"), handler.OssApiApp.List)
+	oss.GET("/list", permission.CheckPermission("system:oss:list"), handler.OssApiApp.List)
 	// listByIds/download 与同层的 /:ossIds 段数不同或前缀更具体，gin 能区分，无需调整注册顺序。
-	oss.GET("/listByIds/:ossIds", satoken.CheckPermission("system:oss:query"),
+	oss.GET("/listByIds/:ossIds", permission.CheckPermission("system:oss:query"),
 		handler.OssApiApp.ListByIDs)
-	oss.GET("/download/:ossId", satoken.CheckPermission("system:oss:download"),
+	oss.GET("/download/:ossId", permission.CheckPermission("system:oss:download"),
 		handler.OssApiApp.Download)
 	// upload 不挂防重：同一文件重传是合法诉求，且每次都生成新 key，不存在覆盖。
 	// WithoutRequestData 不可省：oplog 采集入参会对 multipart 请求调 ParseForm，
 	// 那会把整个文件读进内存再塞进 sys_oper_log.oper_param。
-	oss.POST("/upload", satoken.CheckPermission("system:oss:upload"),
+	oss.POST("/upload", permission.CheckPermission("system:oss:upload"),
 		oplog.Log(ossLogTitle, enum.BusinessTypeInsert, oplog.WithoutRequestData()),
 		handler.OssApiApp.Upload)
-	oss.DELETE("/:ossIds", satoken.CheckPermission("system:oss:remove"),
+	oss.DELETE("/:ossIds", permission.CheckPermission("system:oss:remove"),
 		oplog.Log(ossLogTitle, enum.BusinessTypeDelete), handler.OssApiApp.Remove)
 }
 

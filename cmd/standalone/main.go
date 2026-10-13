@@ -62,7 +62,7 @@ func main() {
 	redis.Init(ac.Redis)
 	defer redis.Close()
 
-	satoken.Init(ac.SAToken)
+	satoken.Init(ac.SAToken, redis.Client())
 	// 主键发号器，各业务表主键无 auto_increment，插入前必须就绪。
 	snowflake.Init(ac.Snowflake)
 	// 只构造绘图驱动、不碰 Redis，无前置依赖；校验时才读 Redis。

@@ -32,7 +32,7 @@ func main() {
 	redis.Init(cfg.Redis)
 	defer redis.Close()
 
-	satoken.Init(cfg.SAToken)
+	satoken.Init(cfg.SAToken, redis.Client())
 	// 主键发号器，落库前必须就绪(登录日志插入用)。
 	snowflake.Init(cfg.Snowflake)
 	// 只构造绘图驱动、不碰 Redis，无前置依赖；校验时才读 Redis。
