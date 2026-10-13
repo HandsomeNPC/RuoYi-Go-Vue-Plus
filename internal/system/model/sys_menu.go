@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
+	coremodel "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/strutil"
 )
@@ -38,7 +39,7 @@ type SysMenu struct {
 	// Children 子菜单，非表字段，构建菜单树时由 service 层填充。
 	Children []*SysMenu `gorm:"-" json:"children,omitempty"`
 
-	BaseEntity
+	coremodel.BaseEntity
 }
 
 // TableName 显式指定表名。

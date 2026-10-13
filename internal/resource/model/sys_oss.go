@@ -1,5 +1,9 @@
 package model
 
+import (
+	coremodel "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model"
+)
+
 // SysOss OSS 对象存储表（sys_oss）。
 // ext1 列存 SysOssExt 序列化后的 JSON（见 sys_oss_ext.go）。
 type SysOss struct {
@@ -13,7 +17,7 @@ type SysOss struct {
 	// 下载与删除据此回查配置，默认配置切换后老文件仍走原配置。
 	Service string `gorm:"column:service" json:"service"`
 
-	BaseEntity
+	coremodel.BaseEntity
 }
 
 // TableName 显式指定表名。

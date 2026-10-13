@@ -1,5 +1,9 @@
 package model
 
+import (
+	coremodel "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model"
+)
+
 // SysSocial 社会化关系表（sys_social）。
 //
 // DB 里另有 del_flag 列由框架逻辑删除使用，此处亦不映射，
@@ -28,7 +32,7 @@ type SysSocial struct {
 	OauthToken       string `gorm:"column:oauth_token" json:"oauthToken"`
 	OauthTokenSecret string `gorm:"column:oauth_token_secret" json:"oauthTokenSecret"`
 
-	BaseEntity
+	coremodel.BaseEntity
 }
 
 // TableName 显式指定表名。

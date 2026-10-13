@@ -1,5 +1,9 @@
 package model
 
+import (
+	coremodel "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model"
+)
+
 // SysOssConfig 对象存储配置表（sys_oss_config）。
 type SysOssConfig struct {
 	OssConfigID int64  `gorm:"column:oss_config_id;primaryKey" json:"ossConfigId"`
@@ -21,7 +25,7 @@ type SysOssConfig struct {
 	// 建表 SQL 的注释把 2 写成 custom，与枚举定义不符，以枚举为准。
 	AccessPolicy string `gorm:"column:access_policy" json:"accessPolicy"`
 
-	BaseEntity
+	coremodel.BaseEntity
 }
 
 // TableName 显式指定表名。

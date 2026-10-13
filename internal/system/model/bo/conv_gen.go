@@ -3,7 +3,10 @@
 
 package bo
 
-import model "ruoyi-go-vue-plus/internal/system/model"
+import (
+	model1 "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model"
+	model "ruoyi-go-vue-plus/internal/system/model"
+)
 
 type ConverterImpl struct{}
 
@@ -413,13 +416,13 @@ func (c *ConverterImpl) ConvertToSysUserList(source []*SysUserBo) []*model.SysUs
 	}
 	return pModelSysUserList
 }
-func (c *ConverterImpl) boSysDictDataBoToModelBaseEntity(source SysDictDataBo) model.BaseEntity {
-	var modelBaseEntity model.BaseEntity
+func (c *ConverterImpl) boSysDictDataBoToModelBaseEntity(source SysDictDataBo) model1.BaseEntity {
+	var modelBaseEntity model1.BaseEntity
 	modelBaseEntity.CreateDept = source.CreateDept
 	return modelBaseEntity
 }
-func (c *ConverterImpl) boSysUserBoToModelBaseEntity(source SysUserBo) model.BaseEntity {
-	var modelBaseEntity model.BaseEntity
+func (c *ConverterImpl) boSysUserBoToModelBaseEntity(source SysUserBo) model1.BaseEntity {
+	var modelBaseEntity model1.BaseEntity
 	modelBaseEntity.CreateBy = source.CreateBy
 	modelBaseEntity.UpdateBy = source.UpdateBy
 	return modelBaseEntity

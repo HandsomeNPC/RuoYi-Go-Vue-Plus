@@ -1,5 +1,9 @@
 package model
 
+import (
+	coremodel "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model"
+)
+
 // SysConfig 参数配置表（sys_config）。
 type SysConfig struct {
 	ConfigID    int64  `gorm:"column:config_id;primaryKey" json:"configId"`
@@ -10,7 +14,7 @@ type SysConfig struct {
 	ConfigType string `gorm:"column:config_type" json:"configType"`
 	Remark     string `gorm:"column:remark" json:"remark"`
 
-	BaseEntity
+	coremodel.BaseEntity
 }
 
 // TableName 显式指定表名。

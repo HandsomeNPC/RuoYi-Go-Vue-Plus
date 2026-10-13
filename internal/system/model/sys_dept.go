@@ -1,6 +1,9 @@
 package model
 
-import "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
+import (
+	coremodel "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
+)
 
 // SysDept 部门表（sys_dept）。
 type SysDept struct {
@@ -21,7 +24,7 @@ type SysDept struct {
 
 	// LogicDelete 提供 del_flag 逻辑删除，查询/更新自动过滤已删除记录。
 	repository.LogicDelete
-	BaseEntity
+	coremodel.BaseEntity
 }
 
 // TableName 显式指定表名。

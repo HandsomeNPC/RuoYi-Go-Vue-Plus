@@ -1,5 +1,9 @@
 package model
 
+import (
+	coremodel "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model"
+)
+
 // SysMessage 消息记录表（sys_message）。
 type SysMessage struct {
 	MessageID int64  `gorm:"column:message_id;primaryKey" json:"messageId"`
@@ -14,7 +18,7 @@ type SysMessage struct {
 	// SendUserIDs 目标用户ID串，0 表示全局。
 	SendUserIDs string `gorm:"column:send_user_ids" json:"sendUserIds"`
 
-	BaseEntity
+	coremodel.BaseEntity
 }
 
 // TableName 显式指定表名。

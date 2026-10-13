@@ -3,6 +3,7 @@ package model
 import (
 	"time"
 
+	coremodel "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 )
 
@@ -34,7 +35,7 @@ type SysUser struct {
 
 	// LogicDelete 提供 del_flag 逻辑删除，查询/更新自动过滤已删除记录。
 	repository.LogicDelete
-	BaseEntity
+	coremodel.BaseEntity
 }
 
 // TableName 显式指定表名。

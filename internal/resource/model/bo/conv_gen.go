@@ -3,7 +3,10 @@
 
 package bo
 
-import model "ruoyi-go-vue-plus/internal/resource/model"
+import (
+	model1 "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model"
+	model "ruoyi-go-vue-plus/internal/resource/model"
+)
 
 type ConverterImpl struct{}
 
@@ -65,8 +68,8 @@ func (c *ConverterImpl) ConvertToSysOssList(source []*SysOssBo) []*model.SysOss 
 	}
 	return pModelSysOssList
 }
-func (c *ConverterImpl) boSysOssBoToModelBaseEntity(source SysOssBo) model.BaseEntity {
-	var modelBaseEntity model.BaseEntity
+func (c *ConverterImpl) boSysOssBoToModelBaseEntity(source SysOssBo) model1.BaseEntity {
+	var modelBaseEntity model1.BaseEntity
 	modelBaseEntity.CreateBy = source.CreateBy
 	return modelBaseEntity
 }

@@ -1,5 +1,9 @@
 package model
 
+import (
+	coremodel "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model"
+)
+
 // SysNotice 通知公告表（sys_notice）。
 type SysNotice struct {
 	NoticeID    int64  `gorm:"column:notice_id;primaryKey" json:"noticeId"`
@@ -11,7 +15,7 @@ type SysNotice struct {
 	Status string `gorm:"column:status" json:"status"`
 	Remark string `gorm:"column:remark" json:"remark"`
 
-	BaseEntity
+	coremodel.BaseEntity
 }
 
 // TableName 显式指定表名。

@@ -1,5 +1,9 @@
 package model
 
+import (
+	coremodel "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model"
+)
+
 // SysDictData 字典数据表（sys_dict_data）。
 type SysDictData struct {
 	DictCode  int64  `gorm:"column:dict_code;primaryKey" json:"dictCode"`
@@ -13,7 +17,7 @@ type SysDictData struct {
 	IsDefault string `gorm:"column:is_default" json:"isDefault"`
 	Remark    string `gorm:"column:remark" json:"remark"`
 
-	BaseEntity
+	coremodel.BaseEntity
 }
 
 // TableName 显式指定表名。

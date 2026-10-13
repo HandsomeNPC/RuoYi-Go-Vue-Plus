@@ -1,6 +1,9 @@
 package model
 
-import "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
+import (
+	coremodel "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
+)
 
 // SysClient 系统授权表。纯 POJO，规则串的切分/归一化逻辑在 service 层。
 type SysClient struct {
@@ -30,7 +33,7 @@ type SysClient struct {
 
 	// LogicDelete 提供 del_flag 逻辑删除，查询/更新自动过滤已删除记录。
 	repository.LogicDelete
-	BaseEntity
+	coremodel.BaseEntity
 }
 
 // TableName 显式指定表名。
