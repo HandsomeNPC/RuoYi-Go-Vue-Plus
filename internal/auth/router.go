@@ -14,9 +14,9 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatablebody"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/trace"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/xss"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/audit"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/recover"
 	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/loginhelper"
 	authconfig "ruoyi-go-vue-plus/internal/auth/config"
 	"ruoyi-go-vue-plus/internal/auth/handler"
 )
@@ -28,7 +28,7 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	g := r.Group(prefix)
 	// AuditContext 须排在 TokenInterceptor 之后。auth 现有接口写的 sys_login_info 无审计列，
 	// 这里挂上是为了将来加注册/改密码等写接口时不会静默把 create_by 落成 -1。
-	g.Use(plugin.TokenInterceptor(), loginhelper.AuditContext())
+	g.Use(plugin.TokenInterceptor(), audit.AuditContext())
 	{
 		g.POST("/login", sagin.Ignore(), enc, handler.AuthApiApp.Login)
 		g.POST("/logout", sagin.Ignore(), handler.AuthApiApp.Logout)

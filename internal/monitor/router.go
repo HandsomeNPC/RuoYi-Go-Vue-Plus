@@ -13,11 +13,11 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/trace"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/xss"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/audit"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/permission"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/recover"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/operlog"
 	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/loginhelper"
 	monitorconfig "ruoyi-go-vue-plus/internal/monitor/config"
 	"ruoyi-go-vue-plus/internal/monitor/handler"
 )
@@ -43,7 +43,7 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	plugin := sagin.NewPlugin(satoken.Manager())
 
 	g := r.Group(prefix)
-	g.Use(plugin.TokenInterceptor(), loginhelper.AuditContext())
+	g.Use(plugin.TokenInterceptor(), audit.AuditContext())
 
 	cache := g.Group("/cache")
 	cache.GET("", permission.CheckPermission("monitor:cache:list"), handler.CacheApiApp.GetInfo)

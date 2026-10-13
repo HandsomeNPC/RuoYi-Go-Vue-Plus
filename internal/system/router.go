@@ -15,11 +15,11 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/xss"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/audit"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/permission"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/recover"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/operlog"
 	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/loginhelper"
 	systemconfig "ruoyi-go-vue-plus/internal/system/config"
 	"ruoyi-go-vue-plus/internal/system/handler"
 )
@@ -56,7 +56,7 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	})
 	protected := r.Group(prefix)
 	// AuditContext 须排在 TokenInterceptor 之后：它取的登录态依赖后者解析出的 token。
-	protected.Use(plugin.TokenInterceptor(), loginhelper.AuditContext())
+	protected.Use(plugin.TokenInterceptor(), audit.AuditContext())
 	user := protected.Group("/user")
 	user.GET("/getInfo", sagin.CheckLogin(), handler.UserApiApp.GetInfo)
 	// 个人信息：不校验权限码，仅需登录——用户改自己的资料不该卡权限。
