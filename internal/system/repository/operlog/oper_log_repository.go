@@ -63,7 +63,6 @@ func SelectList(ctx context.Context, q bo.SysOperLogQueryBo,
 // applyOperLogQuery 应用操作日志查询条件：
 // operIp/title/operName/browser/os 走 like，businessType/status/userId/deptId/clientKey/deviceType
 // 走 eq，businessTypes 走 in，oper_time 走闭区间；空串/零值一概不筛。
-// escapeLike 复用 config_repository.go 同包定义。
 func applyOperLogQuery(db *gorm.DB, q bo.SysOperLogQueryBo) *gorm.DB {
 	if q.OperIP != "" {
 		db = db.Where("oper_ip LIKE ?", "%"+pkgrepo.EscapeLike(q.OperIP)+"%")

@@ -63,7 +63,6 @@ func SelectList(ctx context.Context, q bo.SysLoginInfoQueryBo,
 // applyLoginInfoQuery 应用登录日志查询条件：
 // ipaddr/userName 走 like，status 走 eq，login_time 走闭区间；空串一概不筛。
 // 分页与导出两条路径必须共用它，否则过滤逻辑改一处漏一处。
-// escapeLike 复用 config_repository.go 同包定义。
 func applyLoginInfoQuery(db *gorm.DB, q bo.SysLoginInfoQueryBo) *gorm.DB {
 	if q.IPAddr != "" {
 		db = db.Where("ipaddr LIKE ?", "%"+pkgrepo.EscapeLike(q.IPAddr)+"%")
