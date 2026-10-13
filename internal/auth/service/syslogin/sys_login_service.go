@@ -15,12 +15,11 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/oauth2"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
-	domain "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/domain"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	authmodel "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/utils/loginhelper"
 	authconfig "ruoyi-go-vue-plus/internal/auth/config"
+	syscons "ruoyi-go-vue-plus/internal/system/constant"
 	systembo "ruoyi-go-vue-plus/internal/system/model/bo"
 	systemdto "ruoyi-go-vue-plus/internal/system/model/dto"
 	systemvo "ruoyi-go-vue-plus/internal/system/model/vo"
@@ -166,7 +165,7 @@ func RecordOnlineUser(lu *authmodel.LoginUser, token string) {
 	if lu == nil || token == "" {
 		return
 	}
-	dto := domain.UserOnlineDTO{
+	dto := UserOnlineDTO{
 		TokenID:       token,
 		DeptName:      lu.DeptName,
 		UserName:      lu.Username,
@@ -183,7 +182,7 @@ func RecordOnlineUser(lu *authmodel.LoginUser, token string) {
 		log.Printf("[auth] 序列化在线用户摘要失败: %v", err)
 		return
 	}
-	key := constant.OnlineTokenKeyPrefix + token
+	key := OnlineTokenKeyPrefix + token
 	// 取 token 剩余 TTL 镜像设值：-1 永不过期则不设 TTL，-2/0 以下视为令牌已失效，不写。
 	ttl, err := sagin.GetManager().GetTokenTimeout(token)
 	if err != nil {
@@ -218,7 +217,7 @@ func Logout(req *http.Request, token string) {
 		return
 	}
 	if loginUser := loginhelper.GetLoginUserByToken(token); loginUser != nil {
-		RecordLoginInfo(req, loginUser.Username, constant.ConstantLogout, "退出成功")
+		RecordLoginInfo(req, loginUser.Username, syscons.Logout, "退出成功")
 	}
 	// 注销：删 token 信息、账号映射、token-session。
 	if err := sagin.LogoutByToken(token); err != nil {
@@ -251,7 +250,7 @@ func RecordLoginInfo(req *http.Request, username, status, message string) {
 
 // CheckLogin 执行登录失败次数校验，并在成功后清空失败计数。
 // req 除了提供 ctx，还用于记录登录日志（取 IP/UA/clientid）。
-func CheckLogin(req *http.Request, loginType enum.LoginType,
+func CheckLogin(req *http.Request, loginType LoginType,
 	username string, authSuccess func() bool) error {
 
 	ctx := context.Background()
@@ -259,7 +258,7 @@ func CheckLogin(req *http.Request, loginType enum.LoginType,
 		ctx = req.Context()
 	}
 
-	key := constant.PwdErrCntKeyPrefix + username
+	key := PwdErrCntKeyPrefix + username
 	passwdCfg := authconfig.Get().User.Password
 	maxRetry := passwdCfg.MaxRetryCount
 	lockMinutes := passwdCfg.LockTime
@@ -274,7 +273,7 @@ func CheckLogin(req *http.Request, loginType enum.LoginType,
 	// 锁定时间内登录则踢出。
 	if errorNumber >= maxRetry {
 		msg := loginType.RetryExceedMsg(maxRetry, lockMinutes)
-		RecordLoginInfo(req, username, constant.ConstantLoginFail, msg)
+		RecordLoginInfo(req, username, syscons.LoginFail, msg)
 		return errs.New(0, msg, "")
 	}
 
@@ -287,11 +286,11 @@ func CheckLogin(req *http.Request, loginType enum.LoginType,
 		if errorNumber >= maxRetry {
 			// 达上限则锁定。
 			msg := loginType.RetryExceedMsg(maxRetry, lockMinutes)
-			RecordLoginInfo(req, username, constant.ConstantLoginFail, msg)
+			RecordLoginInfo(req, username, syscons.LoginFail, msg)
 			return errs.New(0, msg, "")
 		}
 		msg := loginType.RetryCountMsg(errorNumber)
-		RecordLoginInfo(req, username, constant.ConstantLoginFail, msg)
+		RecordLoginInfo(req, username, syscons.LoginFail, msg)
 		return errs.New(0, msg, "")
 	}
 

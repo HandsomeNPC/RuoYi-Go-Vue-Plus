@@ -13,13 +13,13 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/cache"
 	"github.com/HandsomeNPC/ruoyi-common-go/excelhelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/utils/loginhelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
+	sysloginservice "ruoyi-go-vue-plus/internal/auth/service/syslogin"
+	syscons "ruoyi-go-vue-plus/internal/system/constant"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	"ruoyi-go-vue-plus/internal/system/repository/dept"
@@ -66,7 +66,7 @@ func LoadUserByUsername(ctx context.Context, username string) (*vo.SysUserVo, er
 		return nil, err
 	}
 	user := vo.Conv.ConvertToSysUserVo(entity)
-	if user.Status == enum.UserStatusDisable.Code {
+	if user.Status == syscons.UserStatusDisable.Code {
 		log.Printf("[auth] 登录用户: %s 已被停用", username)
 		return nil, errs.New(0, fmt.Sprintf("对不起，您的账号：%v 已禁用，请联系管理员", username), "")
 	}
@@ -84,7 +84,7 @@ func LoadUserByPhone(ctx context.Context, phone string) (*vo.SysUserVo, error) {
 		return nil, err
 	}
 	user := vo.Conv.ConvertToSysUserVo(entity)
-	if user.Status == enum.UserStatusDisable.Code {
+	if user.Status == syscons.UserStatusDisable.Code {
 		log.Printf("[auth] 登录用户: %s 已被停用", phone)
 		return nil, errs.New(0, fmt.Sprintf("对不起，您的账号：%v 已禁用，请联系管理员", phone), "")
 	}
@@ -102,7 +102,7 @@ func LoadUserByEmail(ctx context.Context, email string) (*vo.SysUserVo, error) {
 		return nil, err
 	}
 	user := vo.Conv.ConvertToSysUserVo(entity)
-	if user.Status == enum.UserStatusDisable.Code {
+	if user.Status == syscons.UserStatusDisable.Code {
 		log.Printf("[auth] 登录用户: %s 已被停用", email)
 		return nil, errs.New(0, fmt.Sprintf("对不起，您的账号：%v 已禁用，请联系管理员", email), "")
 	}
@@ -121,7 +121,7 @@ func LoadUserByID(ctx context.Context, userID int64) (*vo.SysUserVo, error) {
 		return nil, err
 	}
 	user := vo.Conv.ConvertToSysUserVo(entity)
-	if user.Status == enum.UserStatusDisable.Code {
+	if user.Status == syscons.UserStatusDisable.Code {
 		log.Printf("[auth] 登录用户: %d 已被停用", userID)
 		return nil, errs.New(0, fmt.Sprintf("对不起，您的账号：%v 已禁用，请联系管理员", ""), "")
 	}
@@ -708,7 +708,7 @@ func UpdateUser(ctx context.Context, b *bo.SysUserBo) error {
 		return ErrUserUpdateFailed
 	}
 	// 失效该用户昵称缓存。
-	_ = cache.Evict(ctx, redis.Client(), constant.CacheSysNickname, strconv.FormatInt(b.UserID, 10))
+	_ = cache.Evict(ctx, redis.Client(), syscons.CacheSysNickname, strconv.FormatInt(b.UserID, 10))
 	return nil
 }
 
@@ -833,7 +833,7 @@ func Unlock(ctx context.Context, userID int64) error {
 	if user == nil {
 		return errs.New(0, "用户不存在", "")
 	}
-	key := constant.PwdErrCntKeyPrefix + user.UserName
+	key := sysloginservice.PwdErrCntKeyPrefix + user.UserName
 	if err := redis.Client().Del(ctx, key).Err(); err != nil {
 		log.Printf("[user] 清除用户 %s 密码错误次数失败: %v", user.UserName, err)
 	}
@@ -874,7 +874,7 @@ func GetUserInfoByID(ctx context.Context,
 			}
 		}
 	}
-	roles, err := roleservice.SelectRoleList(ctx, bo.SysRoleQueryBo{Status: constant.StatusNormal})
+	roles, err := roleservice.SelectRoleList(ctx, bo.SysRoleQueryBo{Status: syscons.StatusNormal})
 	if err != nil {
 		return nil, err
 	}
@@ -946,7 +946,7 @@ func insertUserRole(ctx context.Context, userID int64,
 	if !loginhelper.IsSuperAdmin(userID) {
 		filtered := make([]int64, 0, len(roleIDs))
 		for _, rid := range roleIDs {
-			if rid != constant.SuperAdminRoleID {
+			if rid != syscons.SuperAdminRoleID {
 				filtered = append(filtered, rid)
 			}
 		}
@@ -1003,7 +1003,7 @@ func filterSuperAdminRoles(roles []*vo.SysRoleVo, userID int64) []*vo.SysRoleVo 
 	}
 	out := make([]*vo.SysRoleVo, 0, len(roles))
 	for _, r := range roles {
-		if r != nil && r.RoleID == constant.SuperAdminRoleID {
+		if r != nil && r.RoleID == syscons.SuperAdminRoleID {
 			continue
 		}
 		out = append(out, r)

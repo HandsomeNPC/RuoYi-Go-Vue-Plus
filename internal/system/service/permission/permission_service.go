@@ -3,8 +3,8 @@ package permission
 import (
 	"context"
 
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	domain "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/domain"
+	syscons "ruoyi-go-vue-plus/internal/system/constant"
 	menuservice "ruoyi-go-vue-plus/internal/system/service/menu"
 	roleservice "ruoyi-go-vue-plus/internal/system/service/role"
 )
@@ -12,8 +12,8 @@ import (
 // GetRolePermission 获取角色权限标识。
 // 超级管理员拥有固定角色键，其余用户取其关联角色的 roleKey。
 func GetRolePermission(ctx context.Context, userID int64) ([]string, error) {
-	if userID == constant.SuperAdminUserID {
-		return []string{constant.SuperAdminRoleKey}, nil
+	if userID == syscons.SuperAdminUserID {
+		return []string{syscons.SuperAdminRoleKey}, nil
 	}
 	return roleservice.SelectRolePermissionByUserId(ctx, userID)
 }
@@ -21,7 +21,7 @@ func GetRolePermission(ctx context.Context, userID int64) ([]string, error) {
 // GetMenuPermission 获取菜单权限标识。
 // 超级管理员拥有全部权限（*:*:*），其余用户取其角色关联的菜单 perms。
 func GetMenuPermission(ctx context.Context, userID int64) ([]string, error) {
-	if userID == constant.SuperAdminUserID {
+	if userID == syscons.SuperAdminUserID {
 		return []string{"*:*:*"}, nil
 	}
 	return menuservice.SelectMenuPermsByUserId(ctx, userID)

@@ -11,7 +11,7 @@ import (
 	goredis "github.com/redis/go-redis/v9"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/oauth2"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
+	sysloginservice "ruoyi-go-vue-plus/internal/auth/service/syslogin"
 )
 
 // manager 由 Init 写入。用 atomic.Pointer 而非裸变量：
@@ -22,7 +22,7 @@ var manager atomic.Pointer[oauth2.Manager]
 // 须在 redis.Init 之后传入 redis.Client()——多进程部署下授权跳转与回调
 // 可能落在不同进程，state 只能存 Redis，不能用 oauth2.NewMemoryStore。
 func Init(cfg oauth2.Config, rdb *goredis.Client) error {
-	m, err := oauth2.New(cfg, oauth2.NewRedisStore(rdb, constant.SocialAuthCodeKey))
+	m, err := oauth2.New(cfg, oauth2.NewRedisStore(rdb, sysloginservice.SocialAuthCodeKey))
 	if err != nil {
 		return err
 	}

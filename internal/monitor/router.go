@@ -12,11 +12,10 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatsubmit"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/trace"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/xss"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/audit"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/operlog"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/permission"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/recover"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/operlog"
 	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
 	monitorconfig "ruoyi-go-vue-plus/internal/monitor/config"
 	"ruoyi-go-vue-plus/internal/monitor/handler"
@@ -51,40 +50,40 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	loginInfo := g.Group("/loginInfo")
 	loginInfo.GET("/list", permission.CheckPermission("monitor:logininfo:list"), handler.LoginInfoApiApp.List)
 	loginInfo.POST("/export", permission.CheckPermission("monitor:logininfo:export"),
-		operlog.Log(loginInfoLogTitle, enum.BusinessTypeExport), handler.LoginInfoApiApp.Export)
+		operlog.Log(loginInfoLogTitle, operlog.BusinessTypeExport), handler.LoginInfoApiApp.Export)
 	// clean 与 :infoIds 同层，静态段优先，gin 能区分二者，无需调整注册顺序。
 	// 权限码用 remove，两处复用。
 	loginInfo.DELETE("/clean", permission.CheckPermission("monitor:logininfo:remove"),
-		operlog.Log(loginInfoLogTitle, enum.BusinessTypeClean), handler.LoginInfoApiApp.Clean)
+		operlog.Log(loginInfoLogTitle, operlog.BusinessTypeClean), handler.LoginInfoApiApp.Clean)
 	loginInfo.DELETE("/:infoIds", permission.CheckPermission("monitor:logininfo:remove"),
-		operlog.Log(loginInfoLogTitle, enum.BusinessTypeDelete), handler.LoginInfoApiApp.Remove)
+		operlog.Log(loginInfoLogTitle, operlog.BusinessTypeDelete), handler.LoginInfoApiApp.Remove)
 	// unlock 需登录即可；
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	loginInfo.GET("/unlock/:userName", permission.CheckPermission("monitor:logininfo:unlock"),
-		operlog.Log(loginInfoLogTitle, enum.BusinessTypeOther),
+		operlog.Log(loginInfoLogTitle, operlog.BusinessTypeOther),
 		repeatsubmit.RepeatSubmit(0, ""), handler.LoginInfoApiApp.Unlock)
 
 	operLog := g.Group("/operlog")
 	operLog.GET("/list", permission.CheckPermission("monitor:operlog:list"), handler.OperLogApiApp.List)
 	operLog.POST("/export", permission.CheckPermission("monitor:operlog:export"),
-		operlog.Log(operLogLogTitle, enum.BusinessTypeExport), handler.OperLogApiApp.Export)
+		operlog.Log(operLogLogTitle, operlog.BusinessTypeExport), handler.OperLogApiApp.Export)
 	// clean 与 :operIds 同层，静态段优先，gin 能区分二者，无需调整注册顺序（与 loginInfo 同理）。
 	// 权限码用 remove，两处复用。
 	operLog.DELETE("/clean", permission.CheckPermission("monitor:operlog:remove"),
-		operlog.Log(operLogLogTitle, enum.BusinessTypeClean), handler.OperLogApiApp.Clean)
+		operlog.Log(operLogLogTitle, operlog.BusinessTypeClean), handler.OperLogApiApp.Clean)
 	operLog.DELETE("/:operIds", permission.CheckPermission("monitor:operlog:remove"),
-		operlog.Log(operLogLogTitle, enum.BusinessTypeDelete), handler.OperLogApiApp.Remove)
+		operlog.Log(operLogLogTitle, operlog.BusinessTypeDelete), handler.OperLogApiApp.Remove)
 
 	// online 在线用户监控。getInfo/remove 只需登录(操作自身会话)，list/forceLogout 需权限码。
 	// /myself/:tokenId 与 /:tokenId 段数不同，gin 按深度区分，无路由冲突。
 	online := g.Group("/online")
 	online.GET("/list", permission.CheckPermission("monitor:online:list"), handler.UserOnlineApiApp.List)
 	online.DELETE("/:tokenId", permission.CheckPermission("monitor:online:forceLogout"),
-		operlog.Log(userOnlineLogTitle, enum.BusinessTypeForce),
+		operlog.Log(userOnlineLogTitle, operlog.BusinessTypeForce),
 		repeatsubmit.RepeatSubmit(0, ""), handler.UserOnlineApiApp.ForceLogout)
 	online.GET("", handler.UserOnlineApiApp.GetInfo)
 	online.DELETE("/myself/:tokenId",
-		operlog.Log(userDeviceLogTitle, enum.BusinessTypeForce),
+		operlog.Log(userDeviceLogTitle, operlog.BusinessTypeForce),
 		repeatsubmit.RepeatSubmit(0, ""), handler.UserOnlineApiApp.Remove)
 
 	// 探针，与 system/auth 对齐。

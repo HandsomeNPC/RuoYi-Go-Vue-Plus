@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
+	syscons "ruoyi-go-vue-plus/internal/system/constant"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	"ruoyi-go-vue-plus/internal/system/repository/dept"
@@ -175,7 +175,7 @@ func UpdatePost(ctx context.Context, b *bo.SysPostBo) error {
 		return ErrPostCodeExists
 	}
 	// 停用前确认没有用户引用：否则会让已分配该岗位的用户挂在停用岗位上。
-	if b.Status == constant.StatusDisable {
+	if b.Status == syscons.StatusDisable {
 		count, err := CountUserPostByID(ctx, b.PostID)
 		if err != nil {
 			return err

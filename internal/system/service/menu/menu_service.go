@@ -7,17 +7,18 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/utils/loginhelper"
-	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
+	syscons "ruoyi-go-vue-plus/internal/system/constant"
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	menurepository "ruoyi-go-vue-plus/internal/system/repository/menu"
 	"ruoyi-go-vue-plus/internal/system/repository/role"
 	roleservice "ruoyi-go-vue-plus/internal/system/service/role"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/utils/loginhelper"
+	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/strutil"
 	"github.com/HandsomeNPC/ruoyi-common-go/treeutil"
@@ -85,7 +86,7 @@ func SelectMenuTreeByUserId(ctx context.Context, userID int64) ([]*model.SysMenu
 	if err != nil {
 		return nil, err
 	}
-	return treeutil.AssembleTree(menus, constant.ConstantTopParentID,
+	return treeutil.AssembleTree(menus, syscons.TopParentID,
 		func(m *model.SysMenu) int64 { return m.MenuID },
 		func(m *model.SysMenu) int64 { return m.ParentID },
 		func(m *model.SysMenu, children []*model.SysMenu) { m.Children = children }), nil
@@ -97,18 +98,18 @@ func BuildMenus(menus []*model.SysMenu) []*vo.RouterVo {
 	routers := make([]*vo.RouterVo, 0, len(menus))
 	for _, menu := range menus {
 		router := &vo.RouterVo{
-			Hidden:    menu.Visible == constant.StatusDisable,
+			Hidden:    menu.Visible == syscons.StatusDisable,
 			Name:      menu.RouteName() + strconv.FormatInt(menu.MenuID, 10),
 			Path:      menu.RouterPath(),
 			Component: menu.ComponentInfo(),
 			Query:     menu.QueryParam,
 			Ext:       menu.Ext,
 			Meta: vo.NewMetaVo(menu.MenuName, menu.Icon,
-				menu.IsCache == constant.No, menu.Path, menu.ActiveMenu),
+				menu.IsCache == syscons.No, menu.Path, menu.ActiveMenu),
 		}
 
 		switch {
-		case len(menu.Children) > 0 && menu.MenuType == constant.MenuTypeDir:
+		case len(menu.Children) > 0 && menu.MenuType == syscons.MenuTypeDir:
 			alwaysShow := true
 			router.AlwaysShow = &alwaysShow
 			// noRedirect 让面包屑里的该级不可点击。
@@ -123,18 +124,18 @@ func BuildMenus(menus []*model.SysMenu) []*vo.RouterVo {
 				Component: menu.Component,
 				Name:      strutil.Capitalize(menu.Path) + strconv.FormatInt(menu.MenuID, 10),
 				Meta: vo.NewMetaVo(menu.MenuName, menu.Icon,
-					menu.IsCache == constant.No, menu.Path, menu.ActiveMenu),
+					menu.IsCache == syscons.No, menu.Path, menu.ActiveMenu),
 				Query: menu.QueryParam,
 				Ext:   menu.Ext,
 			}}
 
-		case menu.ParentID == constant.ConstantTopParentID && menu.IsInnerLink():
+		case menu.ParentID == syscons.TopParentID && menu.IsInnerLink():
 			router.Meta = vo.NewMetaVo(menu.MenuName, menu.Icon, false, "", "")
 			router.Path = "/"
 			routerPath := model.InnerLinkReplaceEach(menu.Path)
 			router.Children = []*vo.RouterVo{{
 				Path:      routerPath,
-				Component: constant.ComponentInnerLink,
+				Component: syscons.ComponentInnerLink,
 				Name:      strutil.Capitalize(routerPath) + strconv.FormatInt(menu.MenuID, 10),
 				// 内链把原始 http 地址塞进 meta.link 供 iframe 加载。
 				Meta: vo.NewMetaVo(menu.MenuName, menu.Icon, false, menu.Path, ""),
@@ -185,7 +186,7 @@ func QueryByID(ctx context.Context, menuID int64) (*vo.SysMenuVo, error) {
 // 四个 Extra 键），不是 SysMenuVo 本身。根节点固定取 0——菜单列表按 parent_id 升序，
 // 首元素必是顶级菜单。
 func BuildMenuTreeSelect(menus []*vo.SysMenuVo) []*treeutil.Tree[int64] {
-	return treeutil.BuildTree(menus, constant.ConstantTopParentID,
+	return treeutil.BuildTree(menus, syscons.TopParentID,
 		func(m *vo.SysMenuVo, node *treeutil.Tree[int64]) {
 			node.ID = m.MenuID
 			node.ParentID = m.ParentID
@@ -284,7 +285,7 @@ func validateMenu(ctx context.Context, b *bo.SysMenuBo, excludeID int64) error {
 		return ErrMenuNameExists
 	}
 	// 外链菜单的 path 直接给浏览器跳转用，不是 http 地址会拼出打不开的链接。
-	if b.IsFrame == constant.Yes && !strutil.IsHTTP(b.Path) {
+	if b.IsFrame == syscons.Yes && !strutil.IsHTTP(b.Path) {
 		return ErrMenuFrameNeedHTTP
 	}
 	// 认自己作父会让菜单树自指，构树时直接成环。新增时 excludeID 为 0，无需校验。
@@ -304,7 +305,7 @@ func validateMenu(ctx context.Context, b *bo.SysMenuBo, excludeID int64) error {
 // checkRouteConfigUnique 校验路由组合是否唯一。
 // 按钮无路由，直接放行。
 func checkRouteConfigUnique(ctx context.Context, b *bo.SysMenuBo) (bool, error) {
-	if b.MenuType == constant.MenuTypeButton {
+	if b.MenuType == syscons.MenuTypeButton {
 		return true, nil
 	}
 
@@ -339,8 +340,8 @@ func routeConfigUnique(b *bo.SysMenuBo, routeName string, candidates []*model.Sy
 		//
 		// 这条分支实际不可达：两者 parentID 同为 0 时第一条已命中。
 		case strings.EqualFold(b.Path, db.Path) &&
-			b.ParentID == constant.ConstantTopParentID &&
-			db.ParentID == constant.ConstantTopParentID:
+			b.ParentID == syscons.TopParentID &&
+			db.ParentID == syscons.TopParentID:
 			log.Printf("[menu] 根目录路由冲突: 根目录下路由 %q 必须唯一，已被菜单 %q 占用",
 				b.Path, db.MenuName)
 			return false
@@ -360,7 +361,7 @@ func routeConfigUnique(b *bo.SysMenuBo, routeName string, candidates []*model.Sy
 // 这条规则只落在实体方法里，重写必然漂移。
 func menuRouteName(path, menuType string, parentID int64) string {
 	m := &model.SysMenu{Path: path, MenuType: menuType, ParentID: parentID,
-		IsFrame: constant.No}
+		IsFrame: syscons.No}
 	if rn := m.RouteName(); rn != "" {
 		return rn
 	}

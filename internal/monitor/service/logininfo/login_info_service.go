@@ -7,8 +7,8 @@ import (
 	"fmt"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
+	sysloginservice "ruoyi-go-vue-plus/internal/auth/service/syslogin"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	logininforepository "ruoyi-go-vue-plus/internal/system/repository/logininfo"
@@ -64,7 +64,7 @@ func Unlock(ctx context.Context, userName string) error {
 	if userName == "" {
 		return fmt.Errorf("service: 用户名不能为空")
 	}
-	key := constant.PwdErrCntKeyPrefix + userName
+	key := sysloginservice.PwdErrCntKeyPrefix + userName
 	if err := redis.Client().Del(ctx, key).Err(); err != nil {
 		return fmt.Errorf("service: 解锁用户 %s 失败: %w", userName, err)
 	}

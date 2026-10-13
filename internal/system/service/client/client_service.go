@@ -9,8 +9,8 @@ import (
 
 	"github.com/HandsomeNPC/ruoyi-common-go/cache"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
+	syscons "ruoyi-go-vue-plus/internal/system/constant"
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
@@ -27,7 +27,7 @@ var ErrClientKeyExists = errors.New("service: 客户端key已存在")
 // 不存在时返回 ErrClientNotFound，返回填充好 *List 字段的 VO。
 func QueryByClientID(ctx context.Context, clientID string) (*vo.SysClientVo, error) {
 	var out vo.SysClientVo
-	if hit, _ := cache.Get(ctx, redis.Client(), constant.CacheSysClient, clientID, &out); hit {
+	if hit, _ := cache.Get(ctx, redis.Client(), syscons.CacheSysClient, clientID, &out); hit {
 		return &out, nil
 	}
 
@@ -40,7 +40,7 @@ func QueryByClientID(ctx context.Context, clientID string) (*vo.SysClientVo, err
 	}
 	ptr := vo.Conv.ConvertToSysClientVo(c)
 	fillRuleFields(ptr)
-	_ = cache.Put(ctx, redis.Client(), constant.CacheSysClient, clientID, ptr, constant.CacheTTLSysClient)
+	_ = cache.Put(ctx, redis.Client(), syscons.CacheSysClient, clientID, ptr, syscons.CacheTTLSysClient)
 	return ptr, nil
 }
 
@@ -156,7 +156,7 @@ func UpdateByBo(ctx context.Context, b *bo.SysClientBo) error {
 	if affected == 0 {
 		return ErrClientNotFound
 	}
-	_ = cache.Evict(ctx, redis.Client(), constant.CacheSysClient, b.ClientID)
+	_ = cache.Evict(ctx, redis.Client(), syscons.CacheSysClient, b.ClientID)
 	return nil
 }
 
@@ -206,7 +206,7 @@ func UpdateClientStatus(ctx context.Context, clientID, status string) error {
 	if affected == 0 {
 		return ErrClientNotFound
 	}
-	_ = cache.Evict(ctx, redis.Client(), constant.CacheSysClient, clientID)
+	_ = cache.Evict(ctx, redis.Client(), syscons.CacheSysClient, clientID)
 	return nil
 }
 
@@ -224,7 +224,7 @@ func DeleteWithValidByIDs(ctx context.Context, ids []int64) error {
 	if affected == 0 {
 		return ErrClientNotFound
 	}
-	_ = cache.EvictGroup(ctx, redis.Client(), constant.CacheSysClient)
+	_ = cache.EvictGroup(ctx, redis.Client(), syscons.CacheSysClient)
 	return nil
 }
 

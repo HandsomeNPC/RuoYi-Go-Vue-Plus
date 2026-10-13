@@ -7,10 +7,10 @@ import (
 
 	"github.com/HandsomeNPC/ruoyi-common-go/cache"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
+	syscons "ruoyi-go-vue-plus/internal/system/constant"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	"ruoyi-go-vue-plus/internal/system/repository/dictdata"
@@ -112,8 +112,8 @@ func InsertDictType(ctx context.Context, b *bo.SysDictTypeBo) error {
 	}
 	b.DictID = add.DictID
 	// 新类型下必然还没有字典数据，写入空列表防缓存穿透。
-	_ = cache.Put(ctx, redis.Client(), constant.CacheSysDict, add.DictType, []*vo.SysDictDataVo{},
-		constant.CacheTTLSysDict)
+	_ = cache.Put(ctx, redis.Client(), syscons.CacheSysDict, add.DictType, []*vo.SysDictDataVo{},
+		syscons.CacheTTLSysDict)
 	return nil
 }
 
@@ -166,13 +166,13 @@ func UpdateDictType(ctx context.Context, b *bo.SysDictTypeBo) error {
 
 	// 旧类型名的两组缓存会成为无人回收的孤儿，按旧名失效。
 	if old.DictType != b.DictType {
-		_ = cache.Evict(ctx, redis.Client(), constant.CacheSysDict, old.DictType)
-		_ = cache.Evict(ctx, redis.Client(), constant.CacheSysDictType, old.DictType)
+		_ = cache.Evict(ctx, redis.Client(), syscons.CacheSysDict, old.DictType)
+		_ = cache.Evict(ctx, redis.Client(), syscons.CacheSysDictType, old.DictType)
 	}
 	// 回写新类型名下的字典数据列表。查库失败不影响改类型本身已成功，
 	// 缓存留空下次读时自然回填。
 	if list, err := selectDictDataByTypeUncached(ctx, b.DictType); err == nil {
-		_ = cache.Put(ctx, redis.Client(), constant.CacheSysDict, b.DictType, list, constant.CacheTTLSysDict)
+		_ = cache.Put(ctx, redis.Client(), syscons.CacheSysDict, b.DictType, list, syscons.CacheTTLSysDict)
 	}
 	return nil
 }
@@ -218,8 +218,8 @@ func DeleteDictTypeByIDs(ctx context.Context, ids []int64) error {
 	// 删除后再失效：提前清缓存会让删除失败时白丢一批热数据。
 	// 按实际命中的行逐个清，缺失的主键本来也没有对应缓存。
 	for _, dict := range rows {
-		_ = cache.Evict(ctx, redis.Client(), constant.CacheSysDict, dict.DictType)
-		_ = cache.Evict(ctx, redis.Client(), constant.CacheSysDictType, dict.DictType)
+		_ = cache.Evict(ctx, redis.Client(), syscons.CacheSysDict, dict.DictType)
+		_ = cache.Evict(ctx, redis.Client(), syscons.CacheSysDictType, dict.DictType)
 	}
 	return nil
 }
@@ -227,10 +227,10 @@ func DeleteDictTypeByIDs(ctx context.Context, ids []int64) error {
 // ResetDictCache 清空字典缓存。
 // 两组一起清：SYS_DICT 存类型下的数据列表，SYS_DICT_TYPE 存类型本身，只清一组会留下不一致。
 func ResetDictCache(ctx context.Context) error {
-	if err := cache.EvictGroup(ctx, redis.Client(), constant.CacheSysDict); err != nil {
+	if err := cache.EvictGroup(ctx, redis.Client(), syscons.CacheSysDict); err != nil {
 		return err
 	}
-	return cache.EvictGroup(ctx, redis.Client(), constant.CacheSysDictType)
+	return cache.EvictGroup(ctx, redis.Client(), syscons.CacheSysDictType)
 }
 
 // validateDictTypeFormat 校验字典类型命名格式。
@@ -238,7 +238,7 @@ func ResetDictCache(ctx context.Context) error {
 // 放在 service 而非 BO 的 binding tag：gin 默认的 validator 没有注册这条正则，
 // 而字典类型是 sys_dict_data 的关联键，格式失守会让前端按类型取字典时静默取空。
 func validateDictTypeFormat(dictType string) error {
-	if !constant.PatternDictionaryType.MatchString(dictType) {
+	if !syscons.PatternDictionaryType.MatchString(dictType) {
 		return errs.New(0, "字典类型必须以字母开头，且只能为（小写字母，数字，下滑线）", dictType)
 	}
 	return nil
@@ -250,7 +250,7 @@ func validateDictTypeFormat(dictType string) error {
 // 而字典数据的写方法要靠它回填缓存，两边指的是同一份缓存。
 func selectDictDataByTypeCached(ctx context.Context, dictType string) ([]*vo.SysDictDataVo, error) {
 	var cached []*vo.SysDictDataVo
-	if hit, _ := cache.Get(ctx, redis.Client(), constant.CacheSysDict, dictType, &cached); hit {
+	if hit, _ := cache.Get(ctx, redis.Client(), syscons.CacheSysDict, dictType, &cached); hit {
 		return cached, nil
 	}
 
@@ -258,7 +258,7 @@ func selectDictDataByTypeCached(ctx context.Context, dictType string) ([]*vo.Sys
 	if err != nil {
 		return nil, err
 	}
-	_ = cache.Put(ctx, redis.Client(), constant.CacheSysDict, dictType, list, constant.CacheTTLSysDict)
+	_ = cache.Put(ctx, redis.Client(), syscons.CacheSysDict, dictType, list, syscons.CacheTTLSysDict)
 	return list, nil
 }
 

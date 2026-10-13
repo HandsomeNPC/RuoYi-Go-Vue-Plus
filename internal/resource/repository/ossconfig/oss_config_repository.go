@@ -8,9 +8,9 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
+	rescons "ruoyi-go-vue-plus/internal/resource/constant"
 	"ruoyi-go-vue-plus/internal/resource/model"
 	"ruoyi-go-vue-plus/internal/resource/model/bo"
 )
@@ -143,7 +143,7 @@ func UpdateStatus(ctx context.Context, ossConfigID int64,
 	err := database.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// gorm 默认拦截无条件全表更新，这里是刻意为之，用 Where("1 = 1") 放行。
 		if err := tx.Model(&model.SysOssConfig{}).Where("1 = 1").
-			Update("status", constant.No).Error; err != nil {
+			Update("status", rescons.No).Error; err != nil {
 			return fmt.Errorf("repository: 重置对象存储配置默认标记失败: %w", err)
 		}
 		if err := tx.Model(&model.SysOssConfig{}).

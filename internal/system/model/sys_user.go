@@ -25,7 +25,7 @@ type SysUser struct {
 	// Password BCrypt 哈希，json:"-" 不出现在响应体里。
 	Password string `gorm:"column:password" json:"-"`
 
-	// Status 账号状态（0正常 1停用），取值见 enum.UserStatus。
+	// Status 账号状态（0正常 1停用），取值见 syscons.UserStatus。
 	Status string `gorm:"column:status" json:"status"`
 
 	LoginIP   string     `gorm:"column:login_ip" json:"loginIp"`

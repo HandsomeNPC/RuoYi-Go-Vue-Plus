@@ -7,9 +7,9 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
+	syscons "ruoyi-go-vue-plus/internal/system/constant"
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 )
@@ -88,7 +88,7 @@ func applyDeptQuery(db *gorm.DB, q bo.SysDeptQueryBo) *gorm.DB {
 // （ids 为空即不加 IN 条件，退化成查全部启用部门）。
 func SelectNormalByIDs(ctx context.Context, ids []int64) ([]*model.SysDept, error) {
 	db := database.DB().WithContext(ctx).Model(&model.SysDept{}).
-		Where("status = ?", constant.StatusNormal)
+		Where("status = ?", syscons.StatusNormal)
 	if len(ids) > 0 {
 		db = db.Where("dept_id IN ?", ids)
 	}
@@ -148,7 +148,7 @@ func CountNormalChildren(ctx context.Context, deptID int64) (int64, error) {
 
 	var count int64
 	err := database.DB().WithContext(ctx).Model(&model.SysDept{}).
-		Where("status = ?", constant.StatusNormal).
+		Where("status = ?", syscons.StatusNormal).
 		Where("FIND_IN_SET(?, ancestors) > 0", deptID).
 		Count(&count).Error
 	if err != nil {
@@ -242,7 +242,7 @@ func UpdateStatusNormalByIDs(ctx context.Context, ids []int64) (int64, error) {
 	res := database.DB().WithContext(ctx).
 		Model(&model.SysDept{}).
 		Where("dept_id IN ?", ids).
-		Update("status", constant.StatusNormal)
+		Update("status", syscons.StatusNormal)
 	if res.Error != nil {
 		return 0, fmt.Errorf("repository: 启用部门 %v 失败: %w", ids, res.Error)
 	}

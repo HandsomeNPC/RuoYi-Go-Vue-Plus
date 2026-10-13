@@ -14,14 +14,14 @@ import (
 
 	"github.com/HandsomeNPC/ruoyi-common-go/captchahelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/utils/loginhelper"
 	authmodel "ruoyi-go-vue-plus/internal/auth/model"
 	authvo "ruoyi-go-vue-plus/internal/auth/model/vo"
 	sysloginservice "ruoyi-go-vue-plus/internal/auth/service/syslogin"
+	rescons "ruoyi-go-vue-plus/internal/resource/constant"
+	syscons "ruoyi-go-vue-plus/internal/system/constant"
 	systemvo "ruoyi-go-vue-plus/internal/system/model/vo"
 	userservice "ruoyi-go-vue-plus/internal/system/service/user"
 )
@@ -48,7 +48,7 @@ func (s *passwordAuthStrategy) Login(req *http.Request, body []byte,
 		return nil, err
 	}
 
-	if err := sysloginservice.CheckLogin(req, enum.LoginTypePassword, loginBody.Username,
+	if err := sysloginservice.CheckLogin(req, sysloginservice.LoginTypePassword, loginBody.Username,
 		func() bool {
 			return bcrypt.Checkpw(loginBody.Password, user.Password)
 		}); err != nil {
@@ -70,7 +70,7 @@ func (s *passwordAuthStrategy) Login(req *http.Request, body []byte,
 	// 在线摘要须在 loginhelper.Login 返回后写（见 RecordOnlineUser 注释）。
 	sysloginservice.RecordOnlineUser(loginUser, token)
 	sysloginservice.RecordLoginInfo(req, loginBody.Username,
-		constant.ConstantLoginSuccess, "登录成功")
+		syscons.LoginSuccess, "登录成功")
 
 	return &authvo.LoginVo{
 		AccessToken: token,
@@ -85,7 +85,7 @@ func (s *passwordAuthStrategy) Login(req *http.Request, body []byte,
 // 的 service，而 pkg 不能 import internal/。答案的写入则在 handler.Code 里。
 func (s *passwordAuthStrategy) validateCaptcha(req *http.Request, username, code, uuid string) error {
 	ctx := req.Context()
-	verifyKey := constant.CaptchaCodeKey + uuid
+	verifyKey := rescons.CaptchaCodeKey + uuid
 	rdb := redis.Client()
 	answer, err := rdb.Get(ctx, verifyKey).Result()
 	// 无论对错先删，杜绝同一 uuid 反复试错。
@@ -97,7 +97,7 @@ func (s *passwordAuthStrategy) validateCaptcha(req *http.Request, username, code
 		if errors.Is(err, goredis.Nil) {
 			// 键不存在(过期或 uuid 无效)。
 			msg := "验证码已失效"
-			sysloginservice.RecordLoginInfo(req, username, constant.ConstantLoginFail, msg)
+			sysloginservice.RecordLoginInfo(req, username, syscons.LoginFail, msg)
 			return errs.New(0, msg, "")
 		}
 		// Redis 故障不是业务失败，不记登录日志。
@@ -106,7 +106,7 @@ func (s *passwordAuthStrategy) validateCaptcha(req *http.Request, username, code
 	// 算术答案大小写无关，字符验证码忽略大小写。
 	if !strings.EqualFold(strings.TrimSpace(code), answer) {
 		msg := "验证码错误"
-		sysloginservice.RecordLoginInfo(req, username, constant.ConstantLoginFail, msg)
+		sysloginservice.RecordLoginInfo(req, username, syscons.LoginFail, msg)
 		return errs.New(0, msg, "")
 	}
 	return nil

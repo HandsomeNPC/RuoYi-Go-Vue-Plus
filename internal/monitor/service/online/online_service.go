@@ -11,25 +11,24 @@ import (
 	"github.com/sa-tokens/sa-token-go/stputil"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
-	"ruoyi-go-vue-plus/internal/system/model"
+	sysloginservice "ruoyi-go-vue-plus/internal/auth/service/syslogin"
 )
 
 // List 取所有未失效的在线会话，并按 IP/用户名过滤。
 //
 // 直接 Keys 扫描 online_tokens:* 而非走 sa-token 的 SearchTokenValue：在线摘要
 // 是项目自管键，不在 sa-token 的 token-key 命名空间里。
-func List(ctx context.Context, ipaddr, userName string) ([]model.SysUserOnline, error) {
-	keys, err := redis.Client().Keys(ctx, constant.OnlineTokenKeyPrefix+"*").Result()
+func List(ctx context.Context, ipaddr, userName string) ([]sysloginservice.UserOnlineDTO, error) {
+	keys, err := redis.Client().Keys(ctx, sysloginservice.OnlineTokenKeyPrefix+"*").Result()
 	if err != nil {
 		return nil, errs.New(response.CodeFail, "获取在线用户列表失败", err.Error())
 	}
-	out := make([]model.SysUserOnline, 0, len(keys))
+	out := make([]sysloginservice.UserOnlineDTO, 0, len(keys))
 	for _, key := range keys {
 		// key 形如 online_tokens:<token>，token 本身(JWT)不含 ":"，故直接去前缀。
-		token := key[len(constant.OnlineTokenKeyPrefix):]
+		token := key[len(sysloginservice.OnlineTokenKeyPrefix):]
 		uo, ok := fetchOnline(ctx, token)
 		if !ok {
 			continue
@@ -40,12 +39,12 @@ func List(ctx context.Context, ipaddr, userName string) ([]model.SysUserOnline, 
 }
 
 // GetInfo 取指定账号仍有效的在线设备列表。loginID 形如 "sys_user:123"。
-func GetInfo(ctx context.Context, loginID string) ([]model.SysUserOnline, error) {
+func GetInfo(ctx context.Context, loginID string) ([]sysloginservice.UserOnlineDTO, error) {
 	tokens, err := stputil.GetTokenValueList(loginID)
 	if err != nil {
 		return nil, errs.New(response.CodeFail, "获取在线设备列表失败", err.Error())
 	}
-	out := make([]model.SysUserOnline, 0, len(tokens))
+	out := make([]sysloginservice.UserOnlineDTO, 0, len(tokens))
 	for _, token := range tokens {
 		uo, ok := fetchOnline(ctx, token)
 		if !ok {
@@ -87,32 +86,32 @@ func Remove(ctx context.Context, loginID, token string) error {
 // 活跃超时已失效/被踢/被顶的 token 跳过：当前未配 active-timeout，
 // CheckActiveTimeout 恒返回 nil，不过滤；一旦配上即自动生效。
 // 缓存键缺失(令牌已过 TTL)或反序列化失败同样跳过。
-func fetchOnline(ctx context.Context, token string) (model.SysUserOnline, bool) {
+func fetchOnline(ctx context.Context, token string) (sysloginservice.UserOnlineDTO, bool) {
 	if err := stputil.CheckActiveTimeout(token); err != nil {
-		return model.SysUserOnline{}, false
+		return sysloginservice.UserOnlineDTO{}, false
 	}
-	raw, err := redis.Client().Get(ctx, constant.OnlineTokenKeyPrefix+token).Bytes()
+	raw, err := redis.Client().Get(ctx, sysloginservice.OnlineTokenKeyPrefix+token).Bytes()
 	if err != nil {
 		if !errors.Is(err, goredis.Nil) {
 			log.Printf("[monitor] 读取在线摘要 token=%s 失败: %v", token, err)
 		}
-		return model.SysUserOnline{}, false
+		return sysloginservice.UserOnlineDTO{}, false
 	}
-	var uo model.SysUserOnline
+	var uo sysloginservice.UserOnlineDTO
 	if err := json.Unmarshal(raw, &uo); err != nil {
 		log.Printf("[monitor] 反序列化在线摘要 token=%s 失败: %v", token, err)
-		return model.SysUserOnline{}, false
+		return sysloginservice.UserOnlineDTO{}, false
 	}
 	return uo, true
 }
 
 // filterOnline 按 IP/用户名过滤在线列表：
 // 两者都给则同时匹配，只给其一则单匹配，都空则原样返回。
-func filterOnline(in []model.SysUserOnline, ipaddr, userName string) []model.SysUserOnline {
+func filterOnline(in []sysloginservice.UserOnlineDTO, ipaddr, userName string) []sysloginservice.UserOnlineDTO {
 	if ipaddr == "" && userName == "" {
 		return in
 	}
-	out := make([]model.SysUserOnline, 0, len(in))
+	out := make([]sysloginservice.UserOnlineDTO, 0, len(in))
 	for _, u := range in {
 		var match bool
 		switch {

@@ -7,7 +7,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -16,7 +15,6 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/captchahelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/oauth2"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/utils/loginhelper"
@@ -25,12 +23,14 @@ import (
 	authservice "ruoyi-go-vue-plus/internal/auth/service/auth"
 	socialauth "ruoyi-go-vue-plus/internal/auth/service/social"
 	sysloginservice "ruoyi-go-vue-plus/internal/auth/service/syslogin"
+	rescons "ruoyi-go-vue-plus/internal/resource/constant"
+	syscons "ruoyi-go-vue-plus/internal/system/constant"
 	clientservice "ruoyi-go-vue-plus/internal/system/service/client"
 	socialservice "ruoyi-go-vue-plus/internal/system/service/social"
 )
 
 // codeExpiration 图形验证码有效期。裸 int(分钟) 在 constant 包，此处补单位。
-const codeExpiration = time.Duration(constant.ConstantCaptchaExpiration) * time.Minute
+const codeExpiration = rescons.CaptchaExpiration
 
 // AuthApi 认证接口。
 type AuthApi struct{}
@@ -61,7 +61,7 @@ func (a *AuthApi) Login(c *gin.Context) {
 		log.Printf("[auth] 客户端id: %s 认证类型: %s 异常", clientID, grantType)
 		_ = c.Error(errs.New(0, "认证权限类型错误", ""))
 		return
-	} else if client.Status != constant.StatusNormal {
+	} else if client.Status != syscons.StatusNormal {
 		// 客户端已停用
 		_ = c.Error(errs.New(0, "认证权限类型已禁用", ""))
 		return
@@ -102,7 +102,7 @@ func (a *AuthApi) Code(c *gin.Context) {
 	}
 	// Generate 回带 "data:image/png;base64," 前缀，前端自己拼前缀，此处剥成裸 base64。
 	img = strings.TrimPrefix(img, "data:image/png;base64,")
-	key := constant.CaptchaCodeKey + uuid
+	key := rescons.CaptchaCodeKey + uuid
 	if err := redis.Client().Set(c.Request.Context(), key, answer, codeExpiration).Err(); err != nil {
 		_ = c.Error(err)
 		return

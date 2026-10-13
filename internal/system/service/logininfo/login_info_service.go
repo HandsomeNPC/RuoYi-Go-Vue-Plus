@@ -5,8 +5,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
+	syscons "ruoyi-go-vue-plus/internal/system/constant"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/dto"
 	logininforepository "ruoyi-go-vue-plus/internal/system/repository/logininfo"
@@ -82,10 +82,10 @@ func InsertLoginInfo(ctx context.Context, b *bo.SysLoginInfoBo) error {
 // 未识别的取值返回空串，与 status 留 null 的行为一致。
 func mapLoginStatus(status string) string {
 	switch status {
-	case constant.ConstantLoginSuccess, constant.ConstantLogout, constant.ConstantRegister:
-		return constant.ConstantSuccess
-	case constant.ConstantLoginFail:
-		return constant.ConstantFail
+	case syscons.LoginSuccess, syscons.Logout, syscons.Register:
+		return syscons.LogStatusSuccess
+	case syscons.LoginFail:
+		return syscons.LogStatusFail
 	default:
 		return ""
 	}

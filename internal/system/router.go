@@ -13,14 +13,13 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatsubmit"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/trace"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/xss"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/audit"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/operlog"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/permission"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/recover"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/operlog"
 	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
 	systemconfig "ruoyi-go-vue-plus/internal/system/config"
+	syscons "ruoyi-go-vue-plus/internal/system/constant"
 	"ruoyi-go-vue-plus/internal/system/handler"
 )
 
@@ -66,12 +65,12 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
 	profile.PUT("", sagin.CheckLogin(),
-		operlog.Log(profileLogTitle, enum.BusinessTypeUpdate),
+		operlog.Log(profileLogTitle, operlog.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.ProfileApiApp.UpdateProfile)
 	// updatePwd 须排在 apiencrypt 之后：指纹要用解密后的明文，否则密文每次
 	// 随机密钥、同样入参算出不同指纹，防重直接失效。故顺序为 鉴权→解密→日志→防重→handler。
 	profile.PUT("/updatePwd", sagin.CheckLogin(), enc,
-		operlog.Log(profileLogTitle, enum.BusinessTypeUpdate),
+		operlog.Log(profileLogTitle, operlog.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.ProfileApiApp.UpdatePwd)
 
 	// 用户管理：静态段（list/deptTree/optionselect/authRole/unlock/export/importData/importTemplate
@@ -88,32 +87,32 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	user.GET("/authRole/:userId", permission.CheckPermission("system:user:query"),
 		handler.UserApiApp.AuthRole)
 	user.GET("/unlock/:userId", permission.CheckPermission("system:user:edit"),
-		operlog.Log(userLogTitle, enum.BusinessTypeOther),
+		operlog.Log(userLogTitle, operlog.BusinessTypeOther),
 		repeatsubmit.RepeatSubmit(0, ""), handler.UserApiApp.Unlock)
 	user.POST("/export", permission.CheckPermission("system:user:export"),
-		operlog.Log(userLogTitle, enum.BusinessTypeExport), handler.UserApiApp.Export)
+		operlog.Log(userLogTitle, operlog.BusinessTypeExport), handler.UserApiApp.Export)
 	user.POST("/importData", permission.CheckPermission("system:user:import"),
-		operlog.Log(userLogTitle, enum.BusinessTypeImport), handler.UserApiApp.ImportData)
+		operlog.Log(userLogTitle, operlog.BusinessTypeImport), handler.UserApiApp.ImportData)
 	// importTemplate 不校验权限码，仅需登录：下载模板不该卡权限。
 	user.POST("/importTemplate", sagin.CheckLogin(), handler.UserApiApp.ImportTemplate)
 	// 路径用 "" 而非 "/"：后者会注册成 /user/。
 	user.POST("", permission.CheckPermission("system:user:add"),
-		operlog.Log(userLogTitle, enum.BusinessTypeInsert),
+		operlog.Log(userLogTitle, operlog.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.UserApiApp.Add)
 	user.PUT("", permission.CheckPermission("system:user:edit"),
-		operlog.Log(userLogTitle, enum.BusinessTypeUpdate),
+		operlog.Log(userLogTitle, operlog.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.UserApiApp.Edit)
 	// resetPwd 须排在 apiencrypt 之后：指纹要用解密后的明文，否则密文每次
 	// 随机密钥、同样入参算出不同指纹，防重直接失效。故顺序为 鉴权→解密→日志→防重→handler。
 	user.PUT("/resetPwd", permission.CheckPermission("system:user:resetPwd"), enc,
-		operlog.Log(userLogTitle, enum.BusinessTypeUpdate),
+		operlog.Log(userLogTitle, operlog.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.UserApiApp.ResetPwd)
 	user.PUT("/changeStatus", permission.CheckPermission("system:user:edit"),
-		operlog.Log(userLogTitle, enum.BusinessTypeUpdate),
+		operlog.Log(userLogTitle, operlog.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.UserApiApp.ChangeStatus)
 	// authRole 是授权操作，businessType=GRANT。
 	user.PUT("/authRole", permission.CheckPermission("system:user:edit"),
-		operlog.Log(userLogTitle, enum.BusinessTypeGrant),
+		operlog.Log(userLogTitle, operlog.BusinessTypeGrant),
 		repeatsubmit.RepeatSubmit(0, ""), handler.UserApiApp.InsertAuthRole)
 	// 根路径 "" 与 /:userId 复用 GetInfoByID。
 	// 须注册在各静态段之后，静态段优先与 /:userId 共存。
@@ -121,12 +120,12 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	user.GET("/:userId", permission.CheckPermission("system:user:query"),
 		handler.UserApiApp.GetInfoByID)
 	user.DELETE("/:userIds", permission.CheckPermission("system:user:remove"),
-		operlog.Log(userLogTitle, enum.BusinessTypeDelete), handler.UserApiApp.Remove)
+		operlog.Log(userLogTitle, operlog.BusinessTypeDelete), handler.UserApiApp.Remove)
 
 	menu := protected.Group("/menu")
 	menu.GET("/getRouters", sagin.CheckLogin(), handler.MenuApiApp.GetRouters)
 	// 多个中间件串联即 AND：各中间件都得过。注意这与单个 CheckPermission 内部多值的 OR 语义不同——那是"任一权限码命中放行"。
-	menu.GET("/list", permission.CheckRole(constant.SuperAdminRoleKey),
+	menu.GET("/list", permission.CheckRole(syscons.SuperAdminRoleKey),
 		permission.CheckPermission("system:menu:list"), handler.MenuApiApp.List)
 	// treeselect 与 roleMenuTreeselect 只要 query 权限，不挂超管角色：
 	// 角色授权界面要用它们，而分配角色的人未必是超管。
@@ -135,26 +134,26 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	menu.GET("/roleMenuTreeselect/:roleId", permission.CheckPermission("system:menu:query"),
 		handler.MenuApiApp.RoleMenuTreeSelect)
 	// getRouters/treeselect 等静态段与 :menuId 同层但静态段优先，无需调整注册顺序。
-	menu.GET("/:menuId", permission.CheckRole(constant.SuperAdminRoleKey),
+	menu.GET("/:menuId", permission.CheckRole(syscons.SuperAdminRoleKey),
 		permission.CheckPermission("system:menu:query"), handler.MenuApiApp.GetInfo)
 	// 路径用 "" 而非 "/"：后者会注册成 /menu/。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
-	menu.POST("", permission.CheckRole(constant.SuperAdminRoleKey),
+	menu.POST("", permission.CheckRole(syscons.SuperAdminRoleKey),
 		permission.CheckPermission("system:menu:add"),
-		operlog.Log(menuLogTitle, enum.BusinessTypeInsert),
+		operlog.Log(menuLogTitle, operlog.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.MenuApiApp.Add)
-	menu.PUT("", permission.CheckRole(constant.SuperAdminRoleKey),
+	menu.PUT("", permission.CheckRole(syscons.SuperAdminRoleKey),
 		permission.CheckPermission("system:menu:edit"),
-		operlog.Log(menuLogTitle, enum.BusinessTypeUpdate),
+		operlog.Log(menuLogTitle, operlog.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.MenuApiApp.Edit)
 	// cascade/:menuIds 段更具体，与 /:menuId 可共存，静态段优先。
-	menu.DELETE("/cascade/:menuIds", permission.CheckRole(constant.SuperAdminRoleKey),
+	menu.DELETE("/cascade/:menuIds", permission.CheckRole(syscons.SuperAdminRoleKey),
 		permission.CheckPermission("system:menu:remove"),
-		operlog.Log(menuLogTitle, enum.BusinessTypeDelete), handler.MenuApiApp.CascadeRemove)
-	menu.DELETE("/:menuId", permission.CheckRole(constant.SuperAdminRoleKey),
+		operlog.Log(menuLogTitle, operlog.BusinessTypeDelete), handler.MenuApiApp.CascadeRemove)
+	menu.DELETE("/:menuId", permission.CheckRole(syscons.SuperAdminRoleKey),
 		permission.CheckPermission("system:menu:remove"),
-		operlog.Log(menuLogTitle, enum.BusinessTypeDelete), handler.MenuApiApp.Remove)
+		operlog.Log(menuLogTitle, operlog.BusinessTypeDelete), handler.MenuApiApp.Remove)
 
 	client := protected.Group("/client")
 	client.GET("/list", permission.CheckPermission("system:client:list"), handler.ClientApiApp.List)
@@ -162,22 +161,22 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	// 导出走 POST：前端以 form 表单 POST 提交筛选条件。
 	// 与 PUT ""/changeStatus 同理，路径更具体，须注册在 client.POST("") 之后。
 	client.POST("/export", permission.CheckPermission("system:client:export"),
-		operlog.Log(clientLogTitle, enum.BusinessTypeExport), handler.ClientApiApp.Export)
+		operlog.Log(clientLogTitle, operlog.BusinessTypeExport), handler.ClientApiApp.Export)
 	// 路径用 "" 而非 "/"：后者会注册成 /client/。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
 	client.POST("", permission.CheckPermission("system:client:add"),
-		operlog.Log(clientLogTitle, enum.BusinessTypeInsert),
+		operlog.Log(clientLogTitle, operlog.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.ClientApiApp.Add)
 	client.PUT("", permission.CheckPermission("system:client:edit"),
-		operlog.Log(clientLogTitle, enum.BusinessTypeUpdate),
+		operlog.Log(clientLogTitle, operlog.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.ClientApiApp.Edit)
 	// changeStatus 不挂防重：它幂等——重复提交同一状态无副作用。须注册在 PUT "" 之后，路径更具体。
 	client.PUT("/changeStatus", permission.CheckPermission("system:client:edit"),
-		operlog.Log(clientLogTitle, enum.BusinessTypeUpdate),
+		operlog.Log(clientLogTitle, operlog.BusinessTypeUpdate),
 		handler.ClientApiApp.ChangeStatus)
 	client.DELETE("/:ids", permission.CheckPermission("system:client:remove"),
-		operlog.Log(clientLogTitle, enum.BusinessTypeDelete),
+		operlog.Log(clientLogTitle, operlog.BusinessTypeDelete),
 		handler.ClientApiApp.Remove)
 
 	config := protected.Group("/config")
@@ -189,26 +188,26 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 		handler.ConfigApiApp.GetInfo)
 	// 导出走 POST：前端以 form 表单 POST 提交筛选条件。
 	config.POST("/export", permission.CheckPermission("system:config:export"),
-		operlog.Log(configLogTitle, enum.BusinessTypeExport), handler.ConfigApiApp.Export)
+		operlog.Log(configLogTitle, operlog.BusinessTypeExport), handler.ConfigApiApp.Export)
 	// 路径用 "" 而非 "/"：后者会注册成 /config/。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
 	config.POST("", permission.CheckPermission("system:config:add"),
-		operlog.Log(configLogTitle, enum.BusinessTypeInsert),
+		operlog.Log(configLogTitle, operlog.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.ConfigApiApp.Add)
 	config.PUT("", permission.CheckPermission("system:config:edit"),
-		operlog.Log(configLogTitle, enum.BusinessTypeUpdate),
+		operlog.Log(configLogTitle, operlog.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.ConfigApiApp.Edit)
 	config.PUT("/updateByKey", permission.CheckPermission("system:config:edit"),
-		operlog.Log(configLogTitle, enum.BusinessTypeUpdate),
+		operlog.Log(configLogTitle, operlog.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.ConfigApiApp.UpdateByKey)
 	// refreshCache 与 :configIds 同层，静态段优先，无需调整注册顺序。
 	// 权限码用 remove 而非独立的 refresh。
 	config.DELETE("/refreshCache", permission.CheckPermission("system:config:remove"),
-		operlog.Log(configLogTitle, enum.BusinessTypeClean),
+		operlog.Log(configLogTitle, operlog.BusinessTypeClean),
 		handler.ConfigApiApp.RefreshCache)
 	config.DELETE("/:configIds", permission.CheckPermission("system:config:remove"),
-		operlog.Log(configLogTitle, enum.BusinessTypeDelete),
+		operlog.Log(configLogTitle, operlog.BusinessTypeDelete),
 		handler.ConfigApiApp.Remove)
 
 	dept := protected.Group("/dept")
@@ -224,14 +223,14 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
 	dept.POST("", permission.CheckPermission("system:dept:add"),
-		operlog.Log(deptLogTitle, enum.BusinessTypeInsert),
+		operlog.Log(deptLogTitle, operlog.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.DeptApiApp.Add)
 	dept.PUT("", permission.CheckPermission("system:dept:edit"),
-		operlog.Log(deptLogTitle, enum.BusinessTypeUpdate),
+		operlog.Log(deptLogTitle, operlog.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.DeptApiApp.Edit)
 	// 只支持单删：部门有父子关系，批量删无法保证删除顺序。
 	dept.DELETE("/:deptId", permission.CheckPermission("system:dept:remove"),
-		operlog.Log(deptLogTitle, enum.BusinessTypeDelete), handler.DeptApiApp.Remove)
+		operlog.Log(deptLogTitle, operlog.BusinessTypeDelete), handler.DeptApiApp.Remove)
 
 	// 字典数据与字典类型是 /dict 下两个并列静态段，各自独立注册。
 	// 权限码共用 system:dict:*，非 dict:data/dict:type 分设。
@@ -245,18 +244,18 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 		handler.DictDataApiApp.GetInfo)
 	// 导出走 POST：前端 commonExport 以 form 表单提交筛选条件。
 	dictData.POST("/export", permission.CheckPermission("system:dict:export"),
-		operlog.Log(dictDataLogTitle, enum.BusinessTypeExport), handler.DictDataApiApp.Export)
+		operlog.Log(dictDataLogTitle, operlog.BusinessTypeExport), handler.DictDataApiApp.Export)
 	// 路径用 "" 而非 "/"：后者会注册成 /dict/data/。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
 	dictData.POST("", permission.CheckPermission("system:dict:add"),
-		operlog.Log(dictDataLogTitle, enum.BusinessTypeInsert),
+		operlog.Log(dictDataLogTitle, operlog.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.DictDataApiApp.Add)
 	dictData.PUT("", permission.CheckPermission("system:dict:edit"),
-		operlog.Log(dictDataLogTitle, enum.BusinessTypeUpdate),
+		operlog.Log(dictDataLogTitle, operlog.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.DictDataApiApp.Edit)
 	dictData.DELETE("/:dictCodes", permission.CheckPermission("system:dict:remove"),
-		operlog.Log(dictDataLogTitle, enum.BusinessTypeDelete), handler.DictDataApiApp.Remove)
+		operlog.Log(dictDataLogTitle, operlog.BusinessTypeDelete), handler.DictDataApiApp.Remove)
 
 	dictType := protected.Group("/dict/type")
 	dictType.GET("/list", permission.CheckPermission("system:dict:list"),
@@ -267,19 +266,19 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	dictType.GET("/:dictId", permission.CheckPermission("system:dict:query"),
 		handler.DictTypeApiApp.GetInfo)
 	dictType.POST("/export", permission.CheckPermission("system:dict:export"),
-		operlog.Log(dictTypeLogTitle, enum.BusinessTypeExport), handler.DictTypeApiApp.Export)
+		operlog.Log(dictTypeLogTitle, operlog.BusinessTypeExport), handler.DictTypeApiApp.Export)
 	dictType.POST("", permission.CheckPermission("system:dict:add"),
-		operlog.Log(dictTypeLogTitle, enum.BusinessTypeInsert),
+		operlog.Log(dictTypeLogTitle, operlog.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.DictTypeApiApp.Add)
 	dictType.PUT("", permission.CheckPermission("system:dict:edit"),
-		operlog.Log(dictTypeLogTitle, enum.BusinessTypeUpdate),
+		operlog.Log(dictTypeLogTitle, operlog.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.DictTypeApiApp.Edit)
 	// refreshCache 与 :dictIds 同层，静态段优先，无需调整注册顺序。
 	// 权限码用 remove 而非独立的 refresh。
 	dictType.DELETE("/refreshCache", permission.CheckPermission("system:dict:remove"),
-		operlog.Log(dictTypeLogTitle, enum.BusinessTypeClean), handler.DictTypeApiApp.RefreshCache)
+		operlog.Log(dictTypeLogTitle, operlog.BusinessTypeClean), handler.DictTypeApiApp.RefreshCache)
 	dictType.DELETE("/:dictIds", permission.CheckPermission("system:dict:remove"),
-		operlog.Log(dictTypeLogTitle, enum.BusinessTypeDelete), handler.DictTypeApiApp.Remove)
+		operlog.Log(dictTypeLogTitle, operlog.BusinessTypeDelete), handler.DictTypeApiApp.Remove)
 
 	notice := protected.Group("/notice")
 	notice.GET("/list", permission.CheckPermission("system:notice:list"),
@@ -290,14 +289,14 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
 	notice.POST("", permission.CheckPermission("system:notice:add"),
-		operlog.Log(noticeLogTitle, enum.BusinessTypeInsert),
+		operlog.Log(noticeLogTitle, operlog.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.NoticeApiApp.Add)
 	notice.PUT("", permission.CheckPermission("system:notice:edit"),
-		operlog.Log(noticeLogTitle, enum.BusinessTypeUpdate),
+		operlog.Log(noticeLogTitle, operlog.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.NoticeApiApp.Edit)
 	// notice 无导出接口，故不注册 /export。
 	notice.DELETE("/:noticeIds", permission.CheckPermission("system:notice:remove"),
-		operlog.Log(noticeLogTitle, enum.BusinessTypeDelete), handler.NoticeApiApp.Remove)
+		operlog.Log(noticeLogTitle, operlog.BusinessTypeDelete), handler.NoticeApiApp.Remove)
 
 	post := protected.Group("/post")
 	post.GET("/list", permission.CheckPermission("system:post:list"), handler.PostApiApp.List)
@@ -311,18 +310,18 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 		handler.PostApiApp.GetInfo)
 	// 导出走 POST：前端 commonExport 以 form 表单 POST 提交筛选条件。
 	post.POST("/export", permission.CheckPermission("system:post:export"),
-		operlog.Log(postLogTitle, enum.BusinessTypeExport), handler.PostApiApp.Export)
+		operlog.Log(postLogTitle, operlog.BusinessTypeExport), handler.PostApiApp.Export)
 	// 路径用 "" 而非 "/"：后者会注册成 /post/。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
 	post.POST("", permission.CheckPermission("system:post:add"),
-		operlog.Log(postLogTitle, enum.BusinessTypeInsert),
+		operlog.Log(postLogTitle, operlog.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.PostApiApp.Add)
 	post.PUT("", permission.CheckPermission("system:post:edit"),
-		operlog.Log(postLogTitle, enum.BusinessTypeUpdate),
+		operlog.Log(postLogTitle, operlog.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.PostApiApp.Edit)
 	post.DELETE("/:postIds", permission.CheckPermission("system:post:remove"),
-		operlog.Log(postLogTitle, enum.BusinessTypeDelete), handler.PostApiApp.Remove)
+		operlog.Log(postLogTitle, operlog.BusinessTypeDelete), handler.PostApiApp.Remove)
 
 	// social 不校验权限码，仅需登录：用户查自己的社会化绑定关系不该卡权限。
 	social := protected.Group("/social")
@@ -343,37 +342,37 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 		handler.RoleApiApp.DeptTreeSelect)
 	// 导出走 POST：前端以 form 表单 POST 提交筛选条件。
 	role.POST("/export", permission.CheckPermission("system:role:export"),
-		operlog.Log(roleLogTitle, enum.BusinessTypeExport), handler.RoleApiApp.Export)
+		operlog.Log(roleLogTitle, operlog.BusinessTypeExport), handler.RoleApiApp.Export)
 	// 路径用 "" 而非 "/"：后者会注册成 /role/。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
 	role.POST("", permission.CheckPermission("system:role:add"),
-		operlog.Log(roleLogTitle, enum.BusinessTypeInsert),
+		operlog.Log(roleLogTitle, operlog.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.RoleApiApp.Add)
 	role.PUT("", permission.CheckPermission("system:role:edit"),
-		operlog.Log(roleLogTitle, enum.BusinessTypeUpdate),
+		operlog.Log(roleLogTitle, operlog.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.RoleApiApp.Edit)
 	// permission、changeStatus 路径更具体，须注册在 PUT "" 之后。
 	role.PUT("/permission", permission.CheckPermission("system:role:edit"),
-		operlog.Log(roleLogTitle, enum.BusinessTypeUpdate),
+		operlog.Log(roleLogTitle, operlog.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.RoleApiApp.EditPermission)
 	role.PUT("/changeStatus", permission.CheckPermission("system:role:edit"),
-		operlog.Log(roleLogTitle, enum.BusinessTypeUpdate),
+		operlog.Log(roleLogTitle, operlog.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.RoleApiApp.ChangeStatus)
 	// authUser/cancel、cancelAll、selectAll 是授权操作，businessType=GRANT。
 	role.PUT("/authUser/cancel", permission.CheckPermission("system:role:edit"),
-		operlog.Log(roleLogTitle, enum.BusinessTypeGrant),
+		operlog.Log(roleLogTitle, operlog.BusinessTypeGrant),
 		repeatsubmit.RepeatSubmit(0, ""), handler.RoleApiApp.CancelAuthUser)
 	role.PUT("/authUser/cancelAll", permission.CheckPermission("system:role:edit"),
-		operlog.Log(roleLogTitle, enum.BusinessTypeGrant),
+		operlog.Log(roleLogTitle, operlog.BusinessTypeGrant),
 		repeatsubmit.RepeatSubmit(0, ""), handler.RoleApiApp.CancelAuthUserAll)
 	role.PUT("/authUser/selectAll", permission.CheckPermission("system:role:edit"),
-		operlog.Log(roleLogTitle, enum.BusinessTypeGrant),
+		operlog.Log(roleLogTitle, operlog.BusinessTypeGrant),
 		repeatsubmit.RepeatSubmit(0, ""), handler.RoleApiApp.SelectAuthUserAll)
 	role.GET("/:roleId", permission.CheckPermission("system:role:query"),
 		handler.RoleApiApp.GetInfo)
 	role.DELETE("/:roleIds", permission.CheckPermission("system:role:remove"),
-		operlog.Log(roleLogTitle, enum.BusinessTypeDelete), handler.RoleApiApp.Remove)
+		operlog.Log(roleLogTitle, operlog.BusinessTypeDelete), handler.RoleApiApp.Remove)
 }
 
 // InitRouter 构建并返回 system 进程的 gin 引擎(独立部署用)。

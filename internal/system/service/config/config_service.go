@@ -7,10 +7,10 @@ import (
 
 	"github.com/HandsomeNPC/ruoyi-common-go/cache"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
+	syscons "ruoyi-go-vue-plus/internal/system/constant"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	configrepository "ruoyi-go-vue-plus/internal/system/repository/config"
@@ -63,7 +63,7 @@ func QueryByID(ctx context.Context, configID int64) (*vo.SysConfigVo, error) {
 // 把该键刷成真值，不会留下永久的空缓存。
 func SelectConfigByKey(ctx context.Context, configKey string) (string, error) {
 	var cached string
-	if hit, _ := cache.Get(ctx, redis.Client(), constant.CacheSysConfig, configKey, &cached); hit {
+	if hit, _ := cache.Get(ctx, redis.Client(), syscons.CacheSysConfig, configKey, &cached); hit {
 		return cached, nil
 	}
 
@@ -76,7 +76,7 @@ func SelectConfigByKey(ctx context.Context, configKey string) (string, error) {
 		value = cfg.ConfigValue
 	}
 
-	_ = cache.Put(ctx, redis.Client(), constant.CacheSysConfig, configKey, value, constant.CacheTTLSysConfig)
+	_ = cache.Put(ctx, redis.Client(), syscons.CacheSysConfig, configKey, value, syscons.CacheTTLSysConfig)
 	return value, nil
 }
 
@@ -117,8 +117,8 @@ func InsertConfig(ctx context.Context, b *bo.SysConfigBo) error {
 	}
 	b.ConfigID = add.ConfigID
 	// 新增即把键值写进缓存，顺带覆盖 SelectConfigByKey 可能缓存过的空串。
-	_ = cache.Put(ctx, redis.Client(), constant.CacheSysConfig, add.ConfigKey, add.ConfigValue,
-		constant.CacheTTLSysConfig)
+	_ = cache.Put(ctx, redis.Client(), syscons.CacheSysConfig, add.ConfigKey, add.ConfigValue,
+		syscons.CacheTTLSysConfig)
 	return nil
 }
 
@@ -152,14 +152,14 @@ func UpdateConfig(ctx context.Context, b *bo.SysConfigBo) error {
 	}
 	// 改键名时旧键的缓存会成为无人回收的孤儿，先按旧键失效。
 	if old.ConfigKey != b.ConfigKey {
-		_ = cache.Evict(ctx, redis.Client(), constant.CacheSysConfig, old.ConfigKey)
+		_ = cache.Evict(ctx, redis.Client(), syscons.CacheSysConfig, old.ConfigKey)
 	}
 
 	if _, err := configrepository.UpdateByID(ctx, b.ConfigID, buildConfigUpdateColumns(b)); err != nil {
 		return err
 	}
-	_ = cache.Put(ctx, redis.Client(), constant.CacheSysConfig, b.ConfigKey, b.ConfigValue,
-		constant.CacheTTLSysConfig)
+	_ = cache.Put(ctx, redis.Client(), syscons.CacheSysConfig, b.ConfigKey, b.ConfigValue,
+		syscons.CacheTTLSysConfig)
 	return nil
 }
 
@@ -203,7 +203,7 @@ func UpdateConfigByKey(ctx context.Context, b *bo.SysConfigUpdateByKeyBo) error 
 
 	// 先失效再更新：
 	// 更新失败时缓存宁可空着走一次 DB，也不能留着与库不一致的旧值。
-	_ = cache.Evict(ctx, redis.Client(), constant.CacheSysConfig, b.ConfigKey)
+	_ = cache.Evict(ctx, redis.Client(), syscons.CacheSysConfig, b.ConfigKey)
 
 	// 在此处收成 string，不把 LooseString 带进 repository 与缓存：
 	// 那个宽容类型只为兼容入参形态而存在，落库与缓存都该是普通字符串。
@@ -212,8 +212,8 @@ func UpdateConfigByKey(ctx context.Context, b *bo.SysConfigUpdateByKeyBo) error 
 		map[string]any{"config_value": configValue}); err != nil {
 		return err
 	}
-	_ = cache.Put(ctx, redis.Client(), constant.CacheSysConfig, b.ConfigKey, configValue,
-		constant.CacheTTLSysConfig)
+	_ = cache.Put(ctx, redis.Client(), syscons.CacheSysConfig, b.ConfigKey, configValue,
+		syscons.CacheTTLSysConfig)
 	return nil
 }
 
@@ -232,7 +232,7 @@ func DeleteConfigByIDs(ctx context.Context, ids []int64) error {
 	// 先整批校验再删，不边删边校验：这里没有事务包裹，
 	// 一旦先删了几行再撞上内置参数就会留下删一半的状态。
 	for _, cfg := range rows {
-		if cfg.ConfigType == constant.Yes {
+		if cfg.ConfigType == syscons.Yes {
 			return errs.New(0, fmt.Sprintf("内置参数【%s】不能删除", cfg.ConfigKey), "")
 		}
 	}
@@ -243,12 +243,12 @@ func DeleteConfigByIDs(ctx context.Context, ids []int64) error {
 	// 删除后再失效：提前清缓存会让删除失败时白丢一批热数据。
 	// 按实际命中的行逐个清，缺失的主键本来也没有对应缓存。
 	for _, cfg := range rows {
-		_ = cache.Evict(ctx, redis.Client(), constant.CacheSysConfig, cfg.ConfigKey)
+		_ = cache.Evict(ctx, redis.Client(), syscons.CacheSysConfig, cfg.ConfigKey)
 	}
 	return nil
 }
 
 // ResetConfigCache 清空参数缓存。
 func ResetConfigCache(ctx context.Context) error {
-	return cache.EvictGroup(ctx, redis.Client(), constant.CacheSysConfig)
+	return cache.EvictGroup(ctx, redis.Client(), syscons.CacheSysConfig)
 }

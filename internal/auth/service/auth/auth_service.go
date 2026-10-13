@@ -3,9 +3,9 @@ package auth
 import (
 	"net/http"
 
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	authvo "ruoyi-go-vue-plus/internal/auth/model/vo"
+	sysloginservice "ruoyi-go-vue-plus/internal/auth/service/syslogin"
 	systemvo "ruoyi-go-vue-plus/internal/system/model/vo"
 )
 
@@ -16,10 +16,10 @@ type AuthStrategy interface {
 
 // authStrategies 按 grantType 分派授权策略
 var authStrategies = map[string]AuthStrategy{
-	enum.LoginTypePassword.Code: &passwordAuthStrategy{},
-	enum.LoginTypeSms.Code:      &smsAuthStrategy{},
-	enum.LoginTypeEmail.Code:    &emailAuthStrategy{},
-	enum.LoginTypeSocial.Code:   &socialAuthStrategy{},
+	sysloginservice.LoginTypePassword.Code: &passwordAuthStrategy{},
+	sysloginservice.LoginTypeSms.Code:      &smsAuthStrategy{},
+	sysloginservice.LoginTypeEmail.Code:    &emailAuthStrategy{},
+	sysloginservice.LoginTypeSocial.Code:   &socialAuthStrategy{},
 }
 
 // Login 登录

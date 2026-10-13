@@ -9,10 +9,10 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/cache"
 	"github.com/HandsomeNPC/ruoyi-common-go/oss"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
+	rescons "ruoyi-go-vue-plus/internal/resource/constant"
 	"ruoyi-go-vue-plus/internal/resource/model/bo"
 	"ruoyi-go-vue-plus/internal/resource/model/vo"
 	ossconfigrepository "ruoyi-go-vue-plus/internal/resource/repository/ossconfig"
@@ -49,7 +49,7 @@ func InitCache(ctx context.Context) error {
 			log.Printf("[oss] 预热配置 %q 失败: %v", cfg.ConfigKey, err)
 			continue
 		}
-		if cfg.Status == constant.Yes {
+		if cfg.Status == rescons.Yes {
 			setDefaultConfigKey(ctx, cfg.ConfigKey)
 		}
 	}
@@ -218,7 +218,7 @@ func refreshConfigCache(ctx context.Context, ossConfigID int64,
 		oss.CacheTTLSysOssConfig)
 	// 客户端持有旧配置建的连接，主动丢弃让下次取用时重建。
 	oss.Remove(cfg.ConfigKey)
-	if cfg.Status == constant.Yes {
+	if cfg.Status == rescons.Yes {
 		setDefaultConfigKey(ctx, cfg.ConfigKey)
 	}
 }
@@ -276,7 +276,7 @@ func UpdateConfigStatus(ctx context.Context,
 	if err := InitCache(ctx); err != nil {
 		log.Printf("[oss] 切换默认配置后刷新缓存失败: %v", err)
 	}
-	if b.Status == constant.Yes {
+	if b.Status == rescons.Yes {
 		setDefaultConfigKey(ctx, old.ConfigKey)
 	}
 	return nil

@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
-	"github.com/HandsomeNPC/ruoyi-common-go/database"
+	syscons "ruoyi-go-vue-plus/internal/system/constant"
 	"ruoyi-go-vue-plus/internal/system/model"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/database"
 )
 
 // Insert 插入一条消息记录。
@@ -41,7 +42,7 @@ func SelectBoxList(ctx context.Context, category string,
 		Where("category = ?", category).
 		Where("create_time >= ?", since).
 		Where("send_user_ids = ? OR FIND_IN_SET(?, send_user_ids)",
-			constant.MessageGlobalUserIDs, userID).
+			syscons.MessageGlobalUserIDs, userID).
 		// 主键兜底保证同秒内顺序稳定。
 		Order("create_time DESC").
 		Order("message_id DESC")

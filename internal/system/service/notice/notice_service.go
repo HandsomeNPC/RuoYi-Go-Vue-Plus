@@ -8,10 +8,10 @@ import (
 
 	"github.com/HandsomeNPC/ruoyi-common-go/cache"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
-	domain "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/domain"
 	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
+	pushsvc "ruoyi-go-vue-plus/internal/resource/push"
+	syscons "ruoyi-go-vue-plus/internal/system/constant"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	noticerepository "ruoyi-go-vue-plus/internal/system/repository/notice"
@@ -93,7 +93,7 @@ func fillCreateByNames(ctx context.Context, rows []*vo.SysNoticeVo) error {
 		seen[row.CreateBy] = struct{}{}
 
 		var cached string
-		if hit, _ := cache.Get(ctx, redis.Client(), constant.CacheSysUserName,
+		if hit, _ := cache.Get(ctx, redis.Client(), syscons.CacheSysUserName,
 			userNameCacheKey(row.CreateBy), &cached); hit {
 			names[row.CreateBy] = cached
 			continue
@@ -109,8 +109,8 @@ func fillCreateByNames(ctx context.Context, rows []*vo.SysNoticeVo) error {
 		}
 		for id, name := range found {
 			names[id] = name
-			_ = cache.Put(ctx, redis.Client(), constant.CacheSysUserName, userNameCacheKey(id), name,
-				constant.CacheTTLSysUserName)
+			_ = cache.Put(ctx, redis.Client(), syscons.CacheSysUserName, userNameCacheKey(id), name,
+				syscons.CacheTTLSysUserName)
 		}
 	}
 
@@ -180,9 +180,9 @@ func broadcastNotice(ctx context.Context, b *bo.SysNoticeBo) {
 		"noticeContent":   b.NoticeContent,
 		"status":          b.Status,
 	}
-	payload := domain.NewPushPayloadWithPath(
-		constant.PushTypeNotice,
-		constant.PushSourceNotice,
+	payload := pushsvc.NewPayloadWithPath(
+		pushsvc.TypeNotice,
+		pushsvc.SourceNotice,
 		"["+label+"] "+b.NoticeTitle,
 		data,
 		"/system/notice?noticeId="+strconv.FormatInt(b.NoticeID, 10),

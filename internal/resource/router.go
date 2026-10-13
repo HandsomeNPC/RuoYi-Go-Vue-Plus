@@ -14,11 +14,10 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatsubmit"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/trace"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/xss"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/audit"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/operlog"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/permission"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/recover"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/operlog"
 	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
 	resourceconfig "ruoyi-go-vue-plus/internal/resource/config"
 	"ruoyi-go-vue-plus/internal/resource/handler"
@@ -80,18 +79,18 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行，仍记一条失败日志。
 	ossConfig.POST("", permission.CheckPermission("system:ossConfig:add"),
-		operlog.Log(ossConfigLogTitle, enum.BusinessTypeInsert),
+		operlog.Log(ossConfigLogTitle, operlog.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.OssConfigApiApp.Add)
 	ossConfig.PUT("", permission.CheckPermission("system:ossConfig:edit"),
-		operlog.Log(ossConfigLogTitle, enum.BusinessTypeUpdate),
+		operlog.Log(ossConfigLogTitle, operlog.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.OssConfigApiApp.Edit)
 	// changeStatus 路径更具体，须注册在 PUT "" 之后。挂防重：
 	// 它会把全表刷成非默认再置目标行，重复提交期间存在"一个默认都没有"的窗口。
 	ossConfig.PUT("/changeStatus", permission.CheckPermission("system:ossConfig:edit"),
-		operlog.Log(ossConfigStatusLogTitle, enum.BusinessTypeUpdate),
+		operlog.Log(ossConfigStatusLogTitle, operlog.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.OssConfigApiApp.ChangeStatus)
 	ossConfig.DELETE("/:ossConfigIds", permission.CheckPermission("system:ossConfig:remove"),
-		operlog.Log(ossConfigLogTitle, enum.BusinessTypeDelete), handler.OssConfigApiApp.Remove)
+		operlog.Log(ossConfigLogTitle, operlog.BusinessTypeDelete), handler.OssConfigApiApp.Remove)
 
 	oss := protected.Group("/oss")
 	oss.GET("/list", permission.CheckPermission("system:oss:list"), handler.OssApiApp.List)
@@ -104,10 +103,10 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	// WithoutRequestData 不可省：operlog 采集入参会对 multipart 请求调 ParseForm，
 	// 那会把整个文件读进内存再塞进 sys_oper_log.oper_param。
 	oss.POST("/upload", permission.CheckPermission("system:oss:upload"),
-		operlog.Log(ossLogTitle, enum.BusinessTypeInsert, operlog.WithoutRequestData()),
+		operlog.Log(ossLogTitle, operlog.BusinessTypeInsert, operlog.WithoutRequestData()),
 		handler.OssApiApp.Upload)
 	oss.DELETE("/:ossIds", permission.CheckPermission("system:oss:remove"),
-		operlog.Log(ossLogTitle, enum.BusinessTypeDelete), handler.OssApiApp.Remove)
+		operlog.Log(ossLogTitle, operlog.BusinessTypeDelete), handler.OssApiApp.Remove)
 }
 
 // RegisterPushRoutes 注册推送连接端点。

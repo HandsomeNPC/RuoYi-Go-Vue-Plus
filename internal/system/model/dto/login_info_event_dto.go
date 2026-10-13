@@ -7,7 +7,7 @@ package dto
 type LoginInfoEvent struct {
 	// Username 用户账号。
 	Username string `json:"username"`
-	// Status 登录状态，取 constant.ConstantLoginSuccess / ConstantLogout /
+	// Status 登录状态，取 syscons.LoginSuccess / ConstantLogout /
 	// ConstantRegister / ConstantLoginFail 之一（注意不是落表的 0/1，
 	// 落表值由 RecordLoginInfo 映射）。
 	Status string `json:"status"`

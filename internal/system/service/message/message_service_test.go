@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
-	domain "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/domain"
+	pushsvc "ruoyi-go-vue-plus/internal/resource/push"
+	syscons "ruoyi-go-vue-plus/internal/system/constant"
 )
 
 // TestSupportsMessageBox 只有通用消息与通知公告入盒子，LLM 一概排除。
@@ -14,21 +14,21 @@ import (
 func TestSupportsMessageBox(t *testing.T) {
 	tests := []struct {
 		name    string
-		payload *domain.PushPayloadDTO
+		payload *pushsvc.PayloadDTO
 		want    bool
 	}{
 		{"nil", nil, false},
-		{"通用消息", &domain.PushPayloadDTO{
-			Type: constant.PushTypeMessage, Source: constant.PushSourceBackend}, true},
-		{"通知公告", &domain.PushPayloadDTO{
-			Type: constant.PushTypeNotice, Source: constant.PushSourceNotice}, true},
-		{"自定义消息不入盒子", &domain.PushPayloadDTO{
-			Type: constant.PushTypeCustom, Source: constant.PushSourceClient}, false},
-		{"LLM 类型不入盒子", &domain.PushPayloadDTO{
-			Type: constant.PushTypeLLM, Source: constant.PushSourceLLM}, false},
+		{"通用消息", &pushsvc.PayloadDTO{
+			Type: pushsvc.TypeMessage, Source: pushsvc.SourceBackend}, true},
+		{"通知公告", &pushsvc.PayloadDTO{
+			Type: pushsvc.TypeNotice, Source: pushsvc.SourceNotice}, true},
+		{"自定义消息不入盒子", &pushsvc.PayloadDTO{
+			Type: pushsvc.TypeCustom, Source: pushsvc.SourceClient}, false},
+		{"LLM 类型不入盒子", &pushsvc.PayloadDTO{
+			Type: pushsvc.TypeLLM, Source: pushsvc.SourceLLM}, false},
 		// 类型合法但来源是 LLM：同样排除，否则大模型走 message 类型就绕过了限制。
-		{"LLM 来源不入盒子", &domain.PushPayloadDTO{
-			Type: constant.PushTypeMessage, Source: constant.PushSourceLLM}, false},
+		{"LLM 来源不入盒子", &pushsvc.PayloadDTO{
+			Type: pushsvc.TypeMessage, Source: pushsvc.SourceLLM}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -47,18 +47,18 @@ func TestResolveCategory(t *testing.T) {
 		wantCategory string
 		wantTitle    string
 	}{
-		{"公告类型", constant.PushTypeNotice, constant.PushSourceBackend,
-			constant.MessageCategoryNotice, titleNotice},
-		{"公告来源", constant.PushTypeMessage, constant.PushSourceNotice,
-			constant.MessageCategoryNotice, titleNotice},
-		{"工作流来源", constant.PushTypeMessage, constant.PushSourceWorkflow,
-			constant.MessageCategoryWorkflow, titleWorkflow},
-		{"其余归系统消息", constant.PushTypeMessage, constant.PushSourceBackend,
-			constant.MessageCategorySystem, titleSystem},
+		{"公告类型", pushsvc.TypeNotice, pushsvc.SourceBackend,
+			syscons.MessageCategoryNotice, titleNotice},
+		{"公告来源", pushsvc.TypeMessage, pushsvc.SourceNotice,
+			syscons.MessageCategoryNotice, titleNotice},
+		{"工作流来源", pushsvc.TypeMessage, pushsvc.SourceWorkflow,
+			syscons.MessageCategoryWorkflow, titleWorkflow},
+		{"其余归系统消息", pushsvc.TypeMessage, pushsvc.SourceBackend,
+			syscons.MessageCategorySystem, titleSystem},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			payload := &domain.PushPayloadDTO{Type: tt.typ, Source: tt.source}
+			payload := &pushsvc.PayloadDTO{Type: tt.typ, Source: tt.source}
 			if got := resolveCategory(payload); got != tt.wantCategory {
 				t.Errorf("resolveCategory() = %q, 期望 %q", got, tt.wantCategory)
 			}
@@ -73,8 +73,8 @@ func TestResolveCategory(t *testing.T) {
 //
 // 雪花 ID 必须按十进制原样拼，不能走科学计数法——那样 FIND_IN_SET 永远匹配不上。
 func TestJoinSendUserIDs(t *testing.T) {
-	if got := joinSendUserIDs(nil); got != constant.MessageGlobalUserIDs {
-		t.Errorf("空列表应为全局标识 %q, got %q", constant.MessageGlobalUserIDs, got)
+	if got := joinSendUserIDs(nil); got != syscons.MessageGlobalUserIDs {
+		t.Errorf("空列表应为全局标识 %q, got %q", syscons.MessageGlobalUserIDs, got)
 	}
 	want := "1761100000000000001,1761100000000000002"
 	got := joinSendUserIDs([]int64{1761100000000000001, 1761100000000000002})
@@ -98,7 +98,7 @@ func TestResolveContent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := resolveContent(&domain.PushPayloadDTO{Data: tt.data})
+			got := resolveContent(&pushsvc.PayloadDTO{Data: tt.data})
 			if got != tt.want {
 				t.Errorf("resolveContent() = %q, 期望 %q", got, tt.want)
 			}

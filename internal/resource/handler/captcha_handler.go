@@ -5,20 +5,19 @@ import (
 	"log"
 	"math/rand/v2"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/mailhelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
 	"github.com/HandsomeNPC/ruoyi-common-go/smshelper"
 	resourceconfig "ruoyi-go-vue-plus/internal/resource/config"
+	rescons "ruoyi-go-vue-plus/internal/resource/constant"
 )
 
 // codeExpiration 验证码有效期。
-const codeExpiration = time.Duration(constant.ConstantCaptchaExpiration) * time.Minute
+const codeExpiration = rescons.CaptchaExpiration
 
 // mailSubject 验证码邮件主题。
 const mailSubject = "登录验证码"
@@ -40,7 +39,7 @@ func (a *CaptchaApi) SmsCode(c *gin.Context) {
 		c.JSON(http.StatusOK, response.Fail("用户手机号不能为空"))
 		return
 	}
-	if !constant.PatternMobile.MatchString(phoneNumber) {
+	if !rescons.PatternMobile.MatchString(phoneNumber) {
 		c.JSON(http.StatusOK, response.Fail("请输入正确的手机号！"))
 		return
 	}
@@ -83,14 +82,14 @@ func (a *CaptchaApi) EmailCode(c *gin.Context) {
 		c.JSON(http.StatusOK, response.Fail("当前系统没有开启邮箱功能！"))
 		return
 	}
-	if !constant.PatternEmail.MatchString(email) {
+	if !rescons.PatternEmail.MatchString(email) {
 		c.JSON(http.StatusOK, response.Fail("请输入正确的邮箱地址！"))
 		return
 	}
 
 	code := randomCode()
 	body := fmt.Sprintf("您本次验证码为：%s，有效性为%d分钟，请尽快填写。",
-		code, constant.ConstantCaptchaExpiration)
+		code, rescons.CaptchaExpirationMinutes)
 	if err := mailhelper.Send(ctx, email, mailSubject, body); err != nil {
 		// SMTP 报错常含服务器地址与账号，只进日志。
 		log.Printf("[captcha] 验证码邮件发送异常 => %v", err)
@@ -113,7 +112,7 @@ func (a *CaptchaApi) EmailCode(c *gin.Context) {
 // 校验方（internal/auth 的认证策略）只能按账号回查。
 func storeCode(c *gin.Context, account, code string) error {
 	return redis.Client().
-		Set(c.Request.Context(), constant.CaptchaCodeKey+account, code, codeExpiration).
+		Set(c.Request.Context(), rescons.CaptchaCodeKey+account, code, codeExpiration).
 		Err()
 }
 

@@ -10,7 +10,6 @@ import (
 
 	"github.com/HandsomeNPC/ruoyi-common-go/jsonx"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 )
 
 // kickedMessage 同 token 新连接顶替旧连接时发给旧连接的通知。
@@ -81,7 +80,7 @@ func (m *manager) subscribe() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sub := redis.Client().Subscribe(ctx, constant.MessageTopic)
+	sub := redis.Client().Subscribe(ctx, MessageTopic)
 	// ctx 取消只管 SUBSCRIBE 的建立，收不到消息流；真正终止循环的是 sub.Close()。
 	// 不能只依赖这里的 defer——它在 range 循环退出后才执行，而循环恰恰被卡在
 	// sub.Channel() 上不退出。故另起 goroutine 监听 stop 主动关掉订阅。

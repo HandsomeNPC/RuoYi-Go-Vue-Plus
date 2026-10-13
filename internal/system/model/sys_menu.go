@@ -3,8 +3,8 @@ package model
 import (
 	"strings"
 
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	coremodel "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model"
+	syscons "ruoyi-go-vue-plus/internal/system/constant"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/strutil"
 )
@@ -51,9 +51,9 @@ func (SysMenu) TableName() string {
 // 用 Replacer 而非多次 ReplaceAll，是为单趟、不重叠替换语义
 // （多次 ReplaceAll 会让前一轮产出的字符再被后一轮匹配）。
 var innerLinkReplacer = strings.NewReplacer(
-	constant.ConstantHTTP, "",
-	constant.ConstantHTTPS, "",
-	constant.ConstantWWW, "",
+	syscons.HTTP, "",
+	syscons.HTTPS, "",
+	syscons.WWW, "",
 	".", "/",
 	":", "/",
 )
@@ -74,12 +74,12 @@ func (m *SysMenu) RouteName() string {
 // RouterPath 路由地址。
 func (m *SysMenu) RouterPath() string {
 	routerPath := m.Path
-	if m.ParentID != constant.ConstantTopParentID && m.IsInnerLink() {
+	if m.ParentID != syscons.TopParentID && m.IsInnerLink() {
 		routerPath = InnerLinkReplaceEach(routerPath)
 	}
 	switch {
-	case m.ParentID == constant.ConstantTopParentID &&
-		m.MenuType == constant.MenuTypeDir && m.IsFrame == constant.No:
+	case m.ParentID == syscons.TopParentID &&
+		m.MenuType == syscons.MenuTypeDir && m.IsFrame == syscons.No:
 		routerPath = "/" + m.Path
 	case m.IsMenuFrame():
 		routerPath = "/"
@@ -92,27 +92,27 @@ func (m *SysMenu) ComponentInfo() string {
 	switch {
 	case m.Component != "" && !m.IsMenuFrame():
 		return m.Component
-	case m.Component == "" && m.ParentID != constant.ConstantTopParentID && m.IsInnerLink():
-		return constant.ComponentInnerLink
+	case m.Component == "" && m.ParentID != syscons.TopParentID && m.IsInnerLink():
+		return syscons.ComponentInnerLink
 	case m.Component == "" && m.IsParentView():
-		return constant.ComponentParentView
+		return syscons.ComponentParentView
 	default:
-		return constant.ComponentLayout
+		return syscons.ComponentLayout
 	}
 }
 
 // IsMenuFrame 是否为一级非外链菜单（此类菜单在前端挂到根路由下）。
 func (m *SysMenu) IsMenuFrame() bool {
-	return m.ParentID == constant.ConstantTopParentID &&
-		m.MenuType == constant.MenuTypeMenu && m.IsFrame == constant.No
+	return m.ParentID == syscons.TopParentID &&
+		m.MenuType == syscons.MenuTypeMenu && m.IsFrame == syscons.No
 }
 
 // IsInnerLink 是否为内链组件（非外链但 path 填的是 http 地址）。
 func (m *SysMenu) IsInnerLink() bool {
-	return m.IsFrame == constant.No && strutil.IsHTTP(m.Path)
+	return m.IsFrame == syscons.No && strutil.IsHTTP(m.Path)
 }
 
 // IsParentView 是否为 ParentView 组件（非一级目录）。
 func (m *SysMenu) IsParentView() bool {
-	return m.ParentID != constant.ConstantTopParentID && m.MenuType == constant.MenuTypeDir
+	return m.ParentID != syscons.TopParentID && m.MenuType == syscons.MenuTypeDir
 }

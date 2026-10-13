@@ -8,7 +8,6 @@ import (
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/oauth2"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/utils/loginhelper"
@@ -16,6 +15,7 @@ import (
 	authvo "ruoyi-go-vue-plus/internal/auth/model/vo"
 	socialauth "ruoyi-go-vue-plus/internal/auth/service/social"
 	sysloginservice "ruoyi-go-vue-plus/internal/auth/service/syslogin"
+	syscons "ruoyi-go-vue-plus/internal/system/constant"
 	systemvo "ruoyi-go-vue-plus/internal/system/model/vo"
 	socialservice "ruoyi-go-vue-plus/internal/system/service/social"
 	userservice "ruoyi-go-vue-plus/internal/system/service/user"
@@ -76,7 +76,7 @@ func (s *socialAuthStrategy) Login(req *http.Request, body []byte,
 
 	sysloginservice.RecordOnlineUser(loginUser, token)
 	sysloginservice.RecordLoginInfo(req, user.UserName,
-		constant.ConstantLoginSuccess, "登录成功")
+		syscons.LoginSuccess, "登录成功")
 
 	return &authvo.LoginVo{
 		AccessToken: token,

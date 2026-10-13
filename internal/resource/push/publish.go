@@ -11,8 +11,6 @@ import (
 
 	"github.com/HandsomeNPC/ruoyi-common-go/jsonx"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
-	domain "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/domain"
 )
 
 // PushDTO 一次推送的目标与载荷。
@@ -21,7 +19,7 @@ type PushDTO struct {
 	// UserIDs 目标用户ID列表，为空表示广播给全部在线用户。
 	UserIDs []int64 `json:"userIds"`
 	// Payload 推送消息体。
-	Payload *domain.PushPayloadDTO `json:"payload"`
+	Payload *PayloadDTO `json:"payload"`
 }
 
 // Publish 发布推送消息，userIDs 为空即广播给全部在线用户。
@@ -30,7 +28,7 @@ type PushDTO struct {
 // 用户连在哪个实例上不确定，只发本地会话会让其余实例上的用户收不到。
 // 也正因如此本函数无状态——发布方(system 进程)不必 Init 会话管理器。
 func Publish(ctx context.Context, userIDs []int64,
-	payload *domain.PushPayloadDTO) error {
+	payload *PayloadDTO) error {
 
 	if payload == nil {
 		return nil
@@ -40,7 +38,7 @@ func Publish(ctx context.Context, userIDs []int64,
 	if err != nil {
 		return fmt.Errorf("push: 序列化推送消息失败: %w", err)
 	}
-	if err := redis.Client().Publish(ctx, constant.MessageTopic, body).Err(); err != nil {
+	if err := redis.Client().Publish(ctx, MessageTopic, body).Err(); err != nil {
 		return fmt.Errorf("push: 发布推送消息失败: %w", err)
 	}
 	return nil

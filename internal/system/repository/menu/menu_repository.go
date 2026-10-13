@@ -7,9 +7,9 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
+	syscons "ruoyi-go-vue-plus/internal/system/constant"
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 )
@@ -39,8 +39,8 @@ func SelectMenuPermsByUserId(ctx context.Context, userID int64) ([]string, error
 		Joins("JOIN sys_user_role sur ON sur.role_id = srm.role_id").
 		Joins("JOIN sys_role sr ON sr.role_id = srm.role_id").
 		Where("sur.user_id = ?", userID).
-		Where("sr.status = ?", constant.StatusNormal).
-		Where("sr.del_flag = ?", constant.StatusNormal). // del_flag '0' 未删除
+		Where("sr.status = ?", syscons.StatusNormal).
+		Where("sr.del_flag = ?", syscons.StatusNormal). // del_flag '0' 未删除
 		Where("m.perms IS NOT NULL AND m.perms <> ''").
 		Scan(&rows).Error
 	if err != nil {
@@ -69,8 +69,8 @@ func SelectMenuPermsByRoleIds(ctx context.Context, roleIDs []int64) ([]RoleMenuP
 		Joins("JOIN sys_menu m ON m.menu_id = srm.menu_id").
 		Joins("JOIN sys_role sr ON sr.role_id = srm.role_id").
 		Where("srm.role_id IN ?", roleIDs).
-		Where("sr.status = ?", constant.StatusNormal).
-		Where("sr.del_flag = ?", constant.StatusNormal).
+		Where("sr.status = ?", syscons.StatusNormal).
+		Where("sr.del_flag = ?", syscons.StatusNormal).
 		Where("m.perms IS NOT NULL AND m.perms <> ''").
 		Scan(&rows).Error
 	if err != nil {
@@ -84,8 +84,8 @@ func SelectMenuPermsByRoleIds(ctx context.Context, roleIDs []int64) ([]RoleMenuP
 func SelectMenuTreeAll(ctx context.Context) ([]*model.SysMenu, error) {
 	var menus []*model.SysMenu
 	err := database.DB().WithContext(ctx).
-		Where("menu_type IN ?", []string{constant.MenuTypeDir, constant.MenuTypeMenu}).
-		Where("status = ?", constant.StatusNormal).
+		Where("menu_type IN ?", []string{syscons.MenuTypeDir, syscons.MenuTypeMenu}).
+		Where("status = ?", syscons.StatusNormal).
 		Order("parent_id").
 		Order("order_num").
 		Find(&menus).Error
@@ -109,10 +109,10 @@ func SelectMenuTreeByUserId(ctx context.Context, userID int64) ([]*model.SysMenu
 		Joins("JOIN sys_user_role sur ON sur.role_id = srm.role_id").
 		Joins("JOIN sys_role sr ON sr.role_id = srm.role_id").
 		Where("sur.user_id = ?", userID).
-		Where("sr.status = ?", constant.StatusNormal).
-		Where("sr.del_flag = ?", constant.StatusNormal).
-		Where("sys_menu.menu_type IN ?", []string{constant.MenuTypeDir, constant.MenuTypeMenu}).
-		Where("sys_menu.status = ?", constant.StatusNormal).
+		Where("sr.status = ?", syscons.StatusNormal).
+		Where("sr.del_flag = ?", syscons.StatusNormal).
+		Where("sys_menu.menu_type IN ?", []string{syscons.MenuTypeDir, syscons.MenuTypeMenu}).
+		Where("sys_menu.status = ?", syscons.StatusNormal).
 		Order("sys_menu.parent_id").
 		Order("sys_menu.order_num").
 		Find(&menus).Error
@@ -170,7 +170,7 @@ func SelectListByUserId(ctx context.Context, q bo.SysMenuQueryBo,
 		Joins("LEFT JOIN sys_user_role sur ON sur.role_id = srm.role_id").
 		Joins("LEFT JOIN sys_role sr ON sr.role_id = srm.role_id").
 		Where("sur.user_id = ?", userID).
-		Where("sr.status = ?", constant.StatusNormal)
+		Where("sr.status = ?", syscons.StatusNormal)
 	// 列名带 sys_menu. 前缀：三张联表都有 status，不限定会撞上 sr.status 而歧义。
 	db = applyMenuQueryWithAlias(db, q, "sys_menu.")
 	db = db.Order("sys_menu.parent_id").Order("sys_menu.order_num")
@@ -237,7 +237,7 @@ func SelectMenuIDsByRoleID(ctx context.Context, roleID int64,
 		Joins("LEFT JOIN sys_role_menu srm ON srm.menu_id = m.menu_id").
 		Joins("LEFT JOIN sys_role sr ON sr.role_id = srm.role_id").
 		Where("srm.role_id = ?", roleID).
-		Where("sr.status = ?", constant.StatusNormal).
+		Where("sr.status = ?", syscons.StatusNormal).
 		Order("m.parent_id").
 		Order("m.order_num").
 		Scan(&rows).Error
@@ -366,7 +366,7 @@ func SelectRouteConflictCandidates(ctx context.Context,
 
 	var menus []*model.SysMenu
 	err := database.DB().WithContext(ctx).Model(&model.SysMenu{}).
-		Where("menu_type IN ?", []string{constant.MenuTypeDir, constant.MenuTypeMenu}).
+		Where("menu_type IN ?", []string{syscons.MenuTypeDir, syscons.MenuTypeMenu}).
 		Where("path = ? OR path = ?", path, routeName).
 		Find(&menus).Error
 	if err != nil {

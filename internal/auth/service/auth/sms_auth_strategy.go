@@ -9,14 +9,14 @@ import (
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/utils/loginhelper"
 	authmodel "ruoyi-go-vue-plus/internal/auth/model"
 	authvo "ruoyi-go-vue-plus/internal/auth/model/vo"
 	sysloginservice "ruoyi-go-vue-plus/internal/auth/service/syslogin"
+	rescons "ruoyi-go-vue-plus/internal/resource/constant"
+	syscons "ruoyi-go-vue-plus/internal/system/constant"
 	systemvo "ruoyi-go-vue-plus/internal/system/model/vo"
 	userservice "ruoyi-go-vue-plus/internal/system/service/user"
 )
@@ -44,7 +44,7 @@ func (s *smsAuthStrategy) Login(req *http.Request, body []byte,
 	if err != nil {
 		return nil, err
 	}
-	if err := sysloginservice.CheckLogin(req, enum.LoginTypeSms, user.UserName,
+	if err := sysloginservice.CheckLogin(req, sysloginservice.LoginTypeSms, user.UserName,
 		func() bool { return matched }); err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func (s *smsAuthStrategy) Login(req *http.Request, body []byte,
 
 	sysloginservice.RecordOnlineUser(loginUser, token)
 	sysloginservice.RecordLoginInfo(req, user.UserName,
-		constant.ConstantLoginSuccess, "登录成功")
+		syscons.LoginSuccess, "登录成功")
 
 	return &authvo.LoginVo{
 		AccessToken: token,
@@ -79,7 +79,7 @@ func (s *smsAuthStrategy) Login(req *http.Request, body []byte,
 // 与图形验证码不同，短信码只读不删：码自有 TTL 自然过期。
 func (s *smsAuthStrategy) validateSmsCode(req *http.Request, phone, smsCode string) (bool, error) {
 	ctx := req.Context()
-	cached, err := redis.Client().Get(ctx, constant.CaptchaCodeKey+phone).Result()
+	cached, err := redis.Client().Get(ctx, rescons.CaptchaCodeKey+phone).Result()
 	if err != nil && !errors.Is(err, goredis.Nil) {
 		// Redis 故障不是业务失败，不记登录日志。
 		return false, errs.New(0, "短信验证码读取失败", err.Error())
@@ -87,7 +87,7 @@ func (s *smsAuthStrategy) validateSmsCode(req *http.Request, phone, smsCode stri
 	if cached == "" {
 		// 验证码为空即过期。
 		msg := "验证码已失效"
-		sysloginservice.RecordLoginInfo(req, phone, constant.ConstantLoginFail, msg)
+		sysloginservice.RecordLoginInfo(req, phone, syscons.LoginFail, msg)
 		return false, errs.New(0, msg, "")
 	}
 	return cached == smsCode, nil

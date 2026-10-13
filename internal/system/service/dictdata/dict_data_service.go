@@ -6,9 +6,9 @@ import (
 
 	"github.com/HandsomeNPC/ruoyi-common-go/cache"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
+	syscons "ruoyi-go-vue-plus/internal/system/constant"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	dictdatarepository "ruoyi-go-vue-plus/internal/system/repository/dictdata"
@@ -196,10 +196,10 @@ func refreshTypeCache(ctx context.Context, dictType string) {
 	}
 	list, err := selectDictDataByTypeUncached(ctx, dictType)
 	if err != nil {
-		_ = cache.Evict(ctx, redis.Client(), constant.CacheSysDict, dictType)
+		_ = cache.Evict(ctx, redis.Client(), syscons.CacheSysDict, dictType)
 		return
 	}
-	_ = cache.Put(ctx, redis.Client(), constant.CacheSysDict, dictType, list, constant.CacheTTLSysDict)
+	_ = cache.Put(ctx, redis.Client(), syscons.CacheSysDict, dictType, list, syscons.CacheTTLSysDict)
 }
 
 // selectDictDataByTypeUncached 直接查库取某类型下的字典数据，恒返回非 nil 切片

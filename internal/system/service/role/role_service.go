@@ -9,12 +9,12 @@ import (
 
 	"github.com/HandsomeNPC/ruoyi-common-go/cache"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/utils/loginhelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
+	syscons "ruoyi-go-vue-plus/internal/system/constant"
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
@@ -167,10 +167,10 @@ func CheckRoleAllowed(ctx context.Context, b *bo.SysRoleBo) error {
 	if b == nil {
 		return nil
 	}
-	if b.RoleID == constant.SuperAdminRoleID {
+	if b.RoleID == syscons.SuperAdminRoleID {
 		return errs.New(0, "不允许操作超级管理员角色", "")
 	}
-	keys := []string{constant.SuperAdminRoleKey}
+	keys := []string{syscons.SuperAdminRoleKey}
 	if b.RoleID == 0 {
 		// 新增不允许使用超管标识符。
 		if equalsAny(b.RoleKey, keys) {
@@ -288,7 +288,7 @@ func UpdateRoleBaseInfo(ctx context.Context,
 		return 0, ErrRoleKeyExists
 	}
 	// 停用前确认没有用户引用：否则会让已分配该角色的用户挂在停用角色上。
-	if b.Status == constant.StatusDisable {
+	if b.Status == syscons.StatusDisable {
 		count, err := rolerepository.CountUserRoleByRoleID(ctx, b.RoleID)
 		if err != nil {
 			return 0, err
@@ -355,7 +355,7 @@ func UpdateRolePermission(ctx context.Context,
 		return 0, err
 	}
 	// 数据权限缓存按角色失效。
-	_ = cache.Evict(ctx, redis.Client(), constant.CacheSysRoleCustom, strconv.FormatInt(b.RoleID, 10))
+	_ = cache.Evict(ctx, redis.Client(), syscons.CacheSysRoleCustom, strconv.FormatInt(b.RoleID, 10))
 	// 权限变更后让受影响在线用户下次请求即失效。
 	cleanOnlineUserByRole(ctx, b.RoleID)
 	// 取部门授权条数，空集合视作 1（成功），使 controller 的 toAjax(>0) 恒为成功口径。
@@ -374,7 +374,7 @@ func UpdateRoleStatus(ctx context.Context,
 	if roleID <= 0 {
 		return 0, errors.New("service: 角色主键不能为空")
 	}
-	if status == constant.StatusDisable {
+	if status == syscons.StatusDisable {
 		count, err := rolerepository.CountUserRoleByRoleID(ctx, roleID)
 		if err != nil {
 			return 0, err
@@ -437,7 +437,7 @@ func DeleteRoleByIDs(ctx context.Context, userID int64,
 		return err
 	}
 	// 批量删除整组清空数据权限缓存。
-	_ = cache.EvictGroup(ctx, redis.Client(), constant.CacheSysRoleCustom)
+	_ = cache.EvictGroup(ctx, redis.Client(), syscons.CacheSysRoleCustom)
 	return nil
 }
 

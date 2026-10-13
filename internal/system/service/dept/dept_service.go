@@ -8,11 +8,11 @@ import (
 
 	"github.com/HandsomeNPC/ruoyi-common-go/cache"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/utils/loginhelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
+	syscons "ruoyi-go-vue-plus/internal/system/constant"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
 	deptrepository "ruoyi-go-vue-plus/internal/system/repository/dept"
@@ -37,7 +37,7 @@ var ErrDeptParentIsSelf = errors.New("service: 上级部门不能是自己")
 // 部门读到空值。
 func SelectByID(ctx context.Context, deptID int64) (*vo.SysDeptVo, error) {
 	var cached vo.SysDeptVo
-	if hit, _ := cache.Get(ctx, redis.Client(), constant.CacheSysDept, deptCacheKey(deptID), &cached); hit {
+	if hit, _ := cache.Get(ctx, redis.Client(), syscons.CacheSysDept, deptCacheKey(deptID), &cached); hit {
 		return &cached, nil
 	}
 
@@ -57,7 +57,7 @@ func SelectByID(ctx context.Context, deptID int64) (*vo.SysDeptVo, error) {
 		return nil, err
 	}
 
-	_ = cache.Put(ctx, redis.Client(), constant.CacheSysDept, deptCacheKey(deptID), out, constant.CacheTTLSysDept)
+	_ = cache.Put(ctx, redis.Client(), syscons.CacheSysDept, deptCacheKey(deptID), out, syscons.CacheTTLSysDept)
 	return out, nil
 }
 
@@ -110,7 +110,7 @@ func SelectDeptTreeList(ctx context.Context,
 			node.ParentID = d.ParentID
 			node.Name = d.DeptName
 			node.Weight = d.OrderNum
-			node.SetExtra("disabled", d.Status == constant.StatusDisable)
+			node.SetExtra("disabled", d.Status == syscons.StatusDisable)
 		}), nil
 }
 
@@ -181,7 +181,7 @@ func InsertDept(ctx context.Context, b *bo.SysDeptBo) error {
 		return err
 	}
 	// 停用的部门下不允许挂新部门：否则新部门一出生就在一条断掉的启用链上。
-	if parent.Status != constant.StatusNormal {
+	if parent.Status != syscons.StatusNormal {
 		return errs.New(0, "部门停用，不允许新增", "")
 	}
 
@@ -195,7 +195,7 @@ func InsertDept(ctx context.Context, b *bo.SysDeptBo) error {
 	}
 	b.DeptID = add.DeptID
 	// 祖先链变了，按部门取子树的缓存整组失效。
-	_ = cache.EvictGroup(ctx, redis.Client(), constant.CacheSysDeptAndChild)
+	_ = cache.EvictGroup(ctx, redis.Client(), syscons.CacheSysDeptAndChild)
 	return nil
 }
 
@@ -233,7 +233,7 @@ func UpdateDept(ctx context.Context, userID int64, b *bo.SysDeptBo) error {
 	}
 
 	// 停用前必须确认名下没有还在用的部门/用户，否则会留下"启用的子部门挂在停用父级下"的断链。
-	if b.Status == constant.StatusDisable {
+	if b.Status == syscons.StatusDisable {
 		if err := checkDisableAllowed(ctx, b.DeptID); err != nil {
 			return err
 		}
@@ -268,8 +268,8 @@ func UpdateDept(ctx context.Context, userID int64, b *bo.SysDeptBo) error {
 	evictDept(ctx, b.DeptID)
 
 	// 启用一个有上级的部门时，把整条祖先链一并启用——否则它挂在停用父级下，前端树上看不见。
-	if b.Status == constant.StatusNormal && ancestors != "" &&
-		ancestors != constant.RootDeptAncestors {
+	if b.Status == syscons.StatusNormal && ancestors != "" &&
+		ancestors != syscons.RootDeptAncestors {
 		if err := enableAncestors(ctx, ancestors); err != nil {
 			return err
 		}
@@ -369,7 +369,7 @@ func DeleteDeptByID(ctx context.Context, userID, deptID int64) error {
 		return errors.New("service: 部门主键不能为空")
 	}
 	// 默认部门是审计字段 create_dept 的兜底归属，删掉会让存量数据指向空部门。
-	if deptID == constant.DefaultDeptID {
+	if deptID == syscons.DefaultDeptID {
 		return errs.New(response.CodeWarn, "默认部门,不允许删除", "")
 	}
 
@@ -417,8 +417,8 @@ func DeleteDeptByID(ctx context.Context, userID, deptID int64) error {
 // evictDept 失效单个部门缓存，并连带清空按部门取子树的缓存组。
 // 后者是 allEntries 语义：子树结果按祖先链聚合，任一部门变动都可能影响别的 key。
 func evictDept(ctx context.Context, deptID int64) {
-	_ = cache.Evict(ctx, redis.Client(), constant.CacheSysDept, deptCacheKey(deptID))
-	_ = cache.EvictGroup(ctx, redis.Client(), constant.CacheSysDeptAndChild)
+	_ = cache.Evict(ctx, redis.Client(), syscons.CacheSysDept, deptCacheKey(deptID))
+	_ = cache.EvictGroup(ctx, redis.Client(), syscons.CacheSysDeptAndChild)
 }
 
 // deptCacheKey 部门缓存的 key。
