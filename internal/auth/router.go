@@ -14,7 +14,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatablebody"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/trace"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/xss"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/recover"
 	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/loginhelper"
 	authconfig "ruoyi-go-vue-plus/internal/auth/config"
@@ -51,7 +51,7 @@ func InitRouter() *gin.Engine {
 	r := gin.New()
 	cfg := authconfig.Get()
 
-	r.Use(middleware.Recover())
+	r.Use(recover.Recover())
 	r.Use(cors.CORSWithConfig(cfg.CORS))
 	r.Use(trace.TraceIDWithConfig(cfg.TraceID))
 	r.Use(repeatablebody.RepeatableBodyWithConfig(cfg.RepeatableBody))

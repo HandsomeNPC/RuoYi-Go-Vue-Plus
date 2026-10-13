@@ -19,7 +19,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/trace"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/xss"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/recover"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
 	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/smshelper"
@@ -97,7 +97,7 @@ func main() {
 	// 单体引擎：全局中间件装配一次，auth/system 各自只注册本模块路由。
 	// standalone 部署保留 /auth、/system 前缀(与前端直连的网关路径一致)。
 	r := gin.New()
-	r.Use(middleware.Recover())
+	r.Use(recover.Recover())
 	r.Use(cors.CORSWithConfig(ac.CORS))
 	r.Use(trace.TraceIDWithConfig(ac.TraceID))
 	r.Use(repeatablebody.RepeatableBodyWithConfig(ac.RepeatableBody))
