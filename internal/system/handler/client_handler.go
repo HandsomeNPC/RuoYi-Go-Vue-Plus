@@ -11,7 +11,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	"github.com/HandsomeNPC/ruoyi-common-go/excelhelper"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	clientservice "ruoyi-go-vue-plus/internal/system/service/client"
 

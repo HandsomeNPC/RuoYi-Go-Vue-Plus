@@ -10,7 +10,7 @@ import (
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	pkgrepo "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/repository"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
 	"ruoyi-go-vue-plus/internal/resource/model/bo"
 	ossconfigservice "ruoyi-go-vue-plus/internal/resource/service/ossconfig"
 

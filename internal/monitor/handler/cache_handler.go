@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
 	cacheservice "ruoyi-go-vue-plus/internal/monitor/service/cache"
 )
 

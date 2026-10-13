@@ -11,7 +11,7 @@ import (
 	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/utils/loginhelper"
 )
 

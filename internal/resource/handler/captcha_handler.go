@@ -12,7 +12,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/mailhelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/constant"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
 	"github.com/HandsomeNPC/ruoyi-common-go/smshelper"
 	resourceconfig "ruoyi-go-vue-plus/internal/resource/config"
 )

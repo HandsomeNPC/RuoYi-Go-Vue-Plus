@@ -8,7 +8,7 @@ import (
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	"github.com/HandsomeNPC/ruoyi-common-go/excelhelper"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
 )
 
 // reportExportErr 把 excelhelper.Export 的失败登进 gin.Context，交由 Recover 中间件渲染。
