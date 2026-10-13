@@ -12,7 +12,7 @@ import (
 
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/response"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/loginhelper"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/utils/loginhelper"
 )
 
 // bearerPrefix query token 里可能带的授权前缀（大小写不敏感）。
