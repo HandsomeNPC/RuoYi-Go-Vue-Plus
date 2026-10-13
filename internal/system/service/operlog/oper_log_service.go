@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
+	oplog "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/operlog"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	operlogrepository "ruoyi-go-vue-plus/internal/system/repository/operlog"
@@ -14,11 +14,11 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/ip"
 )
 
-// RecordOper 记录操作日志。签名满足 oplog.Recorder，由 main 注册给 pkg/oplog。
+// RecordOper 记录操作日志。签名满足 oplog.Recorder，由 main 注册给 middleware/operlog。
 //
 // **异步**：反查 IP 归属地要读地址库、落库要走网络，都不该占住请求线程；调用方
 // 拿不到错误——操作日志写失败不该影响业务结果。因此 ctx 必须已脱离请求生命周期
-// （pkg/oplog 侧传的是 context.WithoutCancel）。
+// （middleware/operlog 侧传的是 context.WithoutCancel）。
 func RecordOper(ctx context.Context, evt *oplog.Event) {
 	if evt == nil {
 		return

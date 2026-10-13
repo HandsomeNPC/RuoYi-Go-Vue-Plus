@@ -17,7 +17,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/permission"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/recover"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/operlog"
 	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/loginhelper"
 	resourceconfig "ruoyi-go-vue-plus/internal/resource/config"
@@ -80,18 +80,18 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行，仍记一条失败日志。
 	ossConfig.POST("", permission.CheckPermission("system:ossConfig:add"),
-		oplog.Log(ossConfigLogTitle, enum.BusinessTypeInsert),
+		operlog.Log(ossConfigLogTitle, enum.BusinessTypeInsert),
 		repeatsubmit.RepeatSubmit(0, ""), handler.OssConfigApiApp.Add)
 	ossConfig.PUT("", permission.CheckPermission("system:ossConfig:edit"),
-		oplog.Log(ossConfigLogTitle, enum.BusinessTypeUpdate),
+		operlog.Log(ossConfigLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.OssConfigApiApp.Edit)
 	// changeStatus 路径更具体，须注册在 PUT "" 之后。挂防重：
 	// 它会把全表刷成非默认再置目标行，重复提交期间存在"一个默认都没有"的窗口。
 	ossConfig.PUT("/changeStatus", permission.CheckPermission("system:ossConfig:edit"),
-		oplog.Log(ossConfigStatusLogTitle, enum.BusinessTypeUpdate),
+		operlog.Log(ossConfigStatusLogTitle, enum.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.OssConfigApiApp.ChangeStatus)
 	ossConfig.DELETE("/:ossConfigIds", permission.CheckPermission("system:ossConfig:remove"),
-		oplog.Log(ossConfigLogTitle, enum.BusinessTypeDelete), handler.OssConfigApiApp.Remove)
+		operlog.Log(ossConfigLogTitle, enum.BusinessTypeDelete), handler.OssConfigApiApp.Remove)
 
 	oss := protected.Group("/oss")
 	oss.GET("/list", permission.CheckPermission("system:oss:list"), handler.OssApiApp.List)
@@ -101,13 +101,13 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	oss.GET("/download/:ossId", permission.CheckPermission("system:oss:download"),
 		handler.OssApiApp.Download)
 	// upload 不挂防重：同一文件重传是合法诉求，且每次都生成新 key，不存在覆盖。
-	// WithoutRequestData 不可省：oplog 采集入参会对 multipart 请求调 ParseForm，
+	// WithoutRequestData 不可省：operlog 采集入参会对 multipart 请求调 ParseForm，
 	// 那会把整个文件读进内存再塞进 sys_oper_log.oper_param。
 	oss.POST("/upload", permission.CheckPermission("system:oss:upload"),
-		oplog.Log(ossLogTitle, enum.BusinessTypeInsert, oplog.WithoutRequestData()),
+		operlog.Log(ossLogTitle, enum.BusinessTypeInsert, operlog.WithoutRequestData()),
 		handler.OssApiApp.Upload)
 	oss.DELETE("/:ossIds", permission.CheckPermission("system:oss:remove"),
-		oplog.Log(ossLogTitle, enum.BusinessTypeDelete), handler.OssApiApp.Remove)
+		operlog.Log(ossLogTitle, enum.BusinessTypeDelete), handler.OssApiApp.Remove)
 }
 
 // RegisterPushRoutes 注册推送连接端点。

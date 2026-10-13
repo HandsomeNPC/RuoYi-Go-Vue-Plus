@@ -15,7 +15,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/enum"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/permission"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/recover"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/operlog"
 	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/loginhelper"
 	monitorconfig "ruoyi-go-vue-plus/internal/monitor/config"
@@ -37,7 +37,7 @@ const userDeviceLogTitle = "在线设备"
 // standalone 部署 prefix="/monitor"，对外即 /monitor/cache、/monitor/loginInfo。
 //
 // 挂 TokenInterceptor + AuditContext：cache 只读不需 AuditContext，但 loginInfo 的
-// 删除/清空/解锁带 @Log，操作日志要记录操作人，AuditContext 把登录态写进 ctx 供 oplog 取。
+// 删除/清空/解锁带 @Log，操作日志要记录操作人，AuditContext 把登录态写进 ctx 供 operlog 取。
 // 两个中间件放一处统一挂，比按子组分别挂更易维护。
 func RegisterRoutes(r *gin.Engine, prefix string) {
 	plugin := sagin.NewPlugin(satoken.Manager())
@@ -51,40 +51,40 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	loginInfo := g.Group("/loginInfo")
 	loginInfo.GET("/list", permission.CheckPermission("monitor:logininfo:list"), handler.LoginInfoApiApp.List)
 	loginInfo.POST("/export", permission.CheckPermission("monitor:logininfo:export"),
-		oplog.Log(loginInfoLogTitle, enum.BusinessTypeExport), handler.LoginInfoApiApp.Export)
+		operlog.Log(loginInfoLogTitle, enum.BusinessTypeExport), handler.LoginInfoApiApp.Export)
 	// clean 与 :infoIds 同层，静态段优先，gin 能区分二者，无需调整注册顺序。
 	// 权限码用 remove，两处复用。
 	loginInfo.DELETE("/clean", permission.CheckPermission("monitor:logininfo:remove"),
-		oplog.Log(loginInfoLogTitle, enum.BusinessTypeClean), handler.LoginInfoApiApp.Clean)
+		operlog.Log(loginInfoLogTitle, enum.BusinessTypeClean), handler.LoginInfoApiApp.Clean)
 	loginInfo.DELETE("/:infoIds", permission.CheckPermission("monitor:logininfo:remove"),
-		oplog.Log(loginInfoLogTitle, enum.BusinessTypeDelete), handler.LoginInfoApiApp.Remove)
+		operlog.Log(loginInfoLogTitle, enum.BusinessTypeDelete), handler.LoginInfoApiApp.Remove)
 	// unlock 需登录即可；
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	loginInfo.GET("/unlock/:userName", permission.CheckPermission("monitor:logininfo:unlock"),
-		oplog.Log(loginInfoLogTitle, enum.BusinessTypeOther),
+		operlog.Log(loginInfoLogTitle, enum.BusinessTypeOther),
 		repeatsubmit.RepeatSubmit(0, ""), handler.LoginInfoApiApp.Unlock)
 
 	operLog := g.Group("/operlog")
 	operLog.GET("/list", permission.CheckPermission("monitor:operlog:list"), handler.OperLogApiApp.List)
 	operLog.POST("/export", permission.CheckPermission("monitor:operlog:export"),
-		oplog.Log(operLogLogTitle, enum.BusinessTypeExport), handler.OperLogApiApp.Export)
+		operlog.Log(operLogLogTitle, enum.BusinessTypeExport), handler.OperLogApiApp.Export)
 	// clean 与 :operIds 同层，静态段优先，gin 能区分二者，无需调整注册顺序（与 loginInfo 同理）。
 	// 权限码用 remove，两处复用。
 	operLog.DELETE("/clean", permission.CheckPermission("monitor:operlog:remove"),
-		oplog.Log(operLogLogTitle, enum.BusinessTypeClean), handler.OperLogApiApp.Clean)
+		operlog.Log(operLogLogTitle, enum.BusinessTypeClean), handler.OperLogApiApp.Clean)
 	operLog.DELETE("/:operIds", permission.CheckPermission("monitor:operlog:remove"),
-		oplog.Log(operLogLogTitle, enum.BusinessTypeDelete), handler.OperLogApiApp.Remove)
+		operlog.Log(operLogLogTitle, enum.BusinessTypeDelete), handler.OperLogApiApp.Remove)
 
 	// online 在线用户监控。getInfo/remove 只需登录(操作自身会话)，list/forceLogout 需权限码。
 	// /myself/:tokenId 与 /:tokenId 段数不同，gin 按深度区分，无路由冲突。
 	online := g.Group("/online")
 	online.GET("/list", permission.CheckPermission("monitor:online:list"), handler.UserOnlineApiApp.List)
 	online.DELETE("/:tokenId", permission.CheckPermission("monitor:online:forceLogout"),
-		oplog.Log(userOnlineLogTitle, enum.BusinessTypeForce),
+		operlog.Log(userOnlineLogTitle, enum.BusinessTypeForce),
 		repeatsubmit.RepeatSubmit(0, ""), handler.UserOnlineApiApp.ForceLogout)
 	online.GET("", handler.UserOnlineApiApp.GetInfo)
 	online.DELETE("/myself/:tokenId",
-		oplog.Log(userDeviceLogTitle, enum.BusinessTypeForce),
+		operlog.Log(userDeviceLogTitle, enum.BusinessTypeForce),
 		repeatsubmit.RepeatSubmit(0, ""), handler.UserOnlineApiApp.Remove)
 
 	// 探针，与 system/auth 对齐。

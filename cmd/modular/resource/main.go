@@ -14,7 +14,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/ratelimiter"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatsubmit"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/operlog"
 	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/smshelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
@@ -51,9 +51,9 @@ func main() {
 	mailhelper.Init(cfg.Mail)
 	// 短信按渠道逐个 init，任一成功 enabled 即 true；全失败 enabled=false、接口返回未开启，不 fatal。
 	smshelper.Init(cfg.SMS)
-	// 操作日志落库实现反向注册给 pkg/oplog(pkg 不依赖 internal/service)，
+	// 操作日志落库实现反向注册给 pkg/operlog(pkg 不依赖 internal/service)，
 	// 依赖 database 与 snowflake。
-	oplog.Init(operlogservice.RecordOper)
+	operlog.Init(operlogservice.RecordOper)
 	// 推送会话管理器，依赖 redis(跨实例分发走 Redis 订阅)，须在 redis.Init 之后。
 	push.Init(cfg.Push)
 	defer push.Shutdown()

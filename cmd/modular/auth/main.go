@@ -8,7 +8,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/ratelimiter"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatsubmit"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/operlog"
 	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/auth"
@@ -47,9 +47,9 @@ func main() {
 	if err := socialservice.Init(cfg.Social, redis.Client()); err != nil {
 		log.Printf("[auth] 三方登录未就绪: %v", err)
 	}
-	// 同理：auth 当前无 @Log 路由，但漏注册时 pkg/oplog 只打一行日志就丢弃事件，
+	// 同理：auth 当前无 @Log 路由，但漏注册时 pkg/operlog 只打一行日志就丢弃事件，
 	// 不会报错——保持对称比事后排查静默丢日志省事。
-	oplog.Init(operlogservice.RecordOper)
+	operlog.Init(operlogservice.RecordOper)
 
 	r := auth.InitRouter()
 	auth.InitServer(r)

@@ -20,7 +20,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/xss"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/recover"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/operlog"
 	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/smshelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
@@ -80,9 +80,9 @@ func main() {
 	if err := socialservice.Init(ac.Social, redis.Client()); err != nil {
 		log.Printf("[standalone] 三方登录未就绪: %v", err)
 	}
-	// 操作日志落库实现反向注册给 pkg/oplog(pkg 不依赖 internal/service)，
+	// 操作日志落库实现反向注册给 pkg/operlog(pkg 不依赖 internal/service)，
 	// 依赖 database 与 snowflake。
-	oplog.Init(operlogservice.RecordOper)
+	operlog.Init(operlogservice.RecordOper)
 	// 推送会话管理器，依赖 redis(跨实例分发走 Redis 订阅)，须在 redis.Init 之后。
 	push.Init(rc.Push)
 	defer push.Shutdown()

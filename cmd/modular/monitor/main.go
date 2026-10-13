@@ -1,9 +1,9 @@
 // Command monitor 监控模块进程入口，监听端口见 configs/monitor.yaml。
 //
 // 既读 Redis（缓存监控），又落库读 MySQL（登录日志列表/删除/清空）与读写 Redis
-// （账户解锁删 pwd_err_cnt 锁定键）。故初始化 database/snowflake/oplog/repeatsubmit：
-// database 供登录日志查询/删除/清空，snowflake 因 oplog 落库 sys_oper_log 需主键发号，
-// oplog 给 @Log 接口（导出/删除/清空/解锁）记操作日志，repeatsubmit 给 unlock 防重。
+// （账户解锁删 pwd_err_cnt 锁定键）。故初始化 database/snowflake/operlog/repeatsubmit：
+// database 供登录日志查询/删除/清空，snowflake 因 operlog 落库 sys_oper_log 需主键发号，
+// operlog 给 @Log 接口（导出/删除/清空/解锁）记操作日志，repeatsubmit 给 unlock 防重。
 // 鉴权复用 auth 进程登录时写入 Redis 的 sa-token 会话，本进程连同一 Redis 即可校验权限码。
 package main
 
@@ -11,7 +11,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/repeatsubmit"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/oplog"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/operlog"
 	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	"ruoyi-go-vue-plus/internal/monitor"
@@ -37,11 +37,11 @@ func main() {
 
 	satoken.Init(cfg.SAToken, redis.Client())
 
-	// oplog 落 sys_oper_log 的主键发号器，须在 oplog.Init 之前就绪。
+	// operlog 落 sys_oper_log 的主键发号器，须在 operlog.Init 之前就绪。
 	snowflake.Init(cfg.Snowflake)
-	// 操作日志落库实现反向注册给 pkg/oplog(pkg 不依赖 internal/service)，
+	// 操作日志落库实现反向注册给 pkg/operlog(pkg 不依赖 internal/service)，
 	// 依赖 database 与 snowflake。
-	oplog.Init(operlogservice.RecordOper)
+	operlog.Init(operlogservice.RecordOper)
 	// 依赖 redis(防重键存 Redis)，须在 redis.Init 之后。
 	repeatsubmit.Init(redis.Client(), satoken.TokenName())
 
