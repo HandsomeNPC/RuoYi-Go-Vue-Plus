@@ -3,7 +3,7 @@ module ruoyi-go-vue-plus
 go 1.26.5
 
 require (
-	github.com/HandsomeNPC/ruoyi-common-go v0.0.0-00010101000000-000000000000
+	github.com/HandsomeNPC/ruoyi-common-go v0.0.1
 	github.com/gin-gonic/gin v1.12.0
 	github.com/redis/go-redis/v9 v9.23.0
 	github.com/sa-tokens/sa-token-go/integrations/gin v0.2.4
@@ -124,7 +124,6 @@ require (
 tool github.com/jmattheis/goverter/cmd/goverter
 
 replace (
-	github.com/HandsomeNPC/ruoyi-common-go => E:/WorkSpace/RuoYi-Plus/ruoyi-common-go
 	github.com/sa-tokens/sa-token-go/core => github.com/sa-tokens/sa-token-go/core v0.2.4-0.20260909081128-8270b63ab78e
 	github.com/sa-tokens/sa-token-go/integrations/gin => github.com/sa-tokens/sa-token-go/integrations/gin v0.2.4-0.20260909081128-8270b63ab78e
 	github.com/sa-tokens/sa-token-go/storage/memory => github.com/sa-tokens/sa-token-go/storage/memory v0.2.4-0.20260909081128-8270b63ab78e
