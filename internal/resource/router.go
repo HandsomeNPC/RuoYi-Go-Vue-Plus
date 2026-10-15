@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
+	sagin "github.com/HandsomeNPC/sa-token-go/integrations/gin"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/accesslog"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/cors"

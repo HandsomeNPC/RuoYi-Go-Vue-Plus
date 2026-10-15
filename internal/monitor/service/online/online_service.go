@@ -8,7 +8,7 @@ import (
 	"log"
 
 	goredis "github.com/redis/go-redis/v9"
-	"github.com/sa-tokens/sa-token-go/stputil"
+	"github.com/HandsomeNPC/sa-token-go/stputil"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"

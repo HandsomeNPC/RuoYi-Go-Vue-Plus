@@ -3,11 +3,11 @@ module ruoyi-go-vue-plus
 go 1.26.5
 
 require (
-	github.com/HandsomeNPC/ruoyi-common-go v0.0.1
+	github.com/HandsomeNPC/ruoyi-common-go v0.0.2
+	github.com/HandsomeNPC/sa-token-go/integrations/gin v0.2.5
+	github.com/HandsomeNPC/sa-token-go/stputil v0.2.5
 	github.com/gin-gonic/gin v1.12.0
 	github.com/redis/go-redis/v9 v9.23.0
-	github.com/sa-tokens/sa-token-go/integrations/gin v0.2.4
-	github.com/sa-tokens/sa-token-go/stputil v0.2.4
 	github.com/spf13/viper v1.21.0
 	golang.org/x/sync v0.22.0
 	gorm.io/gorm v1.31.2
@@ -15,6 +15,8 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
+	github.com/HandsomeNPC/sa-token-go/core v0.2.5 // indirect
+	github.com/HandsomeNPC/sa-token-go/storage/redis v0.2.5 // indirect
 	github.com/alibabacloud-go/alibabacloud-gateway-spi v0.0.5 // indirect
 	github.com/alibabacloud-go/darabonba-openapi/v2 v2.2.4 // indirect
 	github.com/alibabacloud-go/debug v1.0.1 // indirect
@@ -84,8 +86,6 @@ require (
 	github.com/quic-go/quic-go v0.59.1 // indirect
 	github.com/richardlehane/mscfb v1.0.7 // indirect
 	github.com/richardlehane/msoleps v1.0.6 // indirect
-	github.com/sa-tokens/sa-token-go/core v0.2.4 // indirect
-	github.com/sa-tokens/sa-token-go/storage/redis v0.2.4 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
@@ -122,11 +122,3 @@ require (
 )
 
 tool github.com/jmattheis/goverter/cmd/goverter
-
-replace (
-	github.com/sa-tokens/sa-token-go/core => github.com/sa-tokens/sa-token-go/core v0.2.4-0.20260909081128-8270b63ab78e
-	github.com/sa-tokens/sa-token-go/integrations/gin => github.com/sa-tokens/sa-token-go/integrations/gin v0.2.4-0.20260909081128-8270b63ab78e
-	github.com/sa-tokens/sa-token-go/storage/memory => github.com/sa-tokens/sa-token-go/storage/memory v0.2.4-0.20260909081128-8270b63ab78e
-	github.com/sa-tokens/sa-token-go/storage/redis => github.com/sa-tokens/sa-token-go/storage/redis v0.2.4-0.20260909081128-8270b63ab78e
-	github.com/sa-tokens/sa-token-go/stputil => github.com/sa-tokens/sa-token-go/stputil v0.2.4-0.20260909081128-8270b63ab78e
-)

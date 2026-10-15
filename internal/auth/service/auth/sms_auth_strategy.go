@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin/binding"
 	goredis "github.com/redis/go-redis/v9"
-	sagin "github.com/sa-tokens/sa-token-go/integrations/gin"
+	sagin "github.com/HandsomeNPC/sa-token-go/integrations/gin"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
