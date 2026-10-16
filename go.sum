@@ -14,8 +14,8 @@ github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/internal v1.1.1/go.mod h
 github.com/AzureAD/microsoft-authentication-library-for-go v1.4.2 h1:oygO0locgZJe7PpYPXT5A29ZkwJaPqcva7BVeemZOZs=
 github.com/AzureAD/microsoft-authentication-library-for-go v1.4.2/go.mod h1:wP83P5OoQ5p6ip3ScPr0BAq0BvuPAvacpEuSzyouqAI=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
-github.com/HandsomeNPC/ruoyi-common-go v0.0.3 h1:woHErxaMwMaS+vMcWC7tcpQguG91qgaQDDMKzHLiGC8=
-github.com/HandsomeNPC/ruoyi-common-go v0.0.3/go.mod h1:bgdvfmNxjOc4NYDpY/y8gxoeBxk4x7ju8Lf6udIOGYU=
+github.com/HandsomeNPC/ruoyi-common-go v0.0.4 h1:RSqEamBfu3r8TsQxGSMq9eje8tsxOAwzucO5upz/S/k=
+github.com/HandsomeNPC/ruoyi-common-go v0.0.4/go.mod h1:bgdvfmNxjOc4NYDpY/y8gxoeBxk4x7ju8Lf6udIOGYU=
 github.com/HandsomeNPC/sa-token-go/core v0.2.6 h1:v7/LISdtLEAxq7/5v8K9fMuvcHMf71WnqRctGBO8wHY=
 github.com/HandsomeNPC/sa-token-go/core v0.2.6/go.mod h1:YuUtSnoYajAjO0TbeuRtmKpRjCv0SluMBLw1UBYDVls=
 github.com/HandsomeNPC/sa-token-go/integrations/gin v0.2.6 h1:yMNKMQ7XSs08mXIUihk9VD+8OFiwpzDg8Mq+gK0ifsc=

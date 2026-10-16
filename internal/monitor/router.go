@@ -13,9 +13,11 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/trace"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/xss"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/audit"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/notfound"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/operlog"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/permission"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/recover"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
 	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
 	monitorconfig "ruoyi-go-vue-plus/internal/monitor/config"
 	"ruoyi-go-vue-plus/internal/monitor/handler"
@@ -88,7 +90,7 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 
 	// 探针，与 system/auth 对齐。
 	r.GET(prefix+"/ping", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"module": "monitor", "message": "pong"})
+		c.JSON(http.StatusOK, response.Ok(gin.H{"module": "monitor", "message": "pong"}))
 	})
 }
 
@@ -105,6 +107,7 @@ func InitRouter() *gin.Engine {
 	r.Use(xss.XSSWithConfig(cfg.XSS))
 
 	RegisterRoutes(r, "")
+	notfound.Register(r)
 
 	return r
 }

@@ -15,9 +15,12 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/trace"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/xss"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/audit"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/checklogin"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/notfound"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/operlog"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/permission"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/recover"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
 	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
 	resourceconfig "ruoyi-go-vue-plus/internal/resource/config"
 	"ruoyi-go-vue-plus/internal/resource/handler"
@@ -42,7 +45,7 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 
 	// 公开路由(免鉴权)：探针，与 system/auth/monitor 对齐。
 	r.GET(prefix+"/ping", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"module": "resource", "message": "pong"})
+		c.JSON(http.StatusOK, response.Ok(gin.H{"module": "resource", "message": "pong"}))
 	})
 
 	protected := r.Group(prefix)
@@ -50,7 +53,7 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	protected.Use(plugin.TokenInterceptor(), audit.AuditContext())
 
 	// 不校验权限码，仅需登录：消息盒子只返回当前用户自己的消息。
-	protected.GET("/message/box", sagin.CheckLogin(), handler.MessageApiApp.GetBox)
+	protected.GET("/message/box", checklogin.CheckLogin(), handler.MessageApiApp.GetBox)
 
 	// 短信/邮箱验证码：登录前就要调，必须免鉴权。这两个端点落在带
 	// TokenInterceptor 的组内，故显式 Ignore 放行。
@@ -129,10 +132,10 @@ func RegisterPushRoutes(r *gin.Engine, prefix string) {
 	// 不能自定义请求头，token 只能走 query，形如 ?Authorization=Bearer xxx，
 	// 而 sa-token-go 的 query 分支不剥 Bearer 前缀，不规范化会一律 401。
 	r.GET(path, push.NormalizeQueryToken(tokenName), plugin.TokenInterceptor(),
-		sagin.CheckLogin(), push.Handler())
+		checklogin.CheckLogin(), push.Handler())
 	// close：前端主动断开时清掉服务端会话，不必等心跳超时才回收。
 	r.GET(path+"/close", push.NormalizeQueryToken(tokenName), plugin.TokenInterceptor(),
-		sagin.CheckLogin(), push.CloseHandler())
+		checklogin.CheckLogin(), push.CloseHandler())
 }
 
 // InitRouter 构建并返回 resource 进程的 gin 引擎(独立部署用)。
@@ -150,6 +153,7 @@ func InitRouter() *gin.Engine {
 
 	RegisterRoutes(r, "")
 	RegisterPushRoutes(r, "")
+	notfound.Register(r)
 
 	return r
 }

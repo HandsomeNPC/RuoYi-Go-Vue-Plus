@@ -421,7 +421,7 @@ const xxxLogTitle = "参数管理"
 
 xxx := protected.Group("/xxx")
 xxx.GET("/list", satoken.CheckPermission("system:xxx:list"), handler.XxxApiApp.List)
-xxx.GET("/configKey/:configKey", sagin.CheckLogin(), handler.XxxApiApp.GetByKey)
+xxx.GET("/configKey/:configKey", checklogin.CheckLogin(), handler.XxxApiApp.GetByKey)
 xxx.GET("/:xxxId", satoken.CheckPermission("system:xxx:query"), handler.XxxApiApp.GetInfo)
 xxx.POST("/export", satoken.CheckPermission("system:xxx:export"),
 	oplog.Log(xxxLogTitle, enum.BusinessTypeExport), handler.XxxApiApp.Export)
@@ -458,7 +458,7 @@ xxx.DELETE("/:xxxIds", satoken.CheckPermission("system:xxx:remove"),
 |-----------------------------------------------|----------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
 | `@SaCheckPermission("system:xxx:list")`       | `satoken.CheckPermission("system:xxx:list")`                               | 多个权限码是 **OR**，语义是"任一命中放行"                                                                                        |
 | `@SaCheckRole("admin")`                       | `satoken.CheckRole("admin")`                                               | 同上                                                                                                                             |
-| 仅需登录（无权限注解）                        | `sagin.CheckLogin()`                                                       | Java 没挂 `@SaCheckPermission` 的接口用这个                                                                                      |
+| 仅需登录（无权限注解）                        | `checklogin.CheckLogin()`                                                  | Java 没挂 `@SaCheckPermission` 的接口用这个。**不要用 `sagin.CheckLogin()`**，见下方「未登录响应」                               |
 | 完全公开                                      | `sagin.Ignore()`                                                           | **仅在路由位于带 `plugin.TokenInterceptor()` 的组内时**才需要；注册在 `protected` 组之外（如 `/ping`）的公开路由什么标记都不用加 |
 | `@Log(title="x", businessType=INSERT)`        | `oplog.Log("x", enum.BusinessTypeInsert)`                                  |                                                                                                                                  |
 | `@RepeatSubmit()`                             | `repeatsubmit.RepeatSubmit(0, "")`                                         | `0` = 默认 5s；**< 1s 注册期 panic**                                                                                             |
@@ -473,6 +473,58 @@ xxx.DELETE("/:xxxIds", satoken.CheckPermission("system:xxx:remove"),
 `oplog.Log` 可选项：`WithoutRequestData()`、`WithoutResponseData()`、
 `WithExcludeParams("field")`、`WithOperatorType(enum.OperatorTypeMobile)`。 密码类字段已由 `constant.ExcludeProperties`
 全局排除，无需重复声明。
+
+### 未登录响应：必须 HTTP 200 + `code:401`，别用 sa-token-go 自带的中间件
+
+鉴权中间件一律用本项目的 `checklogin.CheckLogin()` / `permission.CheckPermission()`，
+**不要**直接挂 `sagin.CheckLogin()` / `sagin.CheckPermission()`。
+
+后者会自行 `c.JSON` 出 `{code,message,error}` 并带 **真实 HTTP 401**，而前端 `request.ts`
+把"弹确认框 + 跳登录页"写在 axios 的 **成功分支**里（只有 2xx 才进）。真 401 会落到 error 分支，
+结果是弹一个英文 toast、**停在原页面不跳转**。Java 侧 `SaTokenExceptionHandler` 返回的是
+`R.fail(401, msg)`，故意不加 `@ResponseStatus`，HTTP 状态就是 200 —— 这是前端能跳转的前提。
+
+sa-token-go 的 `writeErrorResponse` 是包私有、无任何 hook 可覆盖（既无 config 字段也无 Plugin 字段），
+所以只能绕开它自己写中间件，经 `c.Error` 交给 `recover.Recover()` 统一渲染。
+
+`permission.CheckPermission` 内部已先做登录态预检：Java 的 `@SaCheckPermission` 未登录时抛
+`NotLoginException`(401) 而非 `NotPermissionException`(403)，而 sagin 的 `*ByToken` 版只回"无权限"、
+不判登录，不补这一步的话 token 过期会错报 403，前端同样不跳登录页。
+
+失效文案按原因分四种，对齐 Java `switch (e.getType())`：
+
+| 场景                      | 文案                               | sa-token-go 来源                                        |
+|---------------------------|------------------------------------|---------------------------------------------------------|
+| 被管理员踢下线            | 账号已被管理员强制下线             | `ErrKickedOut`                                          |
+| 被顶号                    | 当前账号已在其他设备登录，您已被强制下线 | `ErrTokenReplaced`                                      |
+| 活跃超时（冻结）/ 已过期  | 登录已过期，请重新登录             | `ErrActiveTimeout` / `ErrInvalidTokenData`              |
+| 未携带 token / 其他       | 登录状态异常，请重新登录           | 兜底                                                    |
+
+两个取舍（都是库能力所限，非疏漏）：
+
+- `IsLogin`/`CheckLogin` 会把所有原因压成 `ErrNotLogin`，拿不到失效原因，故改用
+  `Manager.CheckLoginWithState` —— 全库仅此一个 API 返回带原因的 error。
+- 固定有效期到点时 Redis 键直接消失，库里分不出"过期"与"从未存在"（`ErrTokenExpired` 虽有声明但从不返回），
+  两者都归到"登录已过期"。在 Java 侧这两种也同为该文案，不损失语义。
+
+### 响应形态的硬约束：HTTP 恒 200
+
+**任何**错误出口都必须是 HTTP 200 + `{code,msg,data}`，`data` 无值时序列化为 `null`（不加 `omitempty`）。
+Java 侧除两个退化分支外全部如此 —— 业务码只在 body 的 `code` 里，不体现在 HTTP 状态上。
+原因见上一节：前端只在 2xx 分支读 `code`。
+
+落地要点：
+
+- **新引擎入口必须挂 `notfound.Register(r)`**，且放在所有业务路由注册之后。gin 默认对未命中路由
+  回 HTTP 404 + `text/plain` 的 `404 page not found`，前端会渲染成"系统接口404异常"；
+  Java 对应的是 `R.fail(404,"请求地址不存在")` / `R.fail(405, msg)`，均为 HTTP 200。
+  该函数同时置 `HandleMethodNotAllowed = true`——gin 默认 false，错动词会被当 404 处理，拿不到 405 语义。
+- **`middleware/*` 下的包不引 `ruoyi-core`**（自包含约定，见各包 doc）。需要回失败响应时，
+  就地定义一个 `failBody{Code,Msg,Data}` 结构体并交给 `c.AbortWithStatusJSON` 序列化，
+  **不要用 `fmt.Sprintf` 拼 JSON 串**——msg 含引号时会产出非法 JSON，前端连 `code` 都读不到。
+- 文件下载 / Excel 导出 / SSE 流是有意的非 R 响应。它们的共同前提是**先把错误判完再写第一个字节**
+  （`excelhelper.Export` 整本 workbook 先缓冲就是为此），这样 `Recover` 的
+  `!c.Writer.Written()` 判断才能在出错时仍渲染出 R。
 
 ### 新增进程入口的必备初始化
 
@@ -489,6 +541,7 @@ oplog.Init(operlogservice.RecordOper)        // 依赖 database + snowflake
 ```
 
 全局中间件：`Recover → CORS → TraceID → RepeatableBody → AccessLog → XSS → I18n`， 均走 `XWithConfig(cfg.X)` 显式传参（无无参包装）。
+业务路由注册完毕后再 `notfound.Register(r)` 收尾（404/405 兜底，见上一节）。
 
 ---
 

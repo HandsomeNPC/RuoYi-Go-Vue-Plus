@@ -14,9 +14,12 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/trace"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/xss"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/audit"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/checklogin"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/notfound"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/operlog"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/permission"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/recover"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
 	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
 	systemconfig "ruoyi-go-vue-plus/internal/system/config"
 	syscons "ruoyi-go-vue-plus/internal/system/constant"
@@ -51,25 +54,25 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 
 	// 公开路由(免鉴权)：探针
 	r.GET(prefix+"/ping", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"module": "system", "message": "pong"})
+		c.JSON(http.StatusOK, response.Ok(gin.H{"module": "system", "message": "pong"}))
 	})
 	protected := r.Group(prefix)
 	// AuditContext 须排在 TokenInterceptor 之后：它取的登录态依赖后者解析出的 token。
 	protected.Use(plugin.TokenInterceptor(), audit.AuditContext())
 	user := protected.Group("/user")
-	user.GET("/getInfo", sagin.CheckLogin(), handler.UserApiApp.GetInfo)
+	user.GET("/getInfo", checklogin.CheckLogin(), handler.UserApiApp.GetInfo)
 	// 个人信息：不校验权限码，仅需登录——用户改自己的资料不该卡权限。
 	// profile/avatar 端点暂未提供，前端上传留待 OSS 落地后再补。
 	profile := user.Group("/profile")
-	profile.GET("", sagin.CheckLogin(), handler.ProfileApiApp.Profile)
+	profile.GET("", checklogin.CheckLogin(), handler.ProfileApiApp.Profile)
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行。
-	profile.PUT("", sagin.CheckLogin(),
+	profile.PUT("", checklogin.CheckLogin(),
 		operlog.Log(profileLogTitle, operlog.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.ProfileApiApp.UpdateProfile)
 	// updatePwd 须排在 apiencrypt 之后：指纹要用解密后的明文，否则密文每次
 	// 随机密钥、同样入参算出不同指纹，防重直接失效。故顺序为 鉴权→解密→日志→防重→handler。
-	profile.PUT("/updatePwd", sagin.CheckLogin(), enc,
+	profile.PUT("/updatePwd", checklogin.CheckLogin(), enc,
 		operlog.Log(profileLogTitle, operlog.BusinessTypeUpdate),
 		repeatsubmit.RepeatSubmit(0, ""), handler.ProfileApiApp.UpdatePwd)
 
@@ -94,7 +97,7 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	user.POST("/importData", permission.CheckPermission("system:user:import"),
 		operlog.Log(userLogTitle, operlog.BusinessTypeImport), handler.UserApiApp.ImportData)
 	// importTemplate 不校验权限码，仅需登录：下载模板不该卡权限。
-	user.POST("/importTemplate", sagin.CheckLogin(), handler.UserApiApp.ImportTemplate)
+	user.POST("/importTemplate", checklogin.CheckLogin(), handler.UserApiApp.ImportTemplate)
 	// 路径用 "" 而非 "/"：后者会注册成 /user/。
 	user.POST("", permission.CheckPermission("system:user:add"),
 		operlog.Log(userLogTitle, operlog.BusinessTypeInsert),
@@ -123,7 +126,7 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 		operlog.Log(userLogTitle, operlog.BusinessTypeDelete), handler.UserApiApp.Remove)
 
 	menu := protected.Group("/menu")
-	menu.GET("/getRouters", sagin.CheckLogin(), handler.MenuApiApp.GetRouters)
+	menu.GET("/getRouters", checklogin.CheckLogin(), handler.MenuApiApp.GetRouters)
 	// 多个中间件串联即 AND：各中间件都得过。注意这与单个 CheckPermission 内部多值的 OR 语义不同——那是"任一权限码命中放行"。
 	menu.GET("/list", permission.CheckRole(syscons.SuperAdminRoleKey),
 		permission.CheckPermission("system:menu:list"), handler.MenuApiApp.List)
@@ -183,7 +186,7 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	config.GET("/list", permission.CheckPermission("system:config:list"), handler.ConfigApiApp.List)
 	// configKey 与 :configId 同层但静态段优先，gin 能区分二者，无需调整注册顺序。
 	// 不校验权限码，仅需登录：前端多处要读参数却未必有配置管理权限。
-	config.GET("/configKey/:configKey", sagin.CheckLogin(), handler.ConfigApiApp.GetConfigKey)
+	config.GET("/configKey/:configKey", checklogin.CheckLogin(), handler.ConfigApiApp.GetConfigKey)
 	config.GET("/:configId", permission.CheckPermission("system:config:query"),
 		handler.ConfigApiApp.GetInfo)
 	// 导出走 POST：前端以 form 表单 POST 提交筛选条件。
@@ -239,7 +242,7 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 		handler.DictDataApiApp.List)
 	// type/:dictType 与 :dictCode 同层但静态段优先，gin 能区分二者，无需调整注册顺序。
 	// 不校验权限码，仅需登录：前端 DictTag 到处渲染字典标签却未必有字典管理权限。
-	dictData.GET("/type/:dictType", sagin.CheckLogin(), handler.DictDataApiApp.DictType)
+	dictData.GET("/type/:dictType", checklogin.CheckLogin(), handler.DictDataApiApp.DictType)
 	dictData.GET("/:dictCode", permission.CheckPermission("system:dict:query"),
 		handler.DictDataApiApp.GetInfo)
 	// 导出走 POST：前端 commonExport 以 form 表单提交筛选条件。
@@ -262,7 +265,7 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 		handler.DictTypeApiApp.List)
 	// optionselect 与 :dictId 同层，静态段优先，无需调整注册顺序。
 	// 不校验权限码，仅需登录：前端选字典时未必有字典管理权限。
-	dictType.GET("/optionselect", sagin.CheckLogin(), handler.DictTypeApiApp.OptionSelect)
+	dictType.GET("/optionselect", checklogin.CheckLogin(), handler.DictTypeApiApp.OptionSelect)
 	dictType.GET("/:dictId", permission.CheckPermission("system:dict:query"),
 		handler.DictTypeApiApp.GetInfo)
 	dictType.POST("/export", permission.CheckPermission("system:dict:export"),
@@ -325,7 +328,7 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 
 	// social 不校验权限码，仅需登录：用户查自己的社会化绑定关系不该卡权限。
 	social := protected.Group("/social")
-	social.GET("/list", sagin.CheckLogin(), handler.SocialApiApp.List)
+	social.GET("/list", checklogin.CheckLogin(), handler.SocialApiApp.List)
 
 	role := protected.Group("/role")
 	role.GET("/list", permission.CheckPermission("system:role:list"), handler.RoleApiApp.List)
@@ -391,6 +394,7 @@ func InitRouter() *gin.Engine {
 	r.Use(xss.XSSWithConfig(cfg.XSS))
 
 	RegisterRoutes(r, "")
+	notfound.Register(r)
 
 	return r
 }

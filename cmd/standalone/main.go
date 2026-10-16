@@ -19,8 +19,9 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/trace"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/xss"
 	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/recover"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/notfound"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/operlog"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/recover"
 	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
 	"github.com/HandsomeNPC/ruoyi-common-go/smshelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
@@ -112,6 +113,9 @@ func main() {
 	resource.RegisterPushRoutes(r, "/resource")
 	// monitor 与 system/auth 同构：prefix 传模块名 /monitor，对外即 /monitor/cache。
 	monitor.RegisterRoutes(r, "/monitor")
+
+	// 404/405 兜底，须在所有业务路由注册之后挂。
+	notfound.Register(r)
 
 	serverCfg := ac.Server
 	log.Printf("[%s] 监听 %s (auth + system standalone)", serverCfg.Name, serverCfg.Addr)
