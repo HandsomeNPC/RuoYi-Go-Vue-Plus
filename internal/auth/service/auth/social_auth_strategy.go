@@ -5,12 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin/binding"
-	sagin "github.com/HandsomeNPC/sa-token-go/integrations/gin"
 
-	"github.com/HandsomeNPC/ruoyi-common-go/oauth2"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/utils/loginhelper"
 	authmodel "ruoyi-go-vue-plus/internal/auth/model"
 	authvo "ruoyi-go-vue-plus/internal/auth/model/vo"
 	socialauth "ruoyi-go-vue-plus/internal/auth/service/social"
@@ -19,6 +14,10 @@ import (
 	systemvo "ruoyi-go-vue-plus/internal/system/model/vo"
 	socialservice "ruoyi-go-vue-plus/internal/system/service/social"
 	userservice "ruoyi-go-vue-plus/internal/system/service/user"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/oauth2"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
 )
 
 // socialAuthStrategy 第三方授权认证策略。
@@ -67,9 +66,7 @@ func (s *socialAuthStrategy) Login(req *http.Request, body []byte,
 	if err != nil {
 		return nil, err
 	}
-	loginUser.ClientKey = client.ClientKey
-	loginUser.DeviceType = client.DeviceType
-	token, err := loginhelper.Login(loginUser, client.DeviceType)
+	token, loginVo, err := loginByClient(loginUser, client)
 	if err != nil {
 		return nil, err
 	}
@@ -78,9 +75,5 @@ func (s *socialAuthStrategy) Login(req *http.Request, body []byte,
 	sysloginservice.RecordLoginInfo(req, user.UserName,
 		syscons.LoginSuccess, "登录成功")
 
-	return &authvo.LoginVo{
-		AccessToken: token,
-		ExpireIn:    sagin.GetManager().GetConfig().Timeout,
-		ClientID:    client.ClientID,
-	}, nil
+	return loginVo, nil
 }

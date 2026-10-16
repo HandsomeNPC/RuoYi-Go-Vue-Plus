@@ -6,12 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin/binding"
 	goredis "github.com/redis/go-redis/v9"
-	sagin "github.com/HandsomeNPC/sa-token-go/integrations/gin"
 
-	"github.com/HandsomeNPC/ruoyi-common-go/redis"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
-	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/utils/loginhelper"
 	authmodel "ruoyi-go-vue-plus/internal/auth/model"
 	authvo "ruoyi-go-vue-plus/internal/auth/model/vo"
 	sysloginservice "ruoyi-go-vue-plus/internal/auth/service/syslogin"
@@ -19,6 +14,10 @@ import (
 	syscons "ruoyi-go-vue-plus/internal/system/constant"
 	systemvo "ruoyi-go-vue-plus/internal/system/model/vo"
 	userservice "ruoyi-go-vue-plus/internal/system/service/user"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/redis"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
 )
 
 // emailAuthStrategy 邮箱验证码认证策略。
@@ -56,9 +55,7 @@ func (s *emailAuthStrategy) Login(req *http.Request, body []byte,
 	if err != nil {
 		return nil, err
 	}
-	loginUser.ClientKey = client.ClientKey
-	loginUser.DeviceType = client.DeviceType
-	token, err := loginhelper.Login(loginUser, client.DeviceType)
+	token, loginVo, err := loginByClient(loginUser, client)
 	if err != nil {
 		return nil, err
 	}
@@ -67,11 +64,7 @@ func (s *emailAuthStrategy) Login(req *http.Request, body []byte,
 	sysloginservice.RecordLoginInfo(req, user.UserName,
 		syscons.LoginSuccess, "登录成功")
 
-	return &authvo.LoginVo{
-		AccessToken: token,
-		ExpireIn:    sagin.GetManager().GetConfig().Timeout,
-		ClientID:    client.ClientID,
-	}, nil
+	return loginVo, nil
 }
 
 // validateEmailCode 校验邮箱验证码是否存在且匹配。
