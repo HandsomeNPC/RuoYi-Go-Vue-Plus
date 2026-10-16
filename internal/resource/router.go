@@ -4,8 +4,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	sagin "github.com/HandsomeNPC/sa-token-go/integrations/gin"
+	"github.com/gin-gonic/gin"
+
+	resourceconfig "ruoyi-go-vue-plus/internal/resource/config"
+	"ruoyi-go-vue-plus/internal/resource/handler"
+	"ruoyi-go-vue-plus/internal/resource/push"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/accesslog"
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/cors"
@@ -22,9 +26,6 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/middleware/recover"
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
 	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
-	resourceconfig "ruoyi-go-vue-plus/internal/resource/config"
-	"ruoyi-go-vue-plus/internal/resource/handler"
-	"ruoyi-go-vue-plus/internal/resource/push"
 )
 
 const ossLogTitle = "OSS对象存储"
@@ -135,7 +136,7 @@ func RegisterPushRoutes(r *gin.Engine, prefix string) {
 		checklogin.CheckLogin(), push.Handler())
 	// close：前端主动断开时清掉服务端会话，不必等心跳超时才回收。
 	r.GET(path+"/close", push.NormalizeQueryToken(tokenName), plugin.TokenInterceptor(),
-		checklogin.CheckLogin(), push.CloseHandler())
+		push.CloseHandler())
 }
 
 // InitRouter 构建并返回 resource 进程的 gin 引擎(独立部署用)。
