@@ -70,9 +70,31 @@ apiEncrypt:
 
 # 验证码配置
 captcha:
-  enable: true             # 是否启用验证码校验
-  type: math                 # 验证码类型 math 算术计算 char 字符验证
-  charLength: 4             # 字符验证码的字符个数
+  enable: true              # 是否启用验证码校验
+  type: math                # 验证码类型 math 算术 / char 字符 / digit 纯数字 / chinese 中文
+  charLength: 4             # char 类型的字符个数
+  numberLength: 4           # digit 类型的数字位数
+  # 图片渲染参数，math/char/chinese 共用；digit 只读 width/height（它是另一套点阵渲染器）
+  image:
+    width: 160              # 图片宽度(像素)。digit 类型不得小于 80
+    height: 60              # 图片高度(像素)。digit 类型不得小于 40
+    noiseCount: 0           # 背景干扰字符数，0 为不画
+    lines: [ slim ]           # 干扰线，可组合 hollow/slim/sine，配 [] 为不画。
+    # 只开 slim 是刻意的：hollow 和 sine 会把字符压得基本不可读
+    bgColor: ""             # 背景色 #RGB/#RRGGBB/#RRGGBBAA，留空为随机浅色
+    fonts: [ ]               # 字体，留空为随机用全部。可选 3Dumb.ttf actionj.ttf
+      # ApothecaryFont.ttf chromohv.ttf Comismsh.ttf
+      # DeborahFancyDress.ttf DENNEthree-dee.ttf Flim-Flam.ttf
+    # RitaSmith.ttf wqy-microhei.ttc(唯一带中文字形)
+  char:
+    source: ""              # 字符池，留空用内置池(已去掉易混淆的 0/O/1/l/I)
+  digit:
+    maxSkew: 0.7            # 单个数字的最大倾斜系数
+    dotCount: 80            # 背景圆点数
+  chinese:
+    length: 4               # 取几个词
+    source: ""              # 中文词源，留空用内置常用字表。
+    # 不含逗号按单字取；含逗号按词取，此时词数须多于 length
 
 # 三方登录配置
 social:

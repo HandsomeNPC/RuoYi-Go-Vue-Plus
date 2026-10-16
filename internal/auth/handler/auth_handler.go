@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -100,8 +99,6 @@ func (a *AuthApi) Code(c *gin.Context) {
 		_ = c.Error(err)
 		return
 	}
-	// Generate 回带 "data:image/png;base64," 前缀，前端自己拼前缀，此处剥成裸 base64。
-	img = strings.TrimPrefix(img, "data:image/png;base64,")
 	key := rescons.CaptchaCodeKey + uuid
 	if err := redis.Client().Set(c.Request.Context(), key, answer, codeExpiration).Err(); err != nil {
 		_ = c.Error(err)
