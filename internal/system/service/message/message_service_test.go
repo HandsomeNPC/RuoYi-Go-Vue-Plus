@@ -71,7 +71,7 @@ func TestResolveCategory(t *testing.T) {
 
 // TestJoinSendUserIDs 空列表表示全局广播，否则逗号拼接。
 //
-// 雪花 ID 必须按十进制原样拼，不能走科学计数法——那样 FIND_IN_SET 永远匹配不上。
+// 雪花 ID 必须按十进制原样拼，不能走科学计数法——那样接收人整段比对永远匹配不上。
 func TestJoinSendUserIDs(t *testing.T) {
 	if got := joinSendUserIDs(nil); got != syscons.MessageGlobalUserIDs {
 		t.Errorf("空列表应为全局标识 %q, got %q", syscons.MessageGlobalUserIDs, got)

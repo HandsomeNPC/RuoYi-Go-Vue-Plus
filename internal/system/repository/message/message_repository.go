@@ -7,6 +7,7 @@ import (
 
 	syscons "ruoyi-go-vue-plus/internal/system/constant"
 	"ruoyi-go-vue-plus/internal/system/model"
+	"ruoyi-go-vue-plus/internal/system/sqlcond"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/database"
 )
@@ -35,14 +36,15 @@ func SelectBoxList(ctx context.Context, category string,
 		return nil, nil
 	}
 
-	// FIND_IN_SET 而非 LIKE '%id%'：后者会让 userId=1 命中 "10,11" 这类接收人串。
+	// 按整段比对接收人而非 LIKE '%id%'：后者会让 userId=1 命中 "10,11" 这类接收人串。
 	// 整个 OR 必须括起来，否则会与前面的 AND 条件混合成
 	// "category=? AND time>=? AND global OR inset"，让别人的消息漏给当前用户。
+	inSet, inSetArgs := sqlcond.CSVContainsInt("send_user_ids", userID)
 	db := database.DB().WithContext(ctx).Model(&model.SysMessage{}).
 		Where("category = ?", category).
 		Where("create_time >= ?", since).
-		Where("send_user_ids = ? OR FIND_IN_SET(?, send_user_ids)",
-			syscons.MessageGlobalUserIDs, userID).
+		Where("(send_user_ids = ? OR "+inSet+")",
+			append([]any{syscons.MessageGlobalUserIDs}, inSetArgs...)...).
 		// 主键兜底保证同秒内顺序稳定。
 		Order("create_time DESC").
 		Order("message_id DESC")

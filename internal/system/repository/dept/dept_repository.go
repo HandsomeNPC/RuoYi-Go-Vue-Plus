@@ -12,6 +12,7 @@ import (
 	syscons "ruoyi-go-vue-plus/internal/system/constant"
 	"ruoyi-go-vue-plus/internal/system/model"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
+	"ruoyi-go-vue-plus/internal/system/sqlcond"
 )
 
 var ErrDeptNotFound = errors.New("repository: 部门不存在")
@@ -79,7 +80,9 @@ func applyDeptQuery(db *gorm.DB, q bo.SysDeptQueryBo) *gorm.DB {
 	// 直接展开成「自身 OR 祖先链包含它」——语义等价于先查子部门主键再 IN，
 	// 但少一次往返，且不必把子部门主键搬进 SQL 参数。
 	if q.BelongDeptID > 0 {
-		db = db.Where("(dept_id = ? OR FIND_IN_SET(?, ancestors) > 0)", q.BelongDeptID, q.BelongDeptID)
+		cond, args := sqlcond.CSVContainsInt("ancestors", q.BelongDeptID)
+		db = db.Where("(dept_id = ? OR "+cond+")",
+			append([]any{q.BelongDeptID}, args...)...)
 	}
 	return db
 }
@@ -104,7 +107,7 @@ func SelectNormalByIDs(ctx context.Context, ids []int64) ([]*model.SysDept, erro
 
 // SelectDeptAndChildIDs 取部门自身及其全部后代的ID集合
 // （供岗位按部门树搜索时 IN 过滤）。
-// 命中条件：自身 dept_id 命中，或祖先链 FIND_IN_SET 命中。
+// 命中条件：自身 dept_id 命中，或祖先链包含该部门。
 func SelectDeptAndChildIDs(ctx context.Context,
 	deptID int64) ([]int64, error) {
 
@@ -112,9 +115,11 @@ func SelectDeptAndChildIDs(ctx context.Context,
 		return nil, nil
 	}
 
+	cond, args := sqlcond.CSVContainsInt("ancestors", deptID)
+
 	var ids []int64
 	err := database.DB().WithContext(ctx).Model(&model.SysDept{}).
-		Where("dept_id = ? OR FIND_IN_SET(?, ancestors) > 0", deptID, deptID).
+		Where("dept_id = ? OR "+cond, append([]any{deptID}, args...)...).
 		Pluck("dept_id", &ids).Error
 	if err != nil {
 		return nil, fmt.Errorf("repository: 查询部门 %d 及子部门ID失败: %w", deptID, err)
@@ -130,9 +135,11 @@ func SelectChildrenByAncestor(ctx context.Context,
 		return nil, nil
 	}
 
+	cond, args := sqlcond.CSVContainsInt("ancestors", deptID)
+
 	var rows []*model.SysDept
 	err := database.DB().WithContext(ctx).Model(&model.SysDept{}).
-		Where("FIND_IN_SET(?, ancestors) > 0", deptID).
+		Where(cond, args...).
 		Find(&rows).Error
 	if err != nil {
 		return nil, fmt.Errorf("repository: 查询部门 %d 的子部门失败: %w", deptID, err)
@@ -146,10 +153,12 @@ func CountNormalChildren(ctx context.Context, deptID int64) (int64, error) {
 		return 0, nil
 	}
 
+	cond, args := sqlcond.CSVContainsInt("ancestors", deptID)
+
 	var count int64
 	err := database.DB().WithContext(ctx).Model(&model.SysDept{}).
 		Where("status = ?", syscons.StatusNormal).
-		Where("FIND_IN_SET(?, ancestors) > 0", deptID).
+		Where(cond, args...).
 		Count(&count).Error
 	if err != nil {
 		return 0, fmt.Errorf("repository: 统计部门 %d 的启用子部门失败: %w", deptID, err)

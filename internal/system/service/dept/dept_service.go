@@ -441,7 +441,7 @@ func parseAncestorIDs(ancestors string) []int64 {
 	return ids
 }
 
-// containsAncestor 判断祖先链是否包含指定部门，等价于 SQL 的 FIND_IN_SET。
+// containsAncestor 判断祖先链是否包含指定部门，是 sqlcond.CSVContainsInt 的内存版。
 // 按整段比对而非子串匹配：主键 100 不该命中祖先链里的 1001。
 func containsAncestor(ancestors string, deptID int64) bool {
 	want := strconv.FormatInt(deptID, 10)
