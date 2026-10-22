@@ -19,6 +19,7 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/utils/loginhelper"
 	"github.com/HandsomeNPC/ruoyi-common-go/snowflake"
 	sysloginservice "ruoyi-go-vue-plus/internal/auth/service/syslogin"
+	ossservice "ruoyi-go-vue-plus/internal/resource/service/oss"
 	syscons "ruoyi-go-vue-plus/internal/system/constant"
 	"ruoyi-go-vue-plus/internal/system/model/bo"
 	"ruoyi-go-vue-plus/internal/system/model/vo"
@@ -139,6 +140,7 @@ func SelectUserByID(ctx context.Context, userID int64) (*vo.SysUserVo, error) {
 		return nil, err
 	}
 	user := vo.Conv.ConvertToSysUserVo(entity)
+	user.AvatarURL = fillAvatarURL(ctx, user.Avatar)
 	roles, err := roleservice.SelectRolesByUserId(ctx, user.UserID)
 	if err != nil {
 		return nil, err
@@ -172,6 +174,8 @@ func SelectUserProfile(ctx context.Context,
 			return nil, err
 		}
 	}
+	// 回填头像地址：Avatar 存的是 sys_oss 主键，按主键经 OSS 服务解析成可访问 URL。
+	user.AvatarURL = fillAvatarURL(ctx, user.Avatar)
 
 	roleGroup, err := SelectUserRoleGroup(ctx, userID)
 	if err != nil {
@@ -182,6 +186,22 @@ func SelectUserProfile(ctx context.Context,
 		return nil, err
 	}
 	return &vo.ProfileVo{User: user, RoleGroup: roleGroup, PostGroup: postGroup}, nil
+}
+
+// fillAvatarURL 按 user.Avatar(sys_oss 主键) 解析成可访问的头像地址。
+//
+// Go 无翻译层，手动经 resource 的 OSS 服务把主键翻成 URL（私有桶会是 120s
+// 预签名链接，与列表页同一通道）。ossId 为 0、文件不存在或 OSS 不可达时留空——
+// 头像缺失不该阻断个人中心/getInfo，沿用列表页的 fail-open 取舍。
+func fillAvatarURL(ctx context.Context, avatar int64) string {
+	if avatar <= 0 {
+		return ""
+	}
+	rows, err := ossservice.ListByIDs(ctx, []int64{avatar})
+	if err != nil || len(rows) == 0 {
+		return ""
+	}
+	return rows[0].URL
 }
 
 // SelectUserRoleGroup 查用户所属角色组。
