@@ -1,0 +1,119 @@
+// Package notice 通知公告 HTTP 接口。
+package notice
+
+import (
+	"errors"
+	"net/http"
+	"strconv"
+
+	"github.com/gin-gonic/gin"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
+	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
+	"ruoyi-go-vue-plus/internal/system/model/bo"
+	noticeservice "ruoyi-go-vue-plus/internal/system/service/notice"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/strutil"
+)
+
+// List 分页查询通知公告列表。
+// 筛选条件与分页参数同在 query 上，分两次绑定同一份 URL 参数——query 绑定不消费 body，可重复调用。
+func List(c *gin.Context) {
+	var q bo.SysNoticeQueryBo
+	if err := c.ShouldBindQuery(&q); err != nil {
+		_ = c.Error(errs.New(response.CodeBadRequest, "参数校验失败", err.Error()))
+		return
+	}
+	var page pkgpage.PageQuery
+	if err := c.ShouldBindQuery(&page); err != nil {
+		_ = c.Error(errs.New(response.CodeBadRequest, "分页参数有误", err.Error()))
+		return
+	}
+
+	res, err := noticeservice.QueryPageList(c.Request.Context(), q, page)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, response.Ok(res))
+}
+
+// GetInfo 按主键查通知公告详情。
+// 主键走路径参数，超出 JS 安全整数的 ID 前端会以字符串下发，ParseInt 两种形态都吃得下。
+func GetInfo(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("noticeId"), 10, 64)
+	if err != nil || id <= 0 {
+		_ = c.Error(errs.New(response.CodeBadRequest, "公告主键不能为空", c.Param("noticeId")))
+		return
+	}
+
+	res, err := noticeservice.QueryByID(c.Request.Context(), id)
+	if err != nil {
+		if errors.Is(err, noticeservice.ErrNoticeNotFound) {
+			_ = c.Error(errs.New(response.CodeNotFound, "通知公告不存在", ""))
+			return
+		}
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, response.Ok(res))
+}
+
+// Add 新增通知公告。新增成功后由 service 向在线用户广播公告摘要。
+func Add(c *gin.Context) {
+	var b bo.SysNoticeBo
+	if err := c.ShouldBindJSON(&b); err != nil {
+		_ = c.Error(errs.New(response.CodeBadRequest, "参数校验失败", err.Error()))
+		return
+	}
+
+	if err := noticeservice.InsertNotice(c.Request.Context(), &b); err != nil {
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, response.OkVoid())
+}
+
+// Edit 修改通知公告。
+func Edit(c *gin.Context) {
+	var b bo.SysNoticeBo
+	if err := c.ShouldBindJSON(&b); err != nil {
+		_ = c.Error(errs.New(response.CodeBadRequest, "参数校验失败", err.Error()))
+		return
+	}
+	// 主键校验单独做：SysNoticeBo 与新增共用，加 binding:"required" 会连带卡住新增。
+	if b.NoticeID <= 0 {
+		_ = c.Error(errs.New(response.CodeBadRequest, "公告主键不能为空", ""))
+		return
+	}
+
+	if err := noticeservice.UpdateNotice(c.Request.Context(), &b); err != nil {
+		if errors.Is(err, noticeservice.ErrNoticeNotFound) {
+			_ = c.Error(errs.New(response.CodeNotFound, "通知公告不存在", ""))
+			return
+		}
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, response.OkVoid())
+}
+
+// Remove 批量删除通知公告。主键串以逗号分隔。
+func Remove(c *gin.Context) {
+	ids, err := strutil.ParseIDList(c.Param("noticeIds"))
+	if err != nil {
+		_ = c.Error(errs.New(response.CodeBadRequest, "公告主键不能为空", c.Param("noticeIds")))
+		return
+	}
+
+	if err := noticeservice.DeleteNoticeByIDs(c.Request.Context(), ids); err != nil {
+		if errors.Is(err, noticeservice.ErrNoticeNotFound) {
+			_ = c.Error(errs.New(response.CodeNotFound, "通知公告不存在", ""))
+			return
+		}
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, response.OkVoid())
+}

@@ -1,0 +1,62 @@
+// Package online 在线用户监控 HTTP 接口。
+package online
+
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
+	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/utils/loginhelper"
+	onlineservice "ruoyi-go-vue-plus/internal/monitor/service/online"
+)
+
+// List 获取在线用户监控列表，按 IP 或用户名过滤当前有效会话。
+func List(c *gin.Context) {
+	rows, err := onlineservice.List(c.Request.Context(), c.Query("ipaddr"), c.Query("userName"))
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, response.Ok(pkgpage.PageOf(rows)))
+}
+
+// ForceLogout 按 token 强制用户下线。
+func ForceLogout(c *gin.Context) {
+	tokenID := c.Param("tokenId")
+	if tokenID == "" {
+		_ = c.Error(errs.New(response.CodeBadRequest, "token 不能为空", ""))
+		return
+	}
+	if err := onlineservice.ForceLogout(c.Request.Context(), tokenID); err != nil {
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, response.OkVoid())
+}
+
+// GetInfo 获取当前登录用户的在线设备列表。
+func GetInfo(c *gin.Context) {
+	rows, err := onlineservice.GetInfo(c.Request.Context(), loginhelper.GetLoginID(c))
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, response.Ok(pkgpage.PageOf(rows)))
+}
+
+// Remove 强退当前账号下指定在线设备，避免误踢其他账号会话。
+func Remove(c *gin.Context) {
+	tokenID := c.Param("tokenId")
+	if tokenID == "" {
+		_ = c.Error(errs.New(response.CodeBadRequest, "token 不能为空", ""))
+		return
+	}
+	if err := onlineservice.Remove(c.Request.Context(), loginhelper.GetLoginID(c), tokenID); err != nil {
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, response.OkVoid())
+}

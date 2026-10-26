@@ -20,7 +20,10 @@ import (
 	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
 	"github.com/HandsomeNPC/ruoyi-common-go/satoken"
 	monitorconfig "ruoyi-go-vue-plus/internal/monitor/config"
-	"ruoyi-go-vue-plus/internal/monitor/handler"
+	cachehandler "ruoyi-go-vue-plus/internal/monitor/handler/cache"
+	logininfohandler "ruoyi-go-vue-plus/internal/monitor/handler/logininfo"
+	onlinehandler "ruoyi-go-vue-plus/internal/monitor/handler/online"
+	operloghandler "ruoyi-go-vue-plus/internal/monitor/handler/operlog"
 )
 
 const loginInfoLogTitle = "登录日志"
@@ -47,46 +50,46 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	g.Use(plugin.TokenInterceptor(), audit.AuditContext())
 
 	cache := g.Group("/cache")
-	cache.GET("", permission.CheckPermission("monitor:cache:list"), handler.CacheApiApp.GetInfo)
+	cache.GET("", permission.CheckPermission("monitor:cache:list"), cachehandler.GetInfo)
 
 	loginInfo := g.Group("/loginInfo")
-	loginInfo.GET("/list", permission.CheckPermission("monitor:logininfo:list"), handler.LoginInfoApiApp.List)
+	loginInfo.GET("/list", permission.CheckPermission("monitor:logininfo:list"), logininfohandler.List)
 	loginInfo.POST("/export", permission.CheckPermission("monitor:logininfo:export"),
-		operlog.Log(loginInfoLogTitle, operlog.BusinessTypeExport), handler.LoginInfoApiApp.Export)
+		operlog.Log(loginInfoLogTitle, operlog.BusinessTypeExport), logininfohandler.Export)
 	// clean 与 :infoIds 同层，静态段优先，gin 能区分二者，无需调整注册顺序。
 	// 权限码用 remove，两处复用。
 	loginInfo.DELETE("/clean", permission.CheckPermission("monitor:logininfo:remove"),
-		operlog.Log(loginInfoLogTitle, operlog.BusinessTypeClean), handler.LoginInfoApiApp.Clean)
+		operlog.Log(loginInfoLogTitle, operlog.BusinessTypeClean), logininfohandler.Clean)
 	loginInfo.DELETE("/:infoIds", permission.CheckPermission("monitor:logininfo:remove"),
-		operlog.Log(loginInfoLogTitle, operlog.BusinessTypeDelete), handler.LoginInfoApiApp.Remove)
+		operlog.Log(loginInfoLogTitle, operlog.BusinessTypeDelete), logininfohandler.Remove)
 	// unlock 需登录即可；
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	loginInfo.GET("/unlock/:userName", permission.CheckPermission("monitor:logininfo:unlock"),
 		operlog.Log(loginInfoLogTitle, operlog.BusinessTypeOther),
-		repeatsubmit.RepeatSubmit(0, ""), handler.LoginInfoApiApp.Unlock)
+		repeatsubmit.RepeatSubmit(0, ""), logininfohandler.Unlock)
 
 	operLog := g.Group("/operlog")
-	operLog.GET("/list", permission.CheckPermission("monitor:operlog:list"), handler.OperLogApiApp.List)
+	operLog.GET("/list", permission.CheckPermission("monitor:operlog:list"), operloghandler.List)
 	operLog.POST("/export", permission.CheckPermission("monitor:operlog:export"),
-		operlog.Log(operLogLogTitle, operlog.BusinessTypeExport), handler.OperLogApiApp.Export)
+		operlog.Log(operLogLogTitle, operlog.BusinessTypeExport), operloghandler.Export)
 	// clean 与 :operIds 同层，静态段优先，gin 能区分二者，无需调整注册顺序（与 loginInfo 同理）。
 	// 权限码用 remove，两处复用。
 	operLog.DELETE("/clean", permission.CheckPermission("monitor:operlog:remove"),
-		operlog.Log(operLogLogTitle, operlog.BusinessTypeClean), handler.OperLogApiApp.Clean)
+		operlog.Log(operLogLogTitle, operlog.BusinessTypeClean), operloghandler.Clean)
 	operLog.DELETE("/:operIds", permission.CheckPermission("monitor:operlog:remove"),
-		operlog.Log(operLogLogTitle, operlog.BusinessTypeDelete), handler.OperLogApiApp.Remove)
+		operlog.Log(operLogLogTitle, operlog.BusinessTypeDelete), operloghandler.Remove)
 
 	// online 在线用户监控。getInfo/remove 只需登录(操作自身会话)，list/forceLogout 需权限码。
 	// /myself/:tokenId 与 /:tokenId 段数不同，gin 按深度区分，无路由冲突。
 	online := g.Group("/online")
-	online.GET("/list", permission.CheckPermission("monitor:online:list"), handler.UserOnlineApiApp.List)
+	online.GET("/list", permission.CheckPermission("monitor:online:list"), onlinehandler.List)
 	online.DELETE("/:tokenId", permission.CheckPermission("monitor:online:forceLogout"),
 		operlog.Log(userOnlineLogTitle, operlog.BusinessTypeForce),
-		repeatsubmit.RepeatSubmit(0, ""), handler.UserOnlineApiApp.ForceLogout)
-	online.GET("", handler.UserOnlineApiApp.GetInfo)
+		repeatsubmit.RepeatSubmit(0, ""), onlinehandler.ForceLogout)
+	online.GET("", onlinehandler.GetInfo)
 	online.DELETE("/myself/:tokenId",
 		operlog.Log(userDeviceLogTitle, operlog.BusinessTypeForce),
-		repeatsubmit.RepeatSubmit(0, ""), handler.UserOnlineApiApp.Remove)
+		repeatsubmit.RepeatSubmit(0, ""), onlinehandler.Remove)
 
 	// 探针，与 system/auth 对齐。
 	r.GET(prefix+"/ping", func(c *gin.Context) {

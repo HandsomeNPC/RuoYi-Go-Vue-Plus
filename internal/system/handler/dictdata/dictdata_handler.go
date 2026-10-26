@@ -1,0 +1,175 @@
+// Package dictdata 字典数据 HTTP 接口。
+package dictdata
+
+import (
+	"errors"
+	"fmt"
+	"net/http"
+	"strconv"
+
+	"github.com/gin-gonic/gin"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/excelhelper"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/errs"
+	pkgpage "github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/page"
+	"github.com/HandsomeNPC/ruoyi-common-go/ruoyi-core/model/response"
+	"ruoyi-go-vue-plus/internal/system/handler/export"
+	"ruoyi-go-vue-plus/internal/system/model/bo"
+	dictdataservice "ruoyi-go-vue-plus/internal/system/service/dictdata"
+	dicttypeservice "ruoyi-go-vue-plus/internal/system/service/dicttype"
+
+	"github.com/HandsomeNPC/ruoyi-common-go/strutil"
+)
+
+// List 分页查询字典数据列表。
+// 筛选条件与分页参数同在 query 上，分两次绑定同一份 URL 参数——query 绑定不消费 body，可重复调用。
+func List(c *gin.Context) {
+	var q bo.SysDictDataQueryBo
+	if err := c.ShouldBindQuery(&q); err != nil {
+		_ = c.Error(errs.New(response.CodeBadRequest, "参数校验失败", err.Error()))
+		return
+	}
+	var page pkgpage.PageQuery
+	if err := c.ShouldBindQuery(&page); err != nil {
+		_ = c.Error(errs.New(response.CodeBadRequest, "分页参数有误", err.Error()))
+		return
+	}
+
+	res, err := dictdataservice.QueryPageList(c.Request.Context(), q, page)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, response.Ok(res))
+}
+
+// Export 导出字典数据列表为 xlsx 附件。
+// 走 POST：前端 commonExport 以 form 表单 POST 提交筛选条件，
+// 故用 ShouldBind 同时吃 form body 与 query。
+//
+// 响应体是二进制附件，不返回 response.R——见 excelhelper 的说明。
+// 多取一行用于判定超限，避免"先捞完百万行再拒绝"。
+func Export(c *gin.Context) {
+	var q bo.SysDictDataQueryBo
+	if err := c.ShouldBind(&q); err != nil {
+		_ = c.Error(errs.New(response.CodeBadRequest, "参数校验失败", err.Error()))
+		return
+	}
+
+	rows, err := dictdataservice.QueryList(c.Request.Context(), q, excelhelper.MaxRows+1)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	// 工作簿在 excelhelper.Export 内部先建满缓冲再落笔：
+	// middleware.Recover 只在 !Written() 时渲染错误，抢先写字节会让后续错误被静默吞掉。
+	if err := excelhelper.Export(c, rows, "字典数据"); err != nil {
+		export.ReportExportErr(c, err)
+		return
+	}
+}
+
+// GetInfo 按字典编码查字典数据详情。
+// 主键走路径参数，超出 JS 安全整数的 ID 前端会以字符串下发，ParseInt 两种形态都吃得下。
+func GetInfo(c *gin.Context) {
+	dictCode, err := strconv.ParseInt(c.Param("dictCode"), 10, 64)
+	if err != nil || dictCode <= 0 {
+		_ = c.Error(errs.New(response.CodeBadRequest, "字典编码不能为空", c.Param("dictCode")))
+		return
+	}
+
+	res, err := dictdataservice.QueryByID(c.Request.Context(), dictCode)
+	if err != nil {
+		if errors.Is(err, dictdataservice.ErrDictDataNotFound) {
+			_ = c.Error(errs.New(response.CodeNotFound, "字典数据不存在", ""))
+			return
+		}
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, response.Ok(res))
+}
+
+// DictType 按字典类型查字典数据列表。
+//
+// 不校验权限码，仅需登录：前端 DictTag 组件到处要渲染字典标签，
+// 却未必有字典管理权限。类型不存在时返回 200 + 空数组（service 已按空切片兜底）。
+func DictType(c *gin.Context) {
+	dictType := c.Param("dictType")
+	if dictType == "" {
+		_ = c.Error(errs.New(response.CodeBadRequest, "字典类型不能为空", ""))
+		return
+	}
+
+	res, err := dicttypeservice.SelectDictDataByType(c.Request.Context(), dictType)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, response.Ok(res))
+}
+
+// Add 新增字典数据。
+func Add(c *gin.Context) {
+	var b bo.SysDictDataBo
+	if err := c.ShouldBindJSON(&b); err != nil {
+		_ = c.Error(errs.New(response.CodeBadRequest, "参数校验失败", err.Error()))
+		return
+	}
+
+	if err := dictdataservice.InsertDictData(c.Request.Context(), &b); err != nil {
+		if errors.Is(err, dictdataservice.ErrDictDataValueExists) {
+			_ = c.Error(errs.New(response.CodeFail,
+				fmt.Sprintf("新增字典数据'%s'失败，字典键值已存在", b.DictValue), ""))
+			return
+		}
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, response.OkVoid())
+}
+
+// Edit 修改字典数据。
+func Edit(c *gin.Context) {
+	var b bo.SysDictDataBo
+	if err := c.ShouldBindJSON(&b); err != nil {
+		_ = c.Error(errs.New(response.CodeBadRequest, "参数校验失败", err.Error()))
+		return
+	}
+	// 主键校验单独做：SysDictDataBo 与新增共用，加 binding:"required" 会连带卡住新增。
+	if b.DictCode <= 0 {
+		_ = c.Error(errs.New(response.CodeBadRequest, "字典编码不能为空", ""))
+		return
+	}
+
+	if err := dictdataservice.UpdateDictData(c.Request.Context(), &b); err != nil {
+		if errors.Is(err, dictdataservice.ErrDictDataValueExists) {
+			_ = c.Error(errs.New(response.CodeFail,
+				fmt.Sprintf("修改字典数据'%s'失败，字典键值已存在", b.DictValue), ""))
+			return
+		}
+		if errors.Is(err, dictdataservice.ErrDictDataNotFound) {
+			_ = c.Error(errs.New(response.CodeNotFound, "字典数据不存在", ""))
+			return
+		}
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, response.OkVoid())
+}
+
+// Remove 批量删除字典数据。主键串以逗号分隔。
+func Remove(c *gin.Context) {
+	ids, err := strutil.ParseIDList(c.Param("dictCodes"))
+	if err != nil {
+		_ = c.Error(errs.New(response.CodeBadRequest, "字典编码不能为空", c.Param("dictCodes")))
+		return
+	}
+
+	if err := dictdataservice.DeleteDictDataByIDs(c.Request.Context(), ids); err != nil {
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, response.OkVoid())
+}

@@ -8,7 +8,10 @@ import (
 	"github.com/gin-gonic/gin"
 
 	resourceconfig "ruoyi-go-vue-plus/internal/resource/config"
-	"ruoyi-go-vue-plus/internal/resource/handler"
+	captchahandler "ruoyi-go-vue-plus/internal/resource/handler/captcha"
+	messagehandler "ruoyi-go-vue-plus/internal/resource/handler/message"
+	ossconfighandler "ruoyi-go-vue-plus/internal/resource/handler/ossconfig"
+	osshandler "ruoyi-go-vue-plus/internal/resource/handler/oss"
 	"ruoyi-go-vue-plus/internal/resource/push"
 
 	"github.com/HandsomeNPC/ruoyi-common-go/middleware/accesslog"
@@ -54,7 +57,7 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	protected.Use(plugin.TokenInterceptor(), audit.AuditContext())
 
 	// 不校验权限码，仅需登录：消息盒子只返回当前用户自己的消息。
-	protected.GET("/message/box", checklogin.CheckLogin(), handler.MessageApiApp.GetBox)
+	protected.GET("/message/box", checklogin.CheckLogin(), messagehandler.GetBox)
 
 	// 短信/邮箱验证码：登录前就要调，必须免鉴权。这两个端点落在带
 	// TokenInterceptor 的组内，故显式 Ignore 放行。
@@ -65,52 +68,52 @@ func RegisterRoutes(r *gin.Engine, prefix string) {
 	protected.GET("/sms/code", sagin.Ignore(),
 		ratelimiter.RateLimiterWithKeyFunc(time.Minute, 1,
 			func(c *gin.Context) string { return c.Query("phoneNumber") }, 0, ""),
-		handler.CaptchaApiApp.SmsCode)
+		captchahandler.SmsCode)
 	protected.GET("/email/code", sagin.Ignore(),
 		ratelimiter.RateLimiterWithKeyFunc(time.Minute, 1,
 			func(c *gin.Context) string { return c.Query("email") }, 0, ""),
-		handler.CaptchaApiApp.EmailCode)
+		captchahandler.EmailCode)
 
 	// /oss/config 必须先于 /oss 注册组：两组的静态段虽然 gin 能区分，
 	// 但先注册更具体的路径可避免 DELETE /oss/config/:ids 被 /oss/:ossIds 吃掉。
 	ossConfig := protected.Group("/oss/config")
 	// 详情页复用 list 权限码而非 query。
 	ossConfig.GET("/list", permission.CheckPermission("system:ossConfig:list"),
-		handler.OssConfigApiApp.List)
+		ossconfighandler.List)
 	ossConfig.GET("/:ossConfigId", permission.CheckPermission("system:ossConfig:list"),
-		handler.OssConfigApiApp.GetInfo)
+		ossconfighandler.GetInfo)
 	// 路径用 "" 而非 "/"：后者会注册成 /oss/config/。
 	// 鉴权排在防重之前，未授权请求不该白占一个防重锁。
 	// 操作日志排在防重之前：被防重挡掉的请求 handler 没执行，仍记一条失败日志。
 	ossConfig.POST("", permission.CheckPermission("system:ossConfig:add"),
 		operlog.Log(ossConfigLogTitle, operlog.BusinessTypeInsert),
-		repeatsubmit.RepeatSubmit(0, ""), handler.OssConfigApiApp.Add)
+		repeatsubmit.RepeatSubmit(0, ""), ossconfighandler.Add)
 	ossConfig.PUT("", permission.CheckPermission("system:ossConfig:edit"),
 		operlog.Log(ossConfigLogTitle, operlog.BusinessTypeUpdate),
-		repeatsubmit.RepeatSubmit(0, ""), handler.OssConfigApiApp.Edit)
+		repeatsubmit.RepeatSubmit(0, ""), ossconfighandler.Edit)
 	// changeStatus 路径更具体，须注册在 PUT "" 之后。挂防重：
 	// 它会把全表刷成非默认再置目标行，重复提交期间存在"一个默认都没有"的窗口。
 	ossConfig.PUT("/changeStatus", permission.CheckPermission("system:ossConfig:edit"),
 		operlog.Log(ossConfigStatusLogTitle, operlog.BusinessTypeUpdate),
-		repeatsubmit.RepeatSubmit(0, ""), handler.OssConfigApiApp.ChangeStatus)
+		repeatsubmit.RepeatSubmit(0, ""), ossconfighandler.ChangeStatus)
 	ossConfig.DELETE("/:ossConfigIds", permission.CheckPermission("system:ossConfig:remove"),
-		operlog.Log(ossConfigLogTitle, operlog.BusinessTypeDelete), handler.OssConfigApiApp.Remove)
+		operlog.Log(ossConfigLogTitle, operlog.BusinessTypeDelete), ossconfighandler.Remove)
 
 	oss := protected.Group("/oss")
-	oss.GET("/list", permission.CheckPermission("system:oss:list"), handler.OssApiApp.List)
+	oss.GET("/list", permission.CheckPermission("system:oss:list"), osshandler.List)
 	// listByIds/download 与同层的 /:ossIds 段数不同或前缀更具体，gin 能区分，无需调整注册顺序。
 	oss.GET("/listByIds/:ossIds", permission.CheckPermission("system:oss:query"),
-		handler.OssApiApp.ListByIDs)
+		osshandler.ListByIDs)
 	oss.GET("/download/:ossId", permission.CheckPermission("system:oss:download"),
-		handler.OssApiApp.Download)
+		osshandler.Download)
 	// upload 不挂防重：同一文件重传是合法诉求，且每次都生成新 key，不存在覆盖。
 	// WithoutRequestData 不可省：operlog 采集入参会对 multipart 请求调 ParseForm，
 	// 那会把整个文件读进内存再塞进 sys_oper_log.oper_param。
 	oss.POST("/upload", permission.CheckPermission("system:oss:upload"),
 		operlog.Log(ossLogTitle, operlog.BusinessTypeInsert, operlog.WithoutRequestData()),
-		handler.OssApiApp.Upload)
+		osshandler.Upload)
 	oss.DELETE("/:ossIds", permission.CheckPermission("system:oss:remove"),
-		operlog.Log(ossLogTitle, operlog.BusinessTypeDelete), handler.OssApiApp.Remove)
+		operlog.Log(ossLogTitle, operlog.BusinessTypeDelete), osshandler.Remove)
 }
 
 // RegisterPushRoutes 注册推送连接端点。
