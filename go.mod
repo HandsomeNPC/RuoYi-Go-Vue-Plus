@@ -3,7 +3,7 @@ module ruoyi-go-vue-plus
 go 1.26.5
 
 require (
-	github.com/HandsomeNPC/ruoyi-common-go v0.0.5
+	github.com/HandsomeNPC/ruoyi-common-go v0.0.6
 	github.com/HandsomeNPC/sa-token-go/integrations/gin v0.2.6
 	github.com/HandsomeNPC/sa-token-go/stputil v0.2.6
 	github.com/gin-gonic/gin v1.12.0
