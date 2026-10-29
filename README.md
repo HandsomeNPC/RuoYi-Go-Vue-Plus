@@ -29,7 +29,7 @@
 - **演示地址 (便宜服务器经不起压测)**: [https://ruoyi-plus.chenziwen.top](https://ruoyi-plus.chenziwen.top)
 - **项目文档**: <https://plus-go-doc.chenziwen.top>
 - **公共库**: [ruoyi-common-go](https://github.com/HandsomeNPC/ruoyi-common-go)（统一响应、鉴权中间件、审计回调、分页、OSS 等，独立模块）
-- **衍生项目**: [Agentic-Scaffold](https://agentic-scaffold-doc.chenziwen.top)（以本项目为后台基线、接入 Eino ADK 智能体的管理平台）
+- **衍生项目**: [Agentic-Scaffold](https://agentic-scaffold-doc.chenziwen.top)（以本项目为后台基线、智能体驱动的高效管理系统）
 - **语言 / 框架**：Go 1.26+ 、Gin、GORM、go-redis。
 - **数据库 / 缓存**：MySQL（默认，另提供 PostgreSQL 建表脚本）+ Redis
 
@@ -334,7 +334,7 @@ docs/CRUD-SPEC.md             增删改查落地模板与踩坑点（写 CRUD �
 
 本仓库是作者作品集的一部分，更多开源作品与文章见 [chenziwen.top/projects](https://chenziwen.top/projects/)。
 
-- [Agentic-Scaffold](https://agentic-scaffold-doc.chenziwen.top)：以本项目为后台基线、带 Eino ADK 智能体的管理平台——
+- [Agentic-Scaffold](https://agentic-scaffold-doc.chenziwen.top)：以本项目为后台基线、智能体驱动的高效管理系统——
   后台常驻 AI 助手、敏感操作人在回路审批、Agent 工具走同一套 RBAC
 - [ruoyi-common-go](https://github.com/HandsomeNPC/ruoyi-common-go)：本项目抽出的公共库
 
