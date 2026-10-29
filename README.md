@@ -28,8 +28,10 @@
 - **UI地址 (适配原项目UI 6.X)**: [https://gitee.com/JavaLionLi/plus-ui](https://gitee.com/JavaLionLi/plus-ui)
 - **演示地址 (便宜服务器经不起压测)**: [https://ruoyi-plus.chenziwen.top](https://ruoyi-plus.chenziwen.top)
 - **项目文档**: <https://plus-go-doc.chenziwen.top>
+- **公共库**: [ruoyi-common-go](https://github.com/HandsomeNPC/ruoyi-common-go)（统一响应、鉴权中间件、审计回调、分页、OSS 等，独立模块）
+- **衍生项目**: [Agentic-Scaffold](https://agentic-scaffold-doc.chenziwen.top)（以本项目为后台基线、接入 Eino ADK 智能体的管理平台）
 - **语言 / 框架**：Go 1.26+ 、Gin、GORM、go-redis。
-- **数据库 / 缓存**：MySQL+ Redis
+- **数据库 / 缓存**：MySQL（默认，另提供 PostgreSQL 建表脚本）+ Redis
 
 ## ✨ 亮点
 
@@ -47,7 +49,8 @@
   单体入口便于本地调试。
 - **复刻 Java 侧核心机制**：sa-token 鉴权（JWT + Redis 存会话）、操作日志注解、防重提交、限流、接口加解密、雪花 ID
   编解码，一一对照原项目语义。
-- **严格三层分层**：`handler → service → repository → model` 单向依赖，结构清晰、职责单一。
+- **严格三层分层**：`handler → service → repository → model` 单向依赖，每层一个业务一个子包、包级函数，结构清晰、职责单一。
+- **公共库独立成模块**：通用能力抽到 [ruoyi-common-go](https://github.com/HandsomeNPC/ruoyi-common-go)，其它 Go 项目可按需复用。
 - **统一响应与错误兜底**：一律 `response.R[T]` / `PageResult[T]`，HTTP 恒 200，错误经 middleware 统一渲染。
 
 ## 📸 演示
@@ -145,20 +148,14 @@ go version          # go1.26.x
 
 1. **MySQL 8.x**，字符集 `utf8mb4`，时区配置正确（容器化部署依赖 `tzdata`，见 Docker 段）。
 2. **Redis 6.x 及以上**。
-3. **初始化数据库**：执行 `script/sql/ry_vue.sql`（建表 SQL 直接复用原 Java 项目，表结构一致）。
+3. **初始化数据库**：执行 `script/sql/ry_vue.sql`（建表 SQL 直接复用原 Java 项目，表结构一致）。用 PostgreSQL 的话执行
+   `script/sql/postgre/postgres_ry_vue.sql`，并把配置里的 `datasource.type` 改成 `postgres`。
 4. **改连接配置**：每个模块一份自包含 yaml（`configs/<module>.yaml`），改其中的 `datasource`、`redis` 为本机配置。单体部署改
    `configs/standalone.yaml` 即可；多模块部署各模块文件都要改（共用值按需复制，接受重复换隔离）。
-5. **sa-token-go 依赖**：以本地检出路径 `replace`（见 `go.mod` 末尾）：
+   ⚠️ 仓库里的 yaml 含示例明文密码（如 `ruoyi123`），只供本地起步，生产部署请挂载自己的配置覆盖。
 
-   ```
-   github.com/sa-tokens/sa-token-go/core             => E:/WorkSpace/sa-token-go-main/core
-   github.com/sa-tokens/sa-token-go/integrations/gin => E:/WorkSpace/sa-token-go-main/integrations/gin
-   ...
-   ```
-   本机若可直连 goproxy，删掉该 `replace` 块并 `go get` 即可；否则需先在 `E:/WorkSpace/sa-token-go-main` 检出 sa-token-go
-   源码。
-
-完成上述步骤后执行依赖整理：
+依赖全部走公开的 Go 模块（`github.com/HandsomeNPC/ruoyi-common-go`、`github.com/HandsomeNPC/sa-token-go`），**没有 `replace`**，
+配好 `GOPROXY` 即可直接拉取。完成上述步骤后执行依赖整理：
 
 ```bash
 go mod tidy
@@ -237,7 +234,7 @@ docker build -f cmd/modular/Dockerfile --build-arg MODULE=resource -t ruoyi-go:r
 
 镜像基础信息：
 
-- 基础镜像 `alpine:3.20`，已装 `ca-certificates`（对象存储 / 阿里云短信 / 三方登录均 HTTPS 出站）与 `tzdata`（DSN 用了
+- 基础镜像 `alpine:3.22`，已装 `ca-certificates`（对象存储 / 阿里云短信 / 三方登录均 HTTPS 出站）与 `tzdata`（DSN 用了
   `loc=Local`，缺 tzdata 会按 UTC 写库，时间字段差 8 小时）。
 - `CGO_ENABLED=0` 静态链接，`-trimpath -ldflags="-s -w"` 去绝对路径与符号表。
 - 以非 root 用户 `ruoyi`（uid 10001）运行。
@@ -257,27 +254,29 @@ docker build -f cmd/modular/Dockerfile --build-arg MODULE=resource -t ruoyi-go:r
 
 | RuoYi (Java)                     | 本项目 (Go)                                     |
 |----------------------------------|-------------------------------------------------|
-| ruoyi-admin（聚合启动）          | `cmd/<module>/main.go`（每模块一进程）          |
-| Controller                       | `internal/<module>/handler`                     |
-| IXxxService / XxxServiceImpl     | `internal/<module>/service`                     |
-| XxxMapper (MyBatis)              | `internal/<module>/repository`（GORM）          |
-| domain / domain.bo / domain.vo   | `model`（entity / dto / vo）                    |
-| ruoyi-common-*                   | `pkg/*`                                         |
-| R&lt;T&gt; / TableDataInfo       | `pkg/response.R[T]` / `PageResult[T]`           |
-| PageQuery                        | `pkg/repository.PageQuery`                      |
-| sa-token（@SaCheckPermission）   | `pkg/middleware` 鉴权中间件 + sa-token-go       |
-| @DataPermission（SpEL + 拦截器） | repository 层 GORM Scopes / Callback 手写       |
-| @Log（AOP）                      | `pkg/oplog` 注解 + Recorder 回调                |
-| hutool Tree                      | `pkg/tree`（扁平 JSON 契约自实现）              |
-| ExcelUtil（easyexcel）           | `pkg/excel`（tag 驱动导出 / 导入）              |
-| justauth（三方登录）             | `pkg/social`（自接 gitee/github/maxkey/topiam） |
+| ruoyi-admin（聚合启动）          | `cmd/standalone` / `cmd/modular/<module>`（每模块一进程）    |
+| Controller                       | `internal/<module>/handler/<xxx>`（包级函数）                |
+| IXxxService / XxxServiceImpl     | `internal/<module>/service/<xxx>`（包级函数）                |
+| XxxMapper (MyBatis)              | `internal/<module>/repository/<xxx>`（GORM）                 |
+| domain / domain.bo / domain.vo   | `model`（entity / bo / vo / dto）                            |
+| ruoyi-common-*                   | 外部模块 `github.com/HandsomeNPC/ruoyi-common-go`            |
+| R&lt;T&gt; / TableDataInfo       | `ruoyi-core/model/response.R[T]` / `ruoyi-core/model/page.PageResult[T]` |
+| PageQuery                        | `ruoyi-core/model/page.PageQuery`                            |
+| @SaCheckPermission / @SaCheckRole | `ruoyi-core/middleware/permission` + sa-token-go             |
+| @DataPermission（SpEL + 拦截器） | repository 层 GORM Scopes / Callback 手写（规划中）          |
+| @Log（AOP）                      | `ruoyi-core/middleware/operlog` 中间件 + Recorder 回调       |
+| @RepeatSubmit / @RateLimiter     | `middleware/repeatsubmit` / `middleware/ratelimiter`         |
+| @ApiEncrypt                      | `middleware/apiencrypt`                                      |
+| hutool Tree                      | `treeutil`（扁平 JSON 契约自实现）                           |
+| ExcelUtil（easyexcel）           | `excelhelper`（tag 驱动导出 / 导入）                         |
+| justauth（三方登录）             | `oauth2`（自接 gitee/github/maxkey/topiam）                  |
 
 迁移中两个最难处的处理方式：
 
 1. **数据权限 `@DataPermission`**：Java 用 SpEL 注解 + MyBatis 拦截器动态拼 SQL 做部门 / 角色数据隔离。Go 无等价机制，改在
    repository 层用 GORM Scopes / Callback 手写数据权限过滤。
 2. **sa-token 认证鉴权**：Java 用 sa-token 管登录态、`@SaCheckPermission` 校验权限。Go 用 sa-token-go（JWT + Redis
-   存会话）复刻，权限校验改为 `pkg/middleware` 鉴权中间件查权限码。
+   存会话）复刻，权限校验改为 `ruoyi-core/middleware/permission` 鉴权中间件查权限码。
 
 ## 目录结构
 
@@ -293,20 +292,22 @@ cmd/
   standalone/Dockerfile       单体镜像
 internal/                     按模块组织，严格三层
   <module>/
-    router.go                 路由注册 RegisterRoutes(r, prefix)
-    handler/                  HTTP 层：绑定参数、调 service、返回 response.R
-    service/                  业务逻辑；system 的 service 导出供 auth 复用
-    repository/               数据访问，只有这一层碰 GORM/DB
-    model/                    entity(表) / dto(入参) / vo(出参)
-pkg/                          可复用公共库（各 infra 包自带配置类型 + Init(cfg) 收参，无共享 config 包）
-  response/database/redis/middleware/satoken/oplog/excel/tree/oss/push/...
+    router.go                 路由注册 RegisterRoutes(r, prefix) + InitRouter()
+    server.go                 InitServer(r)：读本模块 server 配置并启动
+    config/                   本模块的 viper 配置包：Load(path) / Get()
+    handler/<xxx>/            HTTP 层：绑定参数、调 service、返回 response.R
+    service/<xxx>/            业务逻辑；system 的 service 导出供 auth / monitor / resource 复用
+    repository/<xxx>/         数据访问，只有这一层碰 GORM/DB
+    model/                    entity(表) / bo(入参) / vo(出参) / dto
 configs/                      各模块自包含 <module>.yaml（无公共 application.yaml）
-script/sql/                   ry_vue.sql 建表 SQL（复用原项目表结构）
+script/sql/                   ry_vue.sql（MySQL）、postgre/postgres_ry_vue.sql（PostgreSQL）
 docs/CRUD-SPEC.md             增删改查落地模板与踩坑点（写 CRUD 前先读）
 ```
 
-分层依赖单向：`handler → service → repository → model`，禁止反向依赖、禁止 handler 直连 repository。`pkg` 不能 import
-`internal`（注解层落库等场景用 Recorder 回调让 internal 反向注册）。
+公共库在独立模块 [ruoyi-common-go](https://github.com/HandsomeNPC/ruoyi-common-go)，本仓没有 `pkg/` 目录。
+
+分层依赖单向：`handler → service → repository → model`，禁止反向依赖、禁止 handler 直连 repository。公共库不能 import 本仓
+`internal`（操作日志落库等场景用 Recorder 回调让 internal 反向注册）。
 
 ## 开源协议
 
@@ -332,5 +333,8 @@ docs/CRUD-SPEC.md             增删改查落地模板与踩坑点（写 CRUD �
 ## 作者其它项目
 
 本仓库是作者作品集的一部分，更多开源作品与文章见 [chenziwen.top/projects](https://chenziwen.top/projects/)。
-后续项目发布后会在该主页同步更新，欢迎收藏。
+
+- [Agentic-Scaffold](https://agentic-scaffold-doc.chenziwen.top)：以本项目为后台基线、带 Eino ADK 智能体的管理平台——
+  后台常驻 AI 助手、敏感操作人在回路审批、Agent 工具走同一套 RBAC
+- [ruoyi-common-go](https://github.com/HandsomeNPC/ruoyi-common-go)：本项目抽出的公共库
 

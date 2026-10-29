@@ -28,13 +28,13 @@
 按 `model → repository → service → handler → router → test` 的顺序写，每步 `go build ./...` 一次。
 
 ```
-internal/system/model/entity 或 model/sys_xxx.go   实体（多数已存在，先 ls 确认）
-internal/system/model/bo/sys_xxx_query_bo.go       查询条件（新建，勿复用写入 BO）
-internal/system/model/vo/sys_xxx_vo.go             出参 + excel tag（多数已存在，补 tag）
-internal/system/repository/xxx_repository.go       数据访问
-internal/system/service/xxx_service.go             业务逻辑
-internal/system/handler/xxx_handler.go             HTTP 层
-internal/system/router.go                          注册路由（改现有文件）
+internal/system/model/sys_xxx.go                       实体（多数已存在，先 ls 确认）
+internal/system/model/bo/sys_xxx_query_bo.go           查询条件（新建，勿复用写入 BO）
+internal/system/model/vo/sys_xxx_vo.go                 出参 + excel tag（多数已存在，补 tag）
+internal/system/repository/xxx/xxx_repository.go       数据访问（一个业务一个子包）
+internal/system/service/xxx/xxx_service.go             业务逻辑（一个业务一个子包）
+internal/system/handler/xxx/xxx_handler.go             HTTP 层（一个业务一个子包）
+internal/system/router.go                              注册路由（改现有文件）
 ```
 
 `model/bo/conv.go`、`model/vo/conv.go` 里的 goverter 接口 **多数已声明好**， 先
@@ -84,30 +84,31 @@ type SysXxxVo struct {
 - `@ExcelDictFormat(dictType = "sys_yes_no")` → `excelDict:"Y=是,N=否"`； 其它字典去 `script/sql/ry_vue.sql` 搜
   `sys_dict_data` 取 label/value。
 - 没有 `excel` tag 的字段不导出（等价 Java `@ExcelIgnoreUnannotated`）。
-- ID 字段 **保持裸 `int64`**，`pkg/excel` 自动按位数转字符串保精度。
+- ID 字段 **保持裸 `int64`**，`excelhelper` 自动按位数转字符串保精度。
 
 ---
 
 ## 3. Repository
 
-**只有这一层碰 GORM。** 十个方法按需取用，签名照抄：
+**只有这一层碰 GORM。** 每个业务一个子包 `internal/<module>/repository/<xxx>/`，**包级函数**，
+内部用 `database.DB().WithContext(ctx)` 取连接（不定义结构体、不注入 db）。方法按需取用，签名照抄：
 
 ```go
+package xxx
+
 var ErrXxxNotFound = errors.New("repository: Xxx 不存在")
 
-type XxxRepository struct{ db *gorm.DB }
-
-func NewXxxRepository(db *gorm.DB) *XxxRepository { return &XxxRepository{db: db} }
-
-func (r *XxxRepository) SelectByID(ctx context.Context, id int64) (*model.SysXxx, error)
-func (r *XxxRepository) SelectByIDs(ctx context.Context, ids []int64) ([]*model.SysXxx, error)
-func (r *XxxRepository) SelectPageList(ctx, q, page) (pkgrepo.PageResult[*model.SysXxx], error)
-func (r *XxxRepository) SelectList(ctx, q, limit int) ([]*model.SysXxx, error)
-func (r *XxxRepository) Insert(ctx context.Context, e *model.SysXxx) error
-func (r *XxxRepository) UpdateByID(ctx, id int64, columns map[string]any) (int64, error)
-func (r *XxxRepository) DeleteByIDs(ctx context.Context, ids []int64) (int64, error)
-func (r *XxxRepository) ExistsByYyy(ctx, val string, excludeID int64) (bool, error)
+func SelectByID(ctx context.Context, id int64) (*model.SysXxx, error)
+func SelectByIDs(ctx context.Context, ids []int64) ([]*model.SysXxx, error)
+func SelectPageList(ctx context.Context, q bo.SysXxxQueryBo, page pkgpage.PageQuery) (pkgpage.PageResult[*model.SysXxx], error)
+func SelectList(ctx context.Context, q bo.SysXxxQueryBo, limit int) ([]*model.SysXxx, error)
+func Insert(ctx context.Context, e *model.SysXxx) error
+func UpdateByID(ctx context.Context, id int64, columns map[string]any) (int64, error)
+func DeleteByIDs(ctx context.Context, ids []int64) (int64, error)
+func ExistsByYyy(ctx context.Context, val string, excludeID int64) (bool, error)
 ```
+
+别名约定：`pkgpage` = `ruoyi-core/model/page`，`pkgrepo` = `ruoyi-core/repository`。
 
 ### 六条硬规则
 
@@ -117,7 +118,7 @@ func (r *XxxRepository) ExistsByYyy(ctx, val string, excludeID int64) (bool, err
 // applyXxxQuery 应用查询条件。分页与导出两条路径必须共用它，否则过滤逻辑改一处漏一处。
 func applyXxxQuery(db *gorm.DB, q bo.SysXxxQueryBo) *gorm.DB {
 	if q.Name != "" {                                       // eqIfText/likeIfText：空串不筛
-		db = db.Where("name LIKE ?", "%"+escapeLike(q.Name)+"%")
+		db = db.Where("name LIKE ?", "%"+pkgrepo.EscapeLike(q.Name)+"%")
 	}
 	if q.Status != "" {
 		db = db.Where("status = ?", q.Status)
@@ -131,9 +132,8 @@ func applyXxxQuery(db *gorm.DB, q bo.SysXxxQueryBo) *gorm.DB {
 }
 ```
 
-`escapeLike` 已在 `internal/system/repository/config_repository.go:144` 定义， **repository 同包共用，别重复定义**（同
-`parseIDs` 的约束）。它把 LIKE 元字符转义成字面量——不转义的话搜 `%` 会命中全表、`_` 会变成任意单字符通配，这是与 Java
-`likeIfText` 的有意差异；反斜杠排最前，避免重复转义。
+`pkgrepo.EscapeLike` 由公共库提供， **别在业务包里重复定义**。它把 LIKE 元字符转义成字面量——不转义的话搜 `%`
+会命中全表、`_` 会变成任意单字符通配，这是与 Java `likeIfText` 的有意差异；反斜杠排最前，避免重复转义。
 
 **② `Model()` 不能省。** `del_flag` 过滤由 `LogicDelete` 挂在字段类型上，须先解析出实体 schema 才生效。
 `Count`、`SelectList`、`SelectPageList` 全都要带。
@@ -152,14 +152,14 @@ if !page.HasOrder() {
 **④ 更新走 `map[string]any`，不走 struct。**
 `Updates(struct)` 跳过零值，会让「清空备注/白名单」写不进库。
 
-**⑤ 更新列里不带审计字段。** `update_by`/`update_time` 由 `pkg/repository` 的回调自动补。 插入同理，`create_*` 全由回调注入，
+**⑤ 更新列里不带审计字段。** `update_by`/`update_time` 由 `ruoyi-core/repository` 的回调自动补。 插入同理，`create_*` 全由回调注入，
 **不要手填**。
 
 **⑥ 分页统一走 `pkgrepo.SelectPage`**，别手写 COUNT + LIMIT。 ctx 预先通过 `WithContext` 绑到 db 上，`SelectPage` 本身不收
 ctx：
 
 ```go
-db := applyXxxQuery(r.db.WithContext(ctx).Model(&model.SysXxx{}), q)
+db := applyXxxQuery(database.DB().WithContext(ctx).Model(&model.SysXxx{}), q)
 if !page.HasOrder() { db = db.Order("xxx_id") }
 var rows []*model.SysXxx
 return pkgrepo.SelectPage(db, page, &rows)
@@ -187,12 +187,12 @@ func QueryByID(ctx context.Context, id int64) (*vo.SysXxxVo, error) { ... }
 
 - **包名与 repository 同名时给 repo import 取别名** `<xxx>repository`，避免和自己包名撞：
   `xxxrepository "ruoyi-go-vue-plus/internal/<module>/repository/<xxx>"`，调用 `xxxrepository.SelectByID`。
-- handler 侧 import 别名统一 `<xxx>service`：`xxservice "ruoyi-go-vue-plus/internal/<module>/service/<xxx>"`， 调
-  `xxservice.QueryByID(...)`、`xxservice.ErrXxxNotFound`。 （与既有 `systemservice`/`resourceservice` 同构。）
-- **每次调用现取 repo**：`repository.NewXxxRepository(database.DB())`，不缓存成字段。
+- handler 侧 import 别名统一 `<xxx>service`：`xxxservice "ruoyi-go-vue-plus/internal/<module>/service/<xxx>"`， 调
+  `xxxservice.QueryByID(...)`、`xxxservice.ErrXxxNotFound`（如 `clientservice`、`configservice`）。
+- repository 是包级函数，直接调 `xxxrepository.SelectByID(ctx, id)`，无需构造实例。
 - 返回 **VO**（`vo.Conv.ConvertToSysXxxVo`），不把 entity 漏给 handler。
 - 分页要 **重建** `PageResult`：两个泛型实例是不同类型。
-  `pkgrepo.Page(vo.Conv.ConvertToSysXxxVoList(res.Rows), res.Total)`
+  `pkgpage.Page(vo.Conv.ConvertToSysXxxVoList(res.Rows), res.Total)`；出错时返回 `pkgpage.EmptyPage[*vo.SysXxxVo]()`。
 - 错误一律 `return err`， **由 handler 转 response**。需要自定义文案时用
   `errs.New(0, "文案", "")`（code 传 0 → 渲染成 500 + 该文案）。
 
@@ -201,7 +201,7 @@ func QueryByID(ctx context.Context, id int64) (*vo.SysXxxVo, error) { ... }
 ```go
 add := bo.Conv.ConvertToSysXxx(b)
 add.XxxID = snowflake.Next()   // 各业务表主键均无 auto_increment
-// 审计字段不在此处填：由 pkg/repository 的插入回调统一注入。
+// 审计字段不在此处填：由 ruoyi-core/repository 的插入回调统一注入。
 ```
 
 ### 唯一性校验：`excludeID` 区分新增与修改
@@ -220,14 +220,14 @@ CheckXxxKeyUnique(ctx, b.Key, b.ID)   // 修改：排除自身，改回原 key �
 // 先取原记录定存在性，不靠 UpdateByID 的受影响行数：值与库中完全相同时
 // MySQL 报 0 行（update_time 是秒精度，同秒内重复提交连它都不变），
 // 那会把一次幂等的重复保存误报成"配置不存在"。
-old, err := repo.SelectByID(ctx, b.ID)
+old, err := xxxrepository.SelectByID(ctx, b.ID)
 if err != nil {
-	if errors.Is(err, repository.ErrXxxNotFound) {
+	if errors.Is(err, xxxrepository.ErrXxxNotFound) {
 		return ErrXxxNotFound
 	}
 	return err
 }
-if _, err := repo.UpdateByID(ctx, b.ID, buildXxxUpdateColumns(b)); err != nil {
+if _, err := xxxrepository.UpdateByID(ctx, b.ID, buildXxxUpdateColumns(b)); err != nil {
 	return err
 }
 ```
@@ -258,17 +258,17 @@ func buildXxxUpdateColumns(b *bo.SysXxxBo) map[string]any {
 ### 删除：先整批校验，再删
 
 ```go
-rows, err := repo.SelectByIDs(ctx, ids)
+rows, err := xxxrepository.SelectByIDs(ctx, ids)
 // 先整批校验再删，不边删边校验：Java 侧靠抛异常回滚事务，这里没有事务包裹，
 // 一旦先删了几行再撞上内置参数就会留下删一半的状态。
 for _, e := range rows {
-	if e.ConfigType == constant.Yes {
+	if e.ConfigType == syscons.Yes {
 		return errs.New(0, fmt.Sprintf("内置参数【%s】不能删除", e.ConfigKey), "")
 	}
 }
-if _, err := repo.DeleteByIDs(ctx, ids); err != nil { return err }
+if _, err := xxxrepository.DeleteByIDs(ctx, ids); err != nil { return err }
 // 删除后再失效：提前清缓存会让删除失败时白丢一批热数据。
-for _, e := range rows { _ = cache.Evict(ctx, redis.Client(), constant.CacheSysXxx, e.Key) }
+for _, e := range rows { _ = cache.Evict(ctx, redis.Client(), syscons.CacheSysXxx, e.Key) }
 ```
 
 ### 缓存：Java 注解 → Go 调用
@@ -282,7 +282,8 @@ for _, e := range rows { _ = cache.Evict(ctx, redis.Client(), constant.CacheSysX
 | 防击穿的读穿                   | `cache.GetOrSet(ctx, rdb, ...)`（内含 singleflight）     |
 
 - 调用方负责传 `*goredis.Client`（通常 `redis.Client()`），`cache` 包不持有 Redis 单例，便于测试与按进程换实例。
-- 组名与 TTL 在 `ruoyi-core/constant/cache_names.go`。 TTL 取值看 Java `CacheNames` 的 `#ttl` 后缀：`sys_client#30d` →
+- 组名与 TTL 放在本模块的 constant 包（system 是 `internal/system/constant`，别名 `syscons`，如 `CacheSysClient` /
+  `CacheTTLSysClient`）。 TTL 取值看 Java `CacheNames` 的 `#ttl` 后缀：`sys_client#30d` →
   `30*24*time.Hour`， **无后缀 → `0`（不过期）**。
 - 缓存写/删（`Put`/`Evict`/`EvictGroup`） **一律 `_ =` 忽略错误**（fail-open，Redis 挂了要能继续走 DB）。 但 `Get` 返回两个值，
   **不能** `_ = cache.Get(...)`——用 `hit, _ := cache.Get(ctx, redis.Client(), group, key, &dest)`。
@@ -293,28 +294,33 @@ for _, e := range rows { _ = cache.Evict(ctx, redis.Client(), constant.CacheSysX
 
 ## 5. Handler
 
-固定骨架，`ClientApi`/`ConfigApi` 逐字同构：
+每个业务一个子包 `internal/<module>/handler/<xxx>/`，**包级函数**，无 `XxxApi` 结构体、无 `XxxApiApp` 实例。
+参考 `handler/client/client_handler.go`、`handler/config/config_handler.go`：
 
 ```go
-type XxxApi struct{}
-var XxxApiApp = new(XxxApi)
+// Package xxx Xxx 管理 HTTP 接口。
+package xxx
+
+func List(c *gin.Context) { ... }
 ```
+
+router 侧 import 别名 `<xxx>handler`，注册时写 `xxxhandler.List`。
 
 ### 分页查询：绑两次
 
 ```go
-func (a *XxxApi) List(c *gin.Context) {
+func List(c *gin.Context) {
 	var q bo.SysXxxQueryBo
 	if err := c.ShouldBindQuery(&q); err != nil {
 		_ = c.Error(errs.New(response.CodeBadRequest, "参数校验失败", err.Error()))
 		return
 	}
-	var page pkgrepo.PageQuery
+	var page pkgpage.PageQuery
 	if err := c.ShouldBindQuery(&page); err != nil {
 		_ = c.Error(errs.New(response.CodeBadRequest, "分页参数有误", err.Error()))
 		return
 	}
-	res, err := xxservice.QueryPageList(c.Request.Context(), q, page)
+	res, err := xxxservice.QueryPageList(c.Request.Context(), q, page)
 	if err != nil { _ = c.Error(err); return }
 	c.JSON(http.StatusOK, response.Ok(res))
 }
@@ -325,22 +331,26 @@ func (a *XxxApi) List(c *gin.Context) {
 ### 导出：POST + `ShouldBind` + 多取一行
 
 ```go
-func (a *XxxApi) Export(c *gin.Context) {
+func Export(c *gin.Context) {
 	var q bo.SysXxxQueryBo
 	if err := c.ShouldBind(&q); err != nil {   // 同时吃 form body 与 query
 		_ = c.Error(errs.New(response.CodeBadRequest, "参数校验失败", err.Error()))
 		return
 	}
-	rows, err := xxservice.QueryList(c.Request.Context(), q, excel.MaxRows+1)
+	rows, err := xxxservice.QueryList(c.Request.Context(), q, excelhelper.MaxRows+1)
 	if err != nil { _ = c.Error(err); return }
-	// 工作簿在 excel.Export 内部先建满缓冲再落笔：
-	// middleware.Recover 只在 !Written() 时渲染错误，抢先写字节会让后续错误被静默吞掉。
-	if err := excel.Export(c, rows, "Xxx数据"); err != nil { _ = c.Error(err); return }
+	// 工作簿在 excelhelper.Export 内部先建满缓冲再落笔：
+	// recover.Recover 只在 !Written() 时渲染错误，抢先写字节会让后续错误被静默吞掉。
+	if err := excelhelper.Export(c, rows, "Xxx数据"); err != nil {
+		export.ReportExportErr(c, err)   // 超限转友好文案，其余原样上交
+		return
+	}
 }
 ```
 
 - 走 **POST**（前端 `commonExport` 以 form 表单提交），不是 GET。
-- `excel.MaxRows+1` 多取一行判超限，避免"先捞完百万行再拒绝"。
+- `excelhelper.MaxRows+1` 多取一行判超限，避免"先捞完百万行再拒绝"。
+- 导出失败统一走 `internal/system/handler/export.ReportExportErr`，别各自判 `TooManyRowsError`。
 - **业务 handler 中唯一不返回 `response.R` 的接口**，响应体是二进制附件 （探针 `/ping` 是路由内联的 `gin.H` 例外，不算业务接口）。
 - sheetName = Java `.sheetName("...")` 的原文。
 
@@ -363,7 +373,7 @@ ids, err := strutil.ParseIDList(c.Param("xxxIds"))   // 批量：复用 github.c
 ### 写接口：绑 JSON + 翻译哨兵错误
 
 ```go
-func (a *XxxApi) Edit(c *gin.Context) {
+func Edit(c *gin.Context) {
 	var b bo.SysXxxBo
 	if err := c.ShouldBindJSON(&b); err != nil {
 		_ = c.Error(errs.New(response.CodeBadRequest, "参数校验失败", err.Error()))
@@ -374,13 +384,13 @@ func (a *XxxApi) Edit(c *gin.Context) {
 		_ = c.Error(errs.New(response.CodeBadRequest, "主键不能为空", ""))
 		return
 	}
-	if err := xxservice.UpdateXxx(c.Request.Context(), &b); err != nil {
-		if errors.Is(err, xxservice.ErrXxxKeyExists) {
+	if err := xxxservice.UpdateByBo(c.Request.Context(), &b); err != nil {
+		if errors.Is(err, xxxservice.ErrXxxKeyExists) {
 			_ = c.Error(errs.New(response.CodeFail,
 				fmt.Sprintf("修改'%s'失败，key已存在", b.Name), ""))
 			return
 		}
-		if errors.Is(err, xxservice.ErrXxxNotFound) {
+		if errors.Is(err, xxxservice.ErrXxxNotFound) {
 			_ = c.Error(errs.New(response.CodeNotFound, "Xxx 不存在", ""))
 			return
 		}
@@ -393,7 +403,7 @@ func (a *XxxApi) Edit(c *gin.Context) {
 
 ### 三条铁律
 
-1. **错误一律 `_ = c.Error(...)` 后 `return`**，绝不自己 `c.JSON` 错误响应—— 统一由 `middleware.Recover` 渲染（HTTP 状态恒
+1. **错误一律 `_ = c.Error(...)` 后 `return`**，绝不自己 `c.JSON` 错误响应—— 统一由 `recover.Recover()` 渲染（HTTP 状态恒
    200）。
 2. 只翻译 service 导出的 **哨兵错误**（`errors.Is`），其余原样 `c.Error(err)` 兜底。
 3. 出参只用 `response.Ok(...)` / `response.OkVoid()`， **不写 `gin.H`**。
@@ -420,21 +430,30 @@ func (a *XxxApi) Edit(c *gin.Context) {
 const xxxLogTitle = "参数管理"
 
 xxx := protected.Group("/xxx")
-xxx.GET("/list", satoken.CheckPermission("system:xxx:list"), handler.XxxApiApp.List)
-xxx.GET("/configKey/:configKey", checklogin.CheckLogin(), handler.XxxApiApp.GetByKey)
-xxx.GET("/:xxxId", satoken.CheckPermission("system:xxx:query"), handler.XxxApiApp.GetInfo)
-xxx.POST("/export", satoken.CheckPermission("system:xxx:export"),
-	oplog.Log(xxxLogTitle, enum.BusinessTypeExport), handler.XxxApiApp.Export)
-xxx.POST("", satoken.CheckPermission("system:xxx:add"),
-	oplog.Log(xxxLogTitle, enum.BusinessTypeInsert),
-	repeatsubmit.RepeatSubmit(0, ""), handler.XxxApiApp.Add)
-xxx.PUT("", satoken.CheckPermission("system:xxx:edit"),
-	oplog.Log(xxxLogTitle, enum.BusinessTypeUpdate),
-	repeatsubmit.RepeatSubmit(0, ""), handler.XxxApiApp.Edit)
-xxx.DELETE("/refreshCache", satoken.CheckPermission("system:xxx:remove"),
-	oplog.Log(xxxLogTitle, enum.BusinessTypeClean), handler.XxxApiApp.RefreshCache)
-xxx.DELETE("/:xxxIds", satoken.CheckPermission("system:xxx:remove"),
-	oplog.Log(xxxLogTitle, enum.BusinessTypeDelete), handler.XxxApiApp.Remove)
+xxx.GET("/list", permission.CheckPermission("system:xxx:list"), xxxhandler.List)
+xxx.GET("/configKey/:configKey", checklogin.CheckLogin(), xxxhandler.GetByKey)
+xxx.GET("/:xxxId", permission.CheckPermission("system:xxx:query"), xxxhandler.GetInfo)
+xxx.POST("/export", permission.CheckPermission("system:xxx:export"),
+	operlog.Log(xxxLogTitle, operlog.BusinessTypeExport), xxxhandler.Export)
+xxx.POST("", permission.CheckPermission("system:xxx:add"),
+	operlog.Log(xxxLogTitle, operlog.BusinessTypeInsert),
+	repeatsubmit.RepeatSubmit(0, ""), xxxhandler.Add)
+xxx.PUT("", permission.CheckPermission("system:xxx:edit"),
+	operlog.Log(xxxLogTitle, operlog.BusinessTypeUpdate),
+	repeatsubmit.RepeatSubmit(0, ""), xxxhandler.Edit)
+xxx.DELETE("/refreshCache", permission.CheckPermission("system:xxx:remove"),
+	operlog.Log(xxxLogTitle, operlog.BusinessTypeClean), xxxhandler.RefreshCache)
+xxx.DELETE("/:xxxIds", permission.CheckPermission("system:xxx:remove"),
+	operlog.Log(xxxLogTitle, operlog.BusinessTypeDelete), xxxhandler.Remove)
+```
+
+带密码的写接口挂请求解密，**`enc` 排在 `repeatsubmit` 之前**：
+
+```go
+enc := apiencrypt.APIEncryptWithConfig(systemconfig.Get().APIEncrypt)
+user.PUT("/resetPwd", permission.CheckPermission("system:user:resetPwd"), enc,
+	operlog.Log(userLogTitle, operlog.BusinessTypeUpdate),
+	repeatsubmit.RepeatSubmit(0, ""), userhandler.ResetPwd)
 ```
 
 ### 中间件顺序：鉴权 → 日志 → 防重 → handler
@@ -443,7 +462,7 @@ xxx.DELETE("/:xxxIds", satoken.CheckPermission("system:xxx:remove"),
 
 - **鉴权最前**：未授权请求不该白占一个防重锁。
 - **日志在防重之前**：被防重挡掉的请求 handler 没执行， 与 Java 侧 `RepeatSubmitAspect` 抛异常后 `LogAspect` 记一条失败日志一致。
-- **`repeatsubmit` 须在 `encrypt.ApiEncrypt()` 之后**：指纹要用解密后的明文， 否则密文每次随机密钥、同样入参算出不同指纹，防重直接失效。
+- **`repeatsubmit` 须在 `apiencrypt` 中间件之后**：指纹要用解密后的明文， 否则密文每次随机密钥、同样入参算出不同指纹，防重直接失效。
 
 ### 路径细节
 
@@ -456,22 +475,22 @@ xxx.DELETE("/:xxxIds", satoken.CheckPermission("system:xxx:remove"),
 
 | Java                                          | Go                                                                         | 说明                                                                                                                             |
 |-----------------------------------------------|----------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
-| `@SaCheckPermission("system:xxx:list")`       | `satoken.CheckPermission("system:xxx:list")`                               | 多个权限码是 **OR**，语义是"任一命中放行"                                                                                        |
-| `@SaCheckRole("admin")`                       | `satoken.CheckRole("admin")`                                               | 同上                                                                                                                             |
+| `@SaCheckPermission("system:xxx:list")`       | `permission.CheckPermission("system:xxx:list")`                            | 多个权限码是 **OR**，语义是"任一命中放行"                                                                                        |
+| `@SaCheckRole("admin")`                       | `permission.CheckRole("admin")`                                            | 同上                                                                                                                             |
 | 仅需登录（无权限注解）                        | `checklogin.CheckLogin()`                                                  | Java 没挂 `@SaCheckPermission` 的接口用这个。**不要用 `sagin.CheckLogin()`**，见下方「未登录响应」                               |
 | 完全公开                                      | `sagin.Ignore()`                                                           | **仅在路由位于带 `plugin.TokenInterceptor()` 的组内时**才需要；注册在 `protected` 组之外（如 `/ping`）的公开路由什么标记都不用加 |
-| `@Log(title="x", businessType=INSERT)`        | `oplog.Log("x", enum.BusinessTypeInsert)`                                  |                                                                                                                                  |
+| `@Log(title="x", businessType=INSERT)`        | `operlog.Log("x", operlog.BusinessTypeInsert)`                             |                                                                                                                                  |
 | `@RepeatSubmit()`                             | `repeatsubmit.RepeatSubmit(0, "")`                                         | `0` = 默认 5s；**< 1s 注册期 panic**                                                                                             |
 | `@RepeatSubmit(interval=10000)`               | `repeatsubmit.RepeatSubmit(10*time.Second, "")`                            |                                                                                                                                  |
 | `@RateLimiter(time=60,count=10,limitType=IP)` | `ratelimiter.RateLimiter(time.Minute, 10, ratelimiter.LimitTypeIP, 0, "")` |                                                                                                                                  |
-| `@ApiEncrypt`                                 | `encrypt.ApiEncrypt()`                                                     |                                                                                                                                  |
+| `@ApiEncrypt`                                 | `apiencrypt.APIEncryptWithConfig(cfg.APIEncrypt)`                          |                                                                                                                                  |
 
 `BusinessType` 取值即 Java `ordinal()`（库里存数字）：
 `Other=0, Insert=1, Update=2, Delete=3, Grant=4, Export=5, Import=6, Force=7, GenCode=8, Clean=9`。
 **顺序不可调整、不可插入新值，只能末尾追加。**
 
-`oplog.Log` 可选项：`WithoutRequestData()`、`WithoutResponseData()`、
-`WithExcludeParams("field")`、`WithOperatorType(enum.OperatorTypeMobile)`。 密码类字段已由 `constant.ExcludeProperties`
+`operlog.Log` 可选项：`WithoutRequestData()`、`WithoutResponseData()`、
+`WithExcludeParams("field")`、`WithOperatorType(operlog.OperatorTypeMobile)`。 密码类字段已由 `ruoyi-core/constant.ExcludeProperties`
 全局排除，无需重复声明。
 
 ### 未登录响应：必须 HTTP 200 + `code:401`，别用 sa-token-go 自带的中间件
@@ -532,23 +551,31 @@ Java 侧除两个退化分支外全部如此 —— 业务码只在 body 的 `co
 
 ```go
 <m>config.Load("configs/<m>.yaml")      // 各模块自行 viper 解析自包含 yaml
-jsonx.OverrideGinCodec()        // 必须在首个 c.JSON / 参数绑定之前接管 gin codec
+jsonx.OverrideGinCodec()                 // 必须在首个 c.JSON / 参数绑定之前接管 gin codec
 cfg := <m>config.Get()
-database.Init(cfg.Datasource); redishelper.Init(cfg.Redis); satoken.Init(cfg.SAToken); encrypt.Init(cfg.APIEncrypt)
-snowflake.Init(cfg.Snowflake)    // 主键发号器，插入前必须就绪
-captcha.Init(cfg.Captcha); ratelimiter.Init(); repeatsubmit.Init(redis.Client(), cfg.SAToken.TokenName)   // 三者都依赖 redis
-oplog.Init(operlogservice.RecordOper)        // 依赖 database + snowflake
+database.Init(cfg.Datasource)
+redis.Init(cfg.Redis)
+satoken.Init(cfg.SAToken, redis.Client())
+snowflake.Init(cfg.Snowflake)            // 主键发号器，插入前必须就绪
+// 以下按本模块需要取用，都依赖 redis
+captchahelper.Init(cfg.Captcha)
+ratelimiter.Init(redis.Client())
+repeatsubmit.Init(redis.Client(), satoken.TokenName())
+operlog.Init(operlogservice.RecordOper)  // 依赖 database + snowflake
 ```
 
-全局中间件：`Recover → CORS → TraceID → RepeatableBody → AccessLog → XSS → I18n`， 均走 `XWithConfig(cfg.X)` 显式传参（无无参包装）。
+`apiencrypt` **没有 `Init()`**，配置在构造路由级中间件时传入（`apiencrypt.APIEncryptWithConfig(cfg.APIEncrypt)`）。
+
+全局中间件：`Recover → CORS → TraceID → RepeatableBody → AccessLog → XSS`， 均走 `XWithConfig(cfg.X)` 显式传参（无无参包装），
+**没有 I18n 中间件**。
 业务路由注册完毕后再 `notfound.Register(r)` 收尾（404/405 兜底，见上一节）。
 
 ---
 
 ## 7. 测试：只测判断，不测搬运
 
-用 **DryRun GORM**（拼 SQL 不连库）测 SQL 组装，纯函数直接测。
-`dryClientDB(t)` 已在 `repository` 包内，直接用。
+纯函数直接测；需要验证 SQL 组装时用 **DryRun GORM**（`gorm.Config{DryRun: true}`，拼 SQL 不连库）。
+现有测试集中在 service 与 model 层（`client_service_test.go`、`menu_service_test.go` 等），可作写法参考。
 
 值得写的：
 
@@ -560,10 +587,7 @@ oplog.Init(operlogservice.RecordOper)        // 依赖 database + snowflake
 
 不值得写的：getter、单纯的 VO 字段拷贝、`response.Ok` 包装。
 
-`dryClientDB(t)` 定义在 `internal/system/repository/client_repository_test.go`（ **test-only**，跨包取不到）。 新测试文件须放在
-**同目录**且声明 **`package repository`**（非 `package repository_test`）才能用它；
-`pkg/repository` 里的同名辅助同理，只在它自己包内的测试可用。若需要在 service 层做 DB 测试， 得在 service 包的自测里另起一个同形
-helper，别指望跨包复用。
+测试辅助函数是 test-only 的，跨包取不到。需要 DryRun DB 时在本包的 `_test.go` 里自建一个小 helper，别指望跨包复用。
 
 路由测试需要 sa-token Manager，装内存态即可（不依赖 Redis）：
 
@@ -581,14 +605,14 @@ go vet ./...      # 必过
 go test ./...     # 新增测试必过
 go mod tidy       # 引入新依赖后
 ```
-> 但 **别把它当成"测试本来就红"的挡箭牌**——除它以外任何失败都要处理。
 
 ### 清单
 
 - [ ] 分层单向：handler → service → repository，无反向依赖、无 handler 直连 repo
 - [ ] 只有 repository 出现 `gorm`
 - [ ] handler 出参只有 `response.R` / `PageResult`（导出接口除外）
-- [ ] 错误全走 `c.Error` + `middleware.Recover`，没有手写错误 JSON
+- [ ] 错误全走 `c.Error` + `recover.Recover()`，没有手写错误 JSON
+- [ ] SQL 跨库可用：没写 `FIND_IN_SET` / `IFNULL` / `GROUP_CONCAT` 等 MySQL 专有语法
 - [ ] ID 字段是裸 `int64`，没加 `,string`
 - [ ] 插入前 `snowflake.Next()`，没手填审计字段
 - [ ] 更新走 `map`，可编辑字段一律写、控制字段空值跳过

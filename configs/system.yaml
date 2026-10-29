@@ -7,7 +7,7 @@ server:
   addr: ":8080"
 
 # 各进程共用同一个库，workerId 必须互不相同，否则雪花主键会撞号。
-# 分配：auth=1 system=2 monitor=3 resource=4 standalone=0
+# 分配：auth=1 system=2 resource=3 monitor=4 standalone=0
 snowflake:
   workerId: 2
   datacenterId: 0

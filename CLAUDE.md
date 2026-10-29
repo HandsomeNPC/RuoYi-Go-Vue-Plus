@@ -5,14 +5,7 @@
 > **写增删改查代码前，先读 [`docs/CRUD-SPEC.md`](docs/CRUD-SPEC.md)。**
 > 那里有六个文件的落地模板、注解/中间件对照表、以及踩过的坑（更新列取舍、
 > 存在性判定不能用受影响行数、中间件顺序、LIKE 转义等）。照模板写，
-> 不必再逐个翻 client/config 模块的源码。
->
-> ⚠️ **但 CRUD-SPEC 的「导入路径」已过期**：它写的 `pkg/xxx`、
-> `satoken.CheckPermission`、`oplog.Log`、`repository.PageQuery`、
-> `encrypt.ApiEncrypt`、`middleware.Recover`、`escapeLike` 都不对。
-> 真实路径见本文件的「公共库导入路径」一节。它的 **约定与踩坑部分仍然有效**，
-> 只是符号名要按下表翻译。目录结构上，repository/service 也已改成
-> 一层子包（`repository/notice/notice_repository.go`），不是扁平文件。
+> 不必再逐个翻 client/config 模块的源码。导入路径以本文件「公共库导入路径」一节为准。
 
 ## 项目定位
 
@@ -21,7 +14,11 @@
   单体入口，四模块同进程，便于本地调试。
 - 四个业务模块：`auth`（登录 / 验证码 / 三方绑定）、`system`（用户 / 角色 / 菜单 / 部门 / 字典 / 参数 / 公告 / 客户端 /
   社交账号）、`monitor`（在线用户 / 登录日志 / 操作日志 / 缓存监控）、`resource`（OSS 对象存储 / 消息推送 / 短信 / 邮箱验证码）。
-- 数据库： **MySQL + GORM**，所有进程共用同一个库（`ry-cloud`）。Redis 做会话 / 缓存 / 分布式锁 / 验证码 / 推送分发。
+- 数据库： **MySQL + GORM**（默认），所有进程共用同一个库（`ry-cloud`）。公共库的 `database` 包同时支持 `postgres` / `sqlserver` / `oracle`
+  驱动，PG 建表脚本见 `script/sql/postgre/`。Redis 做会话 / 缓存 / 分布式锁 / 验证码 / 推送分发。
+- **SQL 写法要跨库可用**：不要写 `FIND_IN_SET` / `IFNULL` / `GROUP_CONCAT` / `date_format` / 反引号这类 MySQL 专有语法。
+  「逗号分隔串里整段包含某个 ID」（部门祖先链 `ancestors` 等）统一走 `internal/system/sqlcond.CSVContainsInt`，
+  **不要**图省事换成 `LIKE '%id%'`——`100` 会命中 `1001`，用在数据权限上就是越权。
 
 ## 目录结构与分层
 
@@ -39,20 +36,22 @@ internal/<module>/
                             + InitRouter() *gin.Engine（给 modular 进程用）
   server.go                 InitServer(r)：读本模块 server 配置并 r.Run(addr)
   config/                   本模块的 viper 配置包：Load(path) / Get()
-  handler/                  HTTP 层：绑定参数、调 service、返回 response.R
-  service/<xxx>/            业务逻辑，一个业务一个子包；system 的 service 导出供 auth 复用
-  repository/<xxx>/         数据访问，只有这一层碰 GORM/DB
+  handler/<xxx>/            HTTP 层：一个业务一个子包，包级函数（如 clienthandler.List），无 XxxApi 结构体
+  service/<xxx>/            业务逻辑，一个业务一个子包，包级函数（如 clientservice.QueryPageList）；
+                            system 的 service 导出供 auth / monitor / resource 复用
+  repository/<xxx>/         数据访问，包级函数，内部取 database.DB()；只有这一层碰 GORM/DB
   model/                    entity(表) / bo(入参) / vo(出参)
 configs/                    各模块自包含 <module>.yaml（server/snowflake/datasource/redis
-                            + 本模块用到的子配置）；无公共 application.yaml
+                            + 本模块用到的子配置）；无公共 application.yaml。⚠️ 这些 yaml 入库且含示例
+                            明文密码（ruoyi123 等），只供本地起步，生产部署须挂载自己的配置覆盖
 script/sql/                 ry_vue.sql 建表 SQL（复用原项目表结构）
                             postgre/postgres_ry_vue.sql 为 PG 版
 docs/                       CRUD-SPEC.md（写 CRUD 前先读）
 ```
 
 > **本仓没有 `pkg/` 目录。** 公共库已外迁到独立模块
-> `github.com/HandsomeNPC/ruoyi-common-go`。`docs/CRUD-SPEC.md` 里所有 `pkg/xxx`
-> 的写法都是历史残留，真实导入路径见下面的「公共库导入路径」一节。
+> `github.com/HandsomeNPC/ruoyi-common-go`（源码 <https://github.com/HandsomeNPC/ruoyi-common-go>），
+> 真实导入路径见下面的「公共库导入路径」一节。代码注释里偶尔还会出现 `pkg/repository` 之类的旧称，指的就是公共库里的同名包。
 
 > nginx 负载均衡 / 前缀剥离的配置不在仓库内（各 modular 进程路由以空前缀注册，由上游网关 StripPrefix=1 剥前缀），需要时自行补
 > `deploy/` 目录。
@@ -82,8 +81,12 @@ docs/                       CRUD-SPEC.md（写 CRUD 前先读）
 | 防重提交 / 限流 / 加密                           | `middleware/{repeatsubmit,ratelimiter,apiencrypt}`                  | 同名          |
 | CORS / XSS / TraceID / 访问日志 / 可重读 body    | `middleware/{cors,xss,trace,accesslog,repeatablebody}`              | 同名          |
 | DB / Redis / 雪花 / JSON codec                   | `database` / `redis` / `snowflake` / `jsonx`                        | 同名          |
-| Excel 导出                                       | `excelhelper`                                                       | `excelhelper` |
-| 其它                                             | `cache` / `strutil` / `treeutil` / `bcrypt` / `oss` / `satoken` ... | 同名          |
+| Excel 导出 / 导入                                | `excelhelper`（`Export` / `Read` / `MaxRows`）                      | `excelhelper` |
+| 验证码 / 邮件 / 短信 / 三方登录                  | `captchahelper` / `mailhelper` / `smshelper` / `oauth2`             | 同名          |
+| 其它                                             | `cache` / `strutil` / `treeutil` / `bcrypt` / `oss` / `satoken` / `ip` / `useragent` | 同名 |
+
+业务侧常量（缓存组名与 TTL、`Yes`/`No` 等）不在公共库，在各模块的 `internal/<module>/constant`，习惯别名 `syscons`。
+`cache` 的所有函数都要显式传 `redis.Client()`，它不持有 Redis 单例。
 
 鉴权插件来自另一个模块：`github.com/HandsomeNPC/sa-token-go/integrations/gin`（别名 `sagin`）。
 
@@ -132,8 +135,8 @@ docs/                       CRUD-SPEC.md（写 CRUD 前先读）
     `del_flag = '0'`，`Delete` 改写为 `UPDATE ... SET del_flag = '1'`，`Unscoped()` 绕过。 值是 char (1) 的 `'0'`/`'1'`
     ，不是时间戳。 **不是每张表都有**——先查 `script/sql/ry_vue.sql` 的建表语句确认。 ⚠️ 配套约束：`Model()` 不能省（del_flag
     过滤要先解析实体 schema 才生效），`Count`/`SelectList`/`SelectPage` 全都要带。
-11. **各进程 `snowflake.workerId` 必须唯一**。现有分配见 `configs/system.yaml` 顶部注释：
-    `standalone=0 / auth=1 / system=2 / monitor=3 / resource=4`。所有进程共用一个库，撞号会主键冲突。 新增模块取未用值。
+11. **各进程 `snowflake.workerId` 必须唯一**。现有分配（与各 `configs/<module>.yaml` 实际值一致）：
+    `standalone=0 / auth=1 / system=2 / resource=3 / monitor=4`。所有进程共用一个库，撞号会主键冲突。 新增模块取未用值。
 
 ## 新增一个业务模块要改什么
 
@@ -144,7 +147,7 @@ internal/<m>/config/config.go     仿 internal/monitor/config/config.go（最精
 internal/<m>/router.go            RegisterRoutes(r, prefix) + InitRouter()
 internal/<m>/server.go            照抄 internal/system/server.go
 internal/<m>/{model,repository,service,handler}/...
-cmd/modular/<m>/main.go           照抄 cmd/modular/system/main.go（全文 25 行）
+cmd/modular/<m>/main.go           照抄 cmd/modular/system/main.go（最精简的入口）
 configs/<m>.yaml                  自包含；snowflake.workerId 取未用值
 script/sql/                       建表 + sys_menu/按钮插入 + sys_role_menu 授权
 ```
@@ -158,6 +161,9 @@ script/sql/                       建表 + sys_menu/按钮插入 + sys_role_menu
 `satoken.Init(cfg, redis.Client())`
 → `snowflake.Init` → `repeatsubmit.Init(redis.Client(), satoken.TokenName())`
 → `operlog.Init(recorder)`（要写库，依赖 database + snowflake）→ `InitRouter` → `InitServer`。
+各模块按需再插入：`captchahelper.Init`、`ratelimiter.Init(redis.Client())`、`mailhelper.Init`、`smshelper.Init`、
+`socialservice.Init(cfg.Social, redis.Client())`、`push.Init`、`ossconfigservice.InitCache`（以 `cmd/standalone/main.go` 为全集）。
+`apiencrypt` 没有 `Init()`，配置在构造路由级中间件时传入。
 
 **全局中间件顺序**（standalone 与各 `InitRouter` 一致）：
 `Recover → CORS → TraceID → RepeatableBody → AccessLog → XSS`，最后 `notfound.Register`。 **没有 I18n 中间件**（CRUD-SPEC
@@ -178,7 +184,12 @@ go run ./cmd/modular/system  # 启动 system 进程 :8080
 # 容器构建：上下文必须是仓库根目录
 docker build -f cmd/standalone/Dockerfile -t ruoyi-go:standalone .
 docker build -f cmd/modular/Dockerfile --build-arg MODULE=system -t ruoyi-go:system .
+
+# goverter 转换器代码生成（改了 bo/vo/dto 的 conv.go 之后），工具已在 go.mod 的 tool 段登记
+go generate ./internal/system/model/...
 ```
+
+镜像会把 `configs/` 一起 COPY 进去（`.dockerignore` 有意不排除它），生产部署用 `-v` 挂载覆盖。
 
 新增业务代码引入 GORM/redis/viper 等依赖后，务必 `go mod tidy` 并确认 `go build ./...` 通过。
 
@@ -187,9 +198,9 @@ docker build -f cmd/modular/Dockerfile --build-arg MODULE=system -t ruoyi-go:sys
 | RuoYi (Java)                   | 本项目 (Go)                                         |
 |--------------------------------|-----------------------------------------------------|
 | ruoyi-admin(聚合启动)          | cmd/modular/<module>/main.go(每模块一进程)          |
-| Controller                     | internal/<module>/handler                           |
+| Controller                     | internal/<module>/handler/<xxx>(包级函数，非结构体) |
 | IXxxService / XxxServiceImpl   | internal/<module>/service/<xxx>(包级函数，非结构体) |
-| XxxMapper (MyBatis)            | internal/<module>/repository/<xxx> (GORM)           |
+| XxxMapper (MyBatis)            | internal/<module>/repository/<xxx>(GORM，包级函数)  |
 | domain / domain.bo / domain.vo | model(entity / bo / vo)                             |
 | ruoyi-common-*                 | 外部模块 github.com/HandsomeNPC/ruoyi-common-go/*   |
 | R<T> / TableDataInfo           | response.R[T] / page.PageResult[T]                  |
@@ -206,6 +217,9 @@ docker build -f cmd/modular/Dockerfile --build-arg MODULE=system -t ruoyi-go:sys
 
 1. **数据权限 `@DataPermission`**：Java 用 SpEL 注解 + MyBatis 拦截器动态拼 SQL 做部门/角色数据隔离。 Go 无等价机制，需在
    repository 层用 **GORM Scopes / Callback** 手写数据权限过滤。这是移植工作量最大处。
+   **当前状态：尚未落地。** 登录时已算好 `LoginUser.DataScopeRoleMap` 存进会话；`CheckUserDataScope` /
+   `CheckDeptDataScope` / `CheckRoleDataScope` 的调用点都已就位，但内部目前只做「超管放行 + 目标存在即放行」。
+   落地时只需给这几个函数与列表查询挂上过滤，调用点不必改。
 2. **sa-token 认证鉴权**：Java 用 sa-token 管登录态、`@SaCheckPermission` 校验权限。 Go 用
    `github.com/HandsomeNPC/sa-token-go`（JWT + Redis 存会话）复刻，权限校验走
    `ruoyi-core/middleware/permission` 的 `CheckPermission` / `CheckRole`。 注意 **单个 `CheckPermission(a, b)` 内多值是
